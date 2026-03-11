@@ -918,48 +918,27 @@ export default function App(){
         <div style={{position:"absolute",inset:"-10%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,200,80,0.08),transparent 70%)",pointerEvents:"none"}}/>
       </button>
 
-      {/* 2. BOOKSHELF — floating book elements in two rows */}
-      <div style={{position:"absolute",right:"2%",top:"28%",width:"26%",zIndex:10,display:"flex",flexDirection:"column",gap:"clamp(6px,1.5vh,10px)"}}>
-        {/* Top row: 3 books */}
-        <div style={{display:"flex",gap:"clamp(4px,1vw,8px)",justifyContent:"center"}}>
-          {SHELF_BOOKS.slice(0,3).map((book,i)=>{
-            const cv=BOOK_COVERS[book.id]||BOOK_COVERS.journal;
-            const isActive=deskBook===book.id;
-            return(
-              <button key={book.id} className="shelf-hotspot" onClick={()=>selectShelfBook(book.id)}
-                style={{width:"clamp(52px,8vw,72px)",height:"clamp(68px,11vw,96px)",background:cv.bg,border:"none",cursor:"pointer",borderRadius:"3px 6px 6px 3px",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:"3px",padding:"6px 4px",position:"relative",boxShadow:isActive?`0 4px 20px rgba(255,200,80,0.35), 3px 3px 12px rgba(0,0,0,0.5), inset -1px 0 3px rgba(255,255,255,0.08)`:`3px 3px 12px rgba(0,0,0,0.45), inset -1px 0 3px rgba(255,255,255,0.05)`,animation:isActive?"none":"shelfGlow 4s ease-in-out infinite",animationDelay:`${i*0.5}s`,overflow:"hidden"}}>
-                {/* Spine edge */}
-                <div style={{position:"absolute",left:0,top:0,bottom:0,width:"3px",background:`linear-gradient(180deg,rgba(255,255,255,0.12),${cv.accent}44,rgba(0,0,0,0.2))`,pointerEvents:"none"}}/>
-                {/* Top gold accent line */}
-                {isActive&&<div style={{position:"absolute",top:0,left:"20%",right:"20%",height:"2px",background:cv.accent,borderRadius:"0 0 2px 2px",pointerEvents:"none"}}/>}
-                {/* Emoji */}
-                <div style={{fontSize:"clamp(1rem,2.5vw,1.3rem)",filter:isActive?"drop-shadow(0 0 6px rgba(255,200,80,0.5))":"none",transition:"filter .3s"}}>{book.emoji}</div>
-                {/* Label */}
-                <div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.5rem,1.3vw,0.62rem)",color:isActive?cv.accent:"rgba(245,230,200,0.7)",textAlign:"center",lineHeight:1.2,letterSpacing:"0.01em",textShadow:"0 1px 4px rgba(0,0,0,0.6)",transition:"color .3s",padding:"0 2px"}}>{book.label}</div>
-                {/* Paper edge on right */}
-                <div style={{position:"absolute",right:0,top:"4px",bottom:"4px",width:"2px",background:"linear-gradient(180deg,#E8D5B0,#DCC89C,#D4BF90)",borderRadius:"0 1px 1px 0",pointerEvents:"none",opacity:0.6}}/>
-              </button>
-            );
-          })}
-        </div>
-        {/* Bottom row: 3 books */}
-        <div style={{display:"flex",gap:"clamp(4px,1vw,8px)",justifyContent:"center"}}>
-          {SHELF_BOOKS.slice(3,6).map((book,i)=>{
-            const cv=BOOK_COVERS[book.id]||BOOK_COVERS.journal;
-            const isActive=deskBook===book.id;
-            return(
-              <button key={book.id} className="shelf-hotspot" onClick={()=>selectShelfBook(book.id)}
-                style={{width:"clamp(52px,8vw,72px)",height:"clamp(68px,11vw,96px)",background:cv.bg,border:"none",cursor:"pointer",borderRadius:"3px 6px 6px 3px",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:"3px",padding:"6px 4px",position:"relative",boxShadow:isActive?`0 4px 20px rgba(255,200,80,0.35), 3px 3px 12px rgba(0,0,0,0.5), inset -1px 0 3px rgba(255,255,255,0.08)`:`3px 3px 12px rgba(0,0,0,0.45), inset -1px 0 3px rgba(255,255,255,0.05)`,animation:isActive?"none":"shelfGlow 4s ease-in-out infinite",animationDelay:`${(i+3)*0.5}s`,overflow:"hidden"}}>
-                {/* Spine edge */}
-                <div style={{position:"absolute",left:0,top:0,bottom:0,width:"3px",background:`linear-gradient(180deg,rgba(255,255,255,0.12),${cv.accent}44,rgba(0,0,0,0.2))`,pointerEvents:"none"}}/>
-                {isActive&&<div style={{position:"absolute",top:0,left:"20%",right:"20%",height:"2px",background:cv.accent,borderRadius:"0 0 2px 2px",pointerEvents:"none"}}/>}
-                <div style={{fontSize:"clamp(1rem,2.5vw,1.3rem)",filter:isActive?"drop-shadow(0 0 6px rgba(255,200,80,0.5))":"none",transition:"filter .3s"}}>{book.emoji}</div>
-                <div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.5rem,1.3vw,0.62rem)",color:isActive?cv.accent:"rgba(245,230,200,0.7)",textAlign:"center",lineHeight:1.2,letterSpacing:"0.01em",textShadow:"0 1px 4px rgba(0,0,0,0.6)",transition:"color .3s",padding:"0 2px"}}>{book.label}</div>
-                <div style={{position:"absolute",right:0,top:"4px",bottom:"4px",width:"2px",background:"linear-gradient(180deg,#E8D5B0,#DCC89C,#D4BF90)",borderRadius:"0 1px 1px 0",pointerEvents:"none",opacity:0.6}}/>
-              </button>
-            );
-          })}
-        </div>
+      {/* 2. BOOKSHELF — single vertical column of books along the right shelf */}
+      <div style={{position:"absolute",right:"0%",top:"12%",bottom:"18%",width:"clamp(56px,9vw,76px)",zIndex:10,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"space-between",padding:"4px 0"}}>
+        {SHELF_BOOKS.map((book,i)=>{
+          const cv=BOOK_COVERS[book.id]||BOOK_COVERS.journal;
+          const isActive=deskBook===book.id;
+          return(
+            <button key={book.id} className="shelf-hotspot" onClick={()=>selectShelfBook(book.id)}
+              style={{width:"clamp(48px,8vw,68px)",height:"clamp(56px,8.5vh,80px)",background:cv.bg,border:"none",cursor:"pointer",borderRadius:"3px 6px 6px 3px",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:"2px",padding:"5px 4px",position:"relative",boxShadow:isActive?`0 4px 20px rgba(255,200,80,0.35), 3px 3px 12px rgba(0,0,0,0.5), inset -1px 0 3px rgba(255,255,255,0.08)`:`3px 3px 12px rgba(0,0,0,0.45), inset -1px 0 3px rgba(255,255,255,0.05)`,animation:isActive?"none":"shelfGlow 4s ease-in-out infinite",animationDelay:`${i*0.4}s`,overflow:"hidden",flexShrink:0}}>
+              {/* Spine edge */}
+              <div style={{position:"absolute",left:0,top:0,bottom:0,width:"3px",background:`linear-gradient(180deg,rgba(255,255,255,0.12),${cv.accent}44,rgba(0,0,0,0.2))`,pointerEvents:"none"}}/>
+              {/* Active gold accent */}
+              {isActive&&<div style={{position:"absolute",top:0,left:"20%",right:"20%",height:"2px",background:cv.accent,borderRadius:"0 0 2px 2px",pointerEvents:"none"}}/>}
+              {/* Emoji */}
+              <div style={{fontSize:"clamp(0.85rem,2.2vw,1.15rem)",filter:isActive?"drop-shadow(0 0 6px rgba(255,200,80,0.5))":"none",transition:"filter .3s"}}>{book.emoji}</div>
+              {/* Label */}
+              <div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.44rem,1.1vw,0.56rem)",color:isActive?cv.accent:"rgba(245,230,200,0.7)",textAlign:"center",lineHeight:1.15,letterSpacing:"0.01em",textShadow:"0 1px 4px rgba(0,0,0,0.6)",transition:"color .3s",padding:"0 1px"}}>{book.label}</div>
+              {/* Paper edge */}
+              <div style={{position:"absolute",right:0,top:"4px",bottom:"4px",width:"2px",background:"linear-gradient(180deg,#E8D5B0,#DCC89C,#D4BF90)",borderRadius:"0 1px 1px 0",pointerEvents:"none",opacity:0.6}}/>
+            </button>
+          );
+        })}
       </div>
 
       {/* 3. MAGICAL DOOR — center, over the arched glowing door */}
@@ -1057,15 +1036,15 @@ export default function App(){
       {shelfAnim&&(()=>{
         const book=SHELF_BOOKS.find(b=>b.id===shelfAnim);
         const idx=SHELF_BOOKS.findIndex(b=>b.id===shelfAnim);
-        const isTopRow=idx<3;
-        const animName=isTopRow?"bookArcToDesk":"bookArcToDeskBottom";
+        const startTop=`${14+idx*12}%`;
+        const animName=idx<3?"bookArcToDesk":"bookArcToDeskBottom";
         return <div style={{position:"fixed",inset:0,zIndex:50,pointerEvents:"none"}}>
           {/* Floating book emoji arcing from shelf to desk */}
-          <div style={{position:"absolute",right:"10%",top:isTopRow?"30%":"42%",fontSize:"2rem",animation:`${animName} 1.2s cubic-bezier(.25,.46,.45,.94) forwards`,filter:"drop-shadow(0 4px 24px rgba(255,200,80,0.6)) drop-shadow(0 0 12px rgba(255,220,130,0.3))"}}>
+          <div style={{position:"absolute",right:"6%",top:startTop,fontSize:"2rem",animation:`${animName} 1.2s cubic-bezier(.25,.46,.45,.94) forwards`,filter:"drop-shadow(0 4px 24px rgba(255,200,80,0.6)) drop-shadow(0 0 12px rgba(255,220,130,0.3))"}}>
             {book?.emoji||"📖"}
           </div>
           {/* Soft golden trail glow */}
-          <div style={{position:"absolute",right:"10%",top:isTopRow?"30%":"42%",width:"30px",height:"30px",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,220,130,0.4),transparent 70%)",animation:`${animName} 1.2s 0.08s cubic-bezier(.25,.46,.45,.94) forwards`,opacity:0.5}}/>
+          <div style={{position:"absolute",right:"6%",top:startTop,width:"30px",height:"30px",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,220,130,0.4),transparent 70%)",animation:`${animName} 1.2s 0.08s cubic-bezier(.25,.46,.45,.94) forwards`,opacity:0.5}}/>
           {/* Desk book fade-out */}
           <div style={{position:"absolute",left:"35%",top:"72%",fontSize:"1.6rem",animation:"deskBookFadeOut 0.6s 0.3s ease forwards",opacity:1}}>
             {SHELF_BOOKS.find(b=>b.id===deskBook)?.emoji||"📖"}
