@@ -358,6 +358,8 @@ export default function App(){
   const [bookPage,      setBookPage]      = useState(0);
   const [flipDir,       setFlipDir]       = useState(null);
   const touchRef = useRef({startX:0,startY:0});
+  const [isOnboarded,   setIsOnboarded]   = useState(false);
+  const [doorOpening,   setDoorOpening]   = useState(false);
   const [entries,       setEntries]       = useState([]);
   const [streak,        setStreak]        = useState(0);
   const [activeRoom,    setActiveRoom]    = useState(null);
@@ -397,7 +399,8 @@ export default function App(){
       let s=0,d=new Date(),map={};
       ens.forEach(e=>{map[e.date]=true;});
       while(map[isoDate(d)]){s++;d.setDate(d.getDate()-1);} setStreak(s);
-      setScreen(ob?"cabin":"welcome");
+      setIsOnboarded(!!ob);
+      setScreen("welcome");
       setCardQ(shuffle(ALL_CARD_QS)[0]);
       // preload spatial world backgrounds
       ["cabin-interior.png","upper-room-hall.png"].forEach(src=>{const img=new Image();img.src="/"+src;});
@@ -615,6 +618,9 @@ export default function App(){
     .book-nav:hover{background:rgba(101,83,55,0.15)!important;border-color:rgba(101,83,55,0.3)!important}
     .book-nav:active{transform:translateY(-50%) scale(0.9)!important}
     .book-room:hover{border-color:rgba(101,83,55,0.4)!important;background:linear-gradient(135deg,rgba(101,83,55,0.08),rgba(101,83,55,0.03))!important}
+    @keyframes doorLightBurst{0%{transform:translate(-50%,-50%) scale(0.05);opacity:0}40%{opacity:0.85}100%{transform:translate(-50%,-50%) scale(4);opacity:1}}
+    @keyframes doorFadeWarm{0%{opacity:0}55%{opacity:0}100%{opacity:1}}
+    @keyframes doorZoomBg{0%{transform:scale(1);filter:brightness(1)}100%{transform:scale(1.12);filter:brightness(1.3)}}
   `;
 
   /* ── DARK HEADER (reusable) ── */
@@ -635,29 +641,60 @@ export default function App(){
     </div>
   );
 
-  /* ══ WELCOME ══════════════════════════════════════ */
+  /* ══ WELCOME — COZY OUTDOOR CABIN ════════════════ */
   if(screen==="welcome") return(
     <div style={{minHeight:"100vh",width:"100%",position:"relative",overflow:"hidden",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-end"}}>
       <style>{GFONTS}{CSS}</style>
-      {/* Cabin background image */}
-      <div style={{position:"absolute",inset:0,backgroundImage:"url('/cabin-bg.png')",backgroundSize:"cover",backgroundPosition:"center 30%",backgroundRepeat:"no-repeat",zIndex:0,minWidth:"100vw",minHeight:"100vh"}}/>
+      {/* Cabin background image — zooms on door open */}
+      <div style={{position:"absolute",inset:0,backgroundImage:"url('/cabin-bg.png')",backgroundSize:"cover",backgroundPosition:"center 30%",backgroundRepeat:"no-repeat",zIndex:0,minWidth:"100vw",minHeight:"100vh",animation:doorOpening?"doorZoomBg 1.6s ease-in forwards":"none"}}/>
       {/* Dark overlay for readability — heavier at bottom */}
-      <div style={{position:"absolute",inset:0,background:"linear-gradient(to bottom, rgba(10,8,6,0.15) 0%, rgba(10,8,6,0.25) 30%, rgba(10,8,6,0.55) 60%, rgba(10,8,6,0.88) 85%, rgba(10,8,6,0.95) 100%)",zIndex:1}}/>
+      <div style={{position:"absolute",inset:0,background:"linear-gradient(to bottom, rgba(10,8,6,0.1) 0%, rgba(10,8,6,0.18) 25%, rgba(10,8,6,0.45) 55%, rgba(10,8,6,0.82) 78%, rgba(10,8,6,0.94) 100%)",zIndex:1}}/>
+      {/* Stars in the sky */}
+      <div style={{position:"absolute",inset:0,zIndex:2}}><Stars/></div>
       {/* Fireflies */}
       <div style={{position:"absolute",inset:0,zIndex:2}}><Fireflies/></div>
       {/* Content — positioned at bottom */}
-      <div style={{position:"relative",zIndex:3,display:"flex",flexDirection:"column",alignItems:"center",padding:"0 28px 44px",maxWidth:"480px",width:"100%"}}>
+      <div style={{position:"relative",zIndex:3,display:"flex",flexDirection:"column",alignItems:"center",padding:"0 28px 48px",maxWidth:"480px",width:"100%"}}>
         {/* Candle icon */}
-        <div className="fu"><Candle size={30}/></div>
+        <div className="fu" style={{marginBottom:4}}><Candle size={28}/></div>
+        {/* Decorative top ornament */}
+        <div className="fu" style={{display:"flex",alignItems:"center",gap:"12px",marginBottom:"6px"}}>
+          <div style={{width:"28px",height:"1px",background:"linear-gradient(90deg,transparent,rgba(201,169,110,0.4))"}}/>
+          <div style={{width:"5px",height:"5px",borderRadius:"50%",background:"rgba(201,169,110,0.35)"}}/>
+          <div style={{width:"28px",height:"1px",background:"linear-gradient(90deg,rgba(201,169,110,0.4),transparent)"}}/>
+        </div>
         {/* Title */}
-        <h1 className="fu2" style={{fontFamily:DISPLAY,fontSize:"clamp(1.8rem,7vw,3.2rem)",fontWeight:700,color:"#FFF8E8",margin:"8px 0 4px",letterSpacing:"0.04em",textAlign:"center",textShadow:"0 2px 20px rgba(0,0,0,0.6), 0 0 40px rgba(201,169,110,0.15)"}}>The Inner Room</h1>
-        <div className="fu2" style={{width:"60px",height:"1px",background:"linear-gradient(90deg,transparent,rgba(201,169,110,0.6),transparent)",marginBottom:"8px"}}/>
-        <p className="fu3" style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.9rem,3vw,1.1rem)",color:"rgba(255,248,232,0.7)",margin:"0 0 22px",letterSpacing:"0.03em",textAlign:"center",textShadow:"0 1px 8px rgba(0,0,0,0.5)",lineHeight:1.6}}>A quiet place to face the questions that matter.</p>
+        <h1 className="fu2" style={{fontFamily:DISPLAY,fontSize:"clamp(2rem,8vw,3.4rem)",fontWeight:700,color:"#FFF8E8",margin:"6px 0 2px",letterSpacing:"0.05em",textAlign:"center",textShadow:"0 2px 24px rgba(0,0,0,0.7), 0 0 50px rgba(201,169,110,0.12)",lineHeight:1.15}}>The Inner Room</h1>
+        {/* Elegant gold divider */}
+        <div className="fu2" style={{display:"flex",alignItems:"center",gap:"8px",margin:"8px 0 10px"}}>
+          <div style={{width:"40px",height:"1px",background:"linear-gradient(90deg,transparent,rgba(201,169,110,0.5))"}}/>
+          <div style={{fontFamily:SERIF,fontSize:"0.7rem",color:"rgba(201,169,110,0.4)",letterSpacing:"0.2em"}}>✦</div>
+          <div style={{width:"40px",height:"1px",background:"linear-gradient(90deg,rgba(201,169,110,0.5),transparent)"}}/>
+        </div>
+        {/* Subtitle */}
+        <p className="fu3" style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.92rem,3.2vw,1.12rem)",color:"rgba(255,248,232,0.72)",margin:"0 0 26px",letterSpacing:"0.04em",textAlign:"center",textShadow:"0 2px 12px rgba(0,0,0,0.6)",lineHeight:1.7,maxWidth:"340px"}}>A quiet place to face the questions that matter.</p>
         {/* Door button */}
-        <button className="fu4 door-btn" onClick={()=>{startAmbient();setSceneIdx(0);setScenePrev(-1);setSceneTransit(false);setScreen("onboard");}} style={{background:"linear-gradient(135deg, rgba(201,169,110,0.2), rgba(201,169,110,0.08))",backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",border:"1px solid rgba(201,169,110,0.4)",color:"#FFF8E8",padding:"15px 48px",borderRadius:"28px",cursor:"pointer",fontSize:"0.9rem",fontFamily:SERIF,fontWeight:600,letterSpacing:"0.12em",textTransform:"none",fontStyle:"italic"}}>
-          Enter the cabin
+        <button className="fu4 door-btn" onClick={()=>{
+          if(isOnboarded){
+            setDoorOpening(true);
+            setTimeout(()=>{setDoorOpening(false);setScreen("cabin");},1600);
+          }else{
+            startAmbient();setSceneIdx(0);setScenePrev(-1);setSceneTransit(false);setScreen("onboard");
+          }
+        }} style={{background:"linear-gradient(135deg, rgba(201,169,110,0.22), rgba(201,169,110,0.06))",backdropFilter:"blur(10px)",WebkitBackdropFilter:"blur(10px)",border:"1px solid rgba(201,169,110,0.45)",color:"#FFF8E8",padding:"16px 52px",borderRadius:"30px",cursor:"pointer",fontSize:"0.92rem",fontFamily:SERIF,fontWeight:600,letterSpacing:"0.14em",textTransform:"none",fontStyle:"italic",boxShadow:"0 4px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,248,232,0.06)"}}>
+          {isOnboarded?"Return to the cabin":"Enter the cabin"}
         </button>
+        {/* Returning user hint */}
+        {isOnboarded&&<p className="fu4" style={{fontFamily:SANS,fontSize:"0.66rem",color:"rgba(255,248,232,0.22)",marginTop:"14px",letterSpacing:"0.06em"}}>Your journal awaits inside</p>}
       </div>
+
+      {/* ══ DOOR OPENING ANIMATION ══ */}
+      {doorOpening&&<div style={{position:"fixed",inset:0,zIndex:100,pointerEvents:"none"}}>
+        {/* Golden light burst from the cabin door area */}
+        <div style={{position:"absolute",top:"52%",left:"50%",width:"200px",height:"200px",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,230,160,0.95) 0%,rgba(255,200,80,0.5) 40%,transparent 70%)",animation:"doorLightBurst 1.5s ease-out forwards"}}/>
+        {/* Warm fade to interior */}
+        <div style={{position:"absolute",inset:0,background:"linear-gradient(to bottom,rgba(255,240,210,0.92),rgba(245,228,195,0.97))",animation:"doorFadeWarm 1.5s ease-in forwards"}}/>
+      </div>}
     </div>
   );
 
