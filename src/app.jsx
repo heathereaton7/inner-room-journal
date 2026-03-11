@@ -918,17 +918,21 @@ export default function App(){
         <div style={{position:"absolute",inset:"-10%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,200,80,0.08),transparent 70%)",pointerEvents:"none"}}/>
       </button>
 
-      {/* 2. BOOKSHELF — invisible hotspots over books in the image */}
+      {/* 2. BOOKSHELF — labeled hotspots over books in the image */}
       {SHELF_POSITIONS.map((pos)=>{
         const book=SHELF_BOOKS.find(b=>b.id===pos.id);
         const isActive=deskBook===pos.id;
         return(
           <button key={pos.id} className="shelf-hotspot" onClick={()=>selectShelfBook(pos.id)}
-            style={{position:"absolute",top:pos.top,left:pos.left,width:pos.w,height:pos.h,zIndex:10,background:"transparent",border:"none",cursor:"pointer",borderRadius:"4px",animation:isActive?"none":"shelfGlow 4s ease-in-out infinite",animationDelay:`${pos.col*0.6}s`}}>
-            {/* Warm glow overlay — subtle & magical */}
-            <div style={{position:"absolute",inset:"-15%",borderRadius:"50%",background:isActive?"radial-gradient(circle,rgba(255,200,80,0.12),transparent 70%)":"radial-gradient(circle,rgba(255,200,80,0.05),transparent 65%)",pointerEvents:"none",transition:"all .5s"}}/>
+            style={{position:"absolute",top:pos.top,left:pos.left,width:pos.w,height:pos.h,zIndex:10,background:"transparent",border:"none",cursor:"pointer",borderRadius:"6px",animation:isActive?"none":"shelfGlow 4s ease-in-out infinite",animationDelay:`${pos.col*0.6}s`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:"4px",padding:"4px 2px"}}>
+            {/* Book emoji */}
+            <div style={{fontSize:"clamp(1rem,2.5vw,1.4rem)",filter:isActive?"drop-shadow(0 0 8px rgba(255,200,80,0.6))":"drop-shadow(0 0 4px rgba(255,200,80,0.3))",transition:"filter .4s"}}>{book?.emoji||"📖"}</div>
+            {/* Book label — warm gold, small, elegant */}
+            <div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.42rem,1.1vw,0.58rem)",color:isActive?"rgba(255,220,130,0.95)":"rgba(255,220,130,0.6)",textAlign:"center",lineHeight:1.15,letterSpacing:"0.02em",textShadow:"0 1px 6px rgba(0,0,0,0.8), 0 0 10px rgba(0,0,0,0.5)",transition:"color .4s",maxWidth:"100%",overflow:"hidden"}}>{book?.label||""}</div>
+            {/* Warm glow overlay */}
+            <div style={{position:"absolute",inset:"-20%",borderRadius:"50%",background:isActive?"radial-gradient(circle,rgba(255,200,80,0.14),transparent 65%)":"radial-gradient(circle,rgba(255,200,80,0.06),transparent 60%)",pointerEvents:"none",transition:"all .5s"}}/>
             {/* Active indicator — soft gold line at bottom */}
-            {isActive&&<div style={{position:"absolute",bottom:-2,left:"15%",right:"15%",height:2,background:"linear-gradient(90deg,transparent,rgba(255,200,80,0.5),transparent)",borderRadius:99,pointerEvents:"none"}}/>}
+            {isActive&&<div style={{position:"absolute",bottom:-2,left:"10%",right:"10%",height:2,background:"linear-gradient(90deg,transparent,rgba(255,200,80,0.5),transparent)",borderRadius:99,pointerEvents:"none"}}/>}
           </button>
         );
       })}
