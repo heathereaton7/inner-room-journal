@@ -163,6 +163,76 @@ const SAMPLE_PRAYERS = [
 ];
 
 /* ═══════════════════════════════════════════════════
+   BOOKSHELF — SPIRITUAL BOOKS
+═══════════════════════════════════════════════════ */
+const SHELF_BOOKS = [
+  {id:"journal",  label:"Reflection Journal", emoji:"📖"},
+  {id:"bible",    label:"Scripture",          emoji:"✝️"},
+  {id:"prayers",  label:"Prayers",            emoji:"🙏"},
+  {id:"gratitude",label:"Gratitude",          emoji:"🌿"},
+  {id:"dreams",   label:"Dreams",             emoji:"✨"},
+  {id:"prophecy", label:"Prophecy & Words",   emoji:"🕊️"},
+];
+
+const BOOK_CONTENT = {
+  bible:{
+    cover:{title:"Scripture & Meditation",subtitle:"Sit with the questions Jesus asked."},
+    pages:[
+      {title:"John 5:6",prompt:"Do you want to get well?",hint:"Are you actually willing to change — or have you become comfortable in your struggle?"},
+      {title:"Matthew 16:15",prompt:"Who do you say I am?",hint:"Not who culture says, not who your church says — who do you say Jesus is?"},
+      {title:"Mark 10:36",prompt:"What do you want me to do for you?",hint:"If Jesus asked you this today — what would your honest answer be?"},
+      {title:"John 11:26",prompt:"Do you believe this?",hint:"The thing you say you believe — do you actually believe it in this moment?"},
+      {title:"Matthew 16:26",prompt:"What good will it be to gain the whole world, yet forfeit your soul?",hint:"What are you trading your inner life for right now?"},
+      {title:"John 21:17",prompt:"Do you love me?",hint:"Beyond your words and habits — how would you describe your love for God right now?"},
+      {title:"John 20:15",prompt:"Why are you crying? Who is it you are looking for?",hint:"What are you grieving, and who or what are you really searching for?"},
+    ],
+  },
+  prayers:{
+    cover:{title:"Prayer Journal",subtitle:"Pour your heart out. He is listening."},
+    pages:[
+      {title:"Gratitude Prayer",prompt:"What are you thankful for today?",hint:"Start with the smallest blessings."},
+      {title:"Intercession",prompt:"Who needs your prayers right now?",hint:"Name them. Hold them before God."},
+      {title:"Confession",prompt:"What do you need to lay down?",hint:"Grace meets honesty."},
+      {title:"Petition",prompt:"What are you asking God for?",hint:"Ask boldly."},
+      {title:"Listening",prompt:"What is God saying to you today?",hint:"Be still. Wait. Write what comes."},
+    ],
+  },
+  gratitude:{
+    cover:{title:"Gratitude Journal",subtitle:"Notice the gifts hidden in ordinary days."},
+    pages:[
+      {title:"Three Blessings",prompt:"Name three things you are grateful for today.",hint:"Big or small — everything counts."},
+      {title:"Unexpected Gift",prompt:"What surprised you with joy recently?",hint:"The best gifts are often unplanned."},
+      {title:"A Person",prompt:"Who are you thankful for — and why?",hint:"Let yourself feel the weight of their presence in your life."},
+      {title:"Simple Pleasures",prompt:"What simple moment brought you peace today?",hint:"Morning light. A warm cup. A deep breath."},
+    ],
+  },
+  dreams:{
+    cover:{title:"Dream Journal",subtitle:"God speaks in the night. Capture what you see."},
+    pages:[
+      {title:"The Dream",prompt:"What did you dream last night?",hint:"Write everything you remember — even fragments."},
+      {title:"Symbols & Themes",prompt:"What images, symbols, or themes stood out?",hint:"Colors, people, places, feelings."},
+      {title:"Interpretation",prompt:"What might God be saying through this dream?",hint:"Ask the Holy Spirit to reveal the meaning."},
+      {title:"Emotions",prompt:"What emotions did you feel during and after the dream?",hint:"Emotions are signposts."},
+    ],
+  },
+  prophecy:{
+    cover:{title:"Prophecy & Words",subtitle:"Record what the Spirit speaks. Hold fast to the good."},
+    pages:[
+      {title:"What I Am Hearing",prompt:"What words or impressions have you received from God?",hint:"Write it down before you forget."},
+      {title:"Scripture Confirmation",prompt:"What Scripture is confirming what you are hearing?",hint:"God's voice never contradicts His Word."},
+      {title:"Recurring Themes",prompt:"What themes keep coming up in your prayer life?",hint:"Patterns often reveal purpose."},
+      {title:"What God is Confirming",prompt:"What is God making clearer over time?",hint:"He confirms through multiple witnesses."},
+    ],
+  },
+};
+
+function getBookPageCount(bookType){
+  if(bookType==="journal") return REFLECTION_ROOMS.length+4;
+  const bc=BOOK_CONTENT[bookType];
+  return bc? bc.pages.length+1 : 11;
+}
+
+/* ═══════════════════════════════════════════════════
    HELPERS
 ═══════════════════════════════════════════════════ */
 function todayStr(){ return new Date().toISOString().slice(0,10); }
@@ -360,6 +430,9 @@ export default function App(){
   const touchRef = useRef({startX:0,startY:0});
   const [isOnboarded,   setIsOnboarded]   = useState(false);
   const [doorOpening,   setDoorOpening]   = useState(false);
+  const [deskBook,      setDeskBook]      = useState("journal");
+  const [shelfAnim,     setShelfAnim]     = useState(null);
+  const [windowPanel,   setWindowPanel]   = useState(null);
   const [entries,       setEntries]       = useState([]);
   const [streak,        setStreak]        = useState(0);
   const [activeRoom,    setActiveRoom]    = useState(null);
@@ -507,7 +580,7 @@ export default function App(){
   }
 
   // ── BOOK / PAGE FLIP ──
-  const TOTAL_BOOK_PAGES = REFLECTION_ROOMS.length + 4; // welcome + 7 rooms + jesus + locked + daily
+  const TOTAL_BOOK_PAGES = getBookPageCount(deskBook);
   function flipPage(dir){
     const next = dir === "fwd" ? bookPage + 1 : bookPage - 1;
     if(next < 0 || next >= TOTAL_BOOK_PAGES) return;
@@ -521,6 +594,19 @@ export default function App(){
     if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)){
       if(dx<0) flipPage("fwd"); else flipPage("bwd");
     }
+  }
+
+  // ── SHELF BOOK SELECTION ──
+  function selectShelfBook(bookId){
+    if(shelfAnim||bookId===deskBook) return;
+    setShelfAnim(bookId);
+    setTimeout(()=>{
+      setDeskBook(bookId);
+      setShelfAnim(null);
+      setBookOpen(true);
+      setBookPage(0);
+      setFlipDir(null);
+    },900);
   }
 
   // ── CARD ENGINE ──
@@ -617,7 +703,19 @@ export default function App(){
     .book-nav{transition:all .2s}
     .book-nav:hover{background:rgba(101,83,55,0.15)!important;border-color:rgba(101,83,55,0.3)!important}
     .book-nav:active{transform:translateY(-50%) scale(0.9)!important}
+    .shelf-book{transition:all .3s ease;opacity:0.85}
+    .shelf-book:hover{opacity:1;transform:translateX(-5px)!important;text-shadow:0 0 12px rgba(255,200,80,0.5)}
+    .shelf-book:active{transform:scale(0.95)!important}
+    .window-hotspot{transition:all .3s}
+    .window-hotspot:hover{background:rgba(255,200,80,0.12)!important}
+    .wp-option{transition:all .2s;cursor:pointer}
+    .wp-option:hover{background:rgba(255,255,255,0.08)!important;transform:translateY(-2px)}
     .book-room:hover{border-color:rgba(101,83,55,0.4)!important;background:linear-gradient(135deg,rgba(101,83,55,0.08),rgba(101,83,55,0.03))!important}
+    @keyframes bookFlyToDesk{0%{opacity:1;transform:translate(0,0) scale(1)}40%{opacity:1;transform:translate(-120px,-40px) scale(1.3)}100%{opacity:0;transform:translate(-200px,120px) scale(0.7)}}
+    @keyframes hotspotPulse{0%,100%{box-shadow:0 0 15px rgba(255,200,80,0.15),0 0 40px rgba(255,200,80,0.05)}50%{box-shadow:0 0 25px rgba(255,200,80,0.3),0 0 60px rgba(255,200,80,0.1)}}
+    @keyframes shelfBookHover{0%,100%{transform:translateX(0)}50%{transform:translateX(-4px)}}
+    @keyframes windowPanelSlide{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+    @keyframes windowPanelSlideLeft{from{transform:translateX(-100%);opacity:0}to{transform:translateX(0);opacity:1}}
     @keyframes doorLightBurst{0%{transform:translate(-50%,-50%) scale(0.05);opacity:0}40%{opacity:0.85}100%{transform:translate(-50%,-50%) scale(4);opacity:1}}
     @keyframes doorFadeWarm{0%{opacity:0}55%{opacity:0}100%{opacity:1}}
     @keyframes doorZoomBg{0%{transform:scale(1);filter:brightness(1)}100%{transform:scale(1.12);filter:brightness(1.3)}}
@@ -758,194 +856,279 @@ export default function App(){
     );
   }
 
-  /* ══ CABIN (Private Interior) ══════════════════════ */
+  /* ══ CABIN (Private Interior — Immersive Hub) ══════ */
   if(screen==="cabin") return(
     <div style={{position:"fixed",inset:0,overflow:"hidden",fontFamily:SANS}}>
       <style>{GFONTS}{CSS}</style>
-      {/* BG fallback gradient */}
-      <div style={{position:"absolute",inset:0,background:"linear-gradient(160deg,#1A1612 0%,#2A1E18 40%,#1A1208 100%)",zIndex:0}}/>
-      {/* BG image */}
-      <div style={{position:"absolute",inset:0,backgroundImage:"url(/cabin-interior.png)",backgroundSize:"cover",backgroundPosition:"center",zIndex:1}}/>
-      {/* Vignette */}
-      <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse at center,transparent 30%,rgba(10,8,6,0.55) 100%)",zIndex:2,pointerEvents:"none"}}/>
-      {/* Ambient */}
-      <div style={{zIndex:3,pointerEvents:"none"}}><Fireflies/><CabinCandleGlow/></div>
 
-      {/* ── Streak badge (top-left) ── */}
-      {streak>0&&<div style={{position:"absolute",top:22,left:22,zIndex:10,background:"rgba(26,22,18,0.6)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",border:"1px solid rgba(201,169,110,0.2)",borderRadius:"999px",padding:"8px 18px",display:"flex",alignItems:"center",gap:"8px",animation:"fadeUp .6s ease both"}}>
-        <span style={{fontSize:"0.88rem"}}>🔥</span>
-        <span style={{fontFamily:SANS,fontSize:"0.78rem",color:B.goldL,fontWeight:600}}>{streak}-day streak</span>
-      </div>}
+      {/* ── Full-screen cabin image ── */}
+      <img src="/cabin-interior.png" alt="Cabin interior" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",zIndex:0}}/>
 
-      {/* ── Nav icons (top-right) ── */}
-      <div style={{position:"absolute",top:22,right:22,zIndex:10,display:"flex",gap:"10px",animation:"fadeUp .6s .1s ease both"}}>
-        {[["✦","cards","Cards"],["📖","history","History"],["📊","insights","Insights"]].map(([ic,sc,lb])=>(
-          <button key={sc} onClick={()=>setScreen(sc)} title={lb} style={{width:44,height:44,borderRadius:"50%",background:"rgba(26,22,18,0.5)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",border:"1px solid rgba(201,169,110,0.15)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:"1rem",transition:"all 0.2s",color:B.goldL}}
-            onMouseEnter={e=>{e.currentTarget.style.background="rgba(201,169,110,0.2)";e.currentTarget.style.borderColor="rgba(201,169,110,0.4)";}}
-            onMouseLeave={e=>{e.currentTarget.style.background="rgba(26,22,18,0.5)";e.currentTarget.style.borderColor="rgba(201,169,110,0.15)";}}>
-            <span>{ic}</span>
+      {/* ── Subtle vignette — edges only ── */}
+      <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse at center,transparent 40%,rgba(10,8,6,0.5) 100%)",zIndex:1,pointerEvents:"none"}}/>
+
+      {/* ── Ambient effects ── */}
+      <div style={{position:"absolute",inset:0,zIndex:2,pointerEvents:"none"}}><Fireflies/><CabinCandleGlow/></div>
+
+      {/* ═══ INTERACTIVE HOTSPOTS ═══ */}
+
+      {/* 1. DESK BOOK — bottom center, over the glowing book */}
+      <button onClick={()=>{setBookOpen(true);setBookPage(0);setFlipDir(null);}} style={{position:"absolute",left:"18%",right:"27%",top:"65%",bottom:"12%",zIndex:10,background:"transparent",border:"none",cursor:"pointer",borderRadius:"12px",animation:"hotspotPulse 3s ease-in-out infinite"}}>
+        {/* Subtle glow overlay */}
+        <div style={{position:"absolute",inset:"-10%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,200,80,0.08),transparent 70%)",pointerEvents:"none"}}/>
+      </button>
+
+      {/* 2. BOOKSHELF — right side with individual book hotspots */}
+      <div style={{position:"absolute",right:"3%",top:"10%",width:"21%",height:"55%",zIndex:10,display:"flex",flexDirection:"column",justifyContent:"space-around",padding:"8px 0"}}>
+        {SHELF_BOOKS.map((book,i)=>(
+          <button key={book.id} className="shelf-book" onClick={()=>selectShelfBook(book.id)}
+            style={{background:deskBook===book.id?"rgba(255,200,80,0.12)":"transparent",border:"none",cursor:"pointer",padding:"6px 10px",borderRadius:"6px",display:"flex",alignItems:"center",gap:"6px",borderLeft:deskBook===book.id?"2px solid rgba(255,200,80,0.5)":"2px solid transparent",position:"relative"}}>
+            <span style={{fontSize:"0.85rem",filter:"drop-shadow(0 0 4px rgba(255,200,80,0.3))"}}>{book.emoji}</span>
+            <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.52rem,1.6vw,0.68rem)",color:deskBook===book.id?"rgba(255,248,232,0.9)":"rgba(255,248,232,0.5)",textShadow:"0 1px 6px rgba(0,0,0,0.8)",letterSpacing:"0.02em",whiteSpace:"nowrap",textAlign:"left"}}>{book.label}</span>
           </button>
         ))}
       </div>
 
-      {/* ── Book hotspot (bottom-center) ── */}
-      <button onClick={()=>{setBookOpen(true);setBookPage(0);setFlipDir(null);}} style={{position:"absolute",bottom:"15%",left:"50%",transform:"translateX(-50%)",zIndex:10,background:"transparent",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:"10px",padding:20,animation:"gentlePulse 2.5s ease-in-out infinite"}}>
-        <div style={{width:72,height:72,borderRadius:"50%",background:"radial-gradient(circle,rgba(255,200,80,0.18),rgba(255,200,80,0.03))",display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid rgba(255,200,80,0.18)",boxShadow:"0 0 30px rgba(255,200,80,0.08)"}}>
-          <span style={{fontSize:"1.9rem",filter:"drop-shadow(0 0 8px rgba(255,200,80,0.3))"}}>📖</span>
-        </div>
-        <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.84rem",color:"rgba(255,248,232,0.75)",textShadow:"0 1px 8px rgba(0,0,0,0.7)",letterSpacing:"0.02em"}}>Open your journal</span>
+      {/* 3. MAGICAL DOOR — center, over the arched glowing door */}
+      <button onClick={transitionToHall} style={{position:"absolute",left:"28%",right:"30%",top:"18%",bottom:"42%",zIndex:10,background:"transparent",border:"none",cursor:"pointer",borderRadius:"50% 50% 0 0",animation:"hotspotPulse 3.5s ease-in-out infinite"}}>
+        <div style={{position:"absolute",inset:"-5%",borderRadius:"50% 50% 8px 8px",background:"radial-gradient(ellipse at center bottom,rgba(255,200,80,0.06),transparent 60%)",pointerEvents:"none"}}/>
       </button>
 
-      {/* ── Back door hotspot (right side) ── */}
-      <button onClick={transitionToHall} style={{position:"absolute",top:"32%",right:"7%",zIndex:10,background:"transparent",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:"8px",padding:14,transition:"all 0.3s"}}
-        onMouseEnter={e=>e.currentTarget.querySelector('.door-arch').style.borderColor="rgba(255,200,80,0.45)"}
-        onMouseLeave={e=>e.currentTarget.querySelector('.door-arch').style.borderColor="rgba(255,200,80,0.2)"}>
-        <div className="door-arch" style={{width:50,height:76,borderRadius:"25px 25px 0 0",border:"1.5px solid rgba(255,200,80,0.2)",background:"radial-gradient(ellipse at center bottom,rgba(255,200,80,0.08),transparent 70%)",position:"relative",transition:"border-color 0.3s",boxShadow:"0 0 20px rgba(255,200,80,0.04)"}}>
-          <div style={{position:"absolute",right:9,top:"50%",width:5,height:5,borderRadius:"50%",background:"rgba(201,169,110,0.55)"}}/>
-        </div>
-        <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.72rem",color:"rgba(255,248,232,0.5)",textShadow:"0 1px 6px rgba(0,0,0,0.6)",maxWidth:85,textAlign:"center",lineHeight:1.3}}>The Upper Room</span>
-      </button>
+      {/* 4. LEFT WINDOW */}
+      <button className="window-hotspot" onClick={()=>setWindowPanel("left")} style={{position:"absolute",left:"2%",top:"2%",width:"38%",height:"30%",zIndex:10,background:"transparent",border:"none",cursor:"pointer",borderRadius:"8px"}}/>
 
-      {/* ══ IMMERSIVE PAGE-FLIPPING JOURNAL ══ */}
+      {/* 5. RIGHT WINDOW */}
+      <button className="window-hotspot" onClick={()=>setWindowPanel("right")} style={{position:"absolute",right:"12%",top:"2%",width:"30%",height:"30%",zIndex:10,background:"transparent",border:"none",cursor:"pointer",borderRadius:"8px"}}/>
+
+      {/* ═══ SHELF-TO-DESK ANIMATION OVERLAY ═══ */}
+      {shelfAnim&&(()=>{
+        const book=SHELF_BOOKS.find(b=>b.id===shelfAnim);
+        return <div style={{position:"fixed",inset:0,zIndex:50,pointerEvents:"none"}}>
+          <div style={{position:"absolute",right:"14%",top:"35%",fontSize:"2.2rem",animation:"bookFlyToDesk 0.9s cubic-bezier(.25,.46,.45,.94) forwards",filter:"drop-shadow(0 4px 20px rgba(255,200,80,0.5))"}}>
+            {book?.emoji||"📖"}
+          </div>
+        </div>;
+      })()}
+
+      {/* ═══ WINDOW PANEL OVERLAY ═══ */}
+      {windowPanel&&<div style={{position:"fixed",inset:0,zIndex:80}}>
+        {/* Backdrop */}
+        <div onClick={()=>setWindowPanel(null)} style={{position:"absolute",inset:0,background:"rgba(10,8,6,0.5)",animation:"spaceFadeIn .25s ease"}}/>
+        {/* Panel */}
+        <div style={{position:"absolute",[windowPanel==="left"?"left":"right"]:0,top:0,bottom:0,width:"min(82vw,360px)",background:"linear-gradient(180deg,rgba(26,22,18,0.96),rgba(20,16,12,0.98))",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderRight:windowPanel==="left"?"1px solid rgba(201,169,110,0.15)":"none",borderLeft:windowPanel==="right"?"1px solid rgba(201,169,110,0.15)":"none",animation:windowPanel==="left"?"windowPanelSlideLeft .35s ease both":"windowPanelSlide .35s ease both",display:"flex",flexDirection:"column",padding:"48px 28px 36px"}}>
+          {/* Close */}
+          <button onClick={()=>setWindowPanel(null)} style={{position:"absolute",top:16,right:16,width:32,height:32,borderRadius:"50%",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(201,169,110,0.15)",color:"rgba(255,248,232,0.5)",fontSize:"0.75rem",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
+          {/* Title */}
+          <div style={{marginBottom:28}}>
+            <div style={{fontSize:"1.4rem",marginBottom:8}}>{windowPanel==="left"?"🌲":"🌊"}</div>
+            <h3 style={{fontFamily:DISPLAY,fontSize:"1.3rem",fontWeight:700,color:"#FFF8E8",margin:"0 0 4px"}}>{windowPanel==="left"?"Forest View":"Waterfall View"}</h3>
+            <div style={{width:40,height:1,background:"linear-gradient(90deg,rgba(201,169,110,0.4),transparent)",marginTop:8}}/>
+          </div>
+          {/* Options */}
+          <div style={{display:"flex",flexDirection:"column",gap:"14px",flex:1}}>
+            {(windowPanel==="left"?[
+              {emoji:"🔊",label:"Nature Sounds",desc:"Forest birdsong & gentle breeze"},
+              {emoji:"⏱️",label:"Prayer Timer",desc:"1 · 3 · 5 · 10 minutes of stillness"},
+              {emoji:"🕊️",label:"Stillness Mode",desc:"Quiet your mind. Just breathe."},
+            ]:[
+              {emoji:"📖",label:"Daily Scripture",desc:"A word to carry with you today"},
+              {emoji:"🔊",label:"Water Sounds",desc:"Flowing waterfall & river stones"},
+              {emoji:"🙏",label:"Quiet Prayer Space",desc:"Pour out your heart in this place"},
+            ]).map((opt,i)=>(
+              <div key={i} className="wp-option" style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(201,169,110,0.12)",borderRadius:12,padding:"16px 18px",display:"flex",alignItems:"center",gap:"14px"}}>
+                <div style={{fontSize:"1.3rem",width:36,textAlign:"center"}}>{opt.emoji}</div>
+                <div>
+                  <div style={{fontFamily:SERIF,fontSize:"0.92rem",color:"#FFF8E8",fontWeight:600,marginBottom:2}}>{opt.label}</div>
+                  <div style={{fontFamily:SANS,fontSize:"0.7rem",color:"rgba(255,248,232,0.4)"}}>{opt.desc}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+          {/* Footer hint */}
+          <div style={{textAlign:"center",marginTop:20}}>
+            <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.72rem",color:"rgba(255,248,232,0.2)"}}>Tap outside to close</p>
+          </div>
+        </div>
+      </div>}
+
+      {/* ═══ IMMERSIVE PAGE-FLIPPING JOURNAL ═══ */}
       {bookOpen&&<div style={{position:"fixed",inset:0,zIndex:100}}>
-        {/* Backdrop — darkened cabin */}
+        {/* Backdrop */}
         <div onClick={()=>setBookOpen(false)} style={{position:"absolute",inset:0,background:"rgba(10,8,6,0.72)",backdropFilter:"blur(3px)",WebkitBackdropFilter:"blur(3px)",animation:"spaceFadeIn .3s ease"}}/>
-        {/* Sparkles near book */}
         <BookSparkles/>
         {/* Book container */}
         <div onTouchStart={bookTouchStart} onTouchEnd={bookTouchEnd} style={{position:"absolute",top:"50%",left:"50%",width:"min(88vw,420px)",height:"min(78vh,640px)",animation:"bookOpenAnim .5s cubic-bezier(.22,1,.36,1) both",display:"flex",flexDirection:"column"}}>
           {/* Leather spine binding */}
           <div style={{position:"absolute",left:-6,top:4,bottom:4,width:13,background:"linear-gradient(90deg,#2E1E10,#4A3220,#3D2B18,#2E1E10)",borderRadius:"4px 0 0 4px",boxShadow:"2px 0 12px rgba(0,0,0,0.4), inset -1px 0 2px rgba(255,200,80,0.05)",zIndex:3}}/>
-          {/* Page edges (right side) */}
+          {/* Page edges */}
           <div style={{position:"absolute",right:-3,top:8,bottom:8,width:6,background:"linear-gradient(90deg,#E8D5B0,#DCC89C,#D4BF90)",borderRadius:"0 2px 2px 0",boxShadow:"-1px 0 4px rgba(0,0,0,0.1)",zIndex:1}}/>
           {/* Cream page */}
-          <div key={`p-${bookPage}`} style={{flex:1,background:"linear-gradient(155deg,#F5E6C8 0%,#ECD9B5 35%,#E4CFA5 70%,#DCC89C 100%)",borderRadius:"3px 10px 10px 3px",position:"relative",overflow:"hidden",animation:`${flipDir==="bwd"?"pageRevealBwd":flipDir==="fwd"?"pageRevealFwd":"pageInitial"} .45s ease-out both`,boxShadow:"0 4px 30px rgba(0,0,0,0.4), 0 0 60px rgba(0,0,0,0.15), inset -2px 0 6px rgba(139,109,69,0.08)"}}>
-            {/* Paper texture lines */}
+          <div key={`p-${bookPage}-${deskBook}`} style={{flex:1,background:"linear-gradient(155deg,#F5E6C8 0%,#ECD9B5 35%,#E4CFA5 70%,#DCC89C 100%)",borderRadius:"3px 10px 10px 3px",position:"relative",overflow:"hidden",animation:`${flipDir==="bwd"?"pageRevealBwd":flipDir==="fwd"?"pageRevealFwd":"pageInitial"} .45s ease-out both`,boxShadow:"0 4px 30px rgba(0,0,0,0.4), 0 0 60px rgba(0,0,0,0.15), inset -2px 0 6px rgba(139,109,69,0.08)"}}>
+            {/* Paper texture */}
             <div style={{position:"absolute",inset:0,background:"repeating-linear-gradient(0deg,transparent,transparent 28px,rgba(139,119,89,0.04) 28px,rgba(139,119,89,0.04) 29px)",pointerEvents:"none",borderRadius:"inherit"}}/>
-            {/* Aged edge vignette */}
             <div style={{position:"absolute",inset:0,boxShadow:"inset 0 0 80px rgba(139,109,69,0.12), inset 0 0 30px rgba(139,109,69,0.06)",pointerEvents:"none",borderRadius:"inherit"}}/>
-            {/* Spine inner shadow */}
             <div style={{position:"absolute",left:0,top:0,bottom:0,width:20,background:"linear-gradient(90deg,rgba(80,55,30,0.18),rgba(80,55,30,0.05),transparent)",pointerEvents:"none"}}/>
-            {/* Page content area */}
+            {/* Page content */}
             <div style={{position:"relative",zIndex:2,height:"100%",display:"flex",flexDirection:"column",padding:"28px 22px 16px 30px",overflowY:"auto",WebkitOverflowScrolling:"touch"}}>
 
-              {/* ── PAGE 0: WELCOME ── */}
-              {bookPage===0&&<>
-                <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center",animation:"pageContentReveal .5s .15s ease both"}}>
-                  <div style={{fontSize:"2.2rem",marginBottom:14,filter:"drop-shadow(0 2px 4px rgba(139,109,69,0.2))"}}>📖</div>
-                  <h2 style={{fontFamily:DISPLAY,fontSize:"clamp(1.3rem,5vw,1.6rem)",fontWeight:700,color:"#3D2B18",margin:"0 0 6px",letterSpacing:"0.02em"}}>Your Journal</h2>
-                  <div style={{width:50,height:1,background:"linear-gradient(90deg,transparent,#8B6D45,transparent)",margin:"4px auto 18px"}}/>
-                  <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.88rem,3vw,1rem)",color:"#6B553A",lineHeight:1.75,maxWidth:280,margin:"0 auto"}}>A quiet place to sit with the questions that shape your soul.</p>
-                  <p style={{fontFamily:SERIF,fontSize:"0.78rem",color:"rgba(107,85,58,0.4)",marginTop:28,letterSpacing:"0.02em"}}>Turn the page to begin →</p>
-                </div>
-                <div style={{textAlign:"center",fontFamily:SANS,fontSize:"0.6rem",color:"rgba(107,85,58,0.3)",letterSpacing:"0.1em",textTransform:"uppercase"}}>— 1 of {TOTAL_BOOK_PAGES} —</div>
-              </>}
+              {/* ══ JOURNAL-TYPE PAGES (Reflection Journal = default desk book) ══ */}
+              {deskBook==="journal"&&<>
+                {/* PAGE 0: Welcome */}
+                {bookPage===0&&<>
+                  <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center",animation:"pageContentReveal .5s .15s ease both"}}>
+                    <div style={{fontSize:"2.2rem",marginBottom:14,filter:"drop-shadow(0 2px 4px rgba(139,109,69,0.2))"}}>📖</div>
+                    <h2 style={{fontFamily:DISPLAY,fontSize:"clamp(1.3rem,5vw,1.6rem)",fontWeight:700,color:"#3D2B18",margin:"0 0 6px",letterSpacing:"0.02em"}}>Your Journal</h2>
+                    <div style={{width:50,height:1,background:"linear-gradient(90deg,transparent,#8B6D45,transparent)",margin:"4px auto 18px"}}/>
+                    <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.88rem,3vw,1rem)",color:"#6B553A",lineHeight:1.75,maxWidth:280,margin:"0 auto"}}>A quiet place to sit with the questions that shape your soul.</p>
+                    <p style={{fontFamily:SERIF,fontSize:"0.78rem",color:"rgba(107,85,58,0.4)",marginTop:28,letterSpacing:"0.02em"}}>Turn the page to begin →</p>
+                  </div>
+                  <div style={{textAlign:"center",fontFamily:SANS,fontSize:"0.6rem",color:"rgba(107,85,58,0.3)",letterSpacing:"0.1em",textTransform:"uppercase"}}>— 1 of {TOTAL_BOOK_PAGES} —</div>
+                </>}
 
-              {/* ── PAGES 1–7: REFLECTION ROOMS ── */}
-              {bookPage>=1&&bookPage<=REFLECTION_ROOMS.length&&(()=>{
-                const room=REFLECTION_ROOMS[bookPage-1],prog=roomProg(room),done=prog>=room.days.length,currentDay=Math.min(prog,room.days.length-1),dayData=room.days[currentDay];
-                return<>
-                  <div style={{flex:1,display:"flex",flexDirection:"column",animation:"pageContentReveal .5s .1s ease both"}}>
-                    <div style={{textAlign:"center",marginBottom:14}}>
-                      <div style={{fontSize:"1.8rem",marginBottom:6}}>{room.emoji}</div>
-                      <h2 style={{fontFamily:DISPLAY,fontSize:"clamp(1.15rem,4.5vw,1.35rem)",fontWeight:700,color:"#3D2B18",margin:"0 0 4px"}}>{room.label}</h2>
-                      <div style={{fontFamily:SANS,fontSize:"0.6rem",color:"rgba(107,85,58,0.5)",letterSpacing:"0.1em",textTransform:"uppercase",marginTop:3}}>{done?"✓ Complete":`Day ${prog+1} of ${room.days.length}`}</div>
+                {/* PAGES 1–7: Reflection Rooms */}
+                {bookPage>=1&&bookPage<=REFLECTION_ROOMS.length&&(()=>{
+                  const room=REFLECTION_ROOMS[bookPage-1],prog=roomProg(room),done=prog>=room.days.length,currentDay=Math.min(prog,room.days.length-1),dayData=room.days[currentDay];
+                  return<>
+                    <div style={{flex:1,display:"flex",flexDirection:"column",animation:"pageContentReveal .5s .1s ease both"}}>
+                      <div style={{textAlign:"center",marginBottom:14}}>
+                        <div style={{fontSize:"1.8rem",marginBottom:6}}>{room.emoji}</div>
+                        <h2 style={{fontFamily:DISPLAY,fontSize:"clamp(1.15rem,4.5vw,1.35rem)",fontWeight:700,color:"#3D2B18",margin:"0 0 4px"}}>{room.label}</h2>
+                        <div style={{fontFamily:SANS,fontSize:"0.6rem",color:"rgba(107,85,58,0.5)",letterSpacing:"0.1em",textTransform:"uppercase",marginTop:3}}>{done?"✓ Complete":`Day ${prog+1} of ${room.days.length}`}</div>
+                      </div>
+                      <div style={{width:40,height:1,background:"linear-gradient(90deg,transparent,rgba(139,109,69,0.3),transparent)",margin:"0 auto 16px"}}/>
+                      <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.85rem,3vw,0.95rem)",color:"#5C4A2E",lineHeight:1.7,textAlign:"center",margin:"0 6px 8px"}}>"{room.question}"</p>
+                      {!done&&<div style={{background:"rgba(139,109,69,0.06)",borderRadius:8,padding:"14px 16px",margin:"12px 0",border:"1px solid rgba(139,109,69,0.1)"}}>
+                        <div style={{fontFamily:SANS,fontSize:"0.56rem",color:"rgba(107,85,58,0.45)",letterSpacing:"0.12em",textTransform:"uppercase",marginBottom:6}}>Today's Prompt</div>
+                        <p style={{fontFamily:SERIF,fontSize:"clamp(0.8rem,2.8vw,0.88rem)",color:"#4A3826",lineHeight:1.6,margin:0}}>{dayData.q}</p>
+                        <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.72rem",color:"rgba(107,85,58,0.38)",margin:"6px 0 0"}}>{dayData.hint}</p>
+                      </div>}
+                      {done&&<div style={{background:"rgba(139,109,69,0.05)",borderRadius:8,padding:"12px 16px",margin:"12px 0",border:"1px dashed rgba(139,109,69,0.12)",textAlign:"center"}}>
+                        <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.82rem",color:"rgba(107,85,58,0.45)",margin:0}}>You've completed all {room.days.length} days in this room.</p>
+                      </div>}
+                      <div style={{flex:1,minHeight:16}}/>
+                      <button className="book-room" onClick={()=>{setBookOpen(false);enterRoom(room,"cabin");}} style={{alignSelf:"center",background:"linear-gradient(135deg,rgba(93,74,46,0.1),rgba(93,74,46,0.04))",border:"1px solid rgba(93,74,46,0.22)",color:"#5C4A2E",padding:"11px 32px",borderRadius:8,fontFamily:SERIF,fontStyle:"italic",fontSize:"0.84rem",cursor:"pointer",transition:"all .2s",letterSpacing:"0.02em"}}>{done?"Revisit this room →":"Begin reflecting →"}</button>
                     </div>
-                    <div style={{width:40,height:1,background:"linear-gradient(90deg,transparent,rgba(139,109,69,0.3),transparent)",margin:"0 auto 16px"}}/>
-                    <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.85rem,3vw,0.95rem)",color:"#5C4A2E",lineHeight:1.7,textAlign:"center",margin:"0 6px 8px"}}>"{room.question}"</p>
-                    {!done&&<div style={{background:"rgba(139,109,69,0.06)",borderRadius:8,padding:"14px 16px",margin:"12px 0",border:"1px solid rgba(139,109,69,0.1)"}}>
-                      <div style={{fontFamily:SANS,fontSize:"0.56rem",color:"rgba(107,85,58,0.45)",letterSpacing:"0.12em",textTransform:"uppercase",marginBottom:6}}>Today's Prompt</div>
-                      <p style={{fontFamily:SERIF,fontSize:"clamp(0.8rem,2.8vw,0.88rem)",color:"#4A3826",lineHeight:1.6,margin:0}}>{dayData.q}</p>
-                      <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.72rem",color:"rgba(107,85,58,0.38)",margin:"6px 0 0"}}>{dayData.hint}</p>
-                    </div>}
-                    {done&&<div style={{background:"rgba(139,109,69,0.05)",borderRadius:8,padding:"12px 16px",margin:"12px 0",border:"1px dashed rgba(139,109,69,0.12)",textAlign:"center"}}>
-                      <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.82rem",color:"rgba(107,85,58,0.45)",margin:0}}>You've completed all {room.days.length} days in this room.</p>
-                    </div>}
-                    <div style={{flex:1,minHeight:16}}/>
-                    <button className="book-room" onClick={()=>{setBookOpen(false);enterRoom(room,"cabin");}} style={{alignSelf:"center",background:"linear-gradient(135deg,rgba(93,74,46,0.1),rgba(93,74,46,0.04))",border:"1px solid rgba(93,74,46,0.22)",color:"#5C4A2E",padding:"11px 32px",borderRadius:8,fontFamily:SERIF,fontStyle:"italic",fontSize:"0.84rem",cursor:"pointer",transition:"all .2s",letterSpacing:"0.02em"}}>{done?"Revisit this room →":"Begin reflecting →"}</button>
+                    <div style={{textAlign:"center",fontFamily:SANS,fontSize:"0.6rem",color:"rgba(107,85,58,0.3)",letterSpacing:"0.1em",textTransform:"uppercase",marginTop:10}}>— {bookPage+1} of {TOTAL_BOOK_PAGES} —</div>
+                  </>;
+                })()}
+
+                {/* PAGE 8: Jesus Questions */}
+                {bookPage===REFLECTION_ROOMS.length+1&&<>
+                  <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",animation:"pageContentReveal .5s .1s ease both"}}>
+                    <div style={{fontSize:"1.8rem",marginBottom:8}}>✝️</div>
+                    <h2 style={{fontFamily:DISPLAY,fontSize:"clamp(1.1rem,4.5vw,1.3rem)",fontWeight:700,color:"#3D2B18",margin:"0 0 4px",textAlign:"center"}}>Questions Jesus Asked</h2>
+                    <div style={{fontFamily:SANS,fontSize:"0.6rem",color:"rgba(107,85,58,0.5)",letterSpacing:"0.1em",textTransform:"uppercase",marginTop:3}}>{JESUS_QUESTIONS.length} questions from Scripture</div>
+                    <div style={{width:40,height:1,background:"linear-gradient(90deg,transparent,rgba(139,109,69,0.3),transparent)",margin:"16px auto"}}/>
+                    <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.88rem,3vw,1rem)",color:"#5C4A2E",lineHeight:1.7,textAlign:"center",margin:"0 4px"}}>"{JESUS_QUESTIONS[jesusIdx].q}"</p>
+                    <p style={{fontFamily:SANS,fontSize:"0.66rem",color:"rgba(107,85,58,0.4)",margin:"8px 0 0"}}>— {JESUS_QUESTIONS[jesusIdx].ref}</p>
+                    <div style={{background:"rgba(139,109,69,0.06)",borderRadius:8,padding:"12px 16px",margin:"18px 0",border:"1px solid rgba(139,109,69,0.1)",alignSelf:"stretch"}}>
+                      <p style={{fontFamily:SERIF,fontSize:"0.82rem",color:"#4A3826",lineHeight:1.55,margin:0,textAlign:"center"}}>{JESUS_QUESTIONS[jesusIdx].app}</p>
+                    </div>
+                    <div style={{flex:1}}/>
+                    <button className="book-room" onClick={()=>{setBookOpen(false);setScreen("jesus");}} style={{background:"linear-gradient(135deg,rgba(93,74,46,0.1),rgba(93,74,46,0.04))",border:"1px solid rgba(93,74,46,0.22)",color:"#5C4A2E",padding:"11px 32px",borderRadius:8,fontFamily:SERIF,fontStyle:"italic",fontSize:"0.84rem",cursor:"pointer",transition:"all .2s",letterSpacing:"0.02em"}}>Open Scripture questions →</button>
                   </div>
                   <div style={{textAlign:"center",fontFamily:SANS,fontSize:"0.6rem",color:"rgba(107,85,58,0.3)",letterSpacing:"0.1em",textTransform:"uppercase",marginTop:10}}>— {bookPage+1} of {TOTAL_BOOK_PAGES} —</div>
-                </>;
-              })()}
+                </>}
 
-              {/* ── PAGE 8: JESUS QUESTIONS ── */}
-              {bookPage===REFLECTION_ROOMS.length+1&&<>
-                <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",animation:"pageContentReveal .5s .1s ease both"}}>
-                  <div style={{fontSize:"1.8rem",marginBottom:8}}>✝️</div>
-                  <h2 style={{fontFamily:DISPLAY,fontSize:"clamp(1.1rem,4.5vw,1.3rem)",fontWeight:700,color:"#3D2B18",margin:"0 0 4px",textAlign:"center"}}>Questions Jesus Asked</h2>
-                  <div style={{fontFamily:SANS,fontSize:"0.6rem",color:"rgba(107,85,58,0.5)",letterSpacing:"0.1em",textTransform:"uppercase",marginTop:3}}>{JESUS_QUESTIONS.length} questions from Scripture</div>
-                  <div style={{width:40,height:1,background:"linear-gradient(90deg,transparent,rgba(139,109,69,0.3),transparent)",margin:"16px auto"}}/>
-                  <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.88rem,3vw,1rem)",color:"#5C4A2E",lineHeight:1.7,textAlign:"center",margin:"0 4px"}}>"{JESUS_QUESTIONS[jesusIdx].q}"</p>
-                  <p style={{fontFamily:SANS,fontSize:"0.66rem",color:"rgba(107,85,58,0.4)",margin:"8px 0 0"}}>— {JESUS_QUESTIONS[jesusIdx].ref}</p>
-                  <div style={{background:"rgba(139,109,69,0.06)",borderRadius:8,padding:"12px 16px",margin:"18px 0",border:"1px solid rgba(139,109,69,0.1)",alignSelf:"stretch"}}>
-                    <p style={{fontFamily:SERIF,fontSize:"0.82rem",color:"#4A3826",lineHeight:1.55,margin:0,textAlign:"center"}}>{JESUS_QUESTIONS[jesusIdx].app}</p>
-                  </div>
-                  <div style={{flex:1}}/>
-                  <button className="book-room" onClick={()=>{setBookOpen(false);setScreen("jesus");}} style={{background:"linear-gradient(135deg,rgba(93,74,46,0.1),rgba(93,74,46,0.04))",border:"1px solid rgba(93,74,46,0.22)",color:"#5C4A2E",padding:"11px 32px",borderRadius:8,fontFamily:SERIF,fontStyle:"italic",fontSize:"0.84rem",cursor:"pointer",transition:"all .2s",letterSpacing:"0.02em"}}>Open Scripture questions →</button>
-                </div>
-                <div style={{textAlign:"center",fontFamily:SANS,fontSize:"0.6rem",color:"rgba(107,85,58,0.3)",letterSpacing:"0.1em",textTransform:"uppercase",marginTop:10}}>— {bookPage+1} of {TOTAL_BOOK_PAGES} —</div>
+                {/* PAGE 9: Locked Room */}
+                {bookPage===REFLECTION_ROOMS.length+2&&(()=>{
+                  const unlocked=streak>=7;
+                  return<>
+                    <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center",animation:"pageContentReveal .5s .1s ease both"}}>
+                      <div style={{fontSize:"2rem",marginBottom:12}}>{unlocked?"🗝️":"🔒"}</div>
+                      <h2 style={{fontFamily:DISPLAY,fontSize:"clamp(1.1rem,4.5vw,1.3rem)",fontWeight:700,color:unlocked?"#3D2B18":"rgba(61,43,24,0.4)",margin:"0 0 4px"}}>The Locked Room</h2>
+                      <div style={{width:40,height:1,background:`linear-gradient(90deg,transparent,rgba(139,109,69,${unlocked?0.3:0.12}),transparent)`,margin:"12px auto 18px"}}/>
+                      {unlocked?<>
+                        <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.92rem",color:"#5C4A2E",lineHeight:1.7,margin:"0 8px 6px"}}>The deepest questions await — the ones most people never face.</p>
+                        <p style={{fontFamily:SERIF,fontSize:"0.78rem",color:"rgba(107,85,58,0.45)",margin:"0 0 24px"}}>{LOCKED_ROOM.days.length} questions that go beneath everything else.</p>
+                        <button className="book-room" onClick={()=>{setBookOpen(false);enterRoom(LOCKED_ROOM,"cabin");}} style={{background:"linear-gradient(135deg,rgba(93,74,46,0.1),rgba(93,74,46,0.04))",border:"1px solid rgba(93,74,46,0.22)",color:"#5C4A2E",padding:"11px 32px",borderRadius:8,fontFamily:SERIF,fontStyle:"italic",fontSize:"0.84rem",cursor:"pointer",transition:"all .2s",letterSpacing:"0.02em"}}>Enter the locked room →</button>
+                      </>:<>
+                        <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.88rem",color:"rgba(107,85,58,0.4)",lineHeight:1.7,margin:"0 8px"}}>Some rooms only open with consistency.</p>
+                        <div style={{width:"60%",maxWidth:180,height:4,background:"rgba(139,109,69,0.1)",borderRadius:99,margin:"22px auto 8px",overflow:"hidden"}}><div style={{width:`${(streak/7)*100}%`,height:"100%",background:"linear-gradient(90deg,#8B6D45,#C9A96E)",borderRadius:99,transition:"width .4s ease"}}/></div>
+                        <p style={{fontFamily:SANS,fontSize:"0.66rem",color:"rgba(107,85,58,0.35)"}}>{7-streak} more day{7-streak===1?"":"s"} of journaling to unlock</p>
+                      </>}
+                    </div>
+                    <div style={{textAlign:"center",fontFamily:SANS,fontSize:"0.6rem",color:"rgba(107,85,58,0.3)",letterSpacing:"0.1em",textTransform:"uppercase",marginTop:10}}>— {bookPage+1} of {TOTAL_BOOK_PAGES} —</div>
+                  </>;
+                })()}
+
+                {/* PAGE 10: Daily Question */}
+                {bookPage===REFLECTION_ROOMS.length+3&&(()=>{
+                  const dailyQ=VIRAL_QS[new Date().getDate()%VIRAL_QS.length];
+                  return<>
+                    <div style={{flex:1,display:"flex",flexDirection:"column",animation:"pageContentReveal .5s .1s ease both"}}>
+                      <div style={{textAlign:"center",marginBottom:14}}>
+                        <div style={{fontSize:"1.5rem",marginBottom:6}}>✦</div>
+                        <h2 style={{fontFamily:DISPLAY,fontSize:"clamp(1.05rem,4vw,1.2rem)",fontWeight:700,color:"#3D2B18",margin:"0 0 4px"}}>Question to Carry Today</h2>
+                      </div>
+                      <div style={{width:40,height:1,background:"linear-gradient(90deg,transparent,rgba(139,109,69,0.3),transparent)",margin:"0 auto 16px"}}/>
+                      <div style={{background:"rgba(139,109,69,0.06)",borderRadius:8,padding:"18px 16px",border:"1px solid rgba(139,109,69,0.1)",marginBottom:14}}>
+                        <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.88rem,3vw,0.98rem)",color:"#5C4A2E",lineHeight:1.7,margin:0,textAlign:"center"}}>{dailyQ}</p>
+                      </div>
+                      <button className="book-room" onClick={()=>{setBookOpen(false);setCardQ(dailyQ);setIsCustomCard(false);setScreen("cards");}} style={{alignSelf:"center",background:"transparent",border:"1px solid rgba(101,83,55,0.2)",color:"#5C4A2E",padding:"9px 22px",borderRadius:8,fontFamily:SERIF,fontStyle:"italic",fontSize:"0.78rem",cursor:"pointer",transition:"all .2s"}}>Make a card →</button>
+                      <div style={{flex:1,minHeight:20}}/>
+                      <div style={{textAlign:"center",padding:"16px 0 4px",borderTop:"1px solid rgba(139,109,69,0.1)"}}>
+                        <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.78rem",color:"rgba(107,85,58,0.4)",margin:"0 0 4px"}}>When you're ready to walk with others…</p>
+                        <p style={{fontFamily:SANS,fontSize:"0.66rem",color:"rgba(107,85,58,0.28)",margin:0}}>Close your journal and step through the glowing door.</p>
+                      </div>
+                    </div>
+                    <div style={{textAlign:"center",fontFamily:SANS,fontSize:"0.6rem",color:"rgba(107,85,58,0.3)",letterSpacing:"0.1em",textTransform:"uppercase",marginTop:8}}>— {bookPage+1} of {TOTAL_BOOK_PAGES} —</div>
+                  </>;
+                })()}
               </>}
 
-              {/* ── PAGE 9: LOCKED ROOM ── */}
-              {bookPage===REFLECTION_ROOMS.length+2&&(()=>{
-                const unlocked=streak>=7;
-                return<>
-                  <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center",animation:"pageContentReveal .5s .1s ease both"}}>
-                    <div style={{fontSize:"2rem",marginBottom:12}}>{unlocked?"🗝️":"🔒"}</div>
-                    <h2 style={{fontFamily:DISPLAY,fontSize:"clamp(1.1rem,4.5vw,1.3rem)",fontWeight:700,color:unlocked?"#3D2B18":"rgba(61,43,24,0.4)",margin:"0 0 4px"}}>The Locked Room</h2>
-                    <div style={{width:40,height:1,background:`linear-gradient(90deg,transparent,rgba(139,109,69,${unlocked?0.3:0.12}),transparent)`,margin:"12px auto 18px"}}/>
-                    {unlocked?<>
-                      <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.92rem",color:"#5C4A2E",lineHeight:1.7,margin:"0 8px 6px"}}>The deepest questions await — the ones most people never face.</p>
-                      <p style={{fontFamily:SERIF,fontSize:"0.78rem",color:"rgba(107,85,58,0.45)",margin:"0 0 24px"}}>{LOCKED_ROOM.days.length} questions that go beneath everything else.</p>
-                      <button className="book-room" onClick={()=>{setBookOpen(false);enterRoom(LOCKED_ROOM,"cabin");}} style={{background:"linear-gradient(135deg,rgba(93,74,46,0.1),rgba(93,74,46,0.04))",border:"1px solid rgba(93,74,46,0.22)",color:"#5C4A2E",padding:"11px 32px",borderRadius:8,fontFamily:SERIF,fontStyle:"italic",fontSize:"0.84rem",cursor:"pointer",transition:"all .2s",letterSpacing:"0.02em"}}>Enter the locked room →</button>
-                    </>:<>
-                      <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.88rem",color:"rgba(107,85,58,0.4)",lineHeight:1.7,margin:"0 8px"}}>Some rooms only open with consistency.</p>
-                      <div style={{width:"60%",maxWidth:180,height:4,background:"rgba(139,109,69,0.1)",borderRadius:99,margin:"22px auto 8px",overflow:"hidden"}}><div style={{width:`${(streak/7)*100}%`,height:"100%",background:"linear-gradient(90deg,#8B6D45,#C9A96E)",borderRadius:99,transition:"width .4s ease"}}/></div>
-                      <p style={{fontFamily:SANS,fontSize:"0.66rem",color:"rgba(107,85,58,0.35)"}}>{7-streak} more day{7-streak===1?"":"s"} of journaling to unlock</p>
-                    </>}
+              {/* ══ OTHER BOOK TYPES (Bible, Prayers, Gratitude, Dreams, Prophecy) ══ */}
+              {deskBook!=="journal"&&BOOK_CONTENT[deskBook]&&<>
+                {/* PAGE 0: Cover */}
+                {bookPage===0&&<>
+                  <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center",animation:"pageContentReveal .5s .15s ease both"}}>
+                    <div style={{fontSize:"2.2rem",marginBottom:14,filter:"drop-shadow(0 2px 4px rgba(139,109,69,0.2))"}}>
+                      {SHELF_BOOKS.find(b=>b.id===deskBook)?.emoji||"📖"}
+                    </div>
+                    <h2 style={{fontFamily:DISPLAY,fontSize:"clamp(1.3rem,5vw,1.6rem)",fontWeight:700,color:"#3D2B18",margin:"0 0 6px",letterSpacing:"0.02em"}}>{BOOK_CONTENT[deskBook].cover.title}</h2>
+                    <div style={{width:50,height:1,background:"linear-gradient(90deg,transparent,#8B6D45,transparent)",margin:"4px auto 18px"}}/>
+                    <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.88rem,3vw,1rem)",color:"#6B553A",lineHeight:1.75,maxWidth:280,margin:"0 auto"}}>{BOOK_CONTENT[deskBook].cover.subtitle}</p>
+                    <p style={{fontFamily:SERIF,fontSize:"0.78rem",color:"rgba(107,85,58,0.4)",marginTop:28,letterSpacing:"0.02em"}}>Turn the page to begin →</p>
                   </div>
-                  <div style={{textAlign:"center",fontFamily:SANS,fontSize:"0.6rem",color:"rgba(107,85,58,0.3)",letterSpacing:"0.1em",textTransform:"uppercase",marginTop:10}}>— {bookPage+1} of {TOTAL_BOOK_PAGES} —</div>
-                </>;
-              })()}
+                  <div style={{textAlign:"center",fontFamily:SANS,fontSize:"0.6rem",color:"rgba(107,85,58,0.3)",letterSpacing:"0.1em",textTransform:"uppercase"}}>— 1 of {TOTAL_BOOK_PAGES} —</div>
+                </>}
 
-              {/* ── PAGE 10: DAILY QUESTION + COMMUNITY HINT ── */}
-              {bookPage===REFLECTION_ROOMS.length+3&&(()=>{
-                const dailyQ=VIRAL_QS[new Date().getDate()%VIRAL_QS.length];
-                return<>
-                  <div style={{flex:1,display:"flex",flexDirection:"column",animation:"pageContentReveal .5s .1s ease both"}}>
-                    <div style={{textAlign:"center",marginBottom:14}}>
-                      <div style={{fontSize:"1.5rem",marginBottom:6}}>✦</div>
-                      <h2 style={{fontFamily:DISPLAY,fontSize:"clamp(1.05rem,4vw,1.2rem)",fontWeight:700,color:"#3D2B18",margin:"0 0 4px"}}>Question to Carry Today</h2>
+                {/* CONTENT PAGES */}
+                {bookPage>=1&&bookPage<=BOOK_CONTENT[deskBook].pages.length&&(()=>{
+                  const pg=BOOK_CONTENT[deskBook].pages[bookPage-1];
+                  return<>
+                    <div style={{flex:1,display:"flex",flexDirection:"column",animation:"pageContentReveal .5s .1s ease both"}}>
+                      <div style={{textAlign:"center",marginBottom:14}}>
+                        <div style={{fontFamily:SANS,fontSize:"0.56rem",color:"rgba(107,85,58,0.45)",letterSpacing:"0.12em",textTransform:"uppercase",marginBottom:8}}>Page {bookPage}</div>
+                        <h2 style={{fontFamily:DISPLAY,fontSize:"clamp(1.15rem,4.5vw,1.35rem)",fontWeight:700,color:"#3D2B18",margin:"0 0 4px"}}>{pg.title}</h2>
+                      </div>
+                      <div style={{width:40,height:1,background:"linear-gradient(90deg,transparent,rgba(139,109,69,0.3),transparent)",margin:"0 auto 16px"}}/>
+                      <div style={{background:"rgba(139,109,69,0.06)",borderRadius:8,padding:"16px 18px",margin:"0 0 14px",border:"1px solid rgba(139,109,69,0.1)"}}>
+                        <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.88rem,3vw,0.98rem)",color:"#5C4A2E",lineHeight:1.7,margin:0,textAlign:"center"}}>{pg.prompt}</p>
+                      </div>
+                      <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.74rem",color:"rgba(107,85,58,0.4)",textAlign:"center",margin:"0 0 16px",lineHeight:1.6}}>{pg.hint}</p>
+                      {/* Writing area */}
+                      <div style={{background:"rgba(139,109,69,0.04)",border:"1px solid rgba(139,109,69,0.1)",borderRadius:10,overflow:"hidden",flex:1,minHeight:120}}>
+                        <textarea placeholder="Write your thoughts here…" style={{width:"100%",height:"100%",minHeight:120,background:"transparent",border:"none",padding:"14px 16px",fontFamily:SERIF,fontSize:"0.88rem",color:"#4A3826",lineHeight:1.8,boxSizing:"border-box",resize:"none"}}/>
+                      </div>
                     </div>
-                    <div style={{width:40,height:1,background:"linear-gradient(90deg,transparent,rgba(139,109,69,0.3),transparent)",margin:"0 auto 16px"}}/>
-                    <div style={{background:"rgba(139,109,69,0.06)",borderRadius:8,padding:"18px 16px",border:"1px solid rgba(139,109,69,0.1)",marginBottom:14}}>
-                      <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.88rem,3vw,0.98rem)",color:"#5C4A2E",lineHeight:1.7,margin:0,textAlign:"center"}}>{dailyQ}</p>
-                    </div>
-                    <button className="book-room" onClick={()=>{setBookOpen(false);setCardQ(dailyQ);setIsCustomCard(false);setScreen("cards");}} style={{alignSelf:"center",background:"transparent",border:"1px solid rgba(101,83,55,0.2)",color:"#5C4A2E",padding:"9px 22px",borderRadius:8,fontFamily:SERIF,fontStyle:"italic",fontSize:"0.78rem",cursor:"pointer",transition:"all .2s"}}>Make a card →</button>
-                    <div style={{flex:1,minHeight:20}}/>
-                    {/* Community hint */}
-                    <div style={{textAlign:"center",padding:"16px 0 4px",borderTop:"1px solid rgba(139,109,69,0.1)"}}>
-                      <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.78rem",color:"rgba(107,85,58,0.4)",margin:"0 0 4px"}}>When you're ready to walk with others…</p>
-                      <p style={{fontFamily:SANS,fontSize:"0.66rem",color:"rgba(107,85,58,0.28)",margin:0}}>Close your journal and step through the back door.</p>
-                    </div>
-                  </div>
-                  <div style={{textAlign:"center",fontFamily:SANS,fontSize:"0.6rem",color:"rgba(107,85,58,0.3)",letterSpacing:"0.1em",textTransform:"uppercase",marginTop:8}}>— {bookPage+1} of {TOTAL_BOOK_PAGES} —</div>
-                </>;
-              })()}
+                    <div style={{textAlign:"center",fontFamily:SANS,fontSize:"0.6rem",color:"rgba(107,85,58,0.3)",letterSpacing:"0.1em",textTransform:"uppercase",marginTop:10}}>— {bookPage+1} of {TOTAL_BOOK_PAGES} —</div>
+                  </>;
+                })()}
+              </>}
 
             </div>
           </div>
-          {/* Nav arrow — backward */}
+          {/* Nav arrows */}
           {bookPage>0&&<button className="book-nav" onClick={()=>flipPage("bwd")} style={{position:"absolute",left:-20,top:"50%",transform:"translateY(-50%)",width:38,height:38,borderRadius:"50%",background:"rgba(245,230,200,0.92)",border:"1px solid rgba(101,83,55,0.15)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1rem",color:"#5C4A2E",zIndex:10,boxShadow:"0 2px 12px rgba(0,0,0,0.25)"}}>‹</button>}
-          {/* Nav arrow — forward */}
           {bookPage<TOTAL_BOOK_PAGES-1&&<button className="book-nav" onClick={()=>flipPage("fwd")} style={{position:"absolute",right:-20,top:"50%",transform:"translateY(-50%)",width:38,height:38,borderRadius:"50%",background:"rgba(245,230,200,0.92)",border:"1px solid rgba(101,83,55,0.15)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1rem",color:"#5C4A2E",zIndex:10,boxShadow:"0 2px 12px rgba(0,0,0,0.25)"}}>›</button>}
-          {/* Close button */}
+          {/* Close */}
           <button onClick={()=>setBookOpen(false)} style={{position:"absolute",top:-16,right:-16,width:34,height:34,borderRadius:"50%",background:"rgba(26,22,18,0.88)",border:"1px solid rgba(201,169,110,0.2)",color:"rgba(255,248,232,0.6)",fontSize:"0.8rem",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",zIndex:10,transition:"all .2s",boxShadow:"0 2px 12px rgba(0,0,0,0.35)"}} onMouseEnter={e=>{e.currentTarget.style.background="rgba(201,169,110,0.25)";e.currentTarget.style.color="#FFF8E8";}} onMouseLeave={e=>{e.currentTarget.style.background="rgba(26,22,18,0.88)";e.currentTarget.style.color="rgba(255,248,232,0.6)";}}>✕</button>
         </div>
       </div>}
 
-      {/* ══ SPACE TRANSITION OVERLAY ══ */}
-      {spaceTransit&&<div style={{position:"fixed",inset:0,zIndex:9999,background:"#0A0806",display:"flex",alignItems:"center",justifyContent:"center",animation:transitDir==="toHall"?"spaceFadeIn .5s ease":"spaceFadeIn .5s ease"}}>
+      {/* ═══ SPACE TRANSITION OVERLAY ═══ */}
+      {spaceTransit&&<div style={{position:"fixed",inset:0,zIndex:9999,background:"#0A0806",display:"flex",alignItems:"center",justifyContent:"center",animation:"spaceFadeIn .5s ease"}}>
         <div style={{textAlign:"center",animation:"fadeUp .6s .15s ease both"}}>
           <div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"1.05rem",color:"rgba(255,248,232,0.5)",letterSpacing:"0.04em"}}>{transitDir==="toHall"?"Stepping into The Upper Room...":"Returning to the cabin..."}</div>
         </div>
