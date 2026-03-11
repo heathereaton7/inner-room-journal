@@ -173,6 +173,14 @@ const SHELF_BOOKS = [
   {id:"dreams",   label:"Dreams",             emoji:"✨"},
   {id:"prophecy", label:"Prophecy & Words",   emoji:"🕊️"},
 ];
+const SPINE_COLORS = {
+  journal:  {bg:"linear-gradient(180deg,#5C3D2E,#3D2818)",text:"#F5E6C8",edge:"#8B6D45"},
+  bible:    {bg:"linear-gradient(180deg,#2E1E3D,#1E1028)",text:"#E8D4F0",edge:"#9A8AAA"},
+  prayers:  {bg:"linear-gradient(180deg,#1E3D2E,#122818)",text:"#D4F0E0",edge:"#6AAA6A"},
+  gratitude:{bg:"linear-gradient(180deg,#3D3D1E,#282810)",text:"#F0F0D4",edge:"#C8A46A"},
+  dreams:   {bg:"linear-gradient(180deg,#1E2E3D,#101828)",text:"#D4E8F0",edge:"#5A9AB8"},
+  prophecy: {bg:"linear-gradient(180deg,#3D1E2E,#281018)",text:"#F0D4E0",edge:"#C490D0"},
+};
 
 const BOOK_CONTENT = {
   bible:{
@@ -227,9 +235,9 @@ const BOOK_CONTENT = {
 };
 
 function getBookPageCount(bookType){
-  if(bookType==="journal") return REFLECTION_ROOMS.length+4;
+  if(bookType==="journal") return REFLECTION_ROOMS.length+5;
   const bc=BOOK_CONTENT[bookType];
-  return bc? bc.pages.length+1 : 11;
+  return bc? bc.pages.length+1 : 12;
 }
 
 /* ═══════════════════════════════════════════════════
@@ -433,6 +441,9 @@ export default function App(){
   const [deskBook,      setDeskBook]      = useState("journal");
   const [shelfAnim,     setShelfAnim]     = useState(null);
   const [windowPanel,   setWindowPanel]   = useState(null);
+  const [showStreak,    setShowStreak]    = useState(false);
+  const [showInsights,  setShowInsights]  = useState(false);
+  const streakTimerRef = useRef(null);
   const [entries,       setEntries]       = useState([]);
   const [streak,        setStreak]        = useState(0);
   const [activeRoom,    setActiveRoom]    = useState(null);
@@ -609,6 +620,13 @@ export default function App(){
     },900);
   }
 
+  // ── CANDLE / STREAK TAP ──
+  function tapCandle(){
+    setShowStreak(true);
+    if(streakTimerRef.current) clearTimeout(streakTimerRef.current);
+    streakTimerRef.current = setTimeout(()=>setShowStreak(false), 3000);
+  }
+
   // ── CARD ENGINE ──
   function randomCardQ(setId){
     const pool=setId==="all"?ALL_CARD_QS:(QUESTION_SETS[setId]?.questions||ALL_CARD_QS);
@@ -703,9 +721,13 @@ export default function App(){
     .book-nav{transition:all .2s}
     .book-nav:hover{background:rgba(101,83,55,0.15)!important;border-color:rgba(101,83,55,0.3)!important}
     .book-nav:active{transform:translateY(-50%) scale(0.9)!important}
-    .shelf-book{transition:all .3s ease;opacity:0.85}
-    .shelf-book:hover{opacity:1;transform:translateX(-5px)!important;text-shadow:0 0 12px rgba(255,200,80,0.5)}
-    .shelf-book:active{transform:scale(0.95)!important}
+    @keyframes streakFloat{0%{opacity:0;transform:translate(-50%,-20px) scale(0.8)}15%{opacity:1;transform:translate(-50%,0) scale(1)}85%{opacity:1;transform:translate(-50%,0) scale(1)}100%{opacity:0;transform:translate(-50%,-12px) scale(0.9)}}
+    @keyframes insightsSlideUp{from{opacity:0;transform:translate(-50%,-50%) scale(0.92)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
+    @keyframes candlePulse{0%,100%{filter:drop-shadow(0 0 8px rgba(255,200,80,0.3))}50%{filter:drop-shadow(0 0 18px rgba(255,200,80,0.6))}}
+    .spine-book{transition:all .35s cubic-bezier(.25,.8,.25,1);cursor:pointer;position:relative}
+    .spine-book:hover{transform:translateY(-8px)!important;filter:brightness(1.15)!important}
+    .spine-book:active{transform:translateY(-2px) scale(0.97)!important}
+    .spine-book.active{transform:translateY(-10px)!important;filter:brightness(1.2)!important}
     .window-hotspot{transition:all .3s}
     .window-hotspot:hover{background:rgba(255,200,80,0.12)!important}
     .wp-option{transition:all .2s;cursor:pointer}
@@ -878,15 +900,30 @@ export default function App(){
         <div style={{position:"absolute",inset:"-10%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,200,80,0.08),transparent 70%)",pointerEvents:"none"}}/>
       </button>
 
-      {/* 2. BOOKSHELF — right side with individual book hotspots */}
-      <div style={{position:"absolute",right:"3%",top:"10%",width:"21%",height:"55%",zIndex:10,display:"flex",flexDirection:"column",justifyContent:"space-around",padding:"8px 0"}}>
-        {SHELF_BOOKS.map((book,i)=>(
-          <button key={book.id} className="shelf-book" onClick={()=>selectShelfBook(book.id)}
-            style={{background:deskBook===book.id?"rgba(255,200,80,0.12)":"transparent",border:"none",cursor:"pointer",padding:"6px 10px",borderRadius:"6px",display:"flex",alignItems:"center",gap:"6px",borderLeft:deskBook===book.id?"2px solid rgba(255,200,80,0.5)":"2px solid transparent",position:"relative"}}>
-            <span style={{fontSize:"0.85rem",filter:"drop-shadow(0 0 4px rgba(255,200,80,0.3))"}}>{book.emoji}</span>
-            <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.52rem,1.6vw,0.68rem)",color:deskBook===book.id?"rgba(255,248,232,0.9)":"rgba(255,248,232,0.5)",textShadow:"0 1px 6px rgba(0,0,0,0.8)",letterSpacing:"0.02em",whiteSpace:"nowrap",textAlign:"left"}}>{book.label}</span>
-          </button>
-        ))}
+      {/* 2. BOOKSHELF — visual book spines */}
+      <div style={{position:"absolute",right:"3%",top:"12%",width:"22%",height:"52%",zIndex:10,display:"flex",flexDirection:"row",alignItems:"flex-end",justifyContent:"center",gap:"clamp(2px,0.5vw,4px)",padding:"0 2px"}}>
+        {SHELF_BOOKS.map((book)=>{
+          const sc=SPINE_COLORS[book.id]||SPINE_COLORS.journal;
+          const isActive=deskBook===book.id;
+          return(
+            <button key={book.id} className={`spine-book${isActive?" active":""}`} onClick={()=>selectShelfBook(book.id)}
+              style={{width:"clamp(18px,3.2vw,28px)",height:isActive?"92%":"82%",background:sc.bg,border:"none",borderRadius:"3px 3px 1px 1px",padding:"6px 0 8px",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"space-between",boxShadow:isActive?`0 -4px 20px rgba(255,200,80,0.3), inset 0 1px 0 rgba(255,255,255,0.1), 2px 0 4px rgba(0,0,0,0.3), -2px 0 4px rgba(0,0,0,0.3)`:`inset 0 1px 0 rgba(255,255,255,0.06), 2px 0 4px rgba(0,0,0,0.25), -2px 0 4px rgba(0,0,0,0.25)`,position:"relative",overflow:"hidden"}}>
+              {/* Top gold line for active */}
+              {isActive&&<div style={{position:"absolute",top:0,left:"15%",right:"15%",height:2,background:B.gold,borderRadius:"0 0 2px 2px"}}/>}
+              {/* Book title — vertical text */}
+              <div style={{writingMode:"vertical-rl",transform:"rotate(180deg)",fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.42rem,1.1vw,0.58rem)",color:sc.text,letterSpacing:"0.04em",lineHeight:1.1,textAlign:"center",flex:1,display:"flex",alignItems:"center",overflow:"hidden",textShadow:"0 1px 3px rgba(0,0,0,0.4)",whiteSpace:"nowrap",opacity:isActive?1:0.7}}>
+                {book.label}
+              </div>
+              {/* Bottom emoji */}
+              <div style={{fontSize:"clamp(0.5rem,1.2vw,0.7rem)",filter:isActive?"drop-shadow(0 0 6px rgba(255,200,80,0.5))":"none",flexShrink:0}}>
+                {book.emoji}
+              </div>
+              {/* Spine edge highlight */}
+              <div style={{position:"absolute",left:0,top:0,bottom:0,width:"2px",background:`linear-gradient(180deg,transparent,${sc.edge}44,transparent)`,pointerEvents:"none"}}/>
+              <div style={{position:"absolute",right:0,top:0,bottom:0,width:"1px",background:"rgba(0,0,0,0.3)",pointerEvents:"none"}}/>
+            </button>
+          );
+        })}
       </div>
 
       {/* 3. MAGICAL DOOR — center, over the arched glowing door */}
@@ -899,6 +936,86 @@ export default function App(){
 
       {/* 5. RIGHT WINDOW */}
       <button className="window-hotspot" onClick={()=>setWindowPanel("right")} style={{position:"absolute",right:"12%",top:"2%",width:"30%",height:"30%",zIndex:10,background:"transparent",border:"none",cursor:"pointer",borderRadius:"8px"}}/>
+
+      {/* 6. CANDLE / STREAK — bottom-left warm glow area */}
+      <button onClick={tapCandle} style={{position:"absolute",left:"4%",bottom:"18%",width:"14%",height:"12%",zIndex:10,background:"transparent",border:"none",cursor:"pointer",borderRadius:"50%",animation:"candlePulse 3s ease-in-out infinite"}}>
+        <div style={{position:"absolute",inset:"-20%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,200,80,0.06),transparent 65%)",pointerEvents:"none"}}/>
+      </button>
+
+      {/* 7. INSIGHTS — warm glow area near candle/center-bottom */}
+      <button onClick={()=>setShowInsights(true)} style={{position:"absolute",left:"40%",right:"40%",bottom:"4%",height:"10%",zIndex:10,background:"transparent",border:"none",cursor:"pointer",borderRadius:"8px"}}>
+        <div style={{position:"absolute",inset:"-10%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,200,80,0.04),transparent 60%)",pointerEvents:"none"}}/>
+      </button>
+
+      {/* ═══ STREAK FLOATING INDICATOR ═══ */}
+      {showStreak&&<div style={{position:"fixed",bottom:"28%",left:"50%",zIndex:60,animation:"streakFloat 3s ease both",pointerEvents:"none"}}>
+        <div style={{background:"rgba(26,22,18,0.92)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",border:"1px solid rgba(201,169,110,0.3)",borderRadius:16,padding:"14px 24px",display:"flex",alignItems:"center",gap:12,boxShadow:"0 8px 32px rgba(0,0,0,0.4), 0 0 20px rgba(201,169,110,0.1)",whiteSpace:"nowrap"}}>
+          <span style={{fontSize:"1.5rem"}}>🔥</span>
+          <div>
+            <div style={{fontFamily:DISPLAY,fontSize:"1.2rem",fontWeight:700,color:B.goldL}}>{streak}-day streak</div>
+            <div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.72rem",color:"rgba(255,248,232,0.4)",marginTop:2}}>{streak>=7?"The locked room awaits":"Keep showing up"}</div>
+          </div>
+        </div>
+      </div>}
+
+      {/* ═══ INSIGHTS OVERLAY ═══ */}
+      {showInsights&&<div style={{position:"fixed",inset:0,zIndex:80}}>
+        <div onClick={()=>setShowInsights(false)} style={{position:"absolute",inset:0,background:"rgba(10,8,6,0.6)",animation:"spaceFadeIn .25s ease"}}/>
+        <div style={{position:"absolute",top:"50%",left:"50%",width:"min(88vw,400px)",maxHeight:"min(80vh,600px)",animation:"insightsSlideUp .4s cubic-bezier(.22,1,.36,1) both",background:"rgba(26,22,18,0.95)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",border:"1px solid rgba(201,169,110,0.2)",borderRadius:20,overflow:"hidden",display:"flex",flexDirection:"column"}}>
+          {/* Close */}
+          <button onClick={()=>setShowInsights(false)} style={{position:"absolute",top:14,right:14,width:30,height:30,borderRadius:"50%",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(201,169,110,0.15)",color:"rgba(255,248,232,0.5)",fontSize:"0.7rem",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",zIndex:5}}>✕</button>
+          <div style={{overflowY:"auto",padding:"28px 24px 24px",flex:1}}>
+            {/* Header */}
+            <div style={{textAlign:"center",marginBottom:20}}>
+              <div style={{fontSize:"1.3rem",marginBottom:6}}>✨</div>
+              <h3 style={{fontFamily:DISPLAY,fontSize:"1.2rem",fontWeight:700,color:B.goldL,margin:"0 0 4px"}}>Your Journey</h3>
+              <div style={{width:40,height:1,background:"linear-gradient(90deg,transparent,rgba(201,169,110,0.4),transparent)",margin:"8px auto 0"}}/>
+            </div>
+            {/* Stats row */}
+            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:18}}>
+              {[{v:entries.length,l:"Reflections",e:"📝"},{v:totalWords.toLocaleString(),l:"Words",e:"✍️"},{v:`${streak}d`,l:"Streak",e:"🔥"}].map(s=>(
+                <div key={s.l} style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(201,169,110,0.1)",borderRadius:12,padding:"12px 8px",textAlign:"center"}}>
+                  <div style={{fontSize:"0.9rem",marginBottom:4}}>{s.e}</div>
+                  <div style={{fontFamily:SERIF,fontSize:"1.15rem",fontWeight:700,color:B.goldL}}>{s.v}</div>
+                  <div style={{fontSize:"0.56rem",color:"rgba(255,248,232,0.35)",letterSpacing:"0.08em",textTransform:"uppercase",marginTop:2}}>{s.l}</div>
+                </div>
+              ))}
+            </div>
+            {/* Theme breakdown */}
+            {entries.length>0&&<>
+              <div style={{fontSize:"0.6rem",fontFamily:SANS,fontWeight:600,letterSpacing:"0.12em",color:"rgba(255,248,232,0.3)",textTransform:"uppercase",marginBottom:10}}>Theme Breakdown</div>
+              {themeData.filter(t=>t.count>0).slice(0,5).map(t=>(
+                <div key={t.theme} style={{marginBottom:10}}>
+                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
+                    <span style={{fontSize:"0.78rem",color:"rgba(255,248,232,0.7)",textTransform:"capitalize"}}>{t.theme}</span>
+                    <span style={{fontSize:"0.68rem",color:"rgba(255,248,232,0.35)"}}>{t.pct}%</span>
+                  </div>
+                  <div style={{height:4,background:"rgba(255,255,255,0.06)",borderRadius:99,overflow:"hidden"}}>
+                    <div style={{height:"100%",width:`${t.pct}%`,background:`linear-gradient(90deg,${B.gold},${B.goldL})`,borderRadius:99,transition:"width .7s ease"}}/>
+                  </div>
+                </div>
+              ))}
+              {/* Room progress */}
+              <div style={{fontSize:"0.6rem",fontFamily:SANS,fontWeight:600,letterSpacing:"0.12em",color:"rgba(255,248,232,0.3)",textTransform:"uppercase",margin:"18px 0 10px"}}>Room Progress</div>
+              {REFLECTION_ROOMS.map(room=>{
+                const prog=roomProg(room),pct=Math.round(prog/room.days.length*100);
+                return(<div key={room.id} style={{marginBottom:8}}>
+                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
+                    <span style={{fontSize:"0.74rem",color:"rgba(255,248,232,0.6)"}}>{room.emoji} {room.label}</span>
+                    <span style={{fontSize:"0.64rem",color:"rgba(255,248,232,0.3)"}}>{prog}/{room.days.length}</span>
+                  </div>
+                  <div style={{height:3,background:"rgba(255,255,255,0.06)",borderRadius:99,overflow:"hidden"}}>
+                    <div style={{height:"100%",width:`${pct}%`,background:th(room.id).accent,borderRadius:99,transition:"width .6s"}}/>
+                  </div>
+                </div>);
+              })}
+            </>}
+            {entries.length===0&&<div style={{textAlign:"center",padding:"20px 0"}}>
+              <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.85rem",color:"rgba(255,248,232,0.35)",lineHeight:1.6}}>Your insights will emerge as you reflect. Open a book to begin.</p>
+            </div>}
+          </div>
+        </div>
+      </div>}
 
       {/* ═══ SHELF-TO-DESK ANIMATION OVERLAY ═══ */}
       {shelfAnim&&(()=>{
@@ -1075,6 +1192,38 @@ export default function App(){
                     <div style={{textAlign:"center",fontFamily:SANS,fontSize:"0.6rem",color:"rgba(107,85,58,0.3)",letterSpacing:"0.1em",textTransform:"uppercase",marginTop:8}}>— {bookPage+1} of {TOTAL_BOOK_PAGES} —</div>
                   </>;
                 })()}
+
+                {/* PAGE 11: Past Entries */}
+                {bookPage===REFLECTION_ROOMS.length+4&&<>
+                  <div style={{flex:1,display:"flex",flexDirection:"column",animation:"pageContentReveal .5s .1s ease both"}}>
+                    <div style={{textAlign:"center",marginBottom:14}}>
+                      <div style={{fontSize:"1.5rem",marginBottom:6}}>📜</div>
+                      <h2 style={{fontFamily:DISPLAY,fontSize:"clamp(1.05rem,4vw,1.2rem)",fontWeight:700,color:"#3D2B18",margin:"0 0 4px"}}>Past Entries</h2>
+                      <div style={{fontFamily:SANS,fontSize:"0.6rem",color:"rgba(107,85,58,0.5)",letterSpacing:"0.1em",textTransform:"uppercase",marginTop:3}}>{entries.length} reflection{entries.length===1?"":"s"}</div>
+                    </div>
+                    <div style={{width:40,height:1,background:"linear-gradient(90deg,transparent,rgba(139,109,69,0.3),transparent)",margin:"0 auto 14px"}}/>
+                    {entries.length===0?<div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",textAlign:"center",padding:"0 12px"}}>
+                      <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.88rem",color:"rgba(107,85,58,0.4)",lineHeight:1.7}}>Your reflections will appear here as you journal. Open a room to begin.</p>
+                    </div>:(
+                      <div style={{flex:1,overflowY:"auto",display:"flex",flexDirection:"column",gap:10}}>
+                        {entries.slice(0,8).map(e=>{
+                          const allR=[...REFLECTION_ROOMS,...COMMUNITY_ROOMS,LOCKED_ROOM,{id:"jesus",label:"Jesus Questions",emoji:"✝️"}];
+                          const room=allR.find(r=>r.id===e.roomId)||{emoji:e.roomEmoji||"📝",label:e.roomLabel||"Reflection"};
+                          return(<div key={e.id} style={{background:"rgba(139,109,69,0.05)",border:"1px solid rgba(139,109,69,0.1)",borderRadius:8,padding:"10px 12px"}}>
+                            <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4}}>
+                              <span style={{fontSize:"0.7rem"}}>{room.emoji}</span>
+                              <span style={{fontSize:"0.62rem",fontWeight:600,color:"rgba(107,85,58,0.5)",fontFamily:SANS}}>{room.label}</span>
+                              <span style={{marginLeft:"auto",fontSize:"0.58rem",color:"rgba(107,85,58,0.3)"}}>{e.date}</span>
+                            </div>
+                            <p style={{fontFamily:SERIF,fontSize:"0.78rem",color:"#4A3826",lineHeight:1.6,margin:0}}>{e.text.length>120?e.text.slice(0,120)+"…":e.text}</p>
+                          </div>);
+                        })}
+                        {entries.length>8&&<p style={{textAlign:"center",fontFamily:SERIF,fontStyle:"italic",fontSize:"0.72rem",color:"rgba(107,85,58,0.35)",margin:"8px 0 0"}}>+ {entries.length-8} more entries</p>}
+                      </div>
+                    )}
+                  </div>
+                  <div style={{textAlign:"center",fontFamily:SANS,fontSize:"0.6rem",color:"rgba(107,85,58,0.3)",letterSpacing:"0.1em",textTransform:"uppercase",marginTop:8}}>— {bookPage+1} of {TOTAL_BOOK_PAGES} —</div>
+                </>}
               </>}
 
               {/* ══ OTHER BOOK TYPES (Bible, Prayers, Gratitude, Dreams, Prophecy) ══ */}
