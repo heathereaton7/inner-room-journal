@@ -421,6 +421,44 @@ const SHOP_ITEMS=[
   {id:"tapestry",name:"Woven Tapestry",emoji:"\uD83D\uDDBC\uFE0F",cost:18,category:"decor",asset:"/assets/furniture/woven-tapestry.png",pos:{top:"22%",left:"15%",width:"14%"}},
 ];
 
+/* ═══════════════════════════════════════════════════
+   PRAYER GARDEN — PLANTS
+═══════════════════════════════════════════════════ */
+const GARDEN_PLANTS=[
+  {id:"wheat",       name:"Wheat",        emoji:"🌾", stageEmojis:["🌱","🌿","🌾","🌾","🌾"], harvestItem:"wheat",       harvestEmoji:"🌾", plantCost:2, growthBase:[4,5,6,3]},
+  {id:"barley",      name:"Barley",       emoji:"🌿", stageEmojis:["🌱","🌿","🌿","🌿","🌿"], harvestItem:"barley",      harvestEmoji:"🌿", plantCost:2, growthBase:[4,5,6,3]},
+  {id:"grape",       name:"Grape Vine",   emoji:"🍇", stageEmojis:["🌱","🌿","🍃","🍇","🍇"], harvestItem:"grapes",      harvestEmoji:"🍇", plantCost:3, growthBase:[5,6,7,4]},
+  {id:"fig",         name:"Fig Tree",     emoji:"🌳", stageEmojis:["🌱","🌿","🌳","🌳","🌳"], harvestItem:"figs",        harvestEmoji:"🫒", plantCost:4, growthBase:[5,7,8,4]},
+  {id:"olive",       name:"Olive Tree",   emoji:"🫒", stageEmojis:["🌱","🌿","🌳","🫒","🫒"], harvestItem:"olives",      harvestEmoji:"🫒", plantCost:5, growthBase:[6,7,8,5]},
+  {id:"pomegranate", name:"Pomegranate",  emoji:"🍎", stageEmojis:["🌱","🌿","🌳","🍎","🍎"], harvestItem:"pomegranates",harvestEmoji:"🍎", plantCost:6, growthBase:[6,8,9,5]},
+  {id:"date_palm",   name:"Date Palm",    emoji:"🌴", stageEmojis:["🌱","🌿","🌴","🌴","🌴"], harvestItem:"dates",       harvestEmoji:"🌴", plantCost:7, growthBase:[7,8,10,5]},
+];
+const GROWTH_STAGES=["seed","sprout","growing","mature","harvestable"];
+const PRAYER_BONUS_HOURS=0.5; // each prayer reduces stage time by 30 min
+
+/* ═══════════════════════════════════════════════════
+   PRAYER GARDEN — CRAFTING STATIONS
+═══════════════════════════════════════════════════ */
+const CRAFTING_STATIONS=[
+  {id:"olive_press", name:"Olive Press",  emoji:"🫒", recipes:[
+    {inputs:{olives:3},  output:"olive_oil",  outputName:"Olive Oil",   outputEmoji:"🫗", outputQty:1},
+    {inputs:{olives:2},  output:"lamp_oil",   outputName:"Lamp Oil",    outputEmoji:"🪔", outputQty:1},
+  ]},
+  {id:"drying_rack",  name:"Drying Rack",  emoji:"🧺", recipes:[
+    {inputs:{figs:2},    output:"dried_figs",  outputName:"Dried Figs",   outputEmoji:"🫘", outputQty:2},
+    {inputs:{grapes:3},  output:"raisins",     outputName:"Raisins",      outputEmoji:"🫐", outputQty:2},
+    {inputs:{dates:2},   output:"dried_dates", outputName:"Dried Dates",  outputEmoji:"🫘", outputQty:2},
+  ]},
+  {id:"grain_mill",   name:"Grain Mill",   emoji:"⚙️", recipes:[
+    {inputs:{wheat:3},   output:"flour",       outputName:"Flour",        outputEmoji:"🌫️", outputQty:2},
+    {inputs:{barley:3},  output:"barley_flour",outputName:"Barley Flour", outputEmoji:"🌫️", outputQty:2},
+  ]},
+  {id:"bread_oven",   name:"Bread Oven",   emoji:"🫓", recipes:[
+    {inputs:{flour:2},        output:"bread",     outputName:"Bread",     outputEmoji:"🍞", outputQty:1},
+    {inputs:{barley_flour:2}, output:"flatbread", outputName:"Flatbread", outputEmoji:"🫓", outputQty:1},
+  ]},
+];
+
 async function dbLoad(k){
   try{
     if(window.storage){const r=await window.storage.get(k);return r?.value?JSON.parse(r.value):null;}
@@ -433,7 +471,7 @@ async function dbSave(k,v){
     localStorage.setItem(k,JSON.stringify(v));
     // Dual-write to Firestore when signed in
     if(auth?.currentUser){
-      const fieldMap={"irj-entries":"entries","irj-prayer":"prayerPosts","irj-saved-cards":"savedCards","irj-onboarded":"isOnboarded","irj-candles":"candles","irj-prayed":"prayedFor","irj-owned-items":"ownedItems"};
+      const fieldMap={"irj-entries":"entries","irj-prayer":"prayerPosts","irj-saved-cards":"savedCards","irj-onboarded":"isOnboarded","irj-candles":"candles","irj-prayed":"prayedFor","irj-owned-items":"ownedItems","irj-garden":"gardenPlots","irj-inventory":"inventory"};
       const field=fieldMap[k];
       if(field){
         const userRef=doc(db,"users",auth.currentUser.uid);
@@ -673,6 +711,34 @@ export default function App(){
   const [ownedItems,     setOwnedItems]    = useState([]);
   const [candleReward,   setCandleReward]  = useState(null);
   const [shopCategory,   setShopCategory]  = useState("all");
+  // prayer garden
+  const [gardenPlots,    setGardenPlots]   = useState([]);
+  const [inventory,      setInventory]     = useState({});
+  const [gardenTab,      setGardenTab]     = useState("garden");
+  const [selectedPlot,   setSelectedPlot]  = useState(null);
+  const [craftingStation,setCraftingStation]= useState(null);
+  const [doorChoice,     setDoorChoice]    = useState(false);
+  const [debugHotspots,  setDebugHotspots] = useState(false);
+  const [plantModal,     setPlantModal]    = useState(null);
+  const [plantStep,      setPlantStep]     = useState(1);
+  const [plantPrayerId,  setPlantPrayerId] = useState(null);
+
+  // ── HOTSPOT DEBUG MODE ──
+  // Toggle: ?debug=1 in URL  |  Ctrl+Shift+. on desktop  |  triple-tap "🕯️ 0" candle badge on mobile
+  const debugTapRef=useRef({count:0,timer:null});
+  useEffect(()=>{
+    if(new URLSearchParams(window.location.search).get("debug")==="1") setDebugHotspots(true);
+    const handler=(e)=>{if(e.ctrlKey&&e.shiftKey&&e.key===">"){e.preventDefault();setDebugHotspots(d=>!d);}};
+    window.addEventListener("keydown",handler);
+    return ()=>window.removeEventListener("keydown",handler);
+  },[]);
+  function debugTripleTap(){
+    const r=debugTapRef.current;
+    r.count++;
+    clearTimeout(r.timer);
+    if(r.count>=3){r.count=0;setDebugHotspots(d=>!d);return;}
+    r.timer=setTimeout(()=>{r.count=0;},600);
+  }
 
   // ── LOAD ──
   useEffect(()=>{
@@ -684,6 +750,8 @@ export default function App(){
       const cn   = await dbLoad("irj-candles") || 0;
       const pf   = await dbLoad("irj-prayed") || [];
       const oi   = await dbLoad("irj-owned-items") || [];
+      const gp   = await dbLoad("irj-garden") || Array.from({length:12},(_,i)=>({id:i+1,prayerId:null,plantType:null,stage:"empty",plantedAt:null,prayerCount:0}));
+      const inv  = await dbLoad("irj-inventory") || {};
       // Migrate prayers: add status/answeredDate/category if missing
       let migrated=false;
       const mpp=pp.map(p=>{
@@ -692,7 +760,7 @@ export default function App(){
       });
       if(migrated) dbSave("irj-prayer",mpp);
       setEntries(ens); setPrayerPosts(mpp); setSavedCards(sc);
-      setCandles(cn); setPrayedFor(pf); setOwnedItems(oi);
+      setCandles(cn); setPrayedFor(pf); setOwnedItems(oi); setGardenPlots(gp); setInventory(inv);
       let s=0,d=new Date(),map={};
       ens.forEach(e=>{map[e.date]=true;});
       while(map[isoDate(d)]){s++;d.setDate(d.getDate()-1);} setStreak(s);
@@ -741,6 +809,8 @@ export default function App(){
       const localCandles=await dbLoad("irj-candles")||0;
       const localPrayed=await dbLoad("irj-prayed")||[];
       const localOwned=await dbLoad("irj-owned-items")||[];
+      const localGarden=await dbLoad("irj-garden")||[];
+      const localInv=await dbLoad("irj-inventory")||{};
 
       const mergedEntries=mergeById(localEntries,cloud.entries||[]);
       const mergedPrayers=mergeById(localPrayers,cloud.prayerPosts||[]);
@@ -749,6 +819,19 @@ export default function App(){
       const mergedCandles=Math.max(localCandles,cloud.candles||0);
       const mergedPrayed=[...new Set([...localPrayed,...(cloud.prayedFor||[])])];
       const mergedOwned=[...new Set([...localOwned,...(cloud.ownedItems||[])])];
+      // Garden: merge by plot id (local wins for non-empty, cloud wins if local empty)
+      const cloudGarden=cloud.gardenPlots||[];
+      const mergedGarden=localGarden.length?localGarden.map(lp=>{
+        const cp=cloudGarden.find(c=>c.id===lp.id);
+        if(!cp) return lp;
+        if(lp.stage==="empty"&&cp.stage!=="empty") return cp;
+        if(lp.stage!=="empty") return lp;
+        return lp;
+      }):cloudGarden.length?cloudGarden:Array.from({length:12},(_,i)=>({id:i+1,prayerId:null,plantType:null,stage:"empty",plantedAt:null,prayerCount:0}));
+      // Inventory: max per item
+      const cloudInv=cloud.inventory||{};
+      const mergedInv={...cloudInv};
+      Object.keys(localInv).forEach(k=>{mergedInv[k]=Math.max(localInv[k]||0,mergedInv[k]||0);});
 
       localStorage.setItem("irj-entries",JSON.stringify(mergedEntries));
       localStorage.setItem("irj-prayer",JSON.stringify(mergedPrayers));
@@ -757,6 +840,8 @@ export default function App(){
       localStorage.setItem("irj-candles",JSON.stringify(mergedCandles));
       localStorage.setItem("irj-prayed",JSON.stringify(mergedPrayed));
       localStorage.setItem("irj-owned-items",JSON.stringify(mergedOwned));
+      localStorage.setItem("irj-garden",JSON.stringify(mergedGarden));
+      localStorage.setItem("irj-inventory",JSON.stringify(mergedInv));
 
       await setDoc(userRef,{
         entries:mergedEntries,
@@ -766,6 +851,8 @@ export default function App(){
         candles:mergedCandles,
         prayedFor:mergedPrayed,
         ownedItems:mergedOwned,
+        gardenPlots:mergedGarden,
+        inventory:mergedInv,
         lastSyncedAt:new Date().toISOString(),
       });
 
@@ -776,6 +863,8 @@ export default function App(){
       setCandles(mergedCandles);
       setPrayedFor(mergedPrayed);
       setOwnedItems(mergedOwned);
+      setGardenPlots(mergedGarden);
+      setInventory(mergedInv);
 
       let s=0,d=new Date(),map={};
       mergedEntries.forEach(e=>{map[e.date]=true;});
@@ -852,11 +941,27 @@ export default function App(){
     const next=prayerPosts.map(p=>p.id===id?{...p,prayers:p.prayers+1}:p);
     setPrayerPosts(next); dbSave("irj-prayer",next);
     setPrayedFor(prev=>{const np=[...prev,id];dbSave("irj-prayed",np);return np;});
+    // Boost garden plot if this prayer is planted
+    setGardenPlots(prev=>{
+      const hasPlot=prev.some(p=>p.prayerId===id&&p.stage!=="empty");
+      if(!hasPlot) return prev;
+      const next=prev.map(p=>p.prayerId===id&&p.stage!=="empty"?{...p,prayerCount:p.prayerCount+1}:p);
+      dbSave("irj-garden",next);
+      return next;
+    });
     addCandles(2,"You lit a candle for this prayer");
   }
   function markPrayerAnswered(id){
     const next=prayerPosts.map(p=>p.id===id?{...p,status:"answered",answeredDate:todayStr()}:p);
     setPrayerPosts(next); dbSave("irj-prayer",next);
+    // Bloom garden plot instantly if this prayer is planted
+    setGardenPlots(prev=>{
+      const hasPlot=prev.some(p=>p.prayerId===id&&p.stage!=="empty");
+      if(!hasPlot) return prev;
+      const ng=prev.map(p=>p.prayerId===id&&p.stage!=="empty"?{...p,stage:"harvestable"}:p);
+      dbSave("irj-garden",ng);
+      return ng;
+    });
   }
   function reactivatePrayer(id){
     const next=prayerPosts.map(p=>p.id===id?{...p,status:"active",answeredDate:null}:p);
@@ -876,6 +981,93 @@ export default function App(){
     if(candles<item.cost||ownedItems.includes(item.id)) return;
     spendCandles(item.cost);
     setOwnedItems(prev=>{const next=[...prev,item.id];dbSave("irj-owned-items",next);return next;});
+  }
+
+  // ── PRAYER GARDEN ──
+  function getComputedStage(plot){
+    if(plot.stage==="empty"||!plot.plantedAt) return "empty";
+    // Answered prayers instantly become harvestable
+    const prayer=prayerPosts.find(p=>p.id===plot.prayerId);
+    if(prayer&&prayer.status==="answered") return "harvestable";
+    const plant=GARDEN_PLANTS.find(p=>p.id===plot.plantType);
+    if(!plant) return plot.stage;
+    const elapsed=(Date.now()-plot.plantedAt)/3600000; // hours
+    const bonus=plot.prayerCount*PRAYER_BONUS_HOURS;
+    let accumulated=0;
+    for(let i=0;i<plant.growthBase.length;i++){
+      accumulated+=Math.max(0.5,plant.growthBase[i]-bonus);
+      if(elapsed<accumulated) return GROWTH_STAGES[i];
+    }
+    return "harvestable";
+  }
+  function getStageIndex(stage){return GROWTH_STAGES.indexOf(stage);}
+  function getPlantEmoji(plot){
+    if(plot.stage==="empty") return "";
+    const plant=GARDEN_PLANTS.find(p=>p.id===plot.plantType);
+    if(!plant) return "🌱";
+    const si=getStageIndex(getComputedStage(plot));
+    return plant.stageEmojis[Math.max(0,si)]||"🌱";
+  }
+  function plantSeed(plotId,prayerId,plantTypeId){
+    const plant=GARDEN_PLANTS.find(p=>p.id===plantTypeId);
+    if(!plant||candles<plant.plantCost) return;
+    spendCandles(plant.plantCost);
+    setGardenPlots(prev=>{
+      const next=prev.map(p=>p.id===plotId?{...p,prayerId,plantType:plantTypeId,stage:"seed",plantedAt:Date.now(),prayerCount:0}:p);
+      dbSave("irj-garden",next);
+      return next;
+    });
+    setPlantModal(null);setPlantStep(1);setPlantPrayerId(null);
+  }
+  function harvestPlot(plotId){
+    const plot=gardenPlots.find(p=>p.id===plotId);
+    if(!plot||getComputedStage(plot)!=="harvestable") return;
+    const plant=GARDEN_PLANTS.find(p=>p.id===plot.plantType);
+    if(!plant) return;
+    // Add to inventory
+    setInventory(prev=>{
+      const next={...prev,[plant.harvestItem]:(prev[plant.harvestItem]||0)+1};
+      dbSave("irj-inventory",next);
+      return next;
+    });
+    // Reset plot
+    setGardenPlots(prev=>{
+      const next=prev.map(p=>p.id===plotId?{...p,prayerId:null,plantType:null,stage:"empty",plantedAt:null,prayerCount:0}:p);
+      dbSave("irj-garden",next);
+      return next;
+    });
+    addCandles(1,"Harvest gathered +1 🕯️");
+  }
+  function craftItem(stationId,recipeIdx){
+    const station=CRAFTING_STATIONS.find(s=>s.id===stationId);
+    if(!station) return;
+    const recipe=station.recipes[recipeIdx];
+    if(!recipe) return;
+    // Check if enough inputs
+    for(const[item,qty]of Object.entries(recipe.inputs)){
+      if((inventory[item]||0)<qty) return;
+    }
+    // Deduct inputs, add output
+    setInventory(prev=>{
+      const next={...prev};
+      for(const[item,qty]of Object.entries(recipe.inputs)){next[item]=(next[item]||0)-qty;}
+      next[recipe.output]=(next[recipe.output]||0)+(recipe.outputQty||1);
+      dbSave("irj-inventory",next);
+      return next;
+    });
+    addCandles(1,"Crafted "+recipe.outputName+" +1 🕯️");
+  }
+  function getAvailablePrayers(){
+    const plantedIds=gardenPlots.filter(p=>p.stage!=="empty").map(p=>p.prayerId);
+    return prayerPosts.filter(p=>p.status==="active"&&!plantedIds.includes(p.id));
+  }
+  function openPlantModal(plotId){
+    setPlantModal(plotId);setPlantStep(1);setPlantPrayerId(null);
+  }
+  function transitionToGarden(){
+    setDoorChoice(false);
+    setSpaceTransit(true); setTransitDir("toGarden");
+    setTimeout(()=>{setScreen("garden");setSpaceTransit(false);setTransitDir(null);},700);
   }
 
   // ── SCENE NAVIGATION ──
@@ -1129,12 +1321,25 @@ export default function App(){
     .book-room:hover{border-color:rgba(101,83,55,0.4)!important;background:linear-gradient(135deg,rgba(101,83,55,0.08),rgba(101,83,55,0.03))!important}
     @keyframes bookFlyToDesk{0%{opacity:1;transform:translate(0,0) scale(1)}40%{opacity:1;transform:translate(-120px,-40px) scale(1.3)}100%{opacity:0;transform:translate(-200px,120px) scale(0.7)}}
     @keyframes hotspotPulse{0%,100%{box-shadow:0 0 15px rgba(255,200,80,0.15),0 0 40px rgba(255,200,80,0.05)}50%{box-shadow:0 0 25px rgba(255,200,80,0.3),0 0 60px rgba(255,200,80,0.1)}}
+    @keyframes doorLabelFade{0%,100%{opacity:0.5}50%{opacity:1}}
     @keyframes shelfBookHover{0%,100%{transform:translateX(0)}50%{transform:translateX(-4px)}}
     @keyframes windowPanelSlide{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
     @keyframes windowPanelSlideLeft{from{transform:translateX(-100%);opacity:0}to{transform:translateX(0);opacity:1}}
     @keyframes doorLightBurst{0%{transform:translate(-50%,-50%) scale(0.05);opacity:0}40%{opacity:0.85}100%{transform:translate(-50%,-50%) scale(4);opacity:1}}
     @keyframes doorFadeWarm{0%{opacity:0}55%{opacity:0}100%{opacity:1}}
     @keyframes doorZoomBg{0%{transform:scale(1);filter:brightness(1)}100%{transform:scale(1.12);filter:brightness(1.3)}}
+    @keyframes gardenSway{0%,100%{transform:rotate(-2deg)}50%{transform:rotate(2deg)}}
+    @keyframes gardenGrow{from{transform:scale(0.6);opacity:0}to{transform:scale(1);opacity:1}}
+    @keyframes harvestGlow{0%,100%{filter:drop-shadow(0 0 4px rgba(212,180,100,0.3))}50%{filter:drop-shadow(0 0 12px rgba(212,180,100,0.6))}}
+    @keyframes harvestBounce{0%{transform:scale(1)}25%{transform:scale(1.15)}50%{transform:scale(0.95)}75%{transform:scale(1.05)}100%{transform:scale(1)}}
+    @keyframes gardenPlotFadeIn{from{opacity:0;transform:scale(0.9)}to{opacity:1;transform:scale(1)}}
+    @keyframes doorChoiceFadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes bloomPulse{0%,100%{filter:drop-shadow(0 0 6px rgba(90,138,106,0.3))}50%{filter:drop-shadow(0 0 16px rgba(90,138,106,0.6))}}
+    .garden-plot{transition:all .2s ease;cursor:pointer}
+    .garden-plot:hover{transform:translateY(-2px);box-shadow:0 4px 16px rgba(0,0,0,0.15)!important}
+    .garden-plot:active{transform:scale(0.96)}
+    .craft-btn{transition:all .2s}
+    .craft-btn:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,0.15)!important}
   `;
 
   /* ── DARK HEADER (reusable) ── */
@@ -1336,13 +1541,38 @@ export default function App(){
         })}
       </div>
 
-      {/* 3. MAGICAL DOOR — center, over the arched glowing door */}
-      <button onClick={transitionToHall} style={{position:"absolute",left:"28%",right:"30%",top:"18%",bottom:"42%",zIndex:10,background:"transparent",border:"none",cursor:"pointer",borderRadius:"50% 50% 0 0",animation:"hotspotPulse 3.5s ease-in-out infinite"}}>
-        <div style={{position:"absolute",inset:"-5%",borderRadius:"50% 50% 8px 8px",background:"radial-gradient(ellipse at center bottom,rgba(255,200,80,0.06),transparent 60%)",pointerEvents:"none"}}/>
+      {/* 3. DOOR — opens choice overlay (Hall or Garden) */}
+      <button onClick={()=>setDoorChoice(true)} style={{position:"absolute",left:"28%",right:"30%",top:"18%",bottom:"42%",zIndex:12,background:"transparent",border:"none",cursor:"pointer",borderRadius:"50% 50% 0 0",animation:"hotspotPulse 3.5s ease-in-out infinite"}}>
+        {/* Warm glow around door frame */}
+        <div style={{position:"absolute",inset:"-8%",borderRadius:"50% 50% 8px 8px",background:"radial-gradient(ellipse at center bottom,rgba(255,200,80,0.12),transparent 65%)",pointerEvents:"none"}}/>
+        {/* Subtle door label — floats at bottom of door area */}
+        <div style={{position:"absolute",bottom:"8%",left:"50%",transform:"translateX(-50%)",display:"flex",alignItems:"center",gap:4,background:"rgba(10,8,6,0.55)",backdropFilter:"blur(6px)",WebkitBackdropFilter:"blur(6px)",borderRadius:12,padding:"5px 10px",animation:"doorLabelFade 5s ease-in-out infinite",pointerEvents:"none",whiteSpace:"nowrap"}}>
+          <span style={{fontSize:"0.65rem",opacity:0.85}}>🚪</span>
+          <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.55rem",color:"rgba(255,248,232,0.55)",letterSpacing:"0.02em"}}>Step outside</span>
+        </div>
       </button>
 
-      {/* 4. LEFT WINDOW */}
-      <button className="window-hotspot" onClick={()=>setWindowPanel("left")} style={{position:"absolute",left:"2%",top:"2%",width:"38%",height:"30%",zIndex:10,background:"transparent",border:"none",cursor:"pointer",borderRadius:"8px"}}/>
+      {/* ═══ DOOR CHOICE OVERLAY ═══ */}
+      {doorChoice&&<div style={{position:"fixed",inset:0,zIndex:100}}>
+        <div onClick={()=>setDoorChoice(false)} style={{position:"absolute",inset:0,background:"rgba(10,8,6,0.7)",backdropFilter:"blur(6px)",WebkitBackdropFilter:"blur(6px)",animation:"spaceFadeIn .25s ease"}}/>
+        <div style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",display:"flex",gap:16,animation:"doorChoiceFadeIn .4s cubic-bezier(.22,1,.36,1) both",maxWidth:"min(90vw,400px)",width:"100%"}}>
+          {/* Hall */}
+          <button onClick={()=>{setDoorChoice(false);transitionToHall();}} style={{flex:1,background:"rgba(40,28,10,0.92)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",border:"1px solid rgba(201,169,110,0.25)",borderRadius:18,padding:"32px 16px",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:12,transition:"all .2s",boxShadow:"0 8px 32px rgba(0,0,0,0.4)"}} onMouseEnter={e=>e.currentTarget.style.borderColor="rgba(201,169,110,0.5)"} onMouseLeave={e=>e.currentTarget.style.borderColor="rgba(201,169,110,0.25)"}>
+            <span style={{fontSize:"2rem",filter:"drop-shadow(0 2px 8px rgba(201,169,110,0.3))"}}>🕯️</span>
+            <span style={{fontFamily:DISPLAY,fontSize:"1.05rem",fontWeight:700,color:B.goldL}}>The Hall</span>
+            <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.72rem",color:"rgba(255,248,232,0.4)",textAlign:"center",lineHeight:1.4}}>Prayer wall & community</span>
+          </button>
+          {/* Garden */}
+          <button onClick={()=>transitionToGarden()} style={{flex:1,background:"rgba(20,32,20,0.92)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",border:"1px solid rgba(90,138,106,0.25)",borderRadius:18,padding:"32px 16px",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:12,transition:"all .2s",boxShadow:"0 8px 32px rgba(0,0,0,0.4)"}} onMouseEnter={e=>e.currentTarget.style.borderColor="rgba(90,138,106,0.5)"} onMouseLeave={e=>e.currentTarget.style.borderColor="rgba(90,138,106,0.25)"}>
+            <span style={{fontSize:"2rem",filter:"drop-shadow(0 2px 8px rgba(90,138,106,0.3))"}}>🌿</span>
+            <span style={{fontFamily:DISPLAY,fontSize:"1.05rem",fontWeight:700,color:"#BED3C4"}}>The Garden</span>
+            <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.72rem",color:"rgba(190,211,196,0.5)",textAlign:"center",lineHeight:1.4}}>Grow your prayers</span>
+          </button>
+        </div>
+      </div>}
+
+      {/* 4. LEFT WINDOW — trimmed right edge to avoid overlapping the door hotspot */}
+      <button className="window-hotspot" onClick={()=>setWindowPanel("left")} style={{position:"absolute",left:"2%",top:"2%",width:"24%",height:"28%",zIndex:10,background:"transparent",border:"none",cursor:"pointer",borderRadius:"8px"}}/>
 
       {/* 5. RIGHT WINDOW */}
       <button className="window-hotspot" onClick={()=>setWindowPanel("right")} style={{position:"absolute",right:"12%",top:"2%",width:"30%",height:"30%",zIndex:10,background:"transparent",border:"none",cursor:"pointer",borderRadius:"8px"}}/>
@@ -1389,11 +1619,33 @@ export default function App(){
         <span style={{fontSize:"clamp(0.9rem,2.5vw,1.3rem)",filter:"drop-shadow(0 2px 6px rgba(0,0,0,0.5))"}}>🪵</span>
       </button>
 
-      {/* CANDLE BALANCE — persistent display */}
-      <div style={{position:"absolute",left:"5%",bottom:"32%",zIndex:12,background:"rgba(26,22,18,0.7)",backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",border:"1px solid rgba(212,180,100,0.15)",borderRadius:10,padding:"5px 12px",display:"flex",alignItems:"center",gap:6,animation:"fadeUp 1s 2s ease both",pointerEvents:"none"}}>
+      {/* CANDLE BALANCE — persistent display (triple-tap = toggle debug hotspots) */}
+      <div onClick={debugTripleTap} style={{position:"absolute",left:"5%",bottom:"32%",zIndex:12,background:"rgba(26,22,18,0.7)",backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",border:"1px solid rgba(212,180,100,0.15)",borderRadius:10,padding:"5px 12px",display:"flex",alignItems:"center",gap:6,animation:"fadeUp 1s 2s ease both",cursor:"default"}}>
         <span style={{fontSize:"0.8rem"}}>🕯️</span>
         <span style={{fontFamily:DISPLAY,fontSize:"0.82rem",fontWeight:700,color:B.goldL}}>{candles}</span>
       </div>
+
+      {/* ═══ HOTSPOT DEBUG OVERLAY ═══ */}
+      {debugHotspots&&<>
+        {/* Toggle badge */}
+        <div style={{position:"fixed",top:8,left:"50%",transform:"translateX(-50%)",zIndex:999,background:"rgba(255,60,60,0.85)",color:"#fff",fontFamily:SANS,fontSize:"0.65rem",fontWeight:700,padding:"4px 14px",borderRadius:20,letterSpacing:"0.04em",pointerEvents:"none",backdropFilter:"blur(6px)",WebkitBackdropFilter:"blur(6px)",whiteSpace:"nowrap"}}>DEBUG HOTSPOTS ON — Ctrl+Shift+. or 3×tap 🕯️</div>
+        {/* 1. Desk Book */}
+        <div style={{position:"absolute",left:"18%",right:"27%",top:"65%",bottom:"12%",zIndex:900,background:"rgba(255,100,100,0.25)",border:"2px solid rgba(255,100,100,0.7)",borderRadius:12,pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.6rem",fontWeight:700,color:"#fff",background:"rgba(255,60,60,0.75)",padding:"2px 8px",borderRadius:8}}>DESK BOOK</span></div>
+        {/* 2. Bookshelf */}
+        <div style={{position:"absolute",right:"0%",top:"12%",bottom:"18%",width:"clamp(56px,9vw,76px)",zIndex:900,background:"rgba(100,100,255,0.25)",border:"2px solid rgba(100,100,255,0.7)",borderRadius:4,pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.5rem",fontWeight:700,color:"#fff",background:"rgba(60,60,255,0.75)",padding:"2px 6px",borderRadius:8,writingMode:"vertical-lr"}}>BOOKSHELF</span></div>
+        {/* 3. Door */}
+        <div style={{position:"absolute",left:"28%",right:"30%",top:"18%",bottom:"42%",zIndex:900,background:"rgba(100,255,100,0.25)",border:"2px solid rgba(100,255,100,0.7)",borderRadius:"50% 50% 0 0",pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.6rem",fontWeight:700,color:"#fff",background:"rgba(60,180,60,0.85)",padding:"2px 8px",borderRadius:8}}>DOOR (z:12)</span></div>
+        {/* 4. Left Window */}
+        <div style={{position:"absolute",left:"2%",top:"2%",width:"24%",height:"28%",zIndex:900,background:"rgba(255,255,100,0.2)",border:"2px solid rgba(255,255,100,0.7)",borderRadius:8,pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.5rem",fontWeight:700,color:"#fff",background:"rgba(180,180,0,0.85)",padding:"2px 6px",borderRadius:8}}>L-WIN</span></div>
+        {/* 5. Right Window */}
+        <div style={{position:"absolute",right:"12%",top:"2%",width:"30%",height:"30%",zIndex:900,background:"rgba(255,165,0,0.2)",border:"2px solid rgba(255,165,0,0.7)",borderRadius:8,pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.5rem",fontWeight:700,color:"#fff",background:"rgba(200,120,0,0.85)",padding:"2px 6px",borderRadius:8}}>R-WIN</span></div>
+        {/* 6. Candle */}
+        <div style={{position:"absolute",left:"4%",bottom:"18%",width:"14%",height:"12%",zIndex:900,background:"rgba(255,100,255,0.25)",border:"2px solid rgba(255,100,255,0.7)",borderRadius:"50%",pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.5rem",fontWeight:700,color:"#fff",background:"rgba(200,60,200,0.85)",padding:"2px 6px",borderRadius:8}}>CANDLE</span></div>
+        {/* 7. Insights */}
+        <div style={{position:"absolute",left:"40%",right:"40%",bottom:"4%",height:"10%",zIndex:900,background:"rgba(0,200,200,0.2)",border:"2px solid rgba(0,200,200,0.7)",borderRadius:8,pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.5rem",fontWeight:700,color:"#fff",background:"rgba(0,150,150,0.85)",padding:"2px 6px",borderRadius:8}}>INSIGHTS</span></div>
+        {/* 10. Shop */}
+        <div style={{position:"absolute",right:"4%",bottom:"14%",width:"12%",height:"10%",zIndex:900,background:"rgba(200,150,50,0.25)",border:"2px solid rgba(200,150,50,0.7)",borderRadius:8,pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.5rem",fontWeight:700,color:"#fff",background:"rgba(170,120,30,0.85)",padding:"2px 6px",borderRadius:8}}>SHOP</span></div>
+      </>}
 
       {/* ═══ STREAK FLOATING INDICATOR ═══ */}
       {showStreak&&<div style={{position:"fixed",bottom:"28%",left:"50%",zIndex:60,animation:"streakFloat 3s ease both",pointerEvents:"none"}}>
@@ -1807,7 +2059,7 @@ export default function App(){
       {/* ═══ SPACE TRANSITION OVERLAY ═══ */}
       {spaceTransit&&<div style={{position:"fixed",inset:0,zIndex:9999,background:"#0A0806",display:"flex",alignItems:"center",justifyContent:"center",animation:"spaceFadeIn .5s ease"}}>
         <div style={{textAlign:"center",animation:"fadeUp .6s .15s ease both"}}>
-          <div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"1.05rem",color:"rgba(255,248,232,0.5)",letterSpacing:"0.04em"}}>{transitDir==="toHall"?"Stepping into The Upper Room...":"Returning to the cabin..."}</div>
+          <div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"1.05rem",color:"rgba(255,248,232,0.5)",letterSpacing:"0.04em"}}>{transitDir==="toHall"?"Stepping into The Upper Room...":transitDir==="toGarden"?"Walking to the garden...":"Returning to the cabin..."}</div>
         </div>
       </div>}
     </div>
@@ -2360,6 +2612,247 @@ export default function App(){
       </main>
     </div>
   );}
+
+  /* ══ PRAYER GARDEN ═══════════════════════════════ */
+  if(screen==="garden"){
+    const availablePrayers=getAvailablePrayers();
+    const invItems=Object.entries(inventory).filter(([,v])=>v>0);
+    const totalInv=invItems.reduce((s,[,v])=>s+v,0);
+    // Growth progress helper
+    const getGrowthPercent=(plot)=>{
+      if(plot.stage==="empty"||!plot.plantedAt) return 0;
+      const cs=getComputedStage(plot);
+      if(cs==="harvestable") return 100;
+      const plant=GARDEN_PLANTS.find(p=>p.id===plot.plantType);
+      if(!plant) return 0;
+      const elapsed=(Date.now()-plot.plantedAt)/3600000;
+      const bonus=plot.prayerCount*PRAYER_BONUS_HOURS;
+      let total=0;
+      for(let i=0;i<plant.growthBase.length;i++) total+=Math.max(0.5,plant.growthBase[i]-bonus);
+      return Math.min(100,Math.round((elapsed/total)*100));
+    };
+    return(
+      <div style={{minHeight:"100vh",background:"linear-gradient(160deg,#1A1E14,#1E2818)",color:"#E8F0E0",fontFamily:SANS}}>
+        <style>{GFONTS}{CSS}</style>
+        <DarkHeader title="🌿 Prayer Garden" onBack={()=>{setScreen("cabin");setDoorChoice(false);setGardenTab("garden");}} extra={<div style={{display:"flex",alignItems:"center",gap:6,background:"rgba(212,180,100,0.1)",border:"1px solid rgba(212,180,100,0.2)",borderRadius:10,padding:"5px 12px"}}><span style={{fontSize:"0.9rem"}}>🕯️</span><span style={{fontFamily:DISPLAY,fontSize:"0.9rem",fontWeight:700,color:B.goldL}}>{candles}</span></div>}/>
+        <main style={{maxWidth:"600px",margin:"0 auto",padding:"20px 18px 80px"}}>
+
+          {/* Tab bar */}
+          <div style={{display:"flex",gap:8,marginBottom:20}}>
+            {[{id:"garden",label:"🌱 Garden"},{id:"inventory",label:"🧺 Inventory"},{id:"crafting",label:"⚙️ Crafting"}].map(t=>
+              <button key={t.id} onClick={()=>{setGardenTab(t.id);setCraftingStation(null);}} style={{flex:1,background:gardenTab===t.id?"rgba(90,138,106,0.15)":"transparent",border:`1px solid ${gardenTab===t.id?"rgba(90,138,106,0.35)":"rgba(190,211,196,0.1)"}`,color:gardenTab===t.id?"#BED3C4":"rgba(190,211,196,0.4)",padding:"8px 12px",borderRadius:10,cursor:"pointer",fontSize:"0.78rem",fontFamily:SANS,fontWeight:gardenTab===t.id?600:400,transition:"all 0.15s"}}>{t.label}</button>
+            )}
+          </div>
+
+          {/* ═══ GARDEN TAB ═══ */}
+          {gardenTab==="garden"&&<>
+            {/* Garden grid — 4 columns × 3 rows */}
+            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10}}>
+              {gardenPlots.map((plot,idx)=>{
+                const cs=getComputedStage(plot);
+                const isHarvestable=cs==="harvestable";
+                const isEmpty=cs==="empty";
+                const prayer=plot.prayerId?prayerPosts.find(p=>p.id===plot.prayerId):null;
+                const isAnswered=prayer&&prayer.status==="answered";
+                const pct=getGrowthPercent(plot);
+                return(
+                  <div key={plot.id} className="garden-plot" onClick={()=>{
+                    if(isEmpty) openPlantModal(plot.id);
+                    else if(isHarvestable) harvestPlot(plot.id);
+                    else setSelectedPlot(selectedPlot===plot.id?null:plot.id);
+                  }} style={{
+                    background:isEmpty?"transparent":isHarvestable?"rgba(212,180,100,0.08)":"rgba(90,138,106,0.06)",
+                    border:`1px ${isEmpty?"dashed":"solid"} ${isHarvestable?"rgba(212,180,100,0.35)":isEmpty?"rgba(190,211,196,0.15)":"rgba(90,138,106,0.25)"}`,
+                    borderRadius:14,padding:"14px 8px",display:"flex",flexDirection:"column",alignItems:"center",gap:6,
+                    minHeight:100,justifyContent:"center",position:"relative",
+                    animation:`gardenPlotFadeIn .4s ${idx*0.05}s ease both`,
+                  }}>
+                    {isEmpty?(
+                      <>
+                        <span style={{fontSize:"1.3rem",color:"rgba(190,211,196,0.2)"}}>+</span>
+                        <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.6rem",color:"rgba(190,211,196,0.25)"}}>Plant</span>
+                      </>
+                    ):(
+                      <>
+                        <span style={{fontSize:"1.6rem",animation:isHarvestable?"harvestGlow 2s ease-in-out infinite":isAnswered?"bloomPulse 2s ease-in-out infinite":"gardenSway 4s ease-in-out infinite",transformOrigin:"bottom center"}}>{getPlantEmoji(plot)}</span>
+                        {isAnswered&&!isHarvestable&&<span style={{position:"absolute",top:4,right:6,fontSize:"0.55rem"}}>🌸</span>}
+                        {isHarvestable?(
+                          <span style={{fontFamily:SANS,fontSize:"0.6rem",fontWeight:600,color:B.goldL,animation:"harvestBounce 1.5s ease-in-out infinite"}}>Harvest!</span>
+                        ):(
+                          <div style={{width:"80%",height:3,background:"rgba(190,211,196,0.1)",borderRadius:2,overflow:"hidden"}}>
+                            <div style={{width:`${pct}%`,height:"100%",background:"linear-gradient(90deg,#5A8A6A,#9AB8A4)",borderRadius:2,transition:"width 0.5s ease"}}/>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Selected plot detail */}
+            {selectedPlot&&(()=>{
+              const plot=gardenPlots.find(p=>p.id===selectedPlot);
+              if(!plot||plot.stage==="empty") return null;
+              const plant=GARDEN_PLANTS.find(p=>p.id===plot.plantType);
+              const prayer=prayerPosts.find(p=>p.id===plot.prayerId);
+              const cs=getComputedStage(plot);
+              const pct=getGrowthPercent(plot);
+              return(
+                <div style={{marginTop:16,background:"rgba(90,138,106,0.08)",border:"1px solid rgba(90,138,106,0.2)",borderRadius:16,padding:"18px 16px",animation:"fadeUp .3s ease both"}}>
+                  <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
+                    <span style={{fontSize:"1.4rem"}}>{getPlantEmoji(plot)}</span>
+                    <div>
+                      <div style={{fontFamily:DISPLAY,fontSize:"0.92rem",fontWeight:700,color:"#BED3C4"}}>{plant?.name||"Plant"}</div>
+                      <div style={{fontFamily:SANS,fontSize:"0.68rem",color:"rgba(190,211,196,0.5)"}}>Stage: {cs} · {pct}% grown</div>
+                    </div>
+                  </div>
+                  {prayer&&<div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.8rem",color:"rgba(190,211,196,0.6)",lineHeight:1.5,borderTop:"1px solid rgba(90,138,106,0.12)",paddingTop:10}}>
+                    🙏 {prayer.text.slice(0,120)}{prayer.text.length>120?"…":""}
+                  </div>}
+                  {prayer?.status==="answered"&&<div style={{marginTop:8,fontFamily:SANS,fontSize:"0.7rem",fontWeight:600,color:"#9AB8A4"}}>✦ Prayer answered — in full bloom</div>}
+                  <div style={{marginTop:8,fontFamily:SANS,fontSize:"0.65rem",color:"rgba(190,211,196,0.35)"}}>Prayers offered: {plot.prayerCount}</div>
+                </div>
+              );
+            })()}
+
+            {/* Empty state */}
+            {gardenPlots.every(p=>p.stage==="empty")&&<div style={{textAlign:"center",marginTop:24}}>
+              <p style={{fontFamily:SERIF,fontStyle:"italic",color:"rgba(190,211,196,0.4)",fontSize:"0.85rem",lineHeight:1.6}}>Your garden is empty.<br/>Tap a plot to plant a prayer.</p>
+            </div>}
+          </>}
+
+          {/* ═══ INVENTORY TAB ═══ */}
+          {gardenTab==="inventory"&&<>
+            {invItems.length===0?(
+              <div style={{textAlign:"center",marginTop:40}}>
+                <div style={{fontSize:"2rem",marginBottom:12,opacity:0.4}}>🧺</div>
+                <p style={{fontFamily:SERIF,fontStyle:"italic",color:"rgba(190,211,196,0.35)",fontSize:"0.88rem"}}>Your harvest will appear here.</p>
+                <p style={{fontFamily:SANS,fontSize:"0.72rem",color:"rgba(190,211,196,0.25)",marginTop:8}}>Grow and harvest plants in the garden.</p>
+              </div>
+            ):(
+              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12}}>
+                {invItems.map(([item,qty])=>{
+                  // Find emoji from plants or crafting outputs
+                  const plantMatch=GARDEN_PLANTS.find(p=>p.harvestItem===item);
+                  const craftMatch=CRAFTING_STATIONS.flatMap(s=>s.recipes).find(r=>r.output===item);
+                  const emoji=plantMatch?.harvestEmoji||craftMatch?.outputEmoji||"📦";
+                  const name=plantMatch?.harvestItem||craftMatch?.outputName||item;
+                  const displayName=name.replace(/_/g," ").replace(/\b\w/g,c=>c.toUpperCase());
+                  return(
+                    <div key={item} style={{background:"rgba(90,138,106,0.06)",border:"1px solid rgba(90,138,106,0.15)",borderRadius:14,padding:"16px 10px",display:"flex",flexDirection:"column",alignItems:"center",gap:6,animation:"gardenPlotFadeIn .3s ease both"}}>
+                      <span style={{fontSize:"1.5rem"}}>{emoji}</span>
+                      <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.72rem",color:"rgba(190,211,196,0.7)",textAlign:"center",lineHeight:1.3}}>{displayName}</span>
+                      <span style={{fontFamily:DISPLAY,fontSize:"1rem",fontWeight:700,color:"#BED3C4"}}>×{qty}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </>}
+
+          {/* ═══ CRAFTING TAB ═══ */}
+          {gardenTab==="crafting"&&<>
+            {!craftingStation?(
+              <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:14}}>
+                {CRAFTING_STATIONS.map(station=>(
+                  <button key={station.id} className="craft-btn" onClick={()=>setCraftingStation(station.id)} style={{background:"rgba(90,138,106,0.06)",border:"1px solid rgba(90,138,106,0.2)",borderRadius:16,padding:"24px 14px",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:10,animation:"gardenPlotFadeIn .3s ease both"}}>
+                    <span style={{fontSize:"1.8rem"}}>{station.emoji}</span>
+                    <span style={{fontFamily:DISPLAY,fontSize:"0.92rem",fontWeight:700,color:"#BED3C4"}}>{station.name}</span>
+                    <span style={{fontFamily:SANS,fontSize:"0.65rem",color:"rgba(190,211,196,0.4)"}}>{station.recipes.length} recipe{station.recipes.length>1?"s":""}</span>
+                  </button>
+                ))}
+              </div>
+            ):(()=>{
+              const station=CRAFTING_STATIONS.find(s=>s.id===craftingStation);
+              if(!station) return null;
+              return(
+                <div style={{animation:"fadeUp .3s ease both"}}>
+                  <button onClick={()=>setCraftingStation(null)} style={{background:"transparent",border:"none",cursor:"pointer",color:"rgba(190,211,196,0.4)",fontSize:"0.78rem",fontFamily:SANS,marginBottom:14,padding:0}}>← All stations</button>
+                  <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:20}}>
+                    <span style={{fontSize:"1.6rem"}}>{station.emoji}</span>
+                    <span style={{fontFamily:DISPLAY,fontSize:"1.1rem",fontWeight:700,color:"#BED3C4"}}>{station.name}</span>
+                  </div>
+                  <div style={{display:"flex",flexDirection:"column",gap:12}}>
+                    {station.recipes.map((recipe,ri)=>{
+                      const canCraft=Object.entries(recipe.inputs).every(([item,qty])=>(inventory[item]||0)>=qty);
+                      return(
+                        <div key={ri} style={{background:canCraft?"rgba(90,138,106,0.08)":"rgba(255,255,255,0.02)",border:`1px solid ${canCraft?"rgba(90,138,106,0.25)":"rgba(190,211,196,0.08)"}`,borderRadius:14,padding:"16px",display:"flex",alignItems:"center",gap:14}}>
+                          {/* Inputs */}
+                          <div style={{flex:1}}>
+                            <div style={{fontFamily:SANS,fontSize:"0.65rem",color:"rgba(190,211,196,0.35)",marginBottom:6,textTransform:"uppercase",letterSpacing:"0.05em"}}>Needs</div>
+                            {Object.entries(recipe.inputs).map(([item,qty])=>{
+                              const has=inventory[item]||0;
+                              const enough=has>=qty;
+                              return <div key={item} style={{fontFamily:SANS,fontSize:"0.75rem",color:enough?"rgba(190,211,196,0.7)":"rgba(255,150,150,0.6)",marginBottom:2}}>{item.replace(/_/g," ")} {has}/{qty}</div>;
+                            })}
+                          </div>
+                          {/* Arrow */}
+                          <span style={{color:"rgba(190,211,196,0.2)",fontSize:"0.9rem"}}>→</span>
+                          {/* Output */}
+                          <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4,minWidth:60}}>
+                            <span style={{fontSize:"1.3rem"}}>{recipe.outputEmoji}</span>
+                            <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.68rem",color:"rgba(190,211,196,0.6)",textAlign:"center"}}>{recipe.outputName}</span>
+                          </div>
+                          {/* Craft button */}
+                          <button onClick={()=>{if(canCraft)craftItem(station.id,ri);}} style={{background:canCraft?"rgba(90,138,106,0.2)":"rgba(255,255,255,0.03)",border:`1px solid ${canCraft?"rgba(90,138,106,0.35)":"rgba(190,211,196,0.08)"}`,borderRadius:8,padding:"6px 14px",fontSize:"0.72rem",fontFamily:SANS,fontWeight:600,color:canCraft?"#BED3C4":"rgba(190,211,196,0.2)",cursor:canCraft?"pointer":"default",transition:"all .15s"}}>Craft</button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
+          </>}
+
+        </main>
+
+        {/* ═══ PLANT SELECTION MODAL ═══ */}
+        {plantModal&&<div style={{position:"fixed",inset:0,zIndex:300}}>
+          <div onClick={()=>{setPlantModal(null);setPlantStep(1);setPlantPrayerId(null);}} style={{position:"absolute",inset:0,background:"rgba(10,8,6,0.75)",backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",animation:"spaceFadeIn .2s ease"}}/>
+          <div style={{position:"absolute",bottom:0,left:0,right:0,maxHeight:"75vh",background:"rgba(26,30,20,0.97)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",border:"1px solid rgba(90,138,106,0.2)",borderRadius:"20px 20px 0 0",padding:"24px 20px 32px",animation:"bookSlideUp .35s cubic-bezier(.22,1,.36,1) both",overflowY:"auto"}}>
+
+            {plantStep===1?(
+              <>
+                <div style={{fontFamily:DISPLAY,fontSize:"1rem",fontWeight:700,color:"#BED3C4",marginBottom:4}}>Choose a Prayer</div>
+                <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.75rem",color:"rgba(190,211,196,0.4)",marginBottom:16}}>Select an active prayer to plant in your garden.</p>
+                {availablePrayers.length===0?(
+                  <p style={{fontFamily:SERIF,fontStyle:"italic",color:"rgba(190,211,196,0.3)",fontSize:"0.82rem",textAlign:"center",padding:"20px 0"}}>No available prayers. Post a new prayer on the prayer wall first.</p>
+                ):(
+                  <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                    {availablePrayers.slice(0,8).map(prayer=>(
+                      <button key={prayer.id} onClick={()=>{setPlantPrayerId(prayer.id);setPlantStep(2);}} style={{background:"rgba(90,138,106,0.06)",border:"1px solid rgba(90,138,106,0.15)",borderRadius:12,padding:"12px 14px",cursor:"pointer",textAlign:"left",transition:"all .15s"}} onMouseEnter={e=>e.currentTarget.style.borderColor="rgba(90,138,106,0.35)"} onMouseLeave={e=>e.currentTarget.style.borderColor="rgba(90,138,106,0.15)"}>
+                        <div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.8rem",color:"rgba(190,211,196,0.75)",lineHeight:1.4}}>{prayer.text.slice(0,100)}{prayer.text.length>100?"…":""}</div>
+                        <div style={{fontFamily:SANS,fontSize:"0.62rem",color:"rgba(190,211,196,0.3)",marginTop:4}}>{prayer.tag} · {prayer.date}</div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </>
+            ):(
+              <>
+                <button onClick={()=>setPlantStep(1)} style={{background:"transparent",border:"none",cursor:"pointer",color:"rgba(190,211,196,0.4)",fontSize:"0.75rem",fontFamily:SANS,padding:0,marginBottom:12}}>← Change prayer</button>
+                <div style={{fontFamily:DISPLAY,fontSize:"1rem",fontWeight:700,color:"#BED3C4",marginBottom:4}}>Choose a Plant</div>
+                <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.75rem",color:"rgba(190,211,196,0.4)",marginBottom:16}}>Each plant has a different cost and growth time.</p>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10}}>
+                  {GARDEN_PLANTS.map(plant=>{
+                    const canAfford=candles>=plant.plantCost;
+                    return(
+                      <button key={plant.id} onClick={()=>{if(canAfford)plantSeed(plantModal,plantPrayerId,plant.id);}} style={{background:canAfford?"rgba(90,138,106,0.06)":"rgba(255,255,255,0.02)",border:`1px solid ${canAfford?"rgba(90,138,106,0.2)":"rgba(190,211,196,0.06)"}`,borderRadius:14,padding:"14px 10px",cursor:canAfford?"pointer":"default",display:"flex",flexDirection:"column",alignItems:"center",gap:6,transition:"all .15s",opacity:canAfford?1:0.4}}>
+                        <span style={{fontSize:"1.4rem"}}>{plant.emoji}</span>
+                        <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.78rem",color:"rgba(190,211,196,0.8)"}}>{plant.name}</span>
+                        <span style={{fontFamily:SANS,fontSize:"0.68rem",fontWeight:600,color:canAfford?B.goldL:"rgba(190,211,196,0.25)"}}>🕯️ {plant.plantCost}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+          </div>
+        </div>}
+      </div>
+    );
+  }
 
   /* ══ ROOM SHOP ════════════════════════════════════ */
   if(screen==="shop"){
