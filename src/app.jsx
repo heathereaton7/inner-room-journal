@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { auth, db, googleProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged, doc, getDoc, setDoc } from "./firebase.js";
 
 /* ═══════════════════════════════════════════════════
    FONTS
@@ -267,7 +268,16 @@ async function dbSave(k,v){
   try{
     if(window.storage){await window.storage.set(k,JSON.stringify(v));return;}
     localStorage.setItem(k,JSON.stringify(v));
-  }catch{}
+    // Dual-write to Firestore when signed in
+    if(auth?.currentUser){
+      const fieldMap={"irj-entries":"entries","irj-prayer":"prayerPosts","irj-saved-cards":"savedCards","irj-onboarded":"isOnboarded"};
+      const field=fieldMap[k];
+      if(field){
+        const userRef=doc(db,"users",auth.currentUser.uid);
+        await setDoc(userRef,{[field]:v,lastSyncedAt:new Date().toISOString()},{merge:true});
+      }
+    }
+  }catch(e){console.error("dbSave:",e);}
 }
 
 /* ═══════════════════════════════════════════════════
@@ -478,6 +488,10 @@ export default function App(){
   const [savedCards,    setSavedCards]    = useState([]);
   const [cardTab,       setCardTab]       = useState("create");
   const [copied,        setCopied]        = useState(false);
+  // auth & cloud sync
+  const [user,          setUser]          = useState(null);
+  const [authLoading,   setAuthLoading]   = useState(true);
+  const [syncStatus,    setSyncStatus]    = useState(null);
 
   // ── LOAD ──
   useEffect(()=>{
@@ -497,6 +511,93 @@ export default function App(){
       ["cabin-interior.png","upper-room-hall.png"].forEach(src=>{const img=new Image();img.src="/"+src;});
     })();
   },[]);
+
+  // ── AUTH LISTENER ──
+  useEffect(()=>{
+    if(!auth) { setAuthLoading(false); return; }
+    getRedirectResult(auth).catch(()=>{});
+    const unsub=onAuthStateChanged(auth,async(u)=>{
+      setUser(u);
+      setAuthLoading(false);
+      if(u) await syncWithCloud(u.uid);
+    });
+    return ()=>unsub();
+  },[]);
+
+  // ── CLOUD SYNC ──
+  function mergeById(localArr,cloudArr){
+    const map=new Map();
+    (cloudArr||[]).forEach(item=>map.set(item.id,item));
+    (localArr||[]).forEach(item=>{ if(!map.has(item.id)) map.set(item.id,item); });
+    return Array.from(map.values()).sort((a,b)=>{
+      if(a.date&&b.date) return b.date.localeCompare(a.date)||b.id.localeCompare(a.id);
+      return parseInt(b.id)-parseInt(a.id);
+    });
+  }
+
+  async function syncWithCloud(uid){
+    setSyncStatus("syncing");
+    try{
+      const userRef=doc(db,"users",uid);
+      const snap=await getDoc(userRef);
+      const cloud=snap.exists()?snap.data():{};
+
+      const localEntries=await dbLoad("irj-entries")||[];
+      const localPrayers=await dbLoad("irj-prayer")||[];
+      const localCards=await dbLoad("irj-saved-cards")||[];
+      const localOnboard=await dbLoad("irj-onboarded");
+
+      const mergedEntries=mergeById(localEntries,cloud.entries||[]);
+      const mergedPrayers=mergeById(localPrayers,cloud.prayerPosts||[]);
+      const mergedCards=mergeById(localCards,cloud.savedCards||[]);
+      const mergedOnboard=localOnboard||cloud.isOnboarded||false;
+
+      localStorage.setItem("irj-entries",JSON.stringify(mergedEntries));
+      localStorage.setItem("irj-prayer",JSON.stringify(mergedPrayers));
+      localStorage.setItem("irj-saved-cards",JSON.stringify(mergedCards));
+      localStorage.setItem("irj-onboarded",JSON.stringify(mergedOnboard));
+
+      await setDoc(userRef,{
+        entries:mergedEntries,
+        prayerPosts:mergedPrayers,
+        savedCards:mergedCards,
+        isOnboarded:mergedOnboard,
+        lastSyncedAt:new Date().toISOString(),
+      });
+
+      setEntries(mergedEntries);
+      setPrayerPosts(mergedPrayers);
+      setSavedCards(mergedCards);
+      setIsOnboarded(!!mergedOnboard);
+
+      let s=0,d=new Date(),map={};
+      mergedEntries.forEach(e=>{map[e.date]=true;});
+      while(map[isoDate(d)]){s++;d.setDate(d.getDate()-1);} setStreak(s);
+
+      setSyncStatus("synced");
+      setTimeout(()=>setSyncStatus(null),3000);
+    }catch(err){
+      console.error("Sync error:",err);
+      setSyncStatus("error");
+      setTimeout(()=>setSyncStatus(null),5000);
+    }
+  }
+
+  async function handleGoogleSignIn(){
+    if(!auth) return;
+    try{ await signInWithPopup(auth,googleProvider); }
+    catch(err){
+      if(err.code==="auth/popup-blocked"||err.code==="auth/popup-closed-by-user")
+        await signInWithRedirect(auth,googleProvider);
+    }
+  }
+
+  async function handleSignOut(){
+    if(!auth) return;
+    await signOut(auth);
+    setUser(null);
+    setSyncStatus(null);
+  }
 
   async function persistEntries(list){
     setEntries(list); await dbSave("irj-entries",list);
@@ -962,6 +1063,26 @@ export default function App(){
         <div style={{position:"absolute",inset:"-10%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,200,80,0.04),transparent 60%)",pointerEvents:"none"}}/>
       </button>
 
+      {/* 8. SIGN-IN / PROFILE — bottom-left beneath desk */}
+      {!user&&!authLoading&&auth&&(
+        <button onClick={handleGoogleSignIn} style={{position:"absolute",left:"4%",bottom:"3%",zIndex:12,background:"rgba(26,22,18,0.65)",backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",border:"1px solid rgba(201,169,110,0.2)",borderRadius:14,padding:"8px 14px",cursor:"pointer",display:"flex",alignItems:"center",gap:8,animation:"fadeUp 1s 1.5s ease both",boxShadow:"0 4px 16px rgba(0,0,0,0.3)"}}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
+            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+          </svg>
+          <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.68rem",color:"rgba(255,248,232,0.5)",letterSpacing:"0.02em"}}>Save your journey</span>
+        </button>
+      )}
+      {user&&(
+        <button onClick={()=>setWindowPanel("profile")} style={{position:"absolute",left:"4%",bottom:"3%",zIndex:12,width:40,height:40,borderRadius:"50%",overflow:"hidden",border:`2px solid rgba(201,169,110,${syncStatus==="synced"?0.5:0.25})`,background:"rgba(26,22,18,0.6)",cursor:"pointer",boxShadow:"0 2px 14px rgba(0,0,0,0.35)",animation:"fadeUp .5s ease both",padding:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
+          {user.photoURL?(<img src={user.photoURL} alt="" referrerPolicy="no-referrer" style={{width:"100%",height:"100%",objectFit:"cover"}}/>):(<span style={{fontSize:"0.95rem",color:B.goldL,fontFamily:DISPLAY,fontWeight:700}}>{user.displayName?.[0]||"?"}</span>)}
+          {syncStatus==="syncing"&&<div style={{position:"absolute",bottom:-2,right:-2,width:10,height:10,borderRadius:"50%",background:B.gold,border:"2px solid #1A1612",animation:"gentlePulse 1s infinite"}}/>}
+          {syncStatus==="synced"&&<div style={{position:"absolute",bottom:-2,right:-2,width:10,height:10,borderRadius:"50%",background:"#6AAA6A",border:"2px solid #1A1612"}}/>}
+        </button>
+      )}
+
       {/* ═══ STREAK FLOATING INDICATOR ═══ */}
       {showStreak&&<div style={{position:"fixed",bottom:"28%",left:"50%",zIndex:60,animation:"streakFloat 3s ease both",pointerEvents:"none"}}>
         <div style={{background:"rgba(26,22,18,0.92)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",border:"1px solid rgba(201,169,110,0.3)",borderRadius:16,padding:"14px 24px",display:"flex",alignItems:"center",gap:12,boxShadow:"0 8px 32px rgba(0,0,0,0.4), 0 0 20px rgba(201,169,110,0.1)",whiteSpace:"nowrap"}}>
@@ -1052,44 +1173,93 @@ export default function App(){
         </div>;
       })()}
 
-      {/* ═══ WINDOW PANEL OVERLAY ═══ */}
+      {/* ═══ WINDOW / PROFILE PANEL OVERLAY ═══ */}
       {windowPanel&&<div style={{position:"fixed",inset:0,zIndex:80}}>
         {/* Backdrop */}
         <div onClick={()=>setWindowPanel(null)} style={{position:"absolute",inset:0,background:"rgba(10,8,6,0.5)",animation:"spaceFadeIn .25s ease"}}/>
         {/* Panel */}
-        <div style={{position:"absolute",[windowPanel==="left"?"left":"right"]:0,top:0,bottom:0,width:"min(82vw,360px)",background:"linear-gradient(180deg,rgba(26,22,18,0.96),rgba(20,16,12,0.98))",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderRight:windowPanel==="left"?"1px solid rgba(201,169,110,0.15)":"none",borderLeft:windowPanel==="right"?"1px solid rgba(201,169,110,0.15)":"none",animation:windowPanel==="left"?"windowPanelSlideLeft .35s ease both":"windowPanelSlide .35s ease both",display:"flex",flexDirection:"column",padding:"48px 28px 36px"}}>
+        <div style={{position:"absolute",[windowPanel==="right"?"right":"left"]:0,top:0,bottom:0,width:"min(82vw,360px)",background:"linear-gradient(180deg,rgba(26,22,18,0.96),rgba(20,16,12,0.98))",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderRight:windowPanel!=="right"?"1px solid rgba(201,169,110,0.15)":"none",borderLeft:windowPanel==="right"?"1px solid rgba(201,169,110,0.15)":"none",animation:windowPanel==="right"?"windowPanelSlide .35s ease both":"windowPanelSlideLeft .35s ease both",display:"flex",flexDirection:"column",padding:"48px 28px 36px"}}>
           {/* Close */}
           <button onClick={()=>setWindowPanel(null)} style={{position:"absolute",top:16,right:16,width:32,height:32,borderRadius:"50%",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(201,169,110,0.15)",color:"rgba(255,248,232,0.5)",fontSize:"0.75rem",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
-          {/* Title */}
-          <div style={{marginBottom:28}}>
-            <div style={{fontSize:"1.4rem",marginBottom:8}}>{windowPanel==="left"?"🌲":"🌊"}</div>
-            <h3 style={{fontFamily:DISPLAY,fontSize:"1.3rem",fontWeight:700,color:"#FFF8E8",margin:"0 0 4px"}}>{windowPanel==="left"?"Forest View":"Waterfall View"}</h3>
-            <div style={{width:40,height:1,background:"linear-gradient(90deg,rgba(201,169,110,0.4),transparent)",marginTop:8}}/>
-          </div>
-          {/* Options */}
-          <div style={{display:"flex",flexDirection:"column",gap:"14px",flex:1}}>
-            {(windowPanel==="left"?[
-              {emoji:"🔊",label:"Nature Sounds",desc:"Forest birdsong & gentle breeze"},
-              {emoji:"⏱️",label:"Prayer Timer",desc:"1 · 3 · 5 · 10 minutes of stillness"},
-              {emoji:"🕊️",label:"Stillness Mode",desc:"Quiet your mind. Just breathe."},
-            ]:[
-              {emoji:"📖",label:"Daily Scripture",desc:"A word to carry with you today"},
-              {emoji:"🔊",label:"Water Sounds",desc:"Flowing waterfall & river stones"},
-              {emoji:"🙏",label:"Quiet Prayer Space",desc:"Pour out your heart in this place"},
-            ]).map((opt,i)=>(
-              <div key={i} className="wp-option" style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(201,169,110,0.12)",borderRadius:12,padding:"16px 18px",display:"flex",alignItems:"center",gap:"14px"}}>
-                <div style={{fontSize:"1.3rem",width:36,textAlign:"center"}}>{opt.emoji}</div>
-                <div>
-                  <div style={{fontFamily:SERIF,fontSize:"0.92rem",color:"#FFF8E8",fontWeight:600,marginBottom:2}}>{opt.label}</div>
-                  <div style={{fontFamily:SANS,fontSize:"0.7rem",color:"rgba(255,248,232,0.4)"}}>{opt.desc}</div>
-                </div>
+
+          {/* ── PROFILE PANEL ── */}
+          {windowPanel==="profile"&&<>
+            <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:24}}>
+              {user?.photoURL?(<img src={user.photoURL} alt="" referrerPolicy="no-referrer" style={{width:52,height:52,borderRadius:"50%",border:"2px solid rgba(201,169,110,0.3)",objectFit:"cover"}}/>):(<div style={{width:52,height:52,borderRadius:"50%",background:"rgba(201,169,110,0.12)",border:"2px solid rgba(201,169,110,0.25)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.4rem",color:B.goldL,fontFamily:DISPLAY,fontWeight:700}}>{user?.displayName?.[0]||"?"}</div>)}
+              <div>
+                <h3 style={{fontFamily:DISPLAY,fontSize:"1.15rem",fontWeight:700,color:"#FFF8E8",margin:"0 0 3px"}}>{user?.displayName||"Journaler"}</h3>
+                <div style={{fontFamily:SANS,fontSize:"0.7rem",color:"rgba(255,248,232,0.4)"}}>{user?.email}</div>
               </div>
-            ))}
-          </div>
-          {/* Footer hint */}
-          <div style={{textAlign:"center",marginTop:20}}>
-            <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.72rem",color:"rgba(255,248,232,0.2)"}}>Tap outside to close</p>
-          </div>
+            </div>
+            <div style={{width:"100%",height:1,background:"linear-gradient(90deg,rgba(201,169,110,0.3),transparent)",marginBottom:22}}/>
+            {/* Sync status */}
+            <div style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(201,169,110,0.12)",borderRadius:12,padding:"14px 18px",display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
+              <div style={{display:"flex",alignItems:"center",gap:10}}>
+                <span style={{fontSize:"1.1rem"}}>☁️</span>
+                <span style={{fontFamily:SERIF,fontSize:"0.88rem",color:"#FFF8E8"}}>Cloud sync</span>
+              </div>
+              <span style={{fontFamily:SANS,fontSize:"0.7rem",color:"#6AAA6A",fontWeight:600}}>Active</span>
+            </div>
+            {/* Stats */}
+            <div style={{display:"flex",gap:10,marginBottom:18}}>
+              <div style={{flex:1,background:"rgba(255,255,255,0.03)",border:"1px solid rgba(201,169,110,0.08)",borderRadius:10,padding:"12px 14px",textAlign:"center"}}>
+                <div style={{fontFamily:DISPLAY,fontSize:"1.3rem",fontWeight:700,color:B.goldL}}>{entries.length}</div>
+                <div style={{fontFamily:SANS,fontSize:"0.62rem",color:"rgba(255,248,232,0.35)",marginTop:2}}>Reflections</div>
+              </div>
+              <div style={{flex:1,background:"rgba(255,255,255,0.03)",border:"1px solid rgba(201,169,110,0.08)",borderRadius:10,padding:"12px 14px",textAlign:"center"}}>
+                <div style={{fontFamily:DISPLAY,fontSize:"1.3rem",fontWeight:700,color:B.goldL}}>{streak}</div>
+                <div style={{fontFamily:SANS,fontSize:"0.62rem",color:"rgba(255,248,232,0.35)",marginTop:2}}>Day streak</div>
+              </div>
+              <div style={{flex:1,background:"rgba(255,255,255,0.03)",border:"1px solid rgba(201,169,110,0.08)",borderRadius:10,padding:"12px 14px",textAlign:"center"}}>
+                <div style={{fontFamily:DISPLAY,fontSize:"1.3rem",fontWeight:700,color:B.goldL}}>{prayerPosts.length}</div>
+                <div style={{fontFamily:SANS,fontSize:"0.62rem",color:"rgba(255,248,232,0.35)",marginTop:2}}>Prayers</div>
+              </div>
+            </div>
+            {/* Info */}
+            <div style={{background:"rgba(106,170,106,0.06)",border:"1px solid rgba(106,170,106,0.12)",borderRadius:10,padding:"12px 16px",marginBottom:14}}>
+              <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.78rem",color:"rgba(255,248,232,0.45)",margin:0,lineHeight:1.6}}>Your reflections, prayers, and progress are safely synced across all your devices.</p>
+            </div>
+            <div style={{flex:1}}/>
+            {/* Sign out */}
+            <button onClick={()=>{handleSignOut();setWindowPanel(null);}} style={{width:"100%",background:"rgba(255,255,255,0.04)",border:"1px solid rgba(201,169,110,0.15)",borderRadius:10,padding:"13px 18px",color:"rgba(255,248,232,0.45)",fontFamily:SANS,fontSize:"0.82rem",cursor:"pointer",transition:"all .2s",marginTop:12}}>Sign out</button>
+            <div style={{textAlign:"center",marginTop:14}}>
+              <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.68rem",color:"rgba(255,248,232,0.15)"}}>Tap outside to close</p>
+            </div>
+          </>}
+
+          {/* ── WINDOW PANELS (left/right) ── */}
+          {(windowPanel==="left"||windowPanel==="right")&&<>
+            {/* Title */}
+            <div style={{marginBottom:28}}>
+              <div style={{fontSize:"1.4rem",marginBottom:8}}>{windowPanel==="left"?"🌲":"🌊"}</div>
+              <h3 style={{fontFamily:DISPLAY,fontSize:"1.3rem",fontWeight:700,color:"#FFF8E8",margin:"0 0 4px"}}>{windowPanel==="left"?"Forest View":"Waterfall View"}</h3>
+              <div style={{width:40,height:1,background:"linear-gradient(90deg,rgba(201,169,110,0.4),transparent)",marginTop:8}}/>
+            </div>
+            {/* Options */}
+            <div style={{display:"flex",flexDirection:"column",gap:"14px",flex:1}}>
+              {(windowPanel==="left"?[
+                {emoji:"🔊",label:"Nature Sounds",desc:"Forest birdsong & gentle breeze"},
+                {emoji:"⏱️",label:"Prayer Timer",desc:"1 · 3 · 5 · 10 minutes of stillness"},
+                {emoji:"🕊️",label:"Stillness Mode",desc:"Quiet your mind. Just breathe."},
+              ]:[
+                {emoji:"📖",label:"Daily Scripture",desc:"A word to carry with you today"},
+                {emoji:"🔊",label:"Water Sounds",desc:"Flowing waterfall & river stones"},
+                {emoji:"🙏",label:"Quiet Prayer Space",desc:"Pour out your heart in this place"},
+              ]).map((opt,i)=>(
+                <div key={i} className="wp-option" style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(201,169,110,0.12)",borderRadius:12,padding:"16px 18px",display:"flex",alignItems:"center",gap:"14px"}}>
+                  <div style={{fontSize:"1.3rem",width:36,textAlign:"center"}}>{opt.emoji}</div>
+                  <div>
+                    <div style={{fontFamily:SERIF,fontSize:"0.92rem",color:"#FFF8E8",fontWeight:600,marginBottom:2}}>{opt.label}</div>
+                    <div style={{fontFamily:SANS,fontSize:"0.7rem",color:"rgba(255,248,232,0.4)"}}>{opt.desc}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {/* Footer hint */}
+            <div style={{textAlign:"center",marginTop:20}}>
+              <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.72rem",color:"rgba(255,248,232,0.2)"}}>Tap outside to close</p>
+            </div>
+          </>}
         </div>
       </div>}
 
