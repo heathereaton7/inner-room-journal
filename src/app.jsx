@@ -468,6 +468,8 @@ export default function App(){
   const [activeDay,     setActiveDay]     = useState(0);
   const [jTexts,        setJTexts]        = useState(["","",""]);
   const [saveMsg,       setSaveMsg]       = useState("");
+  const [bookText,      setBookText]      = useState("");
+  const [bookSaveMsg,   setBookSaveMsg]   = useState("");
   const [prayerPosts,   setPrayerPosts]   = useState([]);
   const [newPrayer,     setNewPrayer]     = useState("");
   const [prayerTag,     setPrayerTag]     = useState("");
@@ -622,6 +624,14 @@ export default function App(){
     persistEntries([e,...entries]);
     setSaveMsg("✓ Reflection saved"); setTimeout(()=>{setSaveMsg("");setScreen(prevScreen);},1800);
   }
+  function saveBookEntry(){
+    if(!bookText.trim()||!BOOK_CONTENT[deskBook]) return;
+    const pg=BOOK_CONTENT[deskBook].pages[bookPage-1];
+    const book=SHELF_BOOKS.find(b=>b.id===deskBook);
+    const e={id:Date.now().toString(),date:todayStr(),roomId:deskBook,roomLabel:book?.label||deskBook,roomEmoji:book?.emoji||"📖",day:bookPage-1,prompt:pg.prompt,text:bookText.trim(),words:wc(bookText)};
+    persistEntries([e,...entries]);
+    setBookSaveMsg("✓ Saved"); setTimeout(()=>setBookSaveMsg(""),2000);
+  }
 
   // ── PRAYER ──
   function postPrayer(){
@@ -708,6 +718,7 @@ export default function App(){
     if(next < 0 || next >= TOTAL_BOOK_PAGES) return;
     setFlipDir(dir);
     setBookPage(next);
+    setBookText(""); setBookSaveMsg("");
   }
   function bookTouchStart(e){touchRef.current.startX=e.touches[0].clientX;touchRef.current.startY=e.touches[0].clientY;}
   function bookTouchEnd(e){
@@ -733,6 +744,7 @@ export default function App(){
       setBookOpen(true);
       setBookPage(0);
       setFlipDir(null);
+      setBookText(""); setBookSaveMsg("");
     },1600);
   }
 
@@ -1456,8 +1468,13 @@ export default function App(){
                       <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.74rem",color:"rgba(107,85,58,0.4)",textAlign:"center",margin:"0 0 16px",lineHeight:1.6}}>{pg.hint}</p>
                       {/* Writing area */}
                       <div style={{background:"rgba(139,109,69,0.04)",border:"1px solid rgba(139,109,69,0.1)",borderRadius:10,overflow:"hidden",flex:1,minHeight:120}}>
-                        <textarea placeholder="Write your thoughts here…" style={{width:"100%",height:"100%",minHeight:120,background:"transparent",border:"none",padding:"14px 16px",fontFamily:SERIF,fontSize:"0.88rem",color:"#4A3826",lineHeight:1.8,boxSizing:"border-box",resize:"none"}}/>
+                        <textarea value={bookText} onChange={e=>setBookText(e.target.value)} placeholder="Write your thoughts here…" style={{width:"100%",height:"100%",minHeight:120,background:"transparent",border:"none",padding:"14px 16px",fontFamily:SERIF,fontSize:"0.88rem",color:"#4A3826",lineHeight:1.8,boxSizing:"border-box",resize:"none"}}/>
                       </div>
+                      {/* Save bar */}
+                      {bookText.trim()&&<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 12px",marginTop:8,background:"rgba(139,109,69,0.08)",borderRadius:8,border:"1px solid rgba(139,109,69,0.15)"}}>
+                        <span style={{fontSize:"0.7rem",color:"rgba(107,85,58,0.5)",fontFamily:SANS}}>{bookSaveMsg||`${wc(bookText)} words`}</span>
+                        <button onClick={saveBookEntry} style={{background:"linear-gradient(135deg,#5C4A2E,#3D2B18)",border:"none",color:"#F5E6C8",padding:"6px 18px",borderRadius:6,cursor:"pointer",fontSize:"0.76rem",fontFamily:SANS,fontWeight:600,letterSpacing:"0.02em"}}>Save →</button>
+                      </div>}
                     </div>
                     <div style={{textAlign:"center",fontFamily:SANS,fontSize:"0.6rem",color:"rgba(107,85,58,0.3)",letterSpacing:"0.1em",textTransform:"uppercase",marginTop:10}}>— {bookPage+1} of {TOTAL_BOOK_PAGES} —</div>
                   </>;
