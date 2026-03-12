@@ -3340,30 +3340,6 @@ export default function App(){
           </button>
         ))}
 
-        {/* ═══ FLOATING LABELS — beside each hotspot ═══ */}
-        {MAP_LOCATIONS.map((loc,idx)=>(
-          <div key={loc.id+"-label"} style={{
-            position:"absolute",left:loc.left,top:`calc(${loc.top} + min(10vw,46px))`,
-            transform:"translateX(-50%)",
-            zIndex:12,pointerEvents:"none",
-            display:"flex",flexDirection:"column",alignItems:"center",gap:1,
-            animation:`fadeUp .6s ${0.3+idx*0.12}s ease both, mapLabelFloat ${4+idx*0.5}s ${idx*0.3}s ease-in-out infinite`,
-          }}>
-            <div style={{background:"rgba(10,8,6,0.72)",backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",border:"1px solid rgba(255,210,120,0.12)",borderRadius:10,padding:"4px 10px",whiteSpace:"nowrap"}}>
-              <span style={{fontFamily:DISPLAY,fontWeight:700,fontSize:"clamp(0.58rem,1.6vw,0.78rem)",color:"#F5E8C8",textShadow:"0 1px 4px rgba(0,0,0,0.6)",letterSpacing:"0.02em"}}>{loc.label}</span>
-            </div>
-            <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.42rem,1.1vw,0.55rem)",color:"rgba(245,232,200,0.35)",textShadow:"0 1px 3px rgba(0,0,0,0.7)"}}>{loc.desc}</span>
-          </div>
-        ))}
-
-        {/* ═══ TOP TITLE ═══ */}
-        <div style={{position:"absolute",top:"3%",left:"50%",transform:"translateX(-50%)",zIndex:20,display:"flex",flexDirection:"column",alignItems:"center",gap:2,animation:"fadeUp .8s ease both"}}>
-          <div style={{background:"rgba(10,8,6,0.6)",backdropFilter:"blur(10px)",WebkitBackdropFilter:"blur(10px)",border:"1px solid rgba(255,210,120,0.1)",borderRadius:14,padding:"6px 18px"}}>
-            <span style={{fontFamily:DISPLAY,fontWeight:700,fontSize:"clamp(0.75rem,2vw,1rem)",color:"#F5E8C8",letterSpacing:"0.04em",textShadow:"0 1px 4px rgba(0,0,0,0.5)"}}>The Village</span>
-          </div>
-          <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.48rem,1.2vw,0.6rem)",color:"rgba(245,232,200,0.3)"}}>Choose your path</span>
-        </div>
-
         {/* ═══ SPACE TRANSIT OVERLAY ═══ */}
         {spaceTransit&&<div style={{position:"fixed",inset:0,zIndex:9999,background:"#0A0806",animation:"spaceFadeIn .6s ease both",pointerEvents:"all"}}/>}
       </div>
