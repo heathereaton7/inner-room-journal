@@ -494,6 +494,11 @@ export default function App(){
   const [user,          setUser]          = useState(null);
   const [authLoading,   setAuthLoading]   = useState(true);
   const [syncStatus,    setSyncStatus]    = useState(null);
+  // calendar history
+  const [calMonth,       setCalMonth]       = useState(()=>new Date().getMonth());
+  const [calYear,        setCalYear]        = useState(()=>new Date().getFullYear());
+  const [calSelectedDay, setCalSelectedDay] = useState(null);
+  const [expandedEntry,  setExpandedEntry]  = useState(null);
 
   // ── LOAD ──
   useEffect(()=>{
@@ -622,7 +627,7 @@ export default function App(){
     if(!jTexts[0].trim()) return;
     const e={id:Date.now().toString(),date:todayStr(),roomId:activeRoom.id,roomLabel:activeRoom.label,roomEmoji:activeRoom.emoji,day:activeDay,prompt:activeRoom.days[activeDay].q,text:jTexts.filter(Boolean).join("\n\n---\n\n"),words:jTexts.filter(Boolean).reduce((s,t)=>s+wc(t),0)};
     persistEntries([e,...entries]);
-    setSaveMsg("✓ Reflection saved"); setTimeout(()=>{setSaveMsg("");setScreen(prevScreen);},1800);
+    setSaveMsg("✓ Saved to your history"); setTimeout(()=>{setSaveMsg("");setScreen(prevScreen);},2200);
   }
   function saveBookEntry(){
     if(!bookText.trim()||!BOOK_CONTENT[deskBook]) return;
@@ -630,7 +635,7 @@ export default function App(){
     const book=SHELF_BOOKS.find(b=>b.id===deskBook);
     const e={id:Date.now().toString(),date:todayStr(),roomId:deskBook,roomLabel:book?.label||deskBook,roomEmoji:book?.emoji||"📖",day:bookPage-1,prompt:pg.prompt,text:bookText.trim(),words:wc(bookText)};
     persistEntries([e,...entries]);
-    setBookSaveMsg("✓ Saved"); setTimeout(()=>setBookSaveMsg(""),2000);
+    setBookSaveMsg("✓ Saved to history 📖"); setTimeout(()=>setBookSaveMsg(""),2500);
   }
 
   // ── PRAYER ──
@@ -803,6 +808,19 @@ export default function App(){
   },[prayerPosts,commSearch]);
 
   function roomProg(room){ return entries.filter(e=>e.roomId===room.id).length; }
+
+  const entriesByDate = useMemo(()=>{
+    const map={};
+    entries.forEach(e=>{if(!map[e.date]) map[e.date]=[];map[e.date].push(e);});
+    return map;
+  },[entries]);
+
+  function calNavigate(dir){
+    setCalSelectedDay(null);setExpandedEntry(null);
+    if(dir==="prev"){calMonth===0?(setCalMonth(11),setCalYear(y=>y-1)):setCalMonth(m=>m-1);}
+    else{calMonth===11?(setCalMonth(0),setCalYear(y=>y+1)):setCalMonth(m=>m+1);}
+  }
+  function goToHistory(){setCalMonth(new Date().getMonth());setCalYear(new Date().getFullYear());setCalSelectedDay(null);setExpandedEntry(null);setScreen("history");}
 
   /* ── GLOBAL CSS ── */
   const CSS=`
@@ -1098,6 +1116,12 @@ export default function App(){
         </button>
       )}
 
+      {/* 9. HISTORY — bottom-right floating button */}
+      <button onClick={goToHistory} style={{position:"absolute",right:"4%",bottom:"3%",zIndex:12,background:"rgba(26,22,18,0.65)",backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",border:"1px solid rgba(201,169,110,0.2)",borderRadius:14,padding:"8px 14px",cursor:"pointer",display:"flex",alignItems:"center",gap:8,animation:"fadeUp 1s 1.8s ease both",boxShadow:"0 4px 16px rgba(0,0,0,0.3)"}}>
+        <span style={{fontSize:"0.85rem"}}>📖</span>
+        <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.68rem",color:"rgba(255,248,232,0.5)",letterSpacing:"0.02em"}}>History</span>
+      </button>
+
       {/* ═══ STREAK FLOATING INDICATOR ═══ */}
       {showStreak&&<div style={{position:"fixed",bottom:"28%",left:"50%",zIndex:60,animation:"streakFloat 3s ease both",pointerEvents:"none"}}>
         <div style={{background:"rgba(26,22,18,0.92)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",border:"1px solid rgba(201,169,110,0.3)",borderRadius:16,padding:"14px 24px",display:"flex",alignItems:"center",gap:12,boxShadow:"0 8px 32px rgba(0,0,0,0.4), 0 0 20px rgba(201,169,110,0.1)",whiteSpace:"nowrap"}}>
@@ -1164,6 +1188,7 @@ export default function App(){
             {entries.length===0&&<div style={{textAlign:"center",padding:"20px 0"}}>
               <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.85rem",color:"rgba(255,248,232,0.35)",lineHeight:1.6}}>Your insights will emerge as you reflect. Open a book to begin.</p>
             </div>}
+            {entries.length>0&&<button onClick={()=>{setShowInsights(false);goToHistory();}} style={{width:"100%",marginTop:16,background:"rgba(201,169,110,0.08)",border:"1px solid rgba(201,169,110,0.15)",borderRadius:10,padding:"11px",color:B.goldL,fontFamily:SERIF,fontStyle:"italic",fontSize:"0.82rem",cursor:"pointer",textAlign:"center"}}>View all reflections 📖</button>}
           </div>
         </div>
       </div>}
@@ -1234,6 +1259,9 @@ export default function App(){
             <div style={{background:"rgba(106,170,106,0.06)",border:"1px solid rgba(106,170,106,0.12)",borderRadius:10,padding:"12px 16px",marginBottom:14}}>
               <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.78rem",color:"rgba(255,248,232,0.45)",margin:0,lineHeight:1.6}}>Your reflections, prayers, and progress are safely synced across all your devices.</p>
             </div>
+            <button onClick={()=>{setWindowPanel(null);goToHistory();}} style={{width:"100%",background:"rgba(255,255,255,0.04)",border:"1px solid rgba(201,169,110,0.15)",borderRadius:10,padding:"13px 18px",color:B.goldL,fontFamily:SANS,fontSize:"0.82rem",cursor:"pointer",transition:"all .2s",marginBottom:8,display:"flex",alignItems:"center",gap:10}}>
+              <span style={{fontSize:"1rem"}}>📖</span> Reflection History
+            </button>
             <div style={{flex:1}}/>
             {/* Sign out */}
             <button onClick={()=>{handleSignOut();setWindowPanel(null);}} style={{width:"100%",background:"rgba(255,255,255,0.04)",border:"1px solid rgba(201,169,110,0.15)",borderRadius:10,padding:"13px 18px",color:"rgba(255,248,232,0.45)",fontFamily:SANS,fontSize:"0.82rem",cursor:"pointer",transition:"all .2s",marginTop:12}}>Sign out</button>
@@ -1853,32 +1881,119 @@ export default function App(){
     </div>
   );
 
-  /* ══ HISTORY ═══════════════════════════════════════ */
-  if(screen==="history") return(
-    <div style={{minHeight:"100vh",background:B.beige,color:B.ink,fontFamily:SANS}}>
-      <style>{GFONTS}{CSS}</style>
-      <DarkHeader title="📖 Reflection History" onBack={()=>setScreen("cabin")}/>
-      <main style={{maxWidth:"700px",margin:"0 auto",padding:"28px 22px 80px"}}>
-        {entries.length===0?(
-          <div style={{background:B.white,borderRadius:"12px",padding:"48px 28px",textAlign:"center",border:`1px solid ${B.beigeD}`}}><div style={{fontSize:"1.8rem",marginBottom:"12px"}}>📖</div><p style={{fontFamily:SERIF,fontStyle:"italic",color:B.inkL,margin:"0 0 18px"}}>Your reflections will live here.</p><button onClick={()=>setScreen("cabin")} style={{background:B.night,border:"none",color:B.goldL,padding:"11px 26px",borderRadius:"8px",cursor:"pointer",fontSize:"0.83rem",fontFamily:SANS,fontWeight:600}}>Begin →</button></div>
-        ):(
-          <div style={{display:"flex",flexDirection:"column",gap:"9px"}}>
-            {entries.map(e=>{
-              const allR=[...REFLECTION_ROOMS,...COMMUNITY_ROOMS,LOCKED_ROOM,{id:"jesus",label:"Jesus Questions",emoji:"✝️"},{id:"viral",label:"Questions",emoji:"✦"}];
-              const room=allR.find(r=>r.id===e.roomId)||{emoji:e.roomEmoji||"📝",label:e.roomLabel||"Reflection"};
-              const t=th(e.roomId)||th("fear");
-              return(<div key={e.id} style={{background:B.white,border:`1px solid ${B.beigeD}`,borderRadius:"12px",padding:"16px 18px",boxShadow:"0 1px 6px rgba(0,0,0,0.04)"}}>
-                <div style={{display:"flex",alignItems:"center",gap:"8px",marginBottom:"8px"}}><span>{room.emoji}</span><span style={{fontSize:"0.77rem",fontWeight:600,color:t.accent,fontFamily:SANS}}>{room.label} · Day {e.day+1}</span><span style={{marginLeft:"auto",fontSize:"0.68rem",color:B.inkLL}}>{e.date}</span></div>
-                <div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.82rem",color:B.inkL,marginBottom:"8px",lineHeight:1.55,borderLeft:`2px solid ${B.beigeD}`,paddingLeft:"11px"}}>{e.prompt}</div>
-                <div style={{fontFamily:SERIF,fontSize:"0.93rem",color:B.ink,lineHeight:1.75}}>{e.text.length>240?e.text.slice(0,240)+"…":e.text}</div>
-                <div style={{marginTop:"6px",fontSize:"0.67rem",color:B.inkLL}}>{e.words} words</div>
-              </div>);
-            })}
+  /* ══ HISTORY (Calendar) ═══════════════════════════ */
+  if(screen==="history"){
+    const MN=["January","February","March","April","May","June","July","August","September","October","November","December"];
+    const DN=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+    const firstDow=new Date(calYear,calMonth,1).getDay();
+    const dim=new Date(calYear,calMonth+1,0).getDate();
+    const today=todayStr();
+    const isCurMonth=calMonth===new Date().getMonth()&&calYear===new Date().getFullYear();
+    const todayD=new Date().getDate();
+    const selStr=calSelectedDay?`${calYear}-${String(calMonth+1).padStart(2,"0")}-${String(calSelectedDay).padStart(2,"0")}`:null;
+    const selEntries=selStr?(entriesByDate[selStr]||[]):[];
+    const monthEntries=entries.filter(e=>{const[y,m]=e.date.split("-");return parseInt(y)===calYear&&parseInt(m)===calMonth+1;});
+    const allR=[...REFLECTION_ROOMS,...COMMUNITY_ROOMS,LOCKED_ROOM,{id:"jesus",label:"Jesus Questions",emoji:"✝️"},{id:"viral",label:"Questions",emoji:"✦"},...SHELF_BOOKS.filter(b=>b.id!=="journal").map(b=>({id:b.id,label:b.label,emoji:b.emoji}))];
+
+    return(
+      <div style={{minHeight:"100vh",background:B.beige,color:B.ink,fontFamily:SANS}}>
+        <style>{GFONTS}{CSS}</style>
+        <DarkHeader title="📖 Reflection History" onBack={()=>setScreen("cabin")}/>
+        <main style={{maxWidth:"700px",margin:"0 auto",padding:"20px 18px 80px"}}>
+
+          {/* ── Month / Year Navigator ── */}
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:18,padding:"0 4px"}}>
+            <button onClick={()=>calNavigate("prev")} style={{background:B.white,border:`1px solid ${B.beigeD}`,borderRadius:"50%",width:36,height:36,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1rem",color:B.inkM,boxShadow:"0 1px 4px rgba(0,0,0,0.06)"}}>‹</button>
+            <div style={{textAlign:"center"}}>
+              <div style={{fontFamily:DISPLAY,fontSize:"1.2rem",fontWeight:700,color:B.ink}}>{MN[calMonth]}</div>
+              <div style={{fontFamily:SANS,fontSize:"0.68rem",color:B.inkLL,letterSpacing:"0.08em"}}>{calYear}</div>
+            </div>
+            <button onClick={()=>calNavigate("next")} style={{background:B.white,border:`1px solid ${B.beigeD}`,borderRadius:"50%",width:36,height:36,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1rem",color:B.inkM,boxShadow:"0 1px 4px rgba(0,0,0,0.06)"}}>›</button>
           </div>
-        )}
-      </main>
-    </div>
-  );
+
+          {/* ── Calendar Grid ── */}
+          <div style={{background:B.white,border:`1px solid ${B.beigeD}`,borderRadius:14,padding:"14px 10px",boxShadow:"0 1px 8px rgba(0,0,0,0.04)",marginBottom:20}}>
+            {/* Day-of-week headers */}
+            <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2,marginBottom:6}}>
+              {DN.map(d=><div key={d} style={{textAlign:"center",fontSize:"0.62rem",fontFamily:SANS,fontWeight:600,color:B.inkLL,letterSpacing:"0.06em",padding:"4px 0"}}>{d}</div>)}
+            </div>
+            {/* Day cells */}
+            <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2}}>
+              {Array.from({length:firstDow}).map((_,i)=><div key={`e${i}`} style={{aspectRatio:"1",padding:4}}/>)}
+              {Array.from({length:dim}).map((_,i)=>{
+                const day=i+1;
+                const ds=`${calYear}-${String(calMonth+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+                const de=entriesByDate[ds]||[];
+                const has=de.length>0;
+                const isSel=calSelectedDay===day;
+                const isT=isCurMonth&&day===todayD;
+                return(
+                  <button key={day} onClick={()=>{setCalSelectedDay(isSel?null:day);setExpandedEntry(null);}}
+                    style={{aspectRatio:"1",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:isSel?B.night:isT?"rgba(201,169,110,0.08)":"transparent",border:isT&&!isSel?`1px solid ${B.gold}`:"1px solid transparent",borderRadius:10,cursor:"pointer",position:"relative",transition:"all 0.15s"}}>
+                    <span style={{fontSize:"0.82rem",fontFamily:SERIF,fontWeight:isSel||isT?700:400,color:isSel?B.goldL:isT?B.gold:has?B.ink:B.inkLL}}>{day}</span>
+                    {has&&<div style={{display:"flex",gap:2,position:"absolute",bottom:3}}>
+                      {de.slice(0,3).map((en,j)=><div key={j} style={{width:4,height:4,borderRadius:"50%",background:isSel?B.goldL:th(en.roomId).accent,opacity:isSel?0.8:0.7}}/>)}
+                    </div>}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* ── Month summary (no day selected) ── */}
+          {!calSelectedDay&&<div style={{textAlign:"center",padding:"12px 0"}}>
+            <p style={{fontFamily:SERIF,fontStyle:"italic",color:B.inkL,fontSize:"0.85rem",lineHeight:1.6}}>
+              {monthEntries.length>0?`${monthEntries.length} reflection${monthEntries.length===1?"":"s"} this month. Tap a day to explore.`:"No reflections this month yet."}
+            </p>
+          </div>}
+
+          {/* ── Selected day: entries found ── */}
+          {calSelectedDay&&selEntries.length>0&&<div>
+            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12,padding:"0 4px"}}>
+              <div style={{width:3,height:16,background:B.gold,borderRadius:2}}/>
+              <span style={{fontFamily:DISPLAY,fontSize:"1rem",fontWeight:700,color:B.ink}}>{MN[calMonth]} {calSelectedDay}, {calYear}</span>
+              <span style={{fontFamily:SANS,fontSize:"0.7rem",color:B.inkLL,marginLeft:"auto"}}>{selEntries.length} {selEntries.length===1?"entry":"entries"}</span>
+            </div>
+            <div style={{display:"flex",flexDirection:"column",gap:9}}>
+              {selEntries.map((e,idx)=>{
+                const room=allR.find(r=>r.id===e.roomId)||{emoji:e.roomEmoji||"📝",label:e.roomLabel||"Reflection"};
+                const t=th(e.roomId)||th("fear");
+                const isExp=expandedEntry===e.id;
+                return(
+                  <div key={e.id} onClick={()=>setExpandedEntry(isExp?null:e.id)} style={{background:B.white,border:`1px solid ${B.beigeD}`,borderRadius:12,padding:"16px 18px",boxShadow:"0 1px 6px rgba(0,0,0,0.04)",cursor:"pointer",transition:"all 0.2s",borderLeft:`3px solid ${t.accent}`,animation:`fadeUp .45s ${idx*.08}s ease both`}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+                      <span>{room.emoji}</span>
+                      <span style={{fontSize:"0.77rem",fontWeight:600,color:t.accent,fontFamily:SANS}}>{room.label}{typeof e.day==="number"?` · Day ${e.day+1}`:""}</span>
+                      <span style={{marginLeft:"auto",fontSize:"0.68rem",color:B.inkLL}}>{e.words} words</span>
+                    </div>
+                    <div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.82rem",color:B.inkL,marginBottom:8,lineHeight:1.55,borderLeft:`2px solid ${B.beigeD}`,paddingLeft:11}}>{e.prompt}</div>
+                    <div style={{fontFamily:SERIF,fontSize:"0.93rem",color:B.ink,lineHeight:1.75,whiteSpace:isExp?"pre-wrap":"normal"}}>{isExp?e.text:(e.text.length>240?e.text.slice(0,240)+"…":e.text)}</div>
+                    {!isExp&&e.text.length>240&&<div style={{fontFamily:SANS,fontSize:"0.7rem",color:B.gold,marginTop:6,fontWeight:500}}>Tap to read more</div>}
+                    {isExp&&<div style={{fontFamily:SANS,fontSize:"0.7rem",color:B.inkLL,marginTop:8,fontWeight:500}}>Tap to collapse</div>}
+                  </div>
+                );
+              })}
+            </div>
+          </div>}
+
+          {/* ── Selected day: no entries ── */}
+          {calSelectedDay&&selEntries.length===0&&<div style={{background:B.white,borderRadius:12,padding:"32px 24px",textAlign:"center",border:`1px solid ${B.beigeD}`}}>
+            <div style={{fontSize:"1.4rem",marginBottom:8}}>🌙</div>
+            <p style={{fontFamily:SERIF,fontStyle:"italic",color:B.inkL,margin:"0 0 14px",fontSize:"0.88rem"}}>No reflections on this day.</p>
+            <button onClick={()=>setScreen("cabin")} style={{background:B.night,border:"none",color:B.goldL,padding:"9px 22px",borderRadius:8,cursor:"pointer",fontSize:"0.8rem",fontFamily:SANS,fontWeight:600}}>Start reflecting</button>
+          </div>}
+
+          {/* ── Global empty state ── */}
+          {entries.length===0&&<div style={{background:B.white,borderRadius:12,padding:"48px 28px",textAlign:"center",border:`1px solid ${B.beigeD}`,marginTop:16}}>
+            <div style={{fontSize:"1.8rem",marginBottom:12}}>📖</div>
+            <p style={{fontFamily:SERIF,fontStyle:"italic",color:B.inkL,margin:"0 0 18px"}}>Your reflections will live here.</p>
+            <button onClick={()=>setScreen("cabin")} style={{background:B.night,border:"none",color:B.goldL,padding:"11px 26px",borderRadius:8,cursor:"pointer",fontSize:"0.83rem",fontFamily:SANS,fontWeight:600}}>Begin →</button>
+          </div>}
+
+        </main>
+      </div>
+    );
+  }
 
   return null;
 }
