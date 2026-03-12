@@ -659,9 +659,10 @@ function RoomGlow({id}){
    See docs/CABIN_VISUAL_BUILD_BRIEF.md for full spec.
 ═══════════════════════════════════════════════════ */
 
-// Image A — intimate desk/Bible nook closeup. Open Bible center-right, candle lantern center,
-// desk lamp upper-right, notebook left-of-candle, large window with pine forest behind,
-// window seat with chunky throw on left, wood paneling right edge, chair lower-left.
+// Sunken cabin great room — stone fireplace with roaring fire LEFT, large picture window CENTER
+// with pine forest & starry sky, cathedral skylight TOP, string lights across ceiling beams,
+// wooden stairs going up on RIGHT, desk with lamp UPPER-RIGHT, sectional sofa CENTER-LOWER,
+// 6 colorful books on curved wooden ledge BOTTOM, bookshelf FAR-LEFT, candles on mantel & surfaces.
 const CABIN_FALLBACK_IMAGE="/cabin-interior.png";
 
 function ImmersiveCabin(){
@@ -674,6 +675,7 @@ function ImmersiveCabin(){
   const dragStart=useRef(null);
   const animFrame=useRef(null);
   const particles=useRef([]);
+  const fireflies=useRef([]);
   const time=useRef(0);
   const imgLoaded=useRef(false);
   const imgRef=useRef(null);
@@ -698,6 +700,20 @@ function ImmersiveCabin(){
       });
     }
     particles.current=pts;
+    // Fireflies — glowing outside the window area
+    const ffs=[];
+    for(let i=0;i<18;i++){
+      ffs.push({
+        x:0.20+Math.random()*0.56,   // within window bounds ~20-76%
+        y:0.12+Math.random()*0.36,    // within window bounds ~12-48%
+        size:Math.random()*2+1.5,
+        sx:(Math.random()-0.5)*0.0003,
+        sy:(Math.random()-0.5)*0.0002,
+        phase:Math.random()*Math.PI*2,
+        blink:Math.random()*0.003+0.001,
+      });
+    }
+    fireflies.current=ffs;
   },[]);
 
   // Gyroscope on mobile
@@ -806,6 +822,27 @@ function ImmersiveCabin(){
             ctx.fill();
           }
         });
+        // ── Fireflies outside the window ──
+        fireflies.current.forEach(ff=>{
+          ff.x+=ff.sx+Math.sin(time.current*0.0005+ff.phase)*0.0001;
+          ff.y+=ff.sy+Math.cos(time.current*0.0007+ff.phase)*0.00008;
+          if(ff.x<0.18||ff.x>0.78)ff.sx*=-1;
+          if(ff.y<0.10||ff.y>0.50)ff.sy*=-1;
+          ff.x=Math.max(0.18,Math.min(0.78,ff.x));
+          ff.y=Math.max(0.10,Math.min(0.50,ff.y));
+          const blink=Math.sin(time.current*ff.blink+ff.phase);
+          const a=Math.max(0,blink*0.7+0.3)*0.6;
+          const px=ff.x*w,py=ff.y*h;
+          // Outer glow halo
+          ctx.beginPath();ctx.arc(px,py,ff.size*7,0,Math.PI*2);
+          ctx.fillStyle=`rgba(160,255,90,${a*0.08})`;ctx.fill();
+          // Mid glow
+          ctx.beginPath();ctx.arc(px,py,ff.size*3.5,0,Math.PI*2);
+          ctx.fillStyle=`rgba(180,255,100,${a*0.18})`;ctx.fill();
+          // Core
+          ctx.beginPath();ctx.arc(px,py,ff.size,0,Math.PI*2);
+          ctx.fillStyle=`rgba(210,255,140,${a})`;ctx.fill();
+        });
       }
       animFrame.current=requestAnimationFrame(loop);
     };
@@ -848,14 +885,26 @@ function ImmersiveCabin(){
         }}
         draggable={false}
       />
-      {/* Warm firelight flicker overlay */}
-      <div className="cabin-firelight" style={{position:"absolute",inset:0,pointerEvents:"none",background:"radial-gradient(ellipse at 68% 38%, rgba(255,180,80,0.07) 0%, transparent 55%)",mixBlendMode:"screen"}}/>
-      {/* Floating dust particles canvas */}
+      {/* Warm firelight flicker overlay — radiates from LEFT fireplace */}
+      <div className="cabin-firelight" style={{position:"absolute",inset:0,pointerEvents:"none",background:"radial-gradient(ellipse at 10% 48%, rgba(255,160,60,0.10) 0%, rgba(255,120,40,0.03) 35%, transparent 60%)",mixBlendMode:"screen"}}/>
+      {/* Fire motion — animated dancing glow from fireplace */}
+      <div className="cabin-fire-motion" style={{position:"absolute",left:0,top:"22%",width:"24%",height:"55%",pointerEvents:"none",zIndex:1,background:"radial-gradient(ellipse at 55% 55%, rgba(255,100,20,0.14) 0%, rgba(255,60,10,0.04) 45%, transparent 70%)",mixBlendMode:"screen",transformOrigin:"center bottom"}}/>
+      {/* Fire motion secondary — faster flicker layer */}
+      <div className="cabin-fire-flicker" style={{position:"absolute",left:"1%",top:"30%",width:"18%",height:"40%",pointerEvents:"none",zIndex:1,background:"radial-gradient(ellipse at 60% 50%, rgba(255,140,40,0.10) 0%, transparent 60%)",mixBlendMode:"screen",transformOrigin:"center bottom"}}/>
+      {/* String light glow — warm lights across ceiling */}
+      <div className="cabin-string-lights" style={{position:"absolute",left:"8%",right:"8%",top:"6%",height:"14%",pointerEvents:"none",zIndex:1,background:"linear-gradient(90deg, transparent 0%, rgba(255,210,120,0.04) 10%, rgba(255,200,100,0.06) 25%, rgba(255,210,120,0.04) 40%, rgba(255,200,100,0.06) 55%, rgba(255,210,120,0.04) 70%, rgba(255,200,100,0.06) 85%, transparent 100%)",mixBlendMode:"screen"}}/>
+      {/* Candle glow — mantel candles */}
+      <div className="cabin-candle-glow" style={{position:"absolute",left:"8%",top:"26%",width:"8%",height:"8%",pointerEvents:"none",zIndex:1,borderRadius:"50%",background:"radial-gradient(circle, rgba(255,200,80,0.12) 0%, transparent 70%)",mixBlendMode:"screen"}}/>
+      {/* Candle glow — near window */}
+      <div className="cabin-candle-glow2" style={{position:"absolute",left:"32%",top:"34%",width:"6%",height:"6%",pointerEvents:"none",zIndex:1,borderRadius:"50%",background:"radial-gradient(circle, rgba(255,200,80,0.10) 0%, transparent 65%)",mixBlendMode:"screen"}}/>
+      {/* Desk lamp glow — upper right */}
+      <div className="cabin-candle-glow" style={{position:"absolute",right:"8%",top:"20%",width:"10%",height:"10%",pointerEvents:"none",zIndex:1,borderRadius:"50%",background:"radial-gradient(circle, rgba(255,210,120,0.12) 0%, transparent 65%)",mixBlendMode:"screen"}}/>
+      {/* Floating dust particles + fireflies canvas */}
       <canvas ref={canvasRef} style={{position:"absolute",inset:0,pointerEvents:"none",zIndex:2}}/>
       {/* Cinematic vignette */}
       <div style={{position:"absolute",inset:0,pointerEvents:"none",zIndex:3,background:"radial-gradient(ellipse at center, transparent 35%, rgba(8,6,4,0.55) 100%)"}}/>
       {/* Top shadow for depth */}
-      <div style={{position:"absolute",top:0,left:0,right:0,height:"25%",pointerEvents:"none",zIndex:3,background:"linear-gradient(to bottom, rgba(8,6,4,0.35), transparent)"}}/>
+      <div style={{position:"absolute",top:0,left:0,right:0,height:"25%",pointerEvents:"none",zIndex:3,background:"linear-gradient(to bottom, rgba(8,6,4,0.30), transparent)"}}/>
       {/* Warm color wash — subtle warmth across whole scene */}
       <div style={{position:"absolute",inset:0,pointerEvents:"none",zIndex:1,background:"linear-gradient(180deg, rgba(201,140,60,0.03) 0%, transparent 40%, rgba(201,140,60,0.02) 100%)"}}/>
     </div>
@@ -1557,12 +1606,22 @@ export default function App(){
     .shelf-hotspot:active{transform:translate(-1px,-3px) scale(0.98)!important}
     .window-hotspot{transition:all .3s}
     .window-hotspot:hover{background:rgba(255,200,80,0.12)!important}
-    @keyframes cabinFirelight{0%,100%{opacity:0.04}30%{opacity:0.07}60%{opacity:0.03}80%{opacity:0.06}}
+    @keyframes cabinFirelight{0%,100%{opacity:0.5}25%{opacity:0.85}50%{opacity:0.4}75%{opacity:0.7}}
+    @keyframes fireMotion{0%,100%{opacity:0.5;transform:scaleY(1) scaleX(1)}20%{opacity:0.85;transform:scaleY(1.06) scaleX(0.96)}45%{opacity:0.4;transform:scaleY(0.94) scaleX(1.03)}65%{opacity:0.75;transform:scaleY(1.03) scaleX(0.98)}85%{opacity:0.55;transform:scaleY(0.97) scaleX(1.01)}}
+    @keyframes fireFlicker{0%,100%{opacity:0.4;transform:scaleY(1)}30%{opacity:0.9;transform:scaleY(1.08)}60%{opacity:0.3;transform:scaleY(0.92)}80%{opacity:0.7;transform:scaleY(1.04)}}
+    @keyframes candleGlowPulse{0%,100%{opacity:0.5;transform:scale(1)}40%{opacity:0.9;transform:scale(1.1)}70%{opacity:0.4;transform:scale(0.95)}}
+    @keyframes stringLightTwinkle{0%,100%{opacity:0.4}25%{opacity:0.7}50%{opacity:0.35}75%{opacity:0.65}}
+    .cabin-fire-motion{animation:fireMotion 2.5s ease-in-out infinite}
+    .cabin-fire-flicker{animation:fireFlicker 1.8s ease-in-out infinite}
+    .cabin-string-lights{animation:stringLightTwinkle 6s ease-in-out infinite}
+    .cabin-candle-glow{animation:candleGlowPulse 3.5s ease-in-out infinite}
+    .cabin-candle-glow2{animation:candleGlowPulse 4.2s ease-in-out infinite 0.8s}
     .cabin-firelight{animation:cabinFirelight 4s ease-in-out infinite}
     .wp-option{transition:all .2s;cursor:pointer}
     .wp-option:hover{background:rgba(255,255,255,0.08)!important;transform:translateY(-2px)}
     .book-room:hover{border-color:rgba(101,83,55,0.4)!important;background:linear-gradient(135deg,rgba(101,83,55,0.08),rgba(101,83,55,0.03))!important}
     @keyframes bookFlyToDesk{0%{opacity:1;transform:translate(0,0) scale(1)}40%{opacity:1;transform:translate(-120px,-40px) scale(1.3)}100%{opacity:0;transform:translate(-200px,120px) scale(0.7)}}
+    @keyframes bookArcFromBottom{0%{opacity:1;transform:translate(0,0) scale(1)}30%{opacity:1;transform:translate(0,-60px) scale(1.25)}60%{opacity:0.9;transform:translate(-20px,-120px) scale(1.1)}100%{opacity:0;transform:translate(-30px,-160px) scale(0.75)}}
     @keyframes hotspotPulse{0%,100%{box-shadow:0 0 15px rgba(255,200,80,0.15),0 0 40px rgba(255,200,80,0.05)}50%{box-shadow:0 0 25px rgba(255,200,80,0.3),0 0 60px rgba(255,200,80,0.1)}}
     @keyframes doorLabelFade{0%,100%{opacity:0.5}50%{opacity:1}}
     @keyframes shelfBookHover{0%,100%{transform:translateX(0)}50%{transform:translateX(-4px)}}
@@ -1758,43 +1817,47 @@ export default function App(){
       })}
 
       {/* ═══ INTERACTIVE HOTSPOTS ═══ */}
-      {/* Positions mapped to cabin-interior.png (Image A closeup): desk with open Bible center-right,
-          candle lantern center, desk lamp upper-right, window with forest behind, window seat left, wood paneling right */}
+      {/* Positions mapped to cabin-interior.png: sunken great room — fireplace LEFT, window CENTER,
+          stairs RIGHT, desk UPPER-RIGHT, sofa CENTER, 6 books on curved ledge BOTTOM */}
 
-      {/* 1. BIBLE / JOURNAL — over the open Bible on the desk (center-right) */}
-      <button onClick={()=>{setBookOpen(true);setBookPage(0);setFlipDir(null);}} style={{position:"absolute",left:"46%",right:"8%",top:"38%",bottom:"16%",zIndex:10,background:"transparent",border:"none",cursor:"pointer",borderRadius:"12px",animation:"hotspotPulse 3s ease-in-out infinite"}}>
+      {/* 1. BIBLE / JOURNAL — over the sofa / center cushion area */}
+      <button onClick={()=>{setBookOpen(true);setBookPage(0);setFlipDir(null);}} style={{position:"absolute",left:"22%",right:"22%",top:"54%",bottom:"14%",zIndex:10,background:"transparent",border:"none",cursor:"pointer",borderRadius:"12px",animation:"hotspotPulse 3s ease-in-out infinite"}}>
         <div style={{position:"absolute",inset:"-10%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,200,80,0.08),transparent 70%)",pointerEvents:"none"}}/>
       </button>
 
-      {/* 2. BOOKSHELF — right edge (wood paneling / implied shelves off-screen) */}
-      <div style={{position:"absolute",right:"0%",top:"12%",bottom:"20%",width:"clamp(56px,9vw,76px)",zIndex:10,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"space-between",padding:"4px 0"}}>
-        {SHELF_BOOKS.map((book,i)=>{
-          const cv=BOOK_COVERS[book.id]||BOOK_COVERS.journal;
-          const isActive=deskBook===book.id;
-          return(
-            <button key={book.id} className="shelf-hotspot" onClick={()=>selectShelfBook(book.id)}
-              style={{width:"clamp(48px,8vw,68px)",height:"clamp(56px,8.5vh,80px)",background:cv.bg,border:"none",cursor:"pointer",borderRadius:"3px 6px 6px 3px",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:"2px",padding:"5px 4px",position:"relative",boxShadow:isActive?`0 4px 20px rgba(255,200,80,0.35), 3px 3px 12px rgba(0,0,0,0.5), inset -1px 0 3px rgba(255,255,255,0.08)`:`3px 3px 12px rgba(0,0,0,0.45), inset -1px 0 3px rgba(255,255,255,0.05)`,animation:isActive?"none":"shelfGlow 4s ease-in-out infinite",animationDelay:`${i*0.4}s`,overflow:"hidden",flexShrink:0}}>
-              {/* Spine edge — right side (against wall) */}
-              <div style={{position:"absolute",right:0,top:0,bottom:0,width:"3px",background:`linear-gradient(180deg,rgba(255,255,255,0.12),${cv.accent}44,rgba(0,0,0,0.2))`,pointerEvents:"none"}}/>
-              {/* Active gold accent */}
-              {isActive&&<div style={{position:"absolute",top:0,left:"20%",right:"20%",height:"2px",background:cv.accent,borderRadius:"0 0 2px 2px",pointerEvents:"none"}}/>}
-              {/* Emoji */}
-              <div style={{fontSize:"clamp(0.85rem,2.2vw,1.15rem)",filter:isActive?"drop-shadow(0 0 6px rgba(255,200,80,0.5))":"none",transition:"filter .3s"}}>{book.emoji}</div>
-              {/* Label */}
-              <div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.44rem,1.1vw,0.56rem)",color:isActive?cv.accent:"rgba(245,230,200,0.7)",textAlign:"center",lineHeight:1.15,letterSpacing:"0.01em",textShadow:"0 1px 4px rgba(0,0,0,0.6)",transition:"color .3s",padding:"0 1px"}}>{book.label}</div>
-              {/* Paper edge — left side (facing desk) */}
-              <div style={{position:"absolute",left:0,top:"4px",bottom:"4px",width:"2px",background:"linear-gradient(180deg,#E8D5B0,#DCC89C,#D4BF90)",borderRadius:"1px 0 0 1px",pointerEvents:"none",opacity:0.6}}/>
-            </button>
-          );
-        })}
-      </div>
+      {/* 2. BOOKSHELF — 6 individual books on the curved wooden ledge at BOTTOM of image */}
+      {SHELF_BOOKS.map((book,i)=>{
+        const cv=BOOK_COVERS[book.id]||BOOK_COVERS.journal;
+        const isActive=deskBook===book.id;
+        // Positions for each book on the bottom curved ledge (left to right)
+        const bookPositions=[
+          {left:"15%",width:"11%"},  // book 1 — green
+          {left:"26.5%",width:"11%"},// book 2 — red/burgundy
+          {left:"38%",width:"10%"},  // book 3 — cream/olive
+          {left:"48.5%",width:"10%"},// book 4 — teal
+          {left:"59%",width:"11%"},  // book 5 — cream/white
+          {left:"70%",width:"11%"},  // book 6 — dark maroon
+        ];
+        const pos=bookPositions[i]||bookPositions[0];
+        return(
+          <button key={book.id} className="shelf-hotspot" onClick={()=>selectShelfBook(book.id)}
+            style={{position:"absolute",left:pos.left,width:pos.width,bottom:"1%",height:"13%",zIndex:11,background:"transparent",border:"none",cursor:"pointer",borderRadius:"4px",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-end",padding:"0 0 2px",animation:isActive?"none":"shelfGlow 4s ease-in-out infinite",animationDelay:`${i*0.3}s`}}>
+            {/* Warm glow on active */}
+            {isActive&&<div style={{position:"absolute",inset:"-15%",borderRadius:"50%",background:`radial-gradient(circle,${cv.accent}25,transparent 65%)`,pointerEvents:"none"}}/>}
+            {/* Label at bottom */}
+            <div style={{background:"rgba(10,8,6,0.65)",backdropFilter:"blur(4px)",WebkitBackdropFilter:"blur(4px)",borderRadius:6,padding:"2px 5px",maxWidth:"100%",overflow:"hidden"}}>
+              <div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.38rem,0.95vw,0.52rem)",color:isActive?cv.accent:"rgba(245,230,200,0.65)",textAlign:"center",lineHeight:1.15,letterSpacing:"0.01em",textShadow:"0 1px 3px rgba(0,0,0,0.7)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{book.label}</div>
+            </div>
+          </button>
+        );
+      })}
 
-      {/* 3. DOOR — window behind desk (step outside into forest) */}
-      <button onClick={()=>setDoorChoice(true)} style={{position:"absolute",left:"12%",right:"18%",top:"2%",bottom:"52%",zIndex:12,background:"transparent",border:"none",cursor:"pointer",borderRadius:"8px 8px 0 0",animation:"hotspotPulse 3.5s ease-in-out infinite"}}>
-        {/* Cool twilight glow through window */}
-        <div style={{position:"absolute",inset:"-6%",borderRadius:"8px",background:"radial-gradient(ellipse at center 40%,rgba(140,160,200,0.06),transparent 65%)",pointerEvents:"none"}}/>
+      {/* 3. DOOR — over the wooden stairs on the RIGHT (step outside) */}
+      <button onClick={()=>setDoorChoice(true)} style={{position:"absolute",right:"1%",top:"32%",width:"22%",height:"38%",zIndex:12,background:"transparent",border:"none",cursor:"pointer",borderRadius:"8px",animation:"hotspotPulse 3.5s ease-in-out infinite"}}>
+        {/* Warm stair glow */}
+        <div style={{position:"absolute",inset:"-6%",borderRadius:"8px",background:"radial-gradient(ellipse at center 60%,rgba(255,190,100,0.06),transparent 65%)",pointerEvents:"none"}}/>
         {/* Subtle door label */}
-        <div style={{position:"absolute",bottom:"8%",left:"50%",transform:"translateX(-50%)",display:"flex",alignItems:"center",gap:4,background:"rgba(10,8,6,0.55)",backdropFilter:"blur(6px)",WebkitBackdropFilter:"blur(6px)",borderRadius:12,padding:"5px 10px",animation:"doorLabelFade 5s ease-in-out infinite",pointerEvents:"none",whiteSpace:"nowrap"}}>
+        <div style={{position:"absolute",bottom:"10%",left:"50%",transform:"translateX(-50%)",display:"flex",alignItems:"center",gap:4,background:"rgba(10,8,6,0.55)",backdropFilter:"blur(6px)",WebkitBackdropFilter:"blur(6px)",borderRadius:12,padding:"5px 10px",animation:"doorLabelFade 5s ease-in-out infinite",pointerEvents:"none",whiteSpace:"nowrap"}}>
           <span style={{fontSize:"0.65rem",opacity:0.85}}>🌲</span>
           <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.55rem",color:"rgba(255,248,232,0.55)",letterSpacing:"0.02em"}}>Step outside</span>
         </div>
@@ -1823,19 +1886,19 @@ export default function App(){
         </div>
       </div>}
 
-      {/* 4. LEFT WINDOW — left side of window behind desk (forest + twilight) */}
-      <button className="window-hotspot" onClick={()=>setWindowPanel("left")} style={{position:"absolute",left:"10%",top:"2%",width:"28%",height:"34%",zIndex:10,background:"transparent",border:"none",cursor:"pointer",borderRadius:"8px"}}/>
+      {/* 4. LEFT WINDOW — left half of the large picture window (forest + starry sky) */}
+      <button className="window-hotspot" onClick={()=>setWindowPanel("left")} style={{position:"absolute",left:"18%",top:"12%",width:"25%",height:"36%",zIndex:10,background:"transparent",border:"none",cursor:"pointer",borderRadius:"8px"}}/>
 
-      {/* 5. RIGHT WINDOW — right side of window behind desk */}
-      <button className="window-hotspot" onClick={()=>setWindowPanel("right")} style={{position:"absolute",right:"16%",top:"2%",width:"28%",height:"34%",zIndex:10,background:"transparent",border:"none",cursor:"pointer",borderRadius:"8px"}}/>
+      {/* 5. RIGHT WINDOW — right half of the large picture window */}
+      <button className="window-hotspot" onClick={()=>setWindowPanel("right")} style={{position:"absolute",left:"44%",top:"12%",width:"25%",height:"36%",zIndex:10,background:"transparent",border:"none",cursor:"pointer",borderRadius:"8px"}}/>
 
-      {/* 6. CANDLE / STREAK — over the candle lantern on desk (center) */}
-      <button onClick={tapCandle} style={{position:"absolute",left:"30%",top:"28%",width:"16%",height:"22%",zIndex:10,background:"transparent",border:"none",cursor:"pointer",borderRadius:"50%",animation:"candlePulse 3s ease-in-out infinite"}}>
+      {/* 6. CANDLE / STREAK — over the fireplace mantel candles (LEFT side) */}
+      <button onClick={tapCandle} style={{position:"absolute",left:"4%",top:"26%",width:"14%",height:"16%",zIndex:10,background:"transparent",border:"none",cursor:"pointer",borderRadius:"50%",animation:"candlePulse 3s ease-in-out infinite"}}>
         <div style={{position:"absolute",inset:"-20%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,200,80,0.06),transparent 65%)",pointerEvents:"none"}}/>
       </button>
 
-      {/* 7. INSIGHTS — warm glow area near candle/center-bottom */}
-      <button onClick={()=>setShowInsights(true)} style={{position:"absolute",left:"40%",right:"40%",bottom:"4%",height:"10%",zIndex:10,background:"transparent",border:"none",cursor:"pointer",borderRadius:"8px"}}>
+      {/* 7. INSIGHTS — center area on the fluffy rug/carpet */}
+      <button onClick={()=>setShowInsights(true)} style={{position:"absolute",left:"35%",right:"35%",top:"66%",height:"10%",zIndex:10,background:"transparent",border:"none",cursor:"pointer",borderRadius:"8px"}}>
         <div style={{position:"absolute",inset:"-10%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,200,80,0.04),transparent 60%)",pointerEvents:"none"}}/>
       </button>
 
@@ -1865,14 +1928,14 @@ export default function App(){
         <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.68rem",color:"rgba(255,248,232,0.5)",letterSpacing:"0.02em"}}>History</span>
       </button>
 
-      {/* 10. SHOP HOTSPOT — bottom-right chest area */}
-      <button onClick={()=>setScreen("shop")} style={{position:"absolute",right:"4%",bottom:"14%",width:"12%",height:"10%",zIndex:10,background:"transparent",border:"none",cursor:"pointer",borderRadius:"8px",animation:"hotspotPulse 3.2s ease-in-out infinite"}}>
+      {/* 10. SHOP HOTSPOT — desk area upper-right (near lamp) */}
+      <button onClick={()=>setScreen("shop")} style={{position:"absolute",right:"3%",top:"18%",width:"14%",height:"12%",zIndex:10,background:"transparent",border:"none",cursor:"pointer",borderRadius:"8px",animation:"hotspotPulse 3.2s ease-in-out infinite"}}>
         <div style={{position:"absolute",inset:"-10%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,200,80,0.06),transparent 60%)",pointerEvents:"none"}}/>
         <span style={{fontSize:"clamp(0.9rem,2.5vw,1.3rem)",filter:"drop-shadow(0 2px 6px rgba(0,0,0,0.5))"}}>🪵</span>
       </button>
 
       {/* CANDLE BALANCE — persistent display (triple-tap = toggle debug hotspots) — always visible */}
-      <div onClick={debugTripleTap} style={{position:"absolute",left:"5%",bottom:"32%",zIndex:12,background:"rgba(26,22,18,0.7)",backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",border:"1px solid rgba(212,180,100,0.15)",borderRadius:10,padding:"5px 12px",display:"flex",alignItems:"center",gap:6,animation:"fadeUp 1s 2s ease both",cursor:"default"}}>
+      <div onClick={debugTripleTap} style={{position:"absolute",left:"3%",top:"4%",zIndex:12,background:"rgba(26,22,18,0.7)",backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",border:"1px solid rgba(212,180,100,0.15)",borderRadius:10,padding:"5px 12px",display:"flex",alignItems:"center",gap:6,animation:"fadeUp 1s 2s ease both",cursor:"default"}}>
         <span style={{fontSize:"0.8rem"}}>🕯️</span>
         <span style={{fontFamily:DISPLAY,fontSize:"0.82rem",fontWeight:700,color:B.goldL}}>{candles}</span>
       </div>
@@ -1883,22 +1946,22 @@ export default function App(){
       {debugHotspots&&<>
         {/* Toggle badge */}
         <div style={{position:"fixed",top:8,left:"50%",transform:"translateX(-50%)",zIndex:999,background:"rgba(255,60,60,0.85)",color:"#fff",fontFamily:SANS,fontSize:"0.65rem",fontWeight:700,padding:"4px 14px",borderRadius:20,letterSpacing:"0.04em",pointerEvents:"none",backdropFilter:"blur(6px)",WebkitBackdropFilter:"blur(6px)",whiteSpace:"nowrap"}}>DEBUG HOTSPOTS ON — Ctrl+Shift+. or 3×tap 🕯️</div>
-        {/* 1. Bible / Journal (open Bible on desk) */}
-        <div style={{position:"absolute",left:"46%",right:"8%",top:"38%",bottom:"16%",zIndex:900,background:"rgba(255,100,100,0.25)",border:"2px solid rgba(255,100,100,0.7)",borderRadius:12,pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.6rem",fontWeight:700,color:"#fff",background:"rgba(255,60,60,0.75)",padding:"2px 8px",borderRadius:8}}>BIBLE</span></div>
-        {/* 2. Bookshelf (right edge / wood paneling) */}
-        <div style={{position:"absolute",right:"0%",top:"12%",bottom:"20%",width:"clamp(56px,9vw,76px)",zIndex:900,background:"rgba(100,100,255,0.25)",border:"2px solid rgba(100,100,255,0.7)",borderRadius:4,pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.5rem",fontWeight:700,color:"#fff",background:"rgba(60,60,255,0.75)",padding:"2px 6px",borderRadius:8,writingMode:"vertical-lr"}}>BOOKSHELF</span></div>
-        {/* 3. Door / Window (forest window behind desk) */}
-        <div style={{position:"absolute",left:"12%",right:"18%",top:"2%",bottom:"52%",zIndex:900,background:"rgba(100,255,100,0.25)",border:"2px solid rgba(100,255,100,0.7)",borderRadius:"8px 8px 0 0",pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.6rem",fontWeight:700,color:"#fff",background:"rgba(60,180,60,0.85)",padding:"2px 8px",borderRadius:8}}>DOOR (z:12)</span></div>
+        {/* 1. Bible / Journal (sofa center) */}
+        <div style={{position:"absolute",left:"22%",right:"22%",top:"54%",bottom:"14%",zIndex:900,background:"rgba(255,100,100,0.25)",border:"2px solid rgba(255,100,100,0.7)",borderRadius:12,pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.6rem",fontWeight:700,color:"#fff",background:"rgba(255,60,60,0.75)",padding:"2px 8px",borderRadius:8}}>BIBLE</span></div>
+        {/* 2. Books on ledge (bottom) */}
+        <div style={{position:"absolute",left:"15%",right:"19%",bottom:"1%",height:"13%",zIndex:900,background:"rgba(100,100,255,0.25)",border:"2px solid rgba(100,100,255,0.7)",borderRadius:4,pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.5rem",fontWeight:700,color:"#fff",background:"rgba(60,60,255,0.75)",padding:"2px 6px",borderRadius:8}}>BOOKS</span></div>
+        {/* 3. Door / Stairs (right side) */}
+        <div style={{position:"absolute",right:"1%",top:"32%",width:"22%",height:"38%",zIndex:900,background:"rgba(100,255,100,0.25)",border:"2px solid rgba(100,255,100,0.7)",borderRadius:8,pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.6rem",fontWeight:700,color:"#fff",background:"rgba(60,180,60,0.85)",padding:"2px 8px",borderRadius:8}}>STAIRS (z:12)</span></div>
         {/* 4. Left Window */}
-        <div style={{position:"absolute",left:"10%",top:"2%",width:"28%",height:"34%",zIndex:900,background:"rgba(255,255,100,0.2)",border:"2px solid rgba(255,255,100,0.7)",borderRadius:8,pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.5rem",fontWeight:700,color:"#fff",background:"rgba(180,180,0,0.85)",padding:"2px 6px",borderRadius:8}}>L-WIN</span></div>
+        <div style={{position:"absolute",left:"18%",top:"12%",width:"25%",height:"36%",zIndex:900,background:"rgba(255,255,100,0.2)",border:"2px solid rgba(255,255,100,0.7)",borderRadius:8,pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.5rem",fontWeight:700,color:"#fff",background:"rgba(180,180,0,0.85)",padding:"2px 6px",borderRadius:8}}>L-WIN</span></div>
         {/* 5. Right Window */}
-        <div style={{position:"absolute",right:"16%",top:"2%",width:"28%",height:"34%",zIndex:900,background:"rgba(255,165,0,0.2)",border:"2px solid rgba(255,165,0,0.7)",borderRadius:8,pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.5rem",fontWeight:700,color:"#fff",background:"rgba(200,120,0,0.85)",padding:"2px 6px",borderRadius:8}}>R-WIN</span></div>
-        {/* 6. Candle (lantern on desk center) */}
-        <div style={{position:"absolute",left:"30%",top:"28%",width:"16%",height:"22%",zIndex:900,background:"rgba(255,100,255,0.25)",border:"2px solid rgba(255,100,255,0.7)",borderRadius:"50%",pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.5rem",fontWeight:700,color:"#fff",background:"rgba(200,60,200,0.85)",padding:"2px 6px",borderRadius:8}}>CANDLE</span></div>
-        {/* 7. Insights */}
-        <div style={{position:"absolute",left:"40%",right:"40%",bottom:"4%",height:"10%",zIndex:900,background:"rgba(0,200,200,0.2)",border:"2px solid rgba(0,200,200,0.7)",borderRadius:8,pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.5rem",fontWeight:700,color:"#fff",background:"rgba(0,150,150,0.85)",padding:"2px 6px",borderRadius:8}}>INSIGHTS</span></div>
-        {/* 10. Shop */}
-        <div style={{position:"absolute",right:"4%",bottom:"14%",width:"12%",height:"10%",zIndex:900,background:"rgba(200,150,50,0.25)",border:"2px solid rgba(200,150,50,0.7)",borderRadius:8,pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.5rem",fontWeight:700,color:"#fff",background:"rgba(170,120,30,0.85)",padding:"2px 6px",borderRadius:8}}>SHOP</span></div>
+        <div style={{position:"absolute",left:"44%",top:"12%",width:"25%",height:"36%",zIndex:900,background:"rgba(255,165,0,0.2)",border:"2px solid rgba(255,165,0,0.7)",borderRadius:8,pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.5rem",fontWeight:700,color:"#fff",background:"rgba(200,120,0,0.85)",padding:"2px 6px",borderRadius:8}}>R-WIN</span></div>
+        {/* 6. Candle (fireplace mantel) */}
+        <div style={{position:"absolute",left:"4%",top:"26%",width:"14%",height:"16%",zIndex:900,background:"rgba(255,100,255,0.25)",border:"2px solid rgba(255,100,255,0.7)",borderRadius:"50%",pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.5rem",fontWeight:700,color:"#fff",background:"rgba(200,60,200,0.85)",padding:"2px 6px",borderRadius:8}}>CANDLE</span></div>
+        {/* 7. Insights (rug center) */}
+        <div style={{position:"absolute",left:"35%",right:"35%",top:"66%",height:"10%",zIndex:900,background:"rgba(0,200,200,0.2)",border:"2px solid rgba(0,200,200,0.7)",borderRadius:8,pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.5rem",fontWeight:700,color:"#fff",background:"rgba(0,150,150,0.85)",padding:"2px 6px",borderRadius:8}}>INSIGHTS</span></div>
+        {/* 10. Shop (desk upper-right) */}
+        <div style={{position:"absolute",right:"3%",top:"18%",width:"14%",height:"12%",zIndex:900,background:"rgba(200,150,50,0.25)",border:"2px solid rgba(200,150,50,0.7)",borderRadius:8,pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.5rem",fontWeight:700,color:"#fff",background:"rgba(170,120,30,0.85)",padding:"2px 6px",borderRadius:8}}>SHOP</span></div>
       </>}
 
       {/* ═══ STREAK FLOATING INDICATOR ═══ */}
@@ -1988,17 +2051,18 @@ export default function App(){
       {shelfAnim&&(()=>{
         const book=SHELF_BOOKS.find(b=>b.id===shelfAnim);
         const idx=SHELF_BOOKS.findIndex(b=>b.id===shelfAnim);
-        const startTop=`${14+idx*12}%`;
-        const animName=idx<3?"bookArcToDesk":"bookArcToDeskBottom";
+        // Books are now at the bottom — calculate horizontal start position
+        const bookLefts=[20,31,42,53,64,75];
+        const startLeft=`${bookLefts[idx]||45}%`;
         return <div style={{position:"fixed",inset:0,zIndex:50,pointerEvents:"none"}}>
-          {/* Floating book emoji arcing from shelf to desk */}
-          <div style={{position:"absolute",right:"6%",top:startTop,fontSize:"2rem",animation:`${animName} 1.2s cubic-bezier(.25,.46,.45,.94) forwards`,filter:"drop-shadow(0 4px 24px rgba(255,200,80,0.6)) drop-shadow(0 0 12px rgba(255,220,130,0.3))"}}>
+          {/* Floating book emoji arcing from bottom shelf upward to center */}
+          <div style={{position:"absolute",left:startLeft,bottom:"6%",fontSize:"2rem",animation:"bookArcFromBottom 1.2s cubic-bezier(.25,.46,.45,.94) forwards",filter:"drop-shadow(0 4px 24px rgba(255,200,80,0.6)) drop-shadow(0 0 12px rgba(255,220,130,0.3))"}}>
             {book?.emoji||"📖"}
           </div>
           {/* Soft golden trail glow */}
-          <div style={{position:"absolute",right:"6%",top:startTop,width:"30px",height:"30px",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,220,130,0.4),transparent 70%)",animation:`${animName} 1.2s 0.08s cubic-bezier(.25,.46,.45,.94) forwards`,opacity:0.5}}/>
+          <div style={{position:"absolute",left:startLeft,bottom:"6%",width:"30px",height:"30px",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,220,130,0.4),transparent 70%)",animation:"bookArcFromBottom 1.2s 0.08s cubic-bezier(.25,.46,.45,.94) forwards",opacity:0.5}}/>
           {/* Desk book fade-out */}
-          <div style={{position:"absolute",left:"35%",top:"72%",fontSize:"1.6rem",animation:"deskBookFadeOut 0.6s 0.3s ease forwards",opacity:1}}>
+          <div style={{position:"absolute",left:"45%",top:"55%",fontSize:"1.6rem",animation:"deskBookFadeOut 0.6s 0.3s ease forwards",opacity:1}}>
             {SHELF_BOOKS.find(b=>b.id===deskBook)?.emoji||"📖"}
           </div>
         </div>;
