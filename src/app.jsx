@@ -722,6 +722,15 @@ export default function App(){
   const [plantModal,     setPlantModal]    = useState(null);
   const [plantStep,      setPlantStep]     = useState(1);
   const [plantPrayerId,  setPlantPrayerId] = useState(null);
+  const [gardenTick,     setGardenTick]   = useState(0); // forces re-render for growth updates
+
+  // ── GARDEN GROWTH TIMER ──
+  // Ticks every 60s while on garden screen so progress bars & stages update live
+  useEffect(()=>{
+    if(screen!=="garden") return;
+    const id=setInterval(()=>setGardenTick(t=>t+1),60000);
+    return ()=>clearInterval(id);
+  },[screen]);
 
   // ── HOTSPOT DEBUG MODE ──
   // Toggle: ?debug=1 in URL  |  Ctrl+Shift+. on desktop  |  triple-tap "🕯️ 0" candle badge on mobile
@@ -1335,6 +1344,7 @@ export default function App(){
     @keyframes gardenPlotFadeIn{from{opacity:0;transform:scale(0.9)}to{opacity:1;transform:scale(1)}}
     @keyframes doorChoiceFadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
     @keyframes bloomPulse{0%,100%{filter:drop-shadow(0 0 6px rgba(90,138,106,0.3))}50%{filter:drop-shadow(0 0 16px rgba(90,138,106,0.6))}}
+    @keyframes emptyPlotPulse{0%,100%{opacity:0.3;transform:scale(1)}50%{opacity:0.6;transform:scale(1.15)}}
     .garden-plot{transition:all .2s ease;cursor:pointer}
     .garden-plot:hover{transform:translateY(-2px);box-shadow:0 4px 16px rgba(0,0,0,0.15)!important}
     .garden-plot:active{transform:scale(0.96)}
@@ -2619,6 +2629,7 @@ export default function App(){
 
   /* ══ PRAYER GARDEN ═══════════════════════════════ */
   if(screen==="garden"){
+    void gardenTick; // referenced so the 60s interval triggers re-render of growth stages
     const availablePrayers=getAvailablePrayers();
     const invItems=Object.entries(inventory).filter(([,v])=>v>0);
     const totalInv=invItems.reduce((s,[,v])=>s+v,0);
@@ -2650,6 +2661,20 @@ export default function App(){
 
           {/* ═══ GARDEN TAB ═══ */}
           {gardenTab==="garden"&&<>
+            {/* Garden status summary */}
+            {(()=>{
+              const growing=gardenPlots.filter(p=>p.stage!=="empty"&&getComputedStage(p)!=="harvestable").length;
+              const ready=gardenPlots.filter(p=>p.stage!=="empty"&&getComputedStage(p)==="harvestable").length;
+              const empty=gardenPlots.filter(p=>p.stage==="empty").length;
+              if(growing===0&&ready===0) return null;
+              return(
+                <div style={{display:"flex",gap:12,marginBottom:16,padding:"10px 14px",background:"rgba(90,138,106,0.06)",border:"1px solid rgba(90,138,106,0.12)",borderRadius:12,justifyContent:"center",flexWrap:"wrap"}}>
+                  {growing>0&&<span style={{fontFamily:SANS,fontSize:"0.72rem",color:"rgba(190,211,196,0.55)"}}>🌱 {growing} growing</span>}
+                  {ready>0&&<span style={{fontFamily:SANS,fontSize:"0.72rem",color:B.goldL,fontWeight:600}}>✨ {ready} ready to harvest</span>}
+                  {empty>0&&<span style={{fontFamily:SANS,fontSize:"0.72rem",color:"rgba(190,211,196,0.3)"}}>{empty} empty</span>}
+                </div>
+              );
+            })()}
             {/* Garden grid — 4 columns × 3 rows */}
             <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10}}>
               {gardenPlots.map((plot,idx)=>{
@@ -2673,8 +2698,8 @@ export default function App(){
                   }}>
                     {isEmpty?(
                       <>
-                        <span style={{fontSize:"1.3rem",color:"rgba(190,211,196,0.2)"}}>+</span>
-                        <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.6rem",color:"rgba(190,211,196,0.25)"}}>Plant</span>
+                        <span style={{fontSize:"1.4rem",color:"rgba(190,211,196,0.3)",animation:"emptyPlotPulse 3s ease-in-out infinite"}}>+</span>
+                        <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.62rem",color:"rgba(190,211,196,0.3)"}}>Plant</span>
                       </>
                     ):(
                       <>
@@ -2781,25 +2806,25 @@ export default function App(){
                     {station.recipes.map((recipe,ri)=>{
                       const canCraft=Object.entries(recipe.inputs).every(([item,qty])=>(inventory[item]||0)>=qty);
                       return(
-                        <div key={ri} style={{background:canCraft?"rgba(90,138,106,0.08)":"rgba(255,255,255,0.02)",border:`1px solid ${canCraft?"rgba(90,138,106,0.25)":"rgba(190,211,196,0.08)"}`,borderRadius:14,padding:"16px",display:"flex",alignItems:"center",gap:14}}>
-                          {/* Inputs */}
-                          <div style={{flex:1}}>
-                            <div style={{fontFamily:SANS,fontSize:"0.65rem",color:"rgba(190,211,196,0.35)",marginBottom:6,textTransform:"uppercase",letterSpacing:"0.05em"}}>Needs</div>
-                            {Object.entries(recipe.inputs).map(([item,qty])=>{
-                              const has=inventory[item]||0;
-                              const enough=has>=qty;
-                              return <div key={item} style={{fontFamily:SANS,fontSize:"0.75rem",color:enough?"rgba(190,211,196,0.7)":"rgba(255,150,150,0.6)",marginBottom:2}}>{item.replace(/_/g," ")} {has}/{qty}</div>;
-                            })}
+                        <div key={ri} style={{background:canCraft?"rgba(90,138,106,0.08)":"rgba(255,255,255,0.02)",border:`1px solid ${canCraft?"rgba(90,138,106,0.25)":"rgba(190,211,196,0.08)"}`,borderRadius:14,padding:"16px",overflow:"hidden"}}>
+                          {/* Top row: inputs → output */}
+                          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
+                            <div style={{flex:1}}>
+                              <div style={{fontFamily:SANS,fontSize:"0.62rem",color:"rgba(190,211,196,0.35)",marginBottom:4,textTransform:"uppercase",letterSpacing:"0.05em"}}>Needs</div>
+                              {Object.entries(recipe.inputs).map(([item,qty])=>{
+                                const has=inventory[item]||0;
+                                const enough=has>=qty;
+                                return <div key={item} style={{fontFamily:SANS,fontSize:"0.73rem",color:enough?"rgba(190,211,196,0.7)":"rgba(255,150,150,0.6)",marginBottom:2}}>{item.replace(/_/g," ")} {has}/{qty}</div>;
+                              })}
+                            </div>
+                            <span style={{color:"rgba(190,211,196,0.2)",fontSize:"0.85rem",flexShrink:0}}>→</span>
+                            <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3,flexShrink:0}}>
+                              <span style={{fontSize:"1.3rem"}}>{recipe.outputEmoji}</span>
+                              <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.66rem",color:"rgba(190,211,196,0.6)",textAlign:"center"}}>{recipe.outputName}</span>
+                            </div>
                           </div>
-                          {/* Arrow */}
-                          <span style={{color:"rgba(190,211,196,0.2)",fontSize:"0.9rem"}}>→</span>
-                          {/* Output */}
-                          <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4,minWidth:60}}>
-                            <span style={{fontSize:"1.3rem"}}>{recipe.outputEmoji}</span>
-                            <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.68rem",color:"rgba(190,211,196,0.6)",textAlign:"center"}}>{recipe.outputName}</span>
-                          </div>
-                          {/* Craft button */}
-                          <button onClick={()=>{if(canCraft)craftItem(station.id,ri);}} style={{background:canCraft?"rgba(90,138,106,0.2)":"rgba(255,255,255,0.03)",border:`1px solid ${canCraft?"rgba(90,138,106,0.35)":"rgba(190,211,196,0.08)"}`,borderRadius:8,padding:"6px 14px",fontSize:"0.72rem",fontFamily:SANS,fontWeight:600,color:canCraft?"#BED3C4":"rgba(190,211,196,0.2)",cursor:canCraft?"pointer":"default",transition:"all .15s"}}>Craft</button>
+                          {/* Bottom: craft button full-width */}
+                          <button onClick={()=>{if(canCraft)craftItem(station.id,ri);}} style={{width:"100%",background:canCraft?"rgba(90,138,106,0.2)":"rgba(255,255,255,0.03)",border:`1px solid ${canCraft?"rgba(90,138,106,0.35)":"rgba(190,211,196,0.08)"}`,borderRadius:10,padding:"10px 14px",fontSize:"0.75rem",fontFamily:SANS,fontWeight:600,color:canCraft?"#BED3C4":"rgba(190,211,196,0.2)",cursor:canCraft?"pointer":"default",transition:"all .15s"}}>{canCraft?"✦ Craft":"Craft"}</button>
                         </div>
                       );
                     })}
