@@ -1,5 +1,8 @@
-import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback, Suspense } from "react";
 import { auth, db, googleProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged, doc, getDoc, setDoc } from "./firebase.js";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { useGLTF, Environment } from "@react-three/drei";
+import * as THREE from "three";
 
 /* ═══════════════════════════════════════════════════
    FONTS
@@ -638,6 +641,88 @@ function RoomGlow({id}){
 }
 
 /* ═══════════════════════════════════════════════════
+   3D CABIN SCENE (React Three Fiber)
+═══════════════════════════════════════════════════ */
+function CabinModel(){
+  const {scene}=useGLTF("/cabin_main_room.glb");
+  useMemo(()=>{
+    scene.traverse((child)=>{
+      if(child.isMesh){
+        child.castShadow=false;
+        child.receiveShadow=false;
+        // Boost emissive materials for string lights, candles, embers
+        if(child.material&&child.material.emissive){
+          const name=child.material.name||"";
+          if(name.includes("Flame")||name.includes("Ember")||name.includes("String_Light")){
+            child.material.emissiveIntensity=Math.max(child.material.emissiveIntensity,2.5);
+          }
+        }
+      }
+      // Scale down embedded Blender lights (they export at very high energy values)
+      if(child.isLight){
+        child.intensity*=0.008; // Blender energies (200-600) → Three.js scale (~1.6-4.8)
+        if(child.isPointLight){
+          child.decay=2;
+          child.distance=child.distance||15;
+        }
+      }
+    });
+  },[scene]);
+  return <primitive object={scene} />;
+}
+
+function CabinCamera(){
+  const {camera}=useThree();
+  const time=useRef(0);
+  // Blender Z-up → Three.js Y-up: (bX, bY, bZ) → (bX, bZ, -bY)
+  // Inside the room, slightly elevated, looking toward the far wall
+  const CAM_POS=[-1.2,1.9,2.2];
+  const LOOK_AT=[0.4,1.0,-0.5];
+  useEffect(()=>{
+    camera.position.set(...CAM_POS);
+    camera.fov=58;
+    camera.near=0.1;
+    camera.far=100;
+    camera.updateProjectionMatrix();
+    camera.lookAt(...LOOK_AT);
+  },[camera]);
+  // Subtle breathing sway
+  useFrame((_,delta)=>{
+    time.current+=delta;
+    const t=time.current;
+    camera.position.x=CAM_POS[0]+Math.sin(t*0.15)*0.03;
+    camera.position.y=CAM_POS[1]+Math.cos(t*0.1)*0.015;
+    camera.position.z=CAM_POS[2]+Math.cos(t*0.12)*0.02;
+    camera.lookAt(...LOOK_AT);
+  });
+  return null;
+}
+
+function CabinScene3D({onError}){
+  return(
+    <div style={{position:"absolute",inset:0,zIndex:0}}>
+      <Canvas
+        gl={{antialias:true,toneMapping:THREE.ACESFilmicToneMapping,toneMappingExposure:0.9}}
+        style={{background:"#0A0806"}}
+        onCreated={({gl})=>{gl.setClearColor("#0A0806");}}
+      >
+        <CabinCamera/>
+        {/* Gentle ambient fill — GLB has its own lights embedded */}
+        <ambientLight intensity={0.15} color="#FFE4B5"/>
+        {/* Subtle hemisphere for warm/cool fill */}
+        <hemisphereLight args={["#FFD8A0","#2A1E10",0.2]}/>
+        <Suspense fallback={null}>
+          <CabinModel/>
+        </Suspense>
+      </Canvas>
+    </div>
+  );
+}
+
+// Preload GLB so it starts fetching immediately
+useGLTF.preload("/cabin_main_room.glb");
+
+/* ═══════════════════════════════════════════════════
    MAIN APP
 ═══════════════════════════════════════════════════ */
 export default function App(){
@@ -663,6 +748,8 @@ export default function App(){
   const [windowPanel,   setWindowPanel]   = useState(null);
   const [showStreak,    setShowStreak]    = useState(false);
   const [showInsights,  setShowInsights]  = useState(false);
+  const [cabin3D,       setCabin3D]       = useState(true);  // 3D cabin mode (with 2D fallback)
+  const [cabin3DError,  setCabin3DError]  = useState(false); // falls back to 2D if GLB fails
   const streakTimerRef = useRef(null);
   const [entries,       setEntries]       = useState([]);
   const [streak,        setStreak]        = useState(0);
@@ -1500,8 +1587,18 @@ export default function App(){
     <div style={{position:"fixed",inset:0,overflow:"hidden",fontFamily:SANS}}>
       <style>{GFONTS}{CSS}</style>
 
-      {/* ── Full-screen cabin image ── */}
-      <img src="/cabin-interior.png" alt="Cabin interior" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",zIndex:0}}/>
+      {/* ── Full-screen cabin background (3D or 2D fallback) ── */}
+      {cabin3D&&!cabin3DError?(
+        <CabinScene3D onError={()=>setCabin3DError(true)}/>
+      ):(
+        <img src="/cabin-interior.png" alt="Cabin interior" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",zIndex:0}}/>
+      )}
+
+      {/* 3D/2D toggle — small button in top-left */}
+      <button onClick={()=>setCabin3D(p=>!p)} style={{position:"absolute",top:10,left:10,zIndex:50,background:"rgba(26,22,18,0.7)",backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",border:"1px solid rgba(201,169,110,0.2)",borderRadius:10,padding:"5px 10px",cursor:"pointer",display:"flex",alignItems:"center",gap:5,opacity:0.6,transition:"opacity 0.2s"}} onMouseEnter={e=>e.currentTarget.style.opacity="1"} onMouseLeave={e=>e.currentTarget.style.opacity="0.6"}>
+        <span style={{fontSize:"0.65rem"}}>{cabin3D&&!cabin3DError?"🎮":"🖼️"}</span>
+        <span style={{fontFamily:SANS,fontSize:"0.55rem",color:"rgba(255,248,232,0.5)",letterSpacing:"0.02em"}}>{cabin3D&&!cabin3DError?"3D":"2D"}</span>
+      </button>
 
       {/* ── Subtle vignette — edges only ── */}
       <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse at center,transparent 40%,rgba(10,8,6,0.5) 100%)",zIndex:1,pointerEvents:"none"}}/>
