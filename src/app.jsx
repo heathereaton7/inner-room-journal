@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo, useRef, useCallback, Suspense } from "react";
 import { auth, db, googleProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged, doc, getDoc, setDoc } from "./firebase.js";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { useGLTF, Environment } from "@react-three/drei";
+import { useGLTF } from "@react-three/drei";
+import { EffectComposer, Bloom, Vignette, BrightnessContrast, Noise } from "@react-three/postprocessing";
 import * as THREE from "three";
 
 /* ═══════════════════════════════════════════════════
@@ -641,85 +642,185 @@ function RoomGlow({id}){
 }
 
 /* ═══════════════════════════════════════════════════
-   3D CABIN SCENE (React Three Fiber)
+   3D CABIN SCENE — Immersive Interior (React Three Fiber)
 ═══════════════════════════════════════════════════ */
+
+// Viewpoint positions — Blender (X,Y,Z where Z-up) → Three.js (X,Z,-Y where Y-up)
+// Room: 6.5m x 5.5m, origin at floor center, ceiling 3.2m
+const CABIN_VIEWPOINTS={
+  couch:     {pos:[-0.8,1.35,0.8],  look:[0.5,0.8,-0.8],   label:"Couch"},
+  desk:      {pos:[1.5,1.3,-0.8],   look:[2.3,0.8,-1.5],   label:"Desk"},
+  fireplace: {pos:[-0.3,1.35,-0.8], look:[-1.2,1.1,-2.3],  label:"Fireplace"},
+  door:      {pos:[1.0,1.35,1.0],   look:[1.75,1.0,2.7],   label:"Door"},
+  bookshelf: {pos:[-1.8,1.35,-1.5], look:[-2.7,1.2,-2.5],  label:"Bookshelf"},
+  window:    {pos:[1.5,1.3,0.3],    look:[2.9,0.8,-0.3],   label:"Window"},
+};
+
 function CabinModel(){
   const {scene}=useGLTF("/cabin_main_room.glb");
+  const processed=useRef(false);
   useMemo(()=>{
+    if(processed.current)return;
+    processed.current=true;
     scene.traverse((child)=>{
       if(child.isMesh){
         child.castShadow=false;
-        child.receiveShadow=false;
-        // Boost emissive materials for string lights, candles, embers
-        if(child.material&&child.material.emissive){
-          const name=child.material.name||"";
-          if(name.includes("Flame")||name.includes("Ember")||name.includes("String_Light")){
-            child.material.emissiveIntensity=Math.max(child.material.emissiveIntensity,2.5);
+        child.receiveShadow=true;
+        if(child.material){
+          const n=child.material.name||"";
+          // Boost emissive glow for bloom — push hard so glow is unmissable
+          if(n.includes("Flame")||n.includes("Ember")){
+            child.material.emissiveIntensity=12.0;
+            child.material.toneMapped=false;
+          } else if(n.includes("String_Light")){
+            child.material.emissiveIntensity=8.0;
+            child.material.toneMapped=false;
+          } else if(n.includes("Lamp_Shade")){
+            child.material.emissiveIntensity=5.0;
+            child.material.toneMapped=false;
+          } else if(n.includes("Candle")){
+            child.material.emissiveIntensity=6.0;
+            child.material.toneMapped=false;
           }
         }
       }
-      // Scale down embedded Blender lights (they export at very high energy values)
+      // Scale embedded Blender lights — push brighter for dramatic warm pools
       if(child.isLight){
-        child.intensity*=0.008; // Blender energies (200-600) → Three.js scale (~1.6-4.8)
+        child.intensity*=0.025;
         if(child.isPointLight){
           child.decay=2;
-          child.distance=child.distance||15;
+          child.distance=child.distance||25;
         }
       }
     });
   },[scene]);
-  return <primitive object={scene} />;
+  return <primitive object={scene}/>;
 }
 
-function CabinCamera(){
-  const {camera}=useThree();
+// First-person look controls — drag to look around from inside the room
+function ImmersiveCabinControls(){
+  const {camera,gl}=useThree();
+  const yaw=useRef(0);
+  const pitch=useRef(0);
+  const targetYaw=useRef(0);
+  const targetPitch=useRef(0);
+  const dragStart=useRef(null);
+  const isDragging=useRef(false);
   const time=useRef(0);
-  // Blender Z-up → Three.js Y-up: (bX, bY, bZ) → (bX, bZ, -bY)
-  // Inside the room, slightly elevated, looking toward the far wall
-  const CAM_POS=[-1.2,1.9,2.2];
-  const LOOK_AT=[0.4,1.0,-0.5];
+  const idleTime=useRef(0);
+
+  // Start at couch — seated perspective looking toward center of room
+  const startView=CABIN_VIEWPOINTS.couch;
+
   useEffect(()=>{
-    camera.position.set(...CAM_POS);
-    camera.fov=58;
-    camera.near=0.1;
-    camera.far=100;
+    camera.position.set(...startView.pos);
+    camera.fov=72;
+    camera.near=0.05;
+    camera.far=50;
     camera.updateProjectionMatrix();
-    camera.lookAt(...LOOK_AT);
+    // Compute initial yaw/pitch from look target
+    const dx=startView.look[0]-startView.pos[0];
+    const dy=startView.look[1]-startView.pos[1];
+    const dz=startView.look[2]-startView.pos[2];
+    const len=Math.sqrt(dx*dx+dy*dy+dz*dz);
+    const iy=Math.atan2(dx/len,-(dz/len));
+    const ip=Math.asin(Math.max(-1,Math.min(1,dy/len)));
+    yaw.current=iy; targetYaw.current=iy;
+    pitch.current=ip; targetPitch.current=ip;
   },[camera]);
-  // Subtle breathing sway
+
+  // Touch/mouse drag handlers for look-around
+  useEffect(()=>{
+    const el=gl.domElement;
+    const start=(x,y)=>{dragStart.current={x,y};isDragging.current=false;};
+    const move=(x,y)=>{
+      if(!dragStart.current)return;
+      const dx=x-dragStart.current.x;
+      const dy=y-dragStart.current.y;
+      if(!isDragging.current&&Math.abs(dx)<6&&Math.abs(dy)<6)return;
+      isDragging.current=true;
+      targetYaw.current-=dx*0.004;
+      targetPitch.current-=dy*0.003;
+      targetPitch.current=Math.max(-0.5,Math.min(0.45,targetPitch.current));
+      dragStart.current={x,y};
+      idleTime.current=0;
+    };
+    const end=()=>{dragStart.current=null;};
+    const tS=e=>{const t=e.touches[0];start(t.clientX,t.clientY);};
+    const tM=e=>{if(e.touches.length===1){e.preventDefault();const t=e.touches[0];move(t.clientX,t.clientY);}};
+    const tE=()=>end();
+    const mD=e=>start(e.clientX,e.clientY);
+    const mM=e=>{if(dragStart.current)move(e.clientX,e.clientY);};
+    const mU=()=>end();
+    el.addEventListener("touchstart",tS,{passive:true});
+    el.addEventListener("touchmove",tM,{passive:false});
+    el.addEventListener("touchend",tE);
+    el.addEventListener("mousedown",mD);
+    window.addEventListener("mousemove",mM);
+    window.addEventListener("mouseup",mU);
+    return()=>{
+      el.removeEventListener("touchstart",tS);
+      el.removeEventListener("touchmove",tM);
+      el.removeEventListener("touchend",tE);
+      el.removeEventListener("mousedown",mD);
+      window.removeEventListener("mousemove",mM);
+      window.removeEventListener("mouseup",mU);
+    };
+  },[gl]);
+
   useFrame((_,delta)=>{
     time.current+=delta;
-    const t=time.current;
-    camera.position.x=CAM_POS[0]+Math.sin(t*0.15)*0.03;
-    camera.position.y=CAM_POS[1]+Math.cos(t*0.1)*0.015;
-    camera.position.z=CAM_POS[2]+Math.cos(t*0.12)*0.02;
-    camera.lookAt(...LOOK_AT);
+    idleTime.current+=delta;
+    // Smooth damping toward target rotation
+    yaw.current+=(targetYaw.current-yaw.current)*0.1;
+    pitch.current+=(targetPitch.current-pitch.current)*0.1;
+    // Premium idle sway (fades in after 2s of no touch)
+    let fy=yaw.current,fp=pitch.current;
+    if(idleTime.current>2){
+      const s=Math.min((idleTime.current-2)*0.15,1);
+      const t=time.current;
+      fy+=Math.sin(t*0.08)*0.01*s;
+      fp+=Math.cos(t*0.06)*0.004*s;
+    }
+    // Apply look direction
+    const lx=Math.sin(fy)*Math.cos(fp);
+    const ly=Math.sin(fp);
+    const lz=-Math.cos(fy)*Math.cos(fp);
+    camera.lookAt(camera.position.x+lx*10,camera.position.y+ly*10,camera.position.z+lz*10);
   });
   return null;
 }
 
-function CabinScene3D({onError}){
+function CabinScene3D(){
   return(
     <div style={{position:"absolute",inset:0,zIndex:0}}>
       <Canvas
-        gl={{antialias:true,toneMapping:THREE.ACESFilmicToneMapping,toneMappingExposure:0.9}}
-        style={{background:"#0A0806"}}
-        onCreated={({gl})=>{gl.setClearColor("#0A0806");}}
+        gl={{antialias:true,toneMapping:THREE.ACESFilmicToneMapping,toneMappingExposure:1.4,powerPreference:"high-performance"}}
+        style={{background:"#060402"}}
+        onCreated={({gl})=>{gl.setClearColor("#060402");}}
+        dpr={[1,1.5]}
       >
-        <CabinCamera/>
-        {/* Gentle ambient fill — GLB has its own lights embedded */}
-        <ambientLight intensity={0.15} color="#FFE4B5"/>
-        {/* Subtle hemisphere for warm/cool fill */}
-        <hemisphereLight args={["#FFD8A0","#2A1E10",0.2]}/>
+        <ImmersiveCabinControls/>
+        {/* Very low ambient — let point lights create dramatic pools */}
+        <ambientLight intensity={0.06} color="#FFE4B5"/>
+        {/* Warm hemisphere: golden top, deep shadow bottom */}
+        <hemisphereLight args={["#FFD0A0","#0A0604",0.15]}/>
+        {/* Tight fog for depth — near objects clear, far objects fade to darkness */}
+        <fog attach="fog" args={["#060402",4,12]}/>
         <Suspense fallback={null}>
           <CabinModel/>
         </Suspense>
+        <EffectComposer multisampling={0}>
+          <Bloom intensity={1.2} luminanceThreshold={0.3} luminanceSmoothing={0.2} mipmapBlur radius={0.8}/>
+          <Vignette darkness={0.7} offset={0.25}/>
+          <BrightnessContrast contrast={0.15} brightness={-0.05}/>
+          <Noise opacity={0.03}/>
+        </EffectComposer>
       </Canvas>
     </div>
   );
 }
 
-// Preload GLB so it starts fetching immediately
 useGLTF.preload("/cabin_main_room.glb");
 
 /* ═══════════════════════════════════════════════════
@@ -1589,7 +1690,7 @@ export default function App(){
 
       {/* ── Full-screen cabin background (3D or 2D fallback) ── */}
       {cabin3D&&!cabin3DError?(
-        <CabinScene3D onError={()=>setCabin3DError(true)}/>
+        <CabinScene3D/>
       ):(
         <img src="/cabin-interior.png" alt="Cabin interior" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",zIndex:0}}/>
       )}
@@ -1600,6 +1701,8 @@ export default function App(){
         <span style={{fontFamily:SANS,fontSize:"0.55rem",color:"rgba(255,248,232,0.5)",letterSpacing:"0.02em"}}>{cabin3D&&!cabin3DError?"3D":"2D"}</span>
       </button>
 
+      {/* ── 2D-only visual overlays (hidden in 3D mode) ── */}
+      {(!cabin3D||cabin3DError)&&<>
       {/* ── Subtle vignette — edges only ── */}
       <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse at center,transparent 40%,rgba(10,8,6,0.5) 100%)",zIndex:1,pointerEvents:"none"}}/>
 
@@ -1617,8 +1720,10 @@ export default function App(){
           </div>
         );
       })}
+      </>}
 
-      {/* ═══ INTERACTIVE HOTSPOTS ═══ */}
+      {/* ═══ 2D INTERACTIVE HOTSPOTS (hidden in 3D mode) ═══ */}
+      {(!cabin3D||cabin3DError)&&<>
 
       {/* 1. DESK BOOK — bottom center, over the glowing book */}
       <button onClick={()=>{setBookOpen(true);setBookPage(0);setFlipDir(null);}} style={{position:"absolute",left:"18%",right:"27%",top:"65%",bottom:"12%",zIndex:10,background:"transparent",border:"none",cursor:"pointer",borderRadius:"12px",animation:"hotspotPulse 3s ease-in-out infinite"}}>
@@ -1660,7 +1765,9 @@ export default function App(){
         </div>
       </button>
 
-      {/* ═══ DOOR CHOICE OVERLAY ═══ */}
+      </>}
+
+      {/* ═══ DOOR CHOICE OVERLAY (always visible — works in both 2D and 3D) ═══ */}
       {doorChoice&&<div style={{position:"fixed",inset:0,zIndex:100}}>
         <div onClick={()=>setDoorChoice(false)} style={{position:"absolute",inset:0,background:"rgba(10,8,6,0.7)",backdropFilter:"blur(6px)",WebkitBackdropFilter:"blur(6px)",animation:"spaceFadeIn .25s ease"}}/>
         <div style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",display:"flex",flexDirection:"column",gap:14,animation:"doorChoiceFadeIn .4s cubic-bezier(.22,1,.36,1) both",width:"min(82vw,320px)"}}>
@@ -1683,6 +1790,8 @@ export default function App(){
         </div>
       </div>}
 
+      {/* ═══ 2D HOTSPOTS continued (hidden in 3D mode) ═══ */}
+      {(!cabin3D||cabin3DError)&&<>
       {/* 4. LEFT WINDOW — trimmed right edge to avoid overlapping the door hotspot */}
       <button className="window-hotspot" onClick={()=>setWindowPanel("left")} style={{position:"absolute",left:"2%",top:"2%",width:"24%",height:"28%",zIndex:10,background:"transparent",border:"none",cursor:"pointer",borderRadius:"8px"}}/>
 
@@ -1698,8 +1807,9 @@ export default function App(){
       <button onClick={()=>setShowInsights(true)} style={{position:"absolute",left:"40%",right:"40%",bottom:"4%",height:"10%",zIndex:10,background:"transparent",border:"none",cursor:"pointer",borderRadius:"8px"}}>
         <div style={{position:"absolute",inset:"-10%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,200,80,0.04),transparent 60%)",pointerEvents:"none"}}/>
       </button>
+      </>}
 
-      {/* 8. SIGN-IN / PROFILE — bottom-left beneath desk */}
+      {/* 8. SIGN-IN / PROFILE — bottom-left beneath desk (always visible) */}
       {!user&&!authLoading&&auth&&(
         <button onClick={handleGoogleSignIn} style={{position:"absolute",left:"4%",bottom:"3%",zIndex:12,background:"rgba(26,22,18,0.65)",backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",border:"1px solid rgba(201,169,110,0.2)",borderRadius:14,padding:"8px 14px",cursor:"pointer",display:"flex",alignItems:"center",gap:8,animation:"fadeUp 1s 1.5s ease both",boxShadow:"0 4px 16px rgba(0,0,0,0.3)"}}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
@@ -1719,6 +1829,8 @@ export default function App(){
         </button>
       )}
 
+      {/* ═══ 2D UI buttons (hidden in 3D mode) ═══ */}
+      {(!cabin3D||cabin3DError)&&<>
       {/* 9. HISTORY — bottom-right floating button */}
       <button onClick={goToHistory} style={{position:"absolute",right:"4%",bottom:"3%",zIndex:12,background:"rgba(26,22,18,0.65)",backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",border:"1px solid rgba(201,169,110,0.2)",borderRadius:14,padding:"8px 14px",cursor:"pointer",display:"flex",alignItems:"center",gap:8,animation:"fadeUp 1s 1.8s ease both",boxShadow:"0 4px 16px rgba(0,0,0,0.3)"}}>
         <span style={{fontSize:"0.85rem"}}>📖</span>
@@ -1730,15 +1842,37 @@ export default function App(){
         <div style={{position:"absolute",inset:"-10%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,200,80,0.06),transparent 60%)",pointerEvents:"none"}}/>
         <span style={{fontSize:"clamp(0.9rem,2.5vw,1.3rem)",filter:"drop-shadow(0 2px 6px rgba(0,0,0,0.5))"}}>🪵</span>
       </button>
+      </>}
 
-      {/* CANDLE BALANCE — persistent display (triple-tap = toggle debug hotspots) */}
+      {/* CANDLE BALANCE — persistent display (triple-tap = toggle debug hotspots) — always visible */}
       <div onClick={debugTripleTap} style={{position:"absolute",left:"5%",bottom:"32%",zIndex:12,background:"rgba(26,22,18,0.7)",backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",border:"1px solid rgba(212,180,100,0.15)",borderRadius:10,padding:"5px 12px",display:"flex",alignItems:"center",gap:6,animation:"fadeUp 1s 2s ease both",cursor:"default"}}>
         <span style={{fontSize:"0.8rem"}}>🕯️</span>
         <span style={{fontFamily:DISPLAY,fontSize:"0.82rem",fontWeight:700,color:B.goldL}}>{candles}</span>
       </div>
 
-      {/* ═══ HOTSPOT DEBUG OVERLAY ═══ */}
-      {debugHotspots&&<>
+      {/* ═══ 3D ACTION BAR — glassmorphism bottom bar (3D mode only) ═══ */}
+      {cabin3D&&!cabin3DError&&(
+        <div style={{position:"absolute",bottom:0,left:0,right:0,zIndex:20,display:"flex",justifyContent:"center",padding:"0 12px 16px",pointerEvents:"none"}}>
+          <div style={{display:"flex",gap:6,background:"rgba(26,22,18,0.75)",backdropFilter:"blur(14px)",WebkitBackdropFilter:"blur(14px)",border:"1px solid rgba(201,169,110,0.15)",borderRadius:20,padding:"8px 10px",pointerEvents:"auto",boxShadow:"0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,248,232,0.04)"}}>
+            {[
+              {emoji:"📖",label:"Read",fn:()=>{setBookOpen(true);setBookPage(0);setFlipDir(null);}},
+              {emoji:"🚪",label:"Door",fn:()=>setDoorChoice(true)},
+              {emoji:"🪟",label:"Window",fn:()=>setWindowPanel("left")},
+              {emoji:"✦",label:"Reflect",fn:()=>setShowInsights(true)},
+              {emoji:"📜",label:"History",fn:goToHistory},
+              {emoji:"🪵",label:"Shop",fn:()=>setScreen("shop")},
+            ].map(({emoji,label,fn})=>(
+              <button key={label} onClick={fn} style={{background:"rgba(255,248,232,0.04)",border:"1px solid rgba(201,169,110,0.1)",borderRadius:14,padding:"10px 12px",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:3,minWidth:48,transition:"all 0.2s"}} onMouseEnter={e=>{e.currentTarget.style.background="rgba(201,169,110,0.12)";e.currentTarget.style.borderColor="rgba(201,169,110,0.3)";}} onMouseLeave={e=>{e.currentTarget.style.background="rgba(255,248,232,0.04)";e.currentTarget.style.borderColor="rgba(201,169,110,0.1)";}}>
+                <span style={{fontSize:"1.1rem",filter:"drop-shadow(0 1px 4px rgba(0,0,0,0.4))"}}>{emoji}</span>
+                <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.52rem",color:"rgba(255,248,232,0.45)",letterSpacing:"0.02em",whiteSpace:"nowrap"}}>{label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ═══ HOTSPOT DEBUG OVERLAY (2D only) ═══ */}
+      {debugHotspots&&(!cabin3D||cabin3DError)&&<>
         {/* Toggle badge */}
         <div style={{position:"fixed",top:8,left:"50%",transform:"translateX(-50%)",zIndex:999,background:"rgba(255,60,60,0.85)",color:"#fff",fontFamily:SANS,fontSize:"0.65rem",fontWeight:700,padding:"4px 14px",borderRadius:20,letterSpacing:"0.04em",pointerEvents:"none",backdropFilter:"blur(6px)",WebkitBackdropFilter:"blur(6px)",whiteSpace:"nowrap"}}>DEBUG HOTSPOTS ON — Ctrl+Shift+. or 3×tap 🕯️</div>
         {/* 1. Desk Book */}
