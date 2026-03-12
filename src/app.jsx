@@ -400,6 +400,27 @@ function computeFutureYou(entries){
   return {first:{date:first.date,snippet:first.text.slice(0,120),negPatterns:firstNeg,posPatterns:firstPos},latest:{date:latest.date,snippet:latest.text.slice(0,120),negPatterns:latestNeg,posPatterns:latestPos},daysBetween};
 }
 
+/* ═══════════════════════════════════════════════════
+   CANDLE ECONOMY — SHOP ITEMS
+═══════════════════════════════════════════════════ */
+const SHOP_ITEMS=[
+  // Furniture
+  {id:"prayer_chair",name:"Wooden Prayer Chair",emoji:"\u{1FA91}",cost:15,category:"furniture",asset:"/assets/furniture/prayer-chair.png",pos:{top:"62%",left:"8%",width:"12%"}},
+  {id:"prayer_rug",name:"Woven Prayer Rug",emoji:"\u{1F9F6}",cost:10,category:"furniture",asset:"/assets/furniture/prayer-rug.png",pos:{top:"78%",left:"22%",width:"18%"}},
+  {id:"side_table",name:"Rustic Side Table",emoji:"\u{1FAB5}",cost:12,category:"furniture",asset:"/assets/furniture/side-table.png",pos:{top:"60%",left:"60%",width:"10%"}},
+  // Candles & Light
+  {id:"candle_cluster",name:"Candle Cluster",emoji:"\uD83D\uDD6F\uFE0F",cost:8,category:"candles",asset:"/assets/furniture/candle-cluster.png",pos:{top:"58%",left:"62%",width:"8%"}},
+  {id:"lantern",name:"Brass Lantern",emoji:"\uD83C\uDFEE",cost:12,category:"candles",asset:"/assets/furniture/brass-lantern.png",pos:{top:"35%",left:"5%",width:"6%"}},
+  {id:"string_lights",name:"String Lights",emoji:"\u2728",cost:20,category:"candles",asset:"/assets/furniture/string-lights.png",pos:{top:"15%",left:"10%",width:"50%"}},
+  // Decor
+  {id:"cross_wall",name:"Wooden Cross",emoji:"\u271D\uFE0F",cost:10,category:"decor",asset:"/assets/furniture/wooden-cross.png",pos:{top:"25%",left:"48%",width:"8%"}},
+  {id:"plant_pot",name:"Potted Fern",emoji:"\uD83C\uDF3F",cost:6,category:"decor",asset:"/assets/furniture/potted-fern.png",pos:{top:"65%",left:"72%",width:"9%"}},
+  {id:"bookstack",name:"Stack of Books",emoji:"\uD83D\uDCDA",cost:8,category:"decor",asset:"/assets/furniture/book-stack.png",pos:{top:"63%",left:"56%",width:"7%"}},
+  {id:"bible_open",name:"Open Bible",emoji:"\uD83D\uDCD6",cost:14,category:"decor",asset:"/assets/furniture/open-bible.png",pos:{top:"56%",left:"64%",width:"8%"}},
+  {id:"prayer_beads",name:"Prayer Beads",emoji:"\uD83D\uDCFF",cost:5,category:"decor",asset:"/assets/furniture/prayer-beads.png",pos:{top:"58%",left:"70%",width:"6%"}},
+  {id:"tapestry",name:"Woven Tapestry",emoji:"\uD83D\uDDBC\uFE0F",cost:18,category:"decor",asset:"/assets/furniture/woven-tapestry.png",pos:{top:"22%",left:"15%",width:"14%"}},
+];
+
 async function dbLoad(k){
   try{
     if(window.storage){const r=await window.storage.get(k);return r?.value?JSON.parse(r.value):null;}
@@ -412,7 +433,7 @@ async function dbSave(k,v){
     localStorage.setItem(k,JSON.stringify(v));
     // Dual-write to Firestore when signed in
     if(auth?.currentUser){
-      const fieldMap={"irj-entries":"entries","irj-prayer":"prayerPosts","irj-saved-cards":"savedCards","irj-onboarded":"isOnboarded"};
+      const fieldMap={"irj-entries":"entries","irj-prayer":"prayerPosts","irj-saved-cards":"savedCards","irj-onboarded":"isOnboarded","irj-candles":"candles","irj-prayed":"prayedFor","irj-owned-items":"ownedItems"};
       const field=fieldMap[k];
       if(field){
         const userRef=doc(db,"users",auth.currentUser.uid);
@@ -646,6 +667,12 @@ export default function App(){
   const [journeyTab,     setJourneyTab]     = useState("overview");
   const [seasonalPeriod, setSeasonalPeriod] = useState(30);
   const [prayerFilter,   setPrayerFilter]   = useState("active");
+  // candle economy
+  const [candles,        setCandles]        = useState(0);
+  const [prayedFor,      setPrayedFor]      = useState([]);
+  const [ownedItems,     setOwnedItems]    = useState([]);
+  const [candleReward,   setCandleReward]  = useState(null);
+  const [shopCategory,   setShopCategory]  = useState("all");
 
   // ── LOAD ──
   useEffect(()=>{
@@ -654,6 +681,9 @@ export default function App(){
       const pp   = await dbLoad("irj-prayer")  || SAMPLE_PRAYERS;
       const ob   = await dbLoad("irj-onboarded");
       const sc   = await dbLoad("irj-saved-cards") || [];
+      const cn   = await dbLoad("irj-candles") || 0;
+      const pf   = await dbLoad("irj-prayed") || [];
+      const oi   = await dbLoad("irj-owned-items") || [];
       // Migrate prayers: add status/answeredDate/category if missing
       let migrated=false;
       const mpp=pp.map(p=>{
@@ -662,6 +692,7 @@ export default function App(){
       });
       if(migrated) dbSave("irj-prayer",mpp);
       setEntries(ens); setPrayerPosts(mpp); setSavedCards(sc);
+      setCandles(cn); setPrayedFor(pf); setOwnedItems(oi);
       let s=0,d=new Date(),map={};
       ens.forEach(e=>{map[e.date]=true;});
       while(map[isoDate(d)]){s++;d.setDate(d.getDate()-1);} setStreak(s);
@@ -707,22 +738,34 @@ export default function App(){
       const localPrayers=await dbLoad("irj-prayer")||[];
       const localCards=await dbLoad("irj-saved-cards")||[];
       const localOnboard=await dbLoad("irj-onboarded");
+      const localCandles=await dbLoad("irj-candles")||0;
+      const localPrayed=await dbLoad("irj-prayed")||[];
+      const localOwned=await dbLoad("irj-owned-items")||[];
 
       const mergedEntries=mergeById(localEntries,cloud.entries||[]);
       const mergedPrayers=mergeById(localPrayers,cloud.prayerPosts||[]);
       const mergedCards=mergeById(localCards,cloud.savedCards||[]);
       const mergedOnboard=localOnboard||cloud.isOnboarded||false;
+      const mergedCandles=Math.max(localCandles,cloud.candles||0);
+      const mergedPrayed=[...new Set([...localPrayed,...(cloud.prayedFor||[])])];
+      const mergedOwned=[...new Set([...localOwned,...(cloud.ownedItems||[])])];
 
       localStorage.setItem("irj-entries",JSON.stringify(mergedEntries));
       localStorage.setItem("irj-prayer",JSON.stringify(mergedPrayers));
       localStorage.setItem("irj-saved-cards",JSON.stringify(mergedCards));
       localStorage.setItem("irj-onboarded",JSON.stringify(mergedOnboard));
+      localStorage.setItem("irj-candles",JSON.stringify(mergedCandles));
+      localStorage.setItem("irj-prayed",JSON.stringify(mergedPrayed));
+      localStorage.setItem("irj-owned-items",JSON.stringify(mergedOwned));
 
       await setDoc(userRef,{
         entries:mergedEntries,
         prayerPosts:mergedPrayers,
         savedCards:mergedCards,
         isOnboarded:mergedOnboard,
+        candles:mergedCandles,
+        prayedFor:mergedPrayed,
+        ownedItems:mergedOwned,
         lastSyncedAt:new Date().toISOString(),
       });
 
@@ -730,6 +773,9 @@ export default function App(){
       setPrayerPosts(mergedPrayers);
       setSavedCards(mergedCards);
       setIsOnboarded(!!mergedOnboard);
+      setCandles(mergedCandles);
+      setPrayedFor(mergedPrayed);
+      setOwnedItems(mergedOwned);
 
       let s=0,d=new Date(),map={};
       mergedEntries.forEach(e=>{map[e.date]=true;});
@@ -781,6 +827,7 @@ export default function App(){
     if(!jTexts[0].trim()) return;
     const e={id:Date.now().toString(),date:todayStr(),roomId:activeRoom.id,roomLabel:activeRoom.label,roomEmoji:activeRoom.emoji,day:activeDay,prompt:activeRoom.days[activeDay].q,text:jTexts.filter(Boolean).join("\n\n---\n\n"),words:jTexts.filter(Boolean).reduce((s,t)=>s+wc(t),0)};
     persistEntries([e,...entries]);
+    addCandles(3,"Reflection saved +3 🕯️");
     setSaveMsg("✓ Saved to your history"); setTimeout(()=>{setSaveMsg("");setScreen(prevScreen);},2200);
   }
   function saveBookEntry(){
@@ -789,6 +836,7 @@ export default function App(){
     const book=SHELF_BOOKS.find(b=>b.id===deskBook);
     const e={id:Date.now().toString(),date:todayStr(),roomId:deskBook,roomLabel:book?.label||deskBook,roomEmoji:book?.emoji||"📖",day:bookPage-1,prompt:pg.prompt,text:bookText.trim(),words:wc(bookText)};
     persistEntries([e,...entries]);
+    addCandles(3,"Reflection saved +3 🕯️");
     setBookSaveMsg("✓ Saved to history 📖"); setTimeout(()=>setBookSaveMsg(""),2500);
   }
 
@@ -800,8 +848,11 @@ export default function App(){
     setNewPrayer(""); setPrayerTag("");
   }
   function prayFor(id){
+    if(prayedFor.includes(id)) return;
     const next=prayerPosts.map(p=>p.id===id?{...p,prayers:p.prayers+1}:p);
     setPrayerPosts(next); dbSave("irj-prayer",next);
+    setPrayedFor(prev=>{const np=[...prev,id];dbSave("irj-prayed",np);return np;});
+    addCandles(2,"You lit a candle for this prayer");
   }
   function markPrayerAnswered(id){
     const next=prayerPosts.map(p=>p.id===id?{...p,status:"answered",answeredDate:todayStr()}:p);
@@ -810,6 +861,21 @@ export default function App(){
   function reactivatePrayer(id){
     const next=prayerPosts.map(p=>p.id===id?{...p,status:"active",answeredDate:null}:p);
     setPrayerPosts(next); dbSave("irj-prayer",next);
+  }
+
+  // ── CANDLE ECONOMY ──
+  function addCandles(amount,message){
+    setCandles(prev=>{const next=prev+amount;dbSave("irj-candles",next);return next;});
+    setCandleReward({amount,message});
+    setTimeout(()=>setCandleReward(null),2500);
+  }
+  function spendCandles(amount){
+    setCandles(prev=>{const next=prev-amount;dbSave("irj-candles",next);return next;});
+  }
+  function buyShopItem(item){
+    if(candles<item.cost||ownedItems.includes(item.id)) return;
+    spendCandles(item.cost);
+    setOwnedItems(prev=>{const next=[...prev,item.id];dbSave("irj-owned-items",next);return next;});
   }
 
   // ── SCENE NAVIGATION ──
@@ -1043,6 +1109,7 @@ export default function App(){
     .book-nav:hover{background:rgba(101,83,55,0.15)!important;border-color:rgba(101,83,55,0.3)!important}
     .book-nav:active{transform:translateY(-50%) scale(0.9)!important}
     @keyframes streakFloat{0%{opacity:0;transform:translate(-50%,-20px) scale(0.8)}15%{opacity:1;transform:translate(-50%,0) scale(1)}85%{opacity:1;transform:translate(-50%,0) scale(1)}100%{opacity:0;transform:translate(-50%,-12px) scale(0.9)}}
+    @keyframes candleFloat{0%{opacity:0;transform:translate(-50%,10px) scale(0.8)}12%{opacity:1;transform:translate(-50%,0) scale(1)}80%{opacity:1;transform:translate(-50%,0) scale(1)}100%{opacity:0;transform:translate(-50%,-18px) scale(0.85)}}
     @keyframes insightsSlideUp{from{opacity:0;transform:translate(-50%,-50%) scale(0.92)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
     @keyframes candlePulse{0%,100%{filter:drop-shadow(0 0 8px rgba(255,200,80,0.3))}50%{filter:drop-shadow(0 0 18px rgba(255,200,80,0.6))}}
     @keyframes shelfDust{0%{opacity:0;transform:translate(0,0) scale(0.3)}20%{opacity:0.7;transform:translate(3px,-6px) scale(0.8)}50%{opacity:0.3;transform:translate(-2px,-14px) scale(0.6)}80%{opacity:0.5;transform:translate(4px,-8px) scale(0.9)}100%{opacity:0;transform:translate(1px,-18px) scale(0.3)}}
@@ -1226,6 +1293,18 @@ export default function App(){
       {/* ── Ambient effects ── */}
       <div style={{position:"absolute",inset:0,zIndex:2,pointerEvents:"none"}}><Fireflies/><CabinCandleGlow/><ShelfParticles/></div>
 
+      {/* ── Owned furniture decorations ── */}
+      {ownedItems.map(itemId=>{
+        const item=SHOP_ITEMS.find(i=>i.id===itemId);
+        if(!item) return null;
+        return(
+          <div key={item.id} style={{position:"absolute",top:item.pos.top,left:item.pos.left,width:item.pos.width,zIndex:5,pointerEvents:"none",animation:"fadeUp 0.6s ease both"}}>
+            <img src={item.asset} alt={item.name} onError={e=>{e.target.style.display="none";e.target.nextSibling.style.display="block";}} style={{width:"100%",height:"auto",display:"block"}}/>
+            <span style={{display:"none",fontSize:"clamp(20px,4vw,40px)",filter:"drop-shadow(0 2px 6px rgba(0,0,0,0.4))",textAlign:"center",width:"100%"}}>{item.emoji}</span>
+          </div>
+        );
+      })}
+
       {/* ═══ INTERACTIVE HOTSPOTS ═══ */}
 
       {/* 1. DESK BOOK — bottom center, over the glowing book */}
@@ -1304,6 +1383,18 @@ export default function App(){
         <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.68rem",color:"rgba(255,248,232,0.5)",letterSpacing:"0.02em"}}>History</span>
       </button>
 
+      {/* 10. SHOP HOTSPOT — bottom-right chest area */}
+      <button onClick={()=>setScreen("shop")} style={{position:"absolute",right:"4%",bottom:"14%",width:"12%",height:"10%",zIndex:10,background:"transparent",border:"none",cursor:"pointer",borderRadius:"8px",animation:"hotspotPulse 3.2s ease-in-out infinite"}}>
+        <div style={{position:"absolute",inset:"-10%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,200,80,0.06),transparent 60%)",pointerEvents:"none"}}/>
+        <span style={{fontSize:"clamp(0.9rem,2.5vw,1.3rem)",filter:"drop-shadow(0 2px 6px rgba(0,0,0,0.5))"}}>🪵</span>
+      </button>
+
+      {/* CANDLE BALANCE — persistent display */}
+      <div style={{position:"absolute",left:"5%",bottom:"32%",zIndex:12,background:"rgba(26,22,18,0.7)",backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",border:"1px solid rgba(212,180,100,0.15)",borderRadius:10,padding:"5px 12px",display:"flex",alignItems:"center",gap:6,animation:"fadeUp 1s 2s ease both",pointerEvents:"none"}}>
+        <span style={{fontSize:"0.8rem"}}>🕯️</span>
+        <span style={{fontFamily:DISPLAY,fontSize:"0.82rem",fontWeight:700,color:B.goldL}}>{candles}</span>
+      </div>
+
       {/* ═══ STREAK FLOATING INDICATOR ═══ */}
       {showStreak&&<div style={{position:"fixed",bottom:"28%",left:"50%",zIndex:60,animation:"streakFloat 3s ease both",pointerEvents:"none"}}>
         <div style={{background:"rgba(26,22,18,0.92)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",border:"1px solid rgba(201,169,110,0.3)",borderRadius:16,padding:"14px 24px",display:"flex",alignItems:"center",gap:12,boxShadow:"0 8px 32px rgba(0,0,0,0.4), 0 0 20px rgba(201,169,110,0.1)",whiteSpace:"nowrap"}}>
@@ -1311,6 +1402,17 @@ export default function App(){
           <div>
             <div style={{fontFamily:DISPLAY,fontSize:"1.2rem",fontWeight:700,color:B.goldL}}>{streak}-day streak</div>
             <div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.72rem",color:"rgba(255,248,232,0.4)",marginTop:2}}>{streak>=7?"The locked room awaits":"Keep showing up"}</div>
+          </div>
+        </div>
+      </div>}
+
+      {/* ═══ CANDLE REWARD FLOAT ═══ */}
+      {candleReward&&<div style={{position:"fixed",bottom:"35%",left:"50%",zIndex:60,animation:"candleFloat 2.5s ease both",pointerEvents:"none"}}>
+        <div style={{background:"rgba(26,22,18,0.92)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",border:"1px solid rgba(212,180,100,0.35)",borderRadius:16,padding:"14px 24px",display:"flex",alignItems:"center",gap:12,boxShadow:"0 8px 32px rgba(0,0,0,0.4), 0 0 20px rgba(212,180,100,0.15)",whiteSpace:"nowrap"}}>
+          <span style={{fontSize:"1.5rem"}}>🕯️</span>
+          <div>
+            <div style={{fontFamily:DISPLAY,fontSize:"1.2rem",fontWeight:700,color:B.goldL}}>+{candleReward.amount} 🕯️</div>
+            <div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.72rem",color:"rgba(255,248,232,0.5)",marginTop:2}}>{candleReward.message}</div>
           </div>
         </div>
       </div>}
@@ -1810,7 +1912,7 @@ export default function App(){
             {jesusText.trim()&&(
               <div style={{display:"flex",gap:"8px"}}>
                 {jesusSaved&&<span style={{fontSize:"0.78rem",color:"#D4B464",fontWeight:600,alignSelf:"center"}}>✓ Saved</span>}
-                <button onClick={()=>{const e={id:Date.now().toString(),date:todayStr(),roomId:"jesus",roomLabel:"Questions Jesus Asked",roomEmoji:"✝️",day:jesusIdx,prompt:jq.app,text:jesusText.trim(),words:wc(jesusText)};persistEntries([e,...entries]);setJesusSaved(true);}} style={{background:"#D4B464",border:"none",color:"#1A1208",padding:"9px 22px",borderRadius:"7px",cursor:"pointer",fontSize:"0.82rem",fontFamily:SANS,fontWeight:700}}>Save reflection →</button>
+                <button onClick={()=>{const e={id:Date.now().toString(),date:todayStr(),roomId:"jesus",roomLabel:"Questions Jesus Asked",roomEmoji:"✝️",day:jesusIdx,prompt:jq.app,text:jesusText.trim(),words:wc(jesusText)};persistEntries([e,...entries]);addCandles(3,"Reflection saved +3 🕯️");setJesusSaved(true);}} style={{background:"#D4B464",border:"none",color:"#1A1208",padding:"9px 22px",borderRadius:"7px",cursor:"pointer",fontSize:"0.82rem",fontFamily:SANS,fontWeight:700}}>Save reflection →</button>
               </div>
             )}
           </div>
@@ -2006,7 +2108,7 @@ export default function App(){
                   </div>
                   <p style={{fontFamily:SERIF,fontSize:"0.92rem",color:"rgba(255,248,232,0.7)",margin:"0 0 10px",lineHeight:1.65}}>{p.text}</p>
                   <div style={{display:"flex",gap:8}}>
-                    <button onClick={()=>prayFor(p.id)} style={{background:"rgba(90,138,106,0.15)",border:"1px solid rgba(90,138,106,0.25)",color:"#BED3C4",padding:"5px 14px",borderRadius:7,cursor:"pointer",fontSize:"0.74rem",fontFamily:SANS,fontWeight:600,transition:"all 0.15s"}} onMouseEnter={e=>e.target.style.background="rgba(90,138,106,0.3)"} onMouseLeave={e=>e.target.style.background="rgba(90,138,106,0.15)"}>🙏 Praying ({p.prayers})</button>
+                    {prayedFor.includes(p.id)?(<span style={{background:"rgba(90,138,106,0.08)",border:"1px solid rgba(90,138,106,0.15)",color:"rgba(190,211,196,0.5)",padding:"5px 14px",borderRadius:7,fontSize:"0.74rem",fontFamily:SANS,fontWeight:600}}>🙏 Praying ({p.prayers})</span>):(<button onClick={()=>prayFor(p.id)} style={{background:"rgba(90,138,106,0.15)",border:"1px solid rgba(90,138,106,0.25)",color:"#BED3C4",padding:"5px 14px",borderRadius:7,cursor:"pointer",fontSize:"0.74rem",fontFamily:SANS,fontWeight:600,transition:"all 0.15s"}} onMouseEnter={e=>e.target.style.background="rgba(90,138,106,0.3)"} onMouseLeave={e=>e.target.style.background="rgba(90,138,106,0.15)"}>🙏 Pray ({p.prayers})</button>)}
                     {p.status==="answered"?
                       <button onClick={()=>reactivatePrayer(p.id)} style={{background:"transparent",border:"1px solid rgba(201,169,110,0.15)",color:"rgba(255,248,232,0.35)",padding:"5px 12px",borderRadius:7,cursor:"pointer",fontSize:"0.72rem",fontFamily:SANS,fontWeight:600}}>Reactivate</button>
                     :
@@ -2258,6 +2360,51 @@ export default function App(){
       </main>
     </div>
   );}
+
+  /* ══ ROOM SHOP ════════════════════════════════════ */
+  if(screen==="shop"){
+    const filteredItems=shopCategory==="all"?SHOP_ITEMS:SHOP_ITEMS.filter(i=>i.category===shopCategory);
+    const cats=[{id:"all",label:"All"},{id:"furniture",label:"Furniture"},{id:"candles",label:"Candles"},{id:"decor",label:"Decor"}];
+    return(
+      <div style={{minHeight:"100vh",background:"linear-gradient(160deg,#1A1208,#2A1E08)",color:"#FFF8E8",fontFamily:SANS}}>
+        <style>{GFONTS}{CSS}</style>
+        <DarkHeader title="🕯️ Room Shop" onBack={()=>setScreen("cabin")} extra={<div style={{display:"flex",alignItems:"center",gap:6,background:"rgba(212,180,100,0.1)",border:"1px solid rgba(212,180,100,0.2)",borderRadius:10,padding:"5px 12px"}}><span style={{fontSize:"0.9rem"}}>🕯️</span><span style={{fontFamily:DISPLAY,fontSize:"0.9rem",fontWeight:700,color:B.goldL}}>{candles}</span></div>}/>
+        <main style={{maxWidth:"600px",margin:"0 auto",padding:"20px 18px 80px"}}>
+          {/* Category filters */}
+          <div style={{display:"flex",gap:8,marginBottom:20,flexWrap:"wrap"}}>
+            {cats.map(c=><button key={c.id} onClick={()=>setShopCategory(c.id)} style={{background:shopCategory===c.id?"rgba(212,180,100,0.15)":"transparent",border:`1px solid ${shopCategory===c.id?"rgba(212,180,100,0.35)":"rgba(255,248,232,0.08)"}`,color:shopCategory===c.id?B.goldL:"rgba(255,248,232,0.4)",padding:"6px 16px",borderRadius:8,cursor:"pointer",fontSize:"0.78rem",fontFamily:SANS,fontWeight:shopCategory===c.id?600:400,transition:"all 0.15s"}}>{c.label}</button>)}
+          </div>
+          {/* Item grid */}
+          <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:14}}>
+            {filteredItems.map(item=>{
+              const owned=ownedItems.includes(item.id);
+              const canAfford=candles>=item.cost;
+              return(
+                <div key={item.id} style={{background:owned?"rgba(90,138,106,0.08)":"rgba(255,255,255,0.03)",border:`1px solid ${owned?"rgba(90,138,106,0.25)":"rgba(212,180,100,0.12)"}`,borderRadius:14,padding:"18px 14px",display:"flex",flexDirection:"column",alignItems:"center",gap:8,transition:"all 0.2s"}}>
+                  {/* Item preview */}
+                  <div style={{width:"60px",height:"60px",display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(255,255,255,0.03)",borderRadius:12,position:"relative"}}>
+                    <img src={item.asset} alt={item.name} onError={e=>{e.target.style.display="none";e.target.nextSibling.style.display="flex";}} style={{maxWidth:"100%",maxHeight:"100%",objectFit:"contain"}}/>
+                    <span style={{display:"none",fontSize:"1.8rem",alignItems:"center",justifyContent:"center",width:"100%",height:"100%"}}>{item.emoji}</span>
+                  </div>
+                  {/* Name */}
+                  <div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.82rem",color:"rgba(255,248,232,0.85)",textAlign:"center",lineHeight:1.3}}>{item.name}</div>
+                  {/* Cost */}
+                  <div style={{fontSize:"0.72rem",color:B.goldL,fontFamily:SANS,fontWeight:600}}>🕯️ {item.cost}</div>
+                  {/* Buy / Owned button */}
+                  {owned?(
+                    <div style={{background:"rgba(90,138,106,0.15)",border:"1px solid rgba(90,138,106,0.2)",borderRadius:8,padding:"6px 16px",fontSize:"0.74rem",fontFamily:SANS,fontWeight:600,color:"rgba(190,211,196,0.7)"}}>✓ Owned</div>
+                  ):(
+                    <button onClick={()=>{if(canAfford)buyShopItem(item);}} style={{background:canAfford?"rgba(212,180,100,0.2)":"rgba(255,255,255,0.04)",border:`1px solid ${canAfford?"rgba(212,180,100,0.35)":"rgba(255,255,255,0.08)"}`,borderRadius:8,padding:"6px 16px",fontSize:"0.74rem",fontFamily:SANS,fontWeight:600,color:canAfford?B.goldL:"rgba(255,248,232,0.25)",cursor:canAfford?"pointer":"default",transition:"all 0.15s"}}>{canAfford?"Buy":"Not enough 🕯️"}</button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          {filteredItems.length===0&&<p style={{fontFamily:SERIF,fontStyle:"italic",color:"rgba(255,248,232,0.3)",textAlign:"center",marginTop:40}}>No items in this category yet.</p>}
+        </main>
+      </div>
+    );
+  }
 
   /* ══ HISTORY (Calendar) ═══════════════════════════ */
   if(screen==="history"){
