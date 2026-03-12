@@ -584,11 +584,14 @@ export default function App(){
   }
 
   async function handleGoogleSignIn(){
-    if(!auth) return;
+    if(!auth){console.error("Auth not initialized");return;}
     try{ await signInWithPopup(auth,googleProvider); }
     catch(err){
-      if(err.code==="auth/popup-blocked"||err.code==="auth/popup-closed-by-user")
-        await signInWithRedirect(auth,googleProvider);
+      console.error("Google Sign-In error:",err.code,err.message);
+      if(err.code==="auth/popup-blocked"||err.code==="auth/popup-closed-by-user"){
+        try{ await signInWithRedirect(auth,googleProvider); }
+        catch(e2){ console.error("Redirect fallback error:",e2.code,e2.message); }
+      }
     }
   }
 
