@@ -1117,10 +1117,10 @@ const MAP_BG_IMAGE="/map.png";
 // Hotspot positions mapped to label locations in map.png
 // Positions are % based for responsive layout
 const MAP_LOCATIONS=[
-  {id:"cabin",   label:"Cabin",          emoji:"🏠", left:"32%", top:"78%", desc:"Your quiet place"},
-  {id:"garden",  label:"Prayer Garden",  emoji:"🌿", left:"15%", top:"40%", desc:"Grow your prayers"},
-  {id:"market",  label:"Market",         emoji:"🏪", left:"62%", top:"46%", desc:"Trade & provision"},
-  {id:"upper-room",label:"Upper Room",   emoji:"⛪", left:"68%", top:"13%", desc:"Worship & encounter"},
+  {id:"cabin",   label:"Cabin",          left:"32%", top:"78%", desc:"Your quiet place"},
+  {id:"garden",  label:"Prayer Garden",  left:"15%", top:"40%", desc:"Grow your prayers"},
+  {id:"market",  label:"Market",         left:"62%", top:"46%", desc:"Trade & provision"},
+  {id:"upper-room",label:"Upper Room",   left:"68%", top:"13%", desc:"Worship & encounter"},
 ];
 
 function ImmersiveMap(){
@@ -2251,7 +2251,6 @@ export default function App(){
         <div style={{position:"absolute",inset:"-6%",borderRadius:"8px",background:"radial-gradient(ellipse at center 60%,rgba(255,190,100,0.06),transparent 65%)",pointerEvents:"none"}}/>
         {/* Subtle door label */}
         <div style={{position:"absolute",bottom:"10%",left:"50%",transform:"translateX(-50%)",display:"flex",alignItems:"center",gap:4,background:"rgba(10,8,6,0.55)",backdropFilter:"blur(6px)",WebkitBackdropFilter:"blur(6px)",borderRadius:12,padding:"5px 10px",animation:"doorLabelFade 5s ease-in-out infinite",pointerEvents:"none",whiteSpace:"nowrap"}}>
-          <span style={{fontSize:"0.65rem",opacity:0.85}}>🗺️</span>
           <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.55rem",color:"rgba(255,248,232,0.55)",letterSpacing:"0.02em"}}>Step outside</span>
         </div>
       </button>
@@ -2989,7 +2988,7 @@ export default function App(){
           <button onClick={()=>setScreen("map")} style={{background:"rgba(26,22,18,0.5)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",border:"1px solid rgba(201,169,110,0.15)",borderRadius:999,padding:"8px 20px",cursor:"pointer",color:"rgba(255,248,232,0.6)",fontFamily:SANS,fontSize:"0.78rem",marginBottom:28,transition:"all 0.2s",display:"inline-flex",alignItems:"center",gap:6}}
             onMouseEnter={e=>{e.currentTarget.style.background="rgba(201,169,110,0.15)";e.currentTarget.style.color=B.goldL;}}
             onMouseLeave={e=>{e.currentTarget.style.background="rgba(26,22,18,0.5)";e.currentTarget.style.color="rgba(255,248,232,0.6)";}}>
-            🗺️ Back to village
+            Back to village
           </button>
 
           {/* Title */}
@@ -3338,8 +3337,6 @@ export default function App(){
           }}>
             {/* Lantern glow ring */}
             <div style={{position:"absolute",inset:"-30%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,210,120,0.08) 0%, transparent 65%)",pointerEvents:"none"}}/>
-            {/* Emoji icon */}
-            <span style={{fontSize:"clamp(1.1rem,3.5vw,1.6rem)",lineHeight:1,filter:"drop-shadow(0 2px 6px rgba(0,0,0,0.5))",zIndex:1}}>{loc.emoji}</span>
           </button>
         ))}
 
@@ -3448,7 +3445,6 @@ export default function App(){
         {/* ═══ DOOR — back to map (glowing archway at top center) ═══ */}
         <button onClick={()=>{setScreen("map");setGardenTab("garden");setSelectedPlot(null);}} style={{position:"absolute",left:"35%",top:"6%",width:"30%",height:"16%",zIndex:12,background:"transparent",border:"none",cursor:"pointer",borderRadius:"50% 50% 8px 8px",animation:"gardenDoorGlow 3s ease-in-out infinite"}}>
           <div style={{position:"absolute",bottom:"8%",left:"50%",transform:"translateX(-50%)",display:"flex",alignItems:"center",gap:4,background:"rgba(10,8,6,0.55)",backdropFilter:"blur(6px)",WebkitBackdropFilter:"blur(6px)",borderRadius:10,padding:"4px 10px",whiteSpace:"nowrap",pointerEvents:"none"}}>
-            <span style={{fontSize:"0.6rem",opacity:0.8}}>🗺️</span>
             <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.5rem",color:"rgba(255,248,232,0.55)",letterSpacing:"0.02em"}}>Back to village</span>
           </div>
         </button>
@@ -3821,10 +3817,9 @@ export default function App(){
         <div style={{position:"relative",zIndex:10,height:"100%",overflowY:"auto",WebkitOverflowScrolling:"touch"}}>
           <div style={{maxWidth:720,margin:"0 auto",padding:"28px 22px 80px"}}>
             <button onClick={()=>setScreen("map")} style={{background:"rgba(26,22,18,0.5)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",border:"1px solid rgba(201,169,110,0.15)",borderRadius:999,padding:"8px 20px",cursor:"pointer",color:"rgba(255,248,232,0.6)",fontFamily:SANS,fontSize:"0.78rem",marginBottom:28,transition:"all 0.2s",display:"inline-flex",alignItems:"center",gap:6}}>
-              🗺️ Back to village
+              Back to village
             </button>
             <div style={{textAlign:"center",marginBottom:32,animation:"fadeUp .6s ease both"}}>
-              <div style={{fontSize:"2.5rem",marginBottom:12}}>🏪</div>
               <h1 style={{fontFamily:DISPLAY,fontSize:"2rem",fontWeight:700,color:B.goldL,margin:"0 0 8px",textShadow:"0 2px 12px rgba(0,0,0,0.5)"}}>The Market</h1>
               <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"1rem",color:"rgba(255,248,232,0.45)",margin:"0 0 14px"}}>Trade, barter, and provision for your journey.</p>
               <div style={{width:60,height:1,background:"rgba(201,169,110,0.3)",margin:"0 auto"}}/>
@@ -3847,10 +3842,9 @@ export default function App(){
         <div style={{position:"relative",zIndex:10,height:"100%",overflowY:"auto",WebkitOverflowScrolling:"touch"}}>
           <div style={{maxWidth:720,margin:"0 auto",padding:"28px 22px 80px"}}>
             <button onClick={()=>setScreen("map")} style={{background:"rgba(26,22,30,0.5)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",border:"1px solid rgba(180,160,210,0.15)",borderRadius:999,padding:"8px 20px",cursor:"pointer",color:"rgba(230,220,248,0.6)",fontFamily:SANS,fontSize:"0.78rem",marginBottom:28,transition:"all 0.2s",display:"inline-flex",alignItems:"center",gap:6}}>
-              🗺️ Back to village
+              Back to village
             </button>
             <div style={{textAlign:"center",marginBottom:32,animation:"fadeUp .6s ease both"}}>
-              <div style={{fontSize:"2.5rem",marginBottom:12}}>⛪</div>
               <h1 style={{fontFamily:DISPLAY,fontSize:"2rem",fontWeight:700,color:"#D8C8F0",margin:"0 0 8px",textShadow:"0 2px 12px rgba(0,0,0,0.5)"}}>The Upper Room</h1>
               <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"1rem",color:"rgba(200,190,230,0.45)",margin:"0 0 14px"}}>A sacred space for worship and encounter.</p>
               <div style={{width:60,height:1,background:"rgba(180,160,210,0.3)",margin:"0 auto"}}/>
