@@ -659,10 +659,10 @@ function RoomGlow({id}){
    See docs/CABIN_VISUAL_BUILD_BRIEF.md for full spec.
 ═══════════════════════════════════════════════════ */
 
-// Approved cabin concept art — full room view showing couch, fireplace, bookshelf,
-// barn door, string lights, shag rug, coffee table with Bible. Matches the brief.
-// TODO: swap to Image B (wide shot with panoramic window) when that file is saved to /public/
-const CABIN_FALLBACK_IMAGE="/cabin-room.png";
+// Image B — the approved wide room shot (source of truth for cabin visuals).
+// Fireplace LEFT, panoramic window BACK-CENTER, desk nook RIGHT, couch foreground-left,
+// coffee table + Bible center, string lights on ceiling, fluffy white rug.
+const CABIN_FALLBACK_IMAGE="/cabin-interior.png";
 
 function ImmersiveCabin(){
   const containerRef=useRef(null);
@@ -849,7 +849,7 @@ function ImmersiveCabin(){
         draggable={false}
       />
       {/* Warm firelight flicker overlay */}
-      <div className="cabin-firelight" style={{position:"absolute",inset:0,pointerEvents:"none",background:"radial-gradient(ellipse at 75% 75%, rgba(255,160,60,0.06) 0%, transparent 50%)",mixBlendMode:"screen"}}/>
+      <div className="cabin-firelight" style={{position:"absolute",inset:0,pointerEvents:"none",background:"radial-gradient(ellipse at 20% 75%, rgba(255,160,60,0.06) 0%, transparent 50%)",mixBlendMode:"screen"}}/>
       {/* Floating dust particles canvas */}
       <canvas ref={canvasRef} style={{position:"absolute",inset:0,pointerEvents:"none",zIndex:2}}/>
       {/* Cinematic vignette */}
@@ -1758,43 +1758,43 @@ export default function App(){
       })}
 
       {/* ═══ INTERACTIVE HOTSPOTS ═══ */}
-      {/* Positions mapped to cabin-room.png: couch left, table center, fireplace right, bookshelf back-left, door back-center */}
+      {/* Positions mapped to cabin-interior.png (Image B): fireplace LEFT, panoramic window BACK-CENTER, desk nook RIGHT, couch foreground-left, coffee table center */}
 
-      {/* 1. BIBLE / JOURNAL — over the coffee table with open Bible (center of image) */}
-      <button onClick={()=>{setBookOpen(true);setBookPage(0);setFlipDir(null);}} style={{position:"absolute",left:"28%",right:"28%",top:"52%",bottom:"14%",zIndex:10,background:"transparent",border:"none",cursor:"pointer",borderRadius:"12px",animation:"hotspotPulse 3s ease-in-out infinite"}}>
+      {/* 1. BIBLE / JOURNAL — over the coffee table with open Bible + cross (center of room) */}
+      <button onClick={()=>{setBookOpen(true);setBookPage(0);setFlipDir(null);}} style={{position:"absolute",left:"30%",right:"30%",top:"55%",bottom:"10%",zIndex:10,background:"transparent",border:"none",cursor:"pointer",borderRadius:"12px",animation:"hotspotPulse 3s ease-in-out infinite"}}>
         <div style={{position:"absolute",inset:"-10%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,200,80,0.08),transparent 70%)",pointerEvents:"none"}}/>
       </button>
 
-      {/* 2. BOOKSHELF — left side of image (back-left area) */}
-      <div style={{position:"absolute",left:"0%",top:"14%",bottom:"28%",width:"clamp(56px,9vw,76px)",zIndex:10,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"space-between",padding:"4px 0"}}>
+      {/* 2. BOOKSHELF — far left wall, between fireplace and left edge */}
+      <div style={{position:"absolute",left:"0%",top:"10%",bottom:"30%",width:"clamp(56px,9vw,76px)",zIndex:10,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"space-between",padding:"4px 0"}}>
         {SHELF_BOOKS.map((book,i)=>{
           const cv=BOOK_COVERS[book.id]||BOOK_COVERS.journal;
           const isActive=deskBook===book.id;
           return(
             <button key={book.id} className="shelf-hotspot" onClick={()=>selectShelfBook(book.id)}
-              style={{width:"clamp(48px,8vw,68px)",height:"clamp(56px,8.5vh,80px)",background:cv.bg,border:"none",cursor:"pointer",borderRadius:"6px 3px 3px 6px",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:"2px",padding:"5px 4px",position:"relative",boxShadow:isActive?`0 4px 20px rgba(255,200,80,0.35), 3px 3px 12px rgba(0,0,0,0.5), inset -1px 0 3px rgba(255,255,255,0.08)`:`3px 3px 12px rgba(0,0,0,0.45), inset -1px 0 3px rgba(255,255,255,0.05)`,animation:isActive?"none":"shelfGlow 4s ease-in-out infinite",animationDelay:`${i*0.4}s`,overflow:"hidden",flexShrink:0}}>
-              {/* Spine edge */}
-              <div style={{position:"absolute",right:0,top:0,bottom:0,width:"3px",background:`linear-gradient(180deg,rgba(255,255,255,0.12),${cv.accent}44,rgba(0,0,0,0.2))`,pointerEvents:"none"}}/>
+              style={{width:"clamp(48px,8vw,68px)",height:"clamp(56px,8.5vh,80px)",background:cv.bg,border:"none",cursor:"pointer",borderRadius:"3px 6px 6px 3px",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:"2px",padding:"5px 4px",position:"relative",boxShadow:isActive?`0 4px 20px rgba(255,200,80,0.35), 3px 3px 12px rgba(0,0,0,0.5), inset -1px 0 3px rgba(255,255,255,0.08)`:`3px 3px 12px rgba(0,0,0,0.45), inset -1px 0 3px rgba(255,255,255,0.05)`,animation:isActive?"none":"shelfGlow 4s ease-in-out infinite",animationDelay:`${i*0.4}s`,overflow:"hidden",flexShrink:0}}>
+              {/* Spine edge — left side (against wall) */}
+              <div style={{position:"absolute",left:0,top:0,bottom:0,width:"3px",background:`linear-gradient(180deg,rgba(255,255,255,0.12),${cv.accent}44,rgba(0,0,0,0.2))`,pointerEvents:"none"}}/>
               {/* Active gold accent */}
               {isActive&&<div style={{position:"absolute",top:0,left:"20%",right:"20%",height:"2px",background:cv.accent,borderRadius:"0 0 2px 2px",pointerEvents:"none"}}/>}
               {/* Emoji */}
               <div style={{fontSize:"clamp(0.85rem,2.2vw,1.15rem)",filter:isActive?"drop-shadow(0 0 6px rgba(255,200,80,0.5))":"none",transition:"filter .3s"}}>{book.emoji}</div>
               {/* Label */}
               <div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.44rem,1.1vw,0.56rem)",color:isActive?cv.accent:"rgba(245,230,200,0.7)",textAlign:"center",lineHeight:1.15,letterSpacing:"0.01em",textShadow:"0 1px 4px rgba(0,0,0,0.6)",transition:"color .3s",padding:"0 1px"}}>{book.label}</div>
-              {/* Paper edge */}
-              <div style={{position:"absolute",left:0,top:"4px",bottom:"4px",width:"2px",background:"linear-gradient(180deg,#E8D5B0,#DCC89C,#D4BF90)",borderRadius:"1px 0 0 1px",pointerEvents:"none",opacity:0.6}}/>
+              {/* Paper edge — right side (facing room) */}
+              <div style={{position:"absolute",right:0,top:"4px",bottom:"4px",width:"2px",background:"linear-gradient(180deg,#E8D5B0,#DCC89C,#D4BF90)",borderRadius:"0 1px 1px 0",pointerEvents:"none",opacity:0.6}}/>
             </button>
           );
         })}
       </div>
 
-      {/* 3. DOOR — barn door at back-center of image */}
-      <button onClick={()=>setDoorChoice(true)} style={{position:"absolute",left:"36%",right:"34%",top:"8%",bottom:"46%",zIndex:12,background:"transparent",border:"none",cursor:"pointer",borderRadius:"4px 4px 0 0",animation:"hotspotPulse 3.5s ease-in-out infinite"}}>
-        {/* Warm glow around door frame */}
-        <div style={{position:"absolute",inset:"-8%",borderRadius:"8px",background:"radial-gradient(ellipse at center 60%,rgba(255,200,80,0.10),transparent 65%)",pointerEvents:"none"}}/>
+      {/* 3. DOOR — panoramic window area (step outside into forest) */}
+      <button onClick={()=>setDoorChoice(true)} style={{position:"absolute",left:"22%",right:"22%",top:"6%",bottom:"48%",zIndex:12,background:"transparent",border:"none",cursor:"pointer",borderRadius:"8px 8px 0 0",animation:"hotspotPulse 3.5s ease-in-out infinite"}}>
+        {/* Cool moonlight glow through window */}
+        <div style={{position:"absolute",inset:"-6%",borderRadius:"8px",background:"radial-gradient(ellipse at center 40%,rgba(160,180,220,0.08),transparent 65%)",pointerEvents:"none"}}/>
         {/* Subtle door label */}
         <div style={{position:"absolute",bottom:"8%",left:"50%",transform:"translateX(-50%)",display:"flex",alignItems:"center",gap:4,background:"rgba(10,8,6,0.55)",backdropFilter:"blur(6px)",WebkitBackdropFilter:"blur(6px)",borderRadius:12,padding:"5px 10px",animation:"doorLabelFade 5s ease-in-out infinite",pointerEvents:"none",whiteSpace:"nowrap"}}>
-          <span style={{fontSize:"0.65rem",opacity:0.85}}>🚪</span>
+          <span style={{fontSize:"0.65rem",opacity:0.85}}>🌲</span>
           <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.55rem",color:"rgba(255,248,232,0.55)",letterSpacing:"0.02em"}}>Step outside</span>
         </div>
       </button>
@@ -1822,14 +1822,14 @@ export default function App(){
         </div>
       </div>}
 
-      {/* 4. LEFT WINDOW — upper-left wall area (bookshelf side) */}
-      <button className="window-hotspot" onClick={()=>setWindowPanel("left")} style={{position:"absolute",left:"2%",top:"2%",width:"22%",height:"26%",zIndex:10,background:"transparent",border:"none",cursor:"pointer",borderRadius:"8px"}}/>
+      {/* 4. LEFT WINDOW — left half of panoramic window (forest view) */}
+      <button className="window-hotspot" onClick={()=>setWindowPanel("left")} style={{position:"absolute",left:"18%",top:"4%",width:"22%",height:"32%",zIndex:10,background:"transparent",border:"none",cursor:"pointer",borderRadius:"8px"}}/>
 
-      {/* 5. RIGHT WINDOW — upper-right above fireplace area */}
-      <button className="window-hotspot" onClick={()=>setWindowPanel("right")} style={{position:"absolute",right:"2%",top:"2%",width:"24%",height:"26%",zIndex:10,background:"transparent",border:"none",cursor:"pointer",borderRadius:"8px"}}/>
+      {/* 5. RIGHT WINDOW — right half of panoramic window + desk window */}
+      <button className="window-hotspot" onClick={()=>setWindowPanel("right")} style={{position:"absolute",right:"4%",top:"4%",width:"24%",height:"32%",zIndex:10,background:"transparent",border:"none",cursor:"pointer",borderRadius:"8px"}}/>
 
-      {/* 6. CANDLE / STREAK — right side near fireplace */}
-      <button onClick={tapCandle} style={{position:"absolute",right:"6%",bottom:"22%",width:"16%",height:"14%",zIndex:10,background:"transparent",border:"none",cursor:"pointer",borderRadius:"50%",animation:"candlePulse 3s ease-in-out infinite"}}>
+      {/* 6. CANDLE / STREAK — left side near fireplace hearth */}
+      <button onClick={tapCandle} style={{position:"absolute",left:"6%",bottom:"20%",width:"16%",height:"16%",zIndex:10,background:"transparent",border:"none",cursor:"pointer",borderRadius:"50%",animation:"candlePulse 3s ease-in-out infinite"}}>
         <div style={{position:"absolute",inset:"-20%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,200,80,0.06),transparent 65%)",pointerEvents:"none"}}/>
       </button>
 
@@ -1871,7 +1871,7 @@ export default function App(){
       </button>
 
       {/* CANDLE BALANCE — persistent display (triple-tap = toggle debug hotspots) — always visible */}
-      <div onClick={debugTripleTap} style={{position:"absolute",right:"5%",bottom:"38%",zIndex:12,background:"rgba(26,22,18,0.7)",backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",border:"1px solid rgba(212,180,100,0.15)",borderRadius:10,padding:"5px 12px",display:"flex",alignItems:"center",gap:6,animation:"fadeUp 1s 2s ease both",cursor:"default"}}>
+      <div onClick={debugTripleTap} style={{position:"absolute",left:"5%",bottom:"38%",zIndex:12,background:"rgba(26,22,18,0.7)",backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",border:"1px solid rgba(212,180,100,0.15)",borderRadius:10,padding:"5px 12px",display:"flex",alignItems:"center",gap:6,animation:"fadeUp 1s 2s ease both",cursor:"default"}}>
         <span style={{fontSize:"0.8rem"}}>🕯️</span>
         <span style={{fontFamily:DISPLAY,fontSize:"0.82rem",fontWeight:700,color:B.goldL}}>{candles}</span>
       </div>
@@ -1882,18 +1882,18 @@ export default function App(){
       {debugHotspots&&<>
         {/* Toggle badge */}
         <div style={{position:"fixed",top:8,left:"50%",transform:"translateX(-50%)",zIndex:999,background:"rgba(255,60,60,0.85)",color:"#fff",fontFamily:SANS,fontSize:"0.65rem",fontWeight:700,padding:"4px 14px",borderRadius:20,letterSpacing:"0.04em",pointerEvents:"none",backdropFilter:"blur(6px)",WebkitBackdropFilter:"blur(6px)",whiteSpace:"nowrap"}}>DEBUG HOTSPOTS ON — Ctrl+Shift+. or 3×tap 🕯️</div>
-        {/* 1. Desk Book */}
-        <div style={{position:"absolute",left:"18%",right:"27%",top:"65%",bottom:"12%",zIndex:900,background:"rgba(255,100,100,0.25)",border:"2px solid rgba(255,100,100,0.7)",borderRadius:12,pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.6rem",fontWeight:700,color:"#fff",background:"rgba(255,60,60,0.75)",padding:"2px 8px",borderRadius:8}}>DESK BOOK</span></div>
-        {/* 2. Bookshelf */}
-        <div style={{position:"absolute",right:"0%",top:"12%",bottom:"18%",width:"clamp(56px,9vw,76px)",zIndex:900,background:"rgba(100,100,255,0.25)",border:"2px solid rgba(100,100,255,0.7)",borderRadius:4,pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.5rem",fontWeight:700,color:"#fff",background:"rgba(60,60,255,0.75)",padding:"2px 6px",borderRadius:8,writingMode:"vertical-lr"}}>BOOKSHELF</span></div>
-        {/* 3. Door */}
-        <div style={{position:"absolute",left:"28%",right:"30%",top:"18%",bottom:"42%",zIndex:900,background:"rgba(100,255,100,0.25)",border:"2px solid rgba(100,255,100,0.7)",borderRadius:"50% 50% 0 0",pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.6rem",fontWeight:700,color:"#fff",background:"rgba(60,180,60,0.85)",padding:"2px 8px",borderRadius:8}}>DOOR (z:12)</span></div>
+        {/* 1. Bible / Journal (coffee table center) */}
+        <div style={{position:"absolute",left:"30%",right:"30%",top:"55%",bottom:"10%",zIndex:900,background:"rgba(255,100,100,0.25)",border:"2px solid rgba(255,100,100,0.7)",borderRadius:12,pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.6rem",fontWeight:700,color:"#fff",background:"rgba(255,60,60,0.75)",padding:"2px 8px",borderRadius:8}}>BIBLE</span></div>
+        {/* 2. Bookshelf (far left) */}
+        <div style={{position:"absolute",left:"0%",top:"10%",bottom:"30%",width:"clamp(56px,9vw,76px)",zIndex:900,background:"rgba(100,100,255,0.25)",border:"2px solid rgba(100,100,255,0.7)",borderRadius:4,pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.5rem",fontWeight:700,color:"#fff",background:"rgba(60,60,255,0.75)",padding:"2px 6px",borderRadius:8,writingMode:"vertical-lr"}}>BOOKSHELF</span></div>
+        {/* 3. Door / Window (panoramic window center) */}
+        <div style={{position:"absolute",left:"22%",right:"22%",top:"6%",bottom:"48%",zIndex:900,background:"rgba(100,255,100,0.25)",border:"2px solid rgba(100,255,100,0.7)",borderRadius:"8px 8px 0 0",pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.6rem",fontWeight:700,color:"#fff",background:"rgba(60,180,60,0.85)",padding:"2px 8px",borderRadius:8}}>DOOR (z:12)</span></div>
         {/* 4. Left Window */}
-        <div style={{position:"absolute",left:"2%",top:"2%",width:"22%",height:"26%",zIndex:900,background:"rgba(255,255,100,0.2)",border:"2px solid rgba(255,255,100,0.7)",borderRadius:8,pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.5rem",fontWeight:700,color:"#fff",background:"rgba(180,180,0,0.85)",padding:"2px 6px",borderRadius:8}}>L-WIN</span></div>
+        <div style={{position:"absolute",left:"18%",top:"4%",width:"22%",height:"32%",zIndex:900,background:"rgba(255,255,100,0.2)",border:"2px solid rgba(255,255,100,0.7)",borderRadius:8,pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.5rem",fontWeight:700,color:"#fff",background:"rgba(180,180,0,0.85)",padding:"2px 6px",borderRadius:8}}>L-WIN</span></div>
         {/* 5. Right Window */}
-        <div style={{position:"absolute",right:"2%",top:"2%",width:"24%",height:"26%",zIndex:900,background:"rgba(255,165,0,0.2)",border:"2px solid rgba(255,165,0,0.7)",borderRadius:8,pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.5rem",fontWeight:700,color:"#fff",background:"rgba(200,120,0,0.85)",padding:"2px 6px",borderRadius:8}}>R-WIN</span></div>
-        {/* 6. Candle */}
-        <div style={{position:"absolute",right:"6%",bottom:"22%",width:"16%",height:"14%",zIndex:900,background:"rgba(255,100,255,0.25)",border:"2px solid rgba(255,100,255,0.7)",borderRadius:"50%",pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.5rem",fontWeight:700,color:"#fff",background:"rgba(200,60,200,0.85)",padding:"2px 6px",borderRadius:8}}>CANDLE</span></div>
+        <div style={{position:"absolute",right:"4%",top:"4%",width:"24%",height:"32%",zIndex:900,background:"rgba(255,165,0,0.2)",border:"2px solid rgba(255,165,0,0.7)",borderRadius:8,pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.5rem",fontWeight:700,color:"#fff",background:"rgba(200,120,0,0.85)",padding:"2px 6px",borderRadius:8}}>R-WIN</span></div>
+        {/* 6. Candle (left, near fireplace) */}
+        <div style={{position:"absolute",left:"6%",bottom:"20%",width:"16%",height:"16%",zIndex:900,background:"rgba(255,100,255,0.25)",border:"2px solid rgba(255,100,255,0.7)",borderRadius:"50%",pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.5rem",fontWeight:700,color:"#fff",background:"rgba(200,60,200,0.85)",padding:"2px 6px",borderRadius:8}}>CANDLE</span></div>
         {/* 7. Insights */}
         <div style={{position:"absolute",left:"40%",right:"40%",bottom:"4%",height:"10%",zIndex:900,background:"rgba(0,200,200,0.2)",border:"2px solid rgba(0,200,200,0.7)",borderRadius:8,pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.5rem",fontWeight:700,color:"#fff",background:"rgba(0,150,150,0.85)",padding:"2px 6px",borderRadius:8}}>INSIGHTS</span></div>
         {/* 10. Shop */}
