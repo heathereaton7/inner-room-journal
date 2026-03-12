@@ -454,6 +454,7 @@ export default function App(){
   const [flipDir,       setFlipDir]       = useState(null);
   const touchRef = useRef({startX:0,startY:0});
   const [isOnboarded,   setIsOnboarded]   = useState(false);
+  const [dontShowAgain, setDontShowAgain] = useState(false);
   const [doorOpening,   setDoorOpening]   = useState(false);
   const [deskBook,      setDeskBook]      = useState("journal");
   const [shelfAnim,     setShelfAnim]     = useState(null);
@@ -652,9 +653,9 @@ export default function App(){
 
   // ── SCENE NAVIGATION ──
   const SCENES = [
-    {bgImage:"/scene-bridge.png",title:"A bridge between worlds",body:"Leave behind the noise. Something quieter waits ahead.",btn:"Continue",effects:["fireflies","water"]},
-    {bgImage:"/scene-path.png",title:"The path reveals itself",body:"Each step closer is a step inward. Trust the unfolding.",btn:"Continue",effects:["fireflies"]},
-    {bgImage:"/scene-porch.png",title:"You've arrived",body:"The door is open. Warmth and stillness wait inside.",btn:"Step inside",effects:["fireflies","smoke","glow"]},
+    {bgImage:"/scene-bridge.png",title:"Most people avoid the real questions.",body:"We fill our days to escape the silence. Inner Room Journal slows you down — and asks the ones that matter.",btn:"Continue",effects:["fireflies","water"]},
+    {bgImage:"/scene-path.png",title:"You won't journal alone.",body:"Guided prompts take you deeper — from surface to root. Plus community rooms where others walk beside you.",btn:"Continue",effects:["fireflies"]},
+    {bgImage:"/scene-porch.png",title:"Growth becomes visible.",body:"Over time, patterns emerge from your words. Themes surface. Transformation becomes something you can see.",btn:"Step inside",effects:["fireflies","smoke","glow"]},
   ];
 
   function startAmbient(){
@@ -683,7 +684,8 @@ export default function App(){
       // Final scene → enter cabin
       fadeOutAmbient();
       setTimeout(()=>{
-        dbSave("irj-onboarded",true);
+        if(dontShowAgain) dbSave("irj-onboarded",true);
+        setIsOnboarded(true);
         setScreen("cabin");
         setSceneTransit(false);
         setScenePrev(-1);
@@ -702,7 +704,8 @@ export default function App(){
   }
   function skipOnboarding(){
     fadeOutAmbient();
-    dbSave("irj-onboarded",true);
+    if(dontShowAgain) dbSave("irj-onboarded",true);
+    setIsOnboarded(true);
     setScreen("cabin");
   }
 
@@ -951,7 +954,7 @@ export default function App(){
             setDoorOpening(true);
             setTimeout(()=>{setDoorOpening(false);setScreen("cabin");},1600);
           }else{
-            startAmbient();setSceneIdx(0);setScenePrev(-1);setSceneTransit(false);setScreen("onboard");
+            setDontShowAgain(false);startAmbient();setSceneIdx(0);setScenePrev(-1);setSceneTransit(false);setScreen("onboard");
           }
         }} style={{background:"linear-gradient(135deg, rgba(201,169,110,0.22), rgba(201,169,110,0.06))",backdropFilter:"blur(10px)",WebkitBackdropFilter:"blur(10px)",border:"1px solid rgba(201,169,110,0.45)",color:"#FFF8E8",padding:"16px 52px",borderRadius:"30px",cursor:"pointer",fontSize:"0.92rem",fontFamily:SERIF,fontWeight:600,letterSpacing:"0.14em",textTransform:"none",fontStyle:"italic",boxShadow:"0 4px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,248,232,0.06)"}}>
           {isOnboarded?"Return to the cabin":"Enter the cabin"}
@@ -1023,8 +1026,15 @@ export default function App(){
           </button>
         </div>
 
+        {/* Don't show again checkbox */}
+        <label onClick={()=>setDontShowAgain(v=>!v)} style={{display:"flex",alignItems:"center",gap:8,marginTop:18,cursor:"pointer",userSelect:"none"}}>
+          <div style={{width:16,height:16,borderRadius:4,border:"1px solid rgba(201,169,110,0.35)",background:dontShowAgain?"rgba(201,169,110,0.25)":"transparent",display:"flex",alignItems:"center",justifyContent:"center",transition:"all 0.2s",flexShrink:0}}>
+            {dontShowAgain&&<span style={{color:B.gold,fontSize:"0.65rem",lineHeight:1}}>✓</span>}
+          </div>
+          <span style={{fontFamily:SANS,fontSize:"0.7rem",color:"rgba(255,248,232,0.35)",letterSpacing:"0.04em"}}>Don't show this again</span>
+        </label>
         {/* Skip intro */}
-        {sceneIdx<SCENES.length-1&&<button onClick={skipOnboarding} style={{marginTop:"16px",background:"transparent",border:"none",cursor:"pointer",color:"rgba(255,248,232,0.25)",fontSize:"0.74rem",fontFamily:SANS,letterSpacing:"0.08em",transition:"color 0.2s"}} onMouseEnter={e=>e.target.style.color="rgba(255,248,232,0.5)"} onMouseLeave={e=>e.target.style.color="rgba(255,248,232,0.25)"}>Skip intro</button>}
+        {sceneIdx<SCENES.length-1&&<button onClick={skipOnboarding} style={{marginTop:"10px",background:"transparent",border:"none",cursor:"pointer",color:"rgba(255,248,232,0.25)",fontSize:"0.74rem",fontFamily:SANS,letterSpacing:"0.08em",transition:"color 0.2s"}} onMouseEnter={e=>e.target.style.color="rgba(255,248,232,0.5)"} onMouseLeave={e=>e.target.style.color="rgba(255,248,232,0.25)"}>Skip intro</button>}
       </div>
     </div>
     );
