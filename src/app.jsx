@@ -1106,6 +1106,186 @@ function ImmersiveGarden(){
 }
 
 /* ═══════════════════════════════════════════════════
+   IMMERSIVE MAP — World navigation hub
+   Enchanted overhead view of the village at dusk with
+   winding paths connecting Cabin, Prayer Garden, Market,
+   and Upper Room. Lanterns glow, fireflies drift,
+   starry sky overhead.
+═══════════════════════════════════════════════════ */
+const MAP_BG_IMAGE="/map.png";
+
+// Hotspot positions mapped to label locations in map.png
+// Positions are % based for responsive layout
+const MAP_LOCATIONS=[
+  {id:"cabin",   label:"Cabin",          emoji:"🏠", left:"32%", top:"78%", desc:"Your quiet place"},
+  {id:"garden",  label:"Prayer Garden",  emoji:"🌿", left:"15%", top:"40%", desc:"Grow your prayers"},
+  {id:"market",  label:"Market",         emoji:"🏪", left:"62%", top:"46%", desc:"Trade & provision"},
+  {id:"upper-room",label:"Upper Room",   emoji:"⛪", left:"68%", top:"13%", desc:"Worship & encounter"},
+];
+
+function ImmersiveMap(){
+  const containerRef=useRef(null);
+  const canvasRef=useRef(null);
+  const offsetX=useRef(0);
+  const offsetY=useRef(0);
+  const targetX=useRef(0);
+  const targetY=useRef(0);
+  const dragStart=useRef(null);
+  const animFrame=useRef(null);
+  const particles=useRef([]);
+  const mapFireflies=useRef([]);
+  const time=useRef(0);
+  const imgRef=useRef(null);
+
+  const PARALLAX=25;
+  const SENSITIVITY=0.45;
+
+  // Initialize particles + fireflies
+  useEffect(()=>{
+    const pts=[];
+    for(let i=0;i<18;i++){
+      pts.push({
+        x:Math.random(),y:Math.random(),
+        size:Math.random()*1.5+0.5,
+        speed:Math.random()*0.00018+0.00008,
+        drift:Math.random()*0.00025-0.000125,
+        opacity:Math.random()*0.25+0.06,
+        phase:Math.random()*Math.PI*2,
+        warmth:Math.random(),
+      });
+    }
+    particles.current=pts;
+    const ffs=[];
+    for(let i=0;i<30;i++){
+      ffs.push({
+        x:0.06+Math.random()*0.88,
+        y:0.15+Math.random()*0.78,
+        size:Math.random()*1.6+1.0,
+        sx:(Math.random()-0.5)*0.0002,
+        sy:(Math.random()-0.5)*0.00015,
+        phase:Math.random()*Math.PI*2,
+        blink:Math.random()*0.003+0.0008,
+        isGold:Math.random()>0.5,
+      });
+    }
+    mapFireflies.current=ffs;
+  },[]);
+
+  // Gyroscope
+  useEffect(()=>{
+    let active=true;
+    const handle=(e)=>{
+      if(!active)return;
+      targetX.current=Math.max(-1,Math.min(1,(e.gamma||0)/30))*PARALLAX;
+      targetY.current=Math.max(-1,Math.min(1,((e.beta||0)-45)/30))*PARALLAX;
+    };
+    if(typeof DeviceOrientationEvent!=="undefined"&&typeof DeviceOrientationEvent.requestPermission==="function"){
+      const req=()=>{DeviceOrientationEvent.requestPermission().then(r=>{if(r==="granted")window.addEventListener("deviceorientation",handle);}).catch(()=>{});window.removeEventListener("touchstart",req);};
+      window.addEventListener("touchstart",req,{once:true});
+    } else { window.addEventListener("deviceorientation",handle); }
+    return()=>{active=false;window.removeEventListener("deviceorientation",handle);};
+  },[]);
+
+  // Touch/mouse drag
+  useEffect(()=>{
+    const el=containerRef.current; if(!el) return;
+    const start=(x,y)=>{dragStart.current={x,y,ox:targetX.current,oy:targetY.current};};
+    const move=(x,y)=>{if(!dragStart.current)return;targetX.current=Math.max(-PARALLAX,Math.min(PARALLAX,dragStart.current.ox+(x-dragStart.current.x)*SENSITIVITY));targetY.current=Math.max(-PARALLAX,Math.min(PARALLAX,dragStart.current.oy+(y-dragStart.current.y)*SENSITIVITY));};
+    const end=()=>{dragStart.current=null;};
+    const ts=e=>{const t=e.touches[0];start(t.clientX,t.clientY);};
+    const tm=e=>{const t=e.touches[0];move(t.clientX,t.clientY);};
+    el.addEventListener("touchstart",ts,{passive:true});el.addEventListener("touchmove",tm,{passive:true});el.addEventListener("touchend",end);
+    el.addEventListener("mousedown",e=>start(e.clientX,e.clientY));
+    const mm=e=>move(e.clientX,e.clientY);
+    window.addEventListener("mousemove",mm);window.addEventListener("mouseup",end);
+    return()=>{el.removeEventListener("touchstart",ts);el.removeEventListener("touchmove",tm);el.removeEventListener("touchend",end);window.removeEventListener("mousemove",mm);window.removeEventListener("mouseup",end);};
+  },[]);
+
+  // Animation loop
+  useEffect(()=>{
+    const loop=()=>{
+      time.current+=16;
+      offsetX.current+=(targetX.current-offsetX.current)*0.07;
+      offsetY.current+=(targetY.current-offsetY.current)*0.07;
+      const bx=Math.sin(time.current*0.00035)*1.5;
+      const by=Math.cos(time.current*0.00025)*1.2;
+      if(imgRef.current) imgRef.current.style.transform=`translate(${-PARALLAX+offsetX.current+bx}px,${-PARALLAX+offsetY.current+by}px)`;
+      const cvs=canvasRef.current;
+      if(cvs){
+        const ctx=cvs.getContext("2d"),w=cvs.width,h=cvs.height;
+        ctx.clearRect(0,0,w,h);
+        // Floating dust/pollen
+        particles.current.forEach(p=>{
+          p.y-=p.speed; p.x+=p.drift+Math.sin(time.current*0.0008+p.phase)*0.00008;
+          if(p.y<-0.04){p.y=1.04;p.x=Math.random();}
+          const fl=0.6+0.4*Math.sin(time.current*0.0015+p.phase);
+          const a=p.opacity*fl;
+          const r=240,g=Math.round(215+p.warmth*35),b2=Math.round(155+p.warmth*65);
+          const px=p.x*w,py=p.y*h;
+          ctx.beginPath();ctx.arc(px,py,p.size,0,Math.PI*2);
+          ctx.fillStyle=`rgba(${r},${g},${b2},${a})`;ctx.fill();
+          if(p.size>1.0){ctx.beginPath();ctx.arc(px,py,p.size*2.5,0,Math.PI*2);ctx.fillStyle=`rgba(${r},${g},${b2},${a*0.1})`;ctx.fill();}
+        });
+        // Fireflies — mix of warm gold and cool blue/white (starlit feel)
+        mapFireflies.current.forEach(ff=>{
+          ff.x+=ff.sx+Math.sin(time.current*0.00045+ff.phase)*0.00007;
+          ff.y+=ff.sy+Math.cos(time.current*0.0005+ff.phase)*0.00005;
+          if(ff.x<0.04||ff.x>0.96)ff.sx*=-1;
+          if(ff.y<0.06||ff.y>0.92)ff.sy*=-1;
+          ff.x=Math.max(0.04,Math.min(0.96,ff.x));
+          ff.y=Math.max(0.06,Math.min(0.92,ff.y));
+          const blink=Math.sin(time.current*ff.blink+ff.phase);
+          const a=Math.max(0,blink*0.65+0.35)*0.5;
+          const px=ff.x*w,py=ff.y*h;
+          if(ff.isGold){
+            ctx.beginPath();ctx.arc(px,py,ff.size*5.5,0,Math.PI*2);ctx.fillStyle=`rgba(255,215,100,${a*0.05})`;ctx.fill();
+            ctx.beginPath();ctx.arc(px,py,ff.size*2.8,0,Math.PI*2);ctx.fillStyle=`rgba(255,225,120,${a*0.14})`;ctx.fill();
+            ctx.beginPath();ctx.arc(px,py,ff.size,0,Math.PI*2);ctx.fillStyle=`rgba(255,235,155,${a})`;ctx.fill();
+          } else {
+            ctx.beginPath();ctx.arc(px,py,ff.size*5.5,0,Math.PI*2);ctx.fillStyle=`rgba(180,200,255,${a*0.04})`;ctx.fill();
+            ctx.beginPath();ctx.arc(px,py,ff.size*2.8,0,Math.PI*2);ctx.fillStyle=`rgba(200,215,255,${a*0.12})`;ctx.fill();
+            ctx.beginPath();ctx.arc(px,py,ff.size,0,Math.PI*2);ctx.fillStyle=`rgba(220,230,255,${a*0.85})`;ctx.fill();
+          }
+        });
+      }
+      animFrame.current=requestAnimationFrame(loop);
+    };
+    animFrame.current=requestAnimationFrame(loop);
+    return()=>{if(animFrame.current)cancelAnimationFrame(animFrame.current);};
+  },[]);
+
+  // Resize canvas
+  useEffect(()=>{
+    const resize=()=>{const c=canvasRef.current;if(c){c.width=window.innerWidth;c.height=window.innerHeight;}};
+    resize();window.addEventListener("resize",resize);
+    return()=>window.removeEventListener("resize",resize);
+  },[]);
+
+  return(
+    <div ref={containerRef} style={{position:"absolute",inset:0,zIndex:0,overflow:"hidden",background:"#06080A",cursor:"grab"}} onMouseDown={()=>{if(containerRef.current)containerRef.current.style.cursor="grabbing";}} onMouseUp={()=>{if(containerRef.current)containerRef.current.style.cursor="grab";}}>
+      <img ref={imgRef} src={MAP_BG_IMAGE} alt="World Map" style={{position:"absolute",top:0,left:0,width:`calc(100% + ${PARALLAX*2}px)`,height:`calc(100% + ${PARALLAX*2}px)`,objectFit:"cover",transform:`translate(${-PARALLAX}px,${-PARALLAX}px)`,willChange:"transform",userSelect:"none",WebkitUserDrag:"none",pointerEvents:"none"}} draggable={false}/>
+      {/* Warm lantern glows scattered across the village */}
+      <div style={{position:"absolute",left:"28%",top:"70%",width:"18%",height:"14%",pointerEvents:"none",zIndex:1,borderRadius:"50%",background:"radial-gradient(circle,rgba(255,170,50,0.10) 0%, transparent 70%)",mixBlendMode:"screen",animation:"candleGlowPulse 4.2s ease-in-out infinite"}}/>
+      <div style={{position:"absolute",left:"55%",top:"42%",width:"22%",height:"16%",pointerEvents:"none",zIndex:1,borderRadius:"50%",background:"radial-gradient(circle,rgba(255,180,60,0.12) 0%, transparent 65%)",mixBlendMode:"screen",animation:"candleGlowPulse 3.8s ease-in-out infinite 1.2s"}}/>
+      <div style={{position:"absolute",left:"60%",top:"8%",width:"16%",height:"12%",pointerEvents:"none",zIndex:1,borderRadius:"50%",background:"radial-gradient(circle,rgba(255,200,100,0.08) 0%, transparent 70%)",mixBlendMode:"screen",animation:"candleGlowPulse 5s ease-in-out infinite 0.6s"}}/>
+      <div style={{position:"absolute",left:"6%",top:"35%",width:"14%",height:"12%",pointerEvents:"none",zIndex:1,borderRadius:"50%",background:"radial-gradient(circle,rgba(200,255,200,0.06) 0%, transparent 70%)",mixBlendMode:"screen",animation:"candleGlowPulse 4.6s ease-in-out infinite 0.8s"}}/>
+      {/* Path glow — warm light along the winding paths */}
+      <div style={{position:"absolute",left:"25%",top:"30%",width:"50%",height:"50%",pointerEvents:"none",zIndex:1,background:"radial-gradient(ellipse at 50% 60%,rgba(255,190,90,0.03) 0%, transparent 55%)",mixBlendMode:"screen"}}/>
+      {/* Starry sky shimmer at top */}
+      <div style={{position:"absolute",left:0,top:0,right:0,height:"25%",pointerEvents:"none",zIndex:1,background:"linear-gradient(180deg, rgba(100,120,200,0.04) 0%, transparent 100%)",mixBlendMode:"screen"}}/>
+      {/* Firefly + dust canvas */}
+      <canvas ref={canvasRef} style={{position:"absolute",inset:0,pointerEvents:"none",zIndex:2}}/>
+      {/* Cinematic vignette */}
+      <div style={{position:"absolute",inset:0,pointerEvents:"none",zIndex:3,background:"radial-gradient(ellipse at center 50%, transparent 25%, rgba(4,6,10,0.55) 100%)"}}/>
+      {/* Top shadow */}
+      <div style={{position:"absolute",top:0,left:0,right:0,height:"15%",pointerEvents:"none",zIndex:3,background:"linear-gradient(to bottom, rgba(4,6,10,0.3), transparent)"}}/>
+      {/* Bottom shadow */}
+      <div style={{position:"absolute",bottom:0,left:0,right:0,height:"12%",pointerEvents:"none",zIndex:3,background:"linear-gradient(to top, rgba(4,6,10,0.25), transparent)"}}/>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════
    MAIN APP
 ═══════════════════════════════════════════════════ */
 export default function App(){
@@ -1551,6 +1731,11 @@ export default function App(){
     setSpaceTransit(true); setTransitDir("toGarden");
     setTimeout(()=>{setScreen("garden");setSpaceTransit(false);setTransitDir(null);},700);
   }
+  function transitionToMap(){
+    setDoorChoice(false);
+    setSpaceTransit(true); setTransitDir("toMap");
+    setTimeout(()=>{setScreen("map");setSpaceTransit(false);setTransitDir(null);},700);
+  }
 
   // ── SCENE NAVIGATION ──
   const SCENES = [
@@ -1845,6 +2030,12 @@ export default function App(){
     .craft-btn{transition:all .2s}
     .craft-btn:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,0.15)!important}
     @keyframes panelSlideUp{from{transform:translateY(100%);opacity:0.5}to{transform:translateY(0);opacity:1}}
+    @keyframes mapHotspotPulse{0%,100%{box-shadow:0 0 18px rgba(255,210,120,0.15),0 0 40px rgba(255,210,120,0.05);transform:translate(-50%,-50%) scale(1)}50%{box-shadow:0 0 28px rgba(255,210,120,0.3),0 0 60px rgba(255,210,120,0.1);transform:translate(-50%,-50%) scale(1.04)}}
+    @keyframes mapHotspotFadeIn{from{opacity:0;transform:translate(-50%,-50%) scale(0.7)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
+    @keyframes mapLabelFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+    .map-hotspot{transition:all .25s ease;cursor:pointer;animation:mapHotspotPulse 3.5s ease-in-out infinite}
+    .map-hotspot:hover{box-shadow:0 0 35px rgba(255,210,120,0.45),0 0 70px rgba(255,210,120,0.15)!important;transform:translate(-50%,-50%) scale(1.08)!important}
+    .map-hotspot:active{transform:translate(-50%,-50%) scale(0.94)!important}
   `;
 
   /* ── DARK HEADER (reusable) ── */
@@ -2054,39 +2245,16 @@ export default function App(){
         );
       })}
 
-      {/* 3. DOOR — over the wooden stairs on the RIGHT (step outside) */}
-      <button onClick={()=>setDoorChoice(true)} style={{position:"absolute",right:"1%",top:"32%",width:"22%",height:"38%",zIndex:12,background:"transparent",border:"none",cursor:"pointer",borderRadius:"8px",animation:"hotspotPulse 3.5s ease-in-out infinite"}}>
+      {/* 3. DOOR — over the wooden stairs on the RIGHT (step outside → world map) */}
+      <button onClick={()=>transitionToMap()} style={{position:"absolute",right:"1%",top:"32%",width:"22%",height:"38%",zIndex:12,background:"transparent",border:"none",cursor:"pointer",borderRadius:"8px",animation:"hotspotPulse 3.5s ease-in-out infinite"}}>
         {/* Warm stair glow */}
         <div style={{position:"absolute",inset:"-6%",borderRadius:"8px",background:"radial-gradient(ellipse at center 60%,rgba(255,190,100,0.06),transparent 65%)",pointerEvents:"none"}}/>
         {/* Subtle door label */}
         <div style={{position:"absolute",bottom:"10%",left:"50%",transform:"translateX(-50%)",display:"flex",alignItems:"center",gap:4,background:"rgba(10,8,6,0.55)",backdropFilter:"blur(6px)",WebkitBackdropFilter:"blur(6px)",borderRadius:12,padding:"5px 10px",animation:"doorLabelFade 5s ease-in-out infinite",pointerEvents:"none",whiteSpace:"nowrap"}}>
-          <span style={{fontSize:"0.65rem",opacity:0.85}}>🌲</span>
+          <span style={{fontSize:"0.65rem",opacity:0.85}}>🗺️</span>
           <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.55rem",color:"rgba(255,248,232,0.55)",letterSpacing:"0.02em"}}>Step outside</span>
         </div>
       </button>
-
-      {/* ═══ DOOR CHOICE OVERLAY ═══ */}
-      {doorChoice&&<div style={{position:"fixed",inset:0,zIndex:100}}>
-        <div onClick={()=>setDoorChoice(false)} style={{position:"absolute",inset:0,background:"rgba(10,8,6,0.7)",backdropFilter:"blur(6px)",WebkitBackdropFilter:"blur(6px)",animation:"spaceFadeIn .25s ease"}}/>
-        <div style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",display:"flex",flexDirection:"column",gap:14,animation:"doorChoiceFadeIn .4s cubic-bezier(.22,1,.36,1) both",width:"min(82vw,320px)"}}>
-          {/* Hall */}
-          <button onClick={()=>{setDoorChoice(false);transitionToHall();}} style={{width:"100%",background:"rgba(40,28,10,0.92)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",border:"1px solid rgba(201,169,110,0.25)",borderRadius:18,padding:"20px 20px",cursor:"pointer",display:"flex",alignItems:"center",gap:16,transition:"all .2s",boxShadow:"0 8px 32px rgba(0,0,0,0.4)"}} onMouseEnter={e=>e.currentTarget.style.borderColor="rgba(201,169,110,0.5)"} onMouseLeave={e=>e.currentTarget.style.borderColor="rgba(201,169,110,0.25)"}>
-            <span style={{fontSize:"1.8rem",filter:"drop-shadow(0 2px 8px rgba(201,169,110,0.3))",flexShrink:0}}>🕯️</span>
-            <div style={{display:"flex",flexDirection:"column",alignItems:"flex-start",gap:2}}>
-              <span style={{fontFamily:DISPLAY,fontSize:"1.05rem",fontWeight:700,color:B.goldL}}>The Hall</span>
-              <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.72rem",color:"rgba(255,248,232,0.4)",lineHeight:1.4}}>Prayer wall & community</span>
-            </div>
-          </button>
-          {/* Garden */}
-          <button onClick={()=>transitionToGarden()} style={{width:"100%",background:"rgba(20,32,20,0.92)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",border:"1px solid rgba(90,138,106,0.25)",borderRadius:18,padding:"20px 20px",cursor:"pointer",display:"flex",alignItems:"center",gap:16,transition:"all .2s",boxShadow:"0 8px 32px rgba(0,0,0,0.4)"}} onMouseEnter={e=>e.currentTarget.style.borderColor="rgba(90,138,106,0.5)"} onMouseLeave={e=>e.currentTarget.style.borderColor="rgba(90,138,106,0.25)"}>
-            <span style={{fontSize:"1.8rem",filter:"drop-shadow(0 2px 8px rgba(90,138,106,0.3))",flexShrink:0}}>🌿</span>
-            <div style={{display:"flex",flexDirection:"column",alignItems:"flex-start",gap:2}}>
-              <span style={{fontFamily:DISPLAY,fontSize:"1.05rem",fontWeight:700,color:"#BED3C4"}}>The Garden</span>
-              <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.72rem",color:"rgba(190,211,196,0.5)",lineHeight:1.4}}>Grow your prayers</span>
-            </div>
-          </button>
-        </div>
-      </div>}
 
       {/* 4. LEFT WINDOW — left half of the large picture window (forest + starry sky) */}
       <button className="window-hotspot" onClick={()=>setWindowPanel("left")} style={{position:"absolute",left:"18%",top:"12%",width:"25%",height:"36%",zIndex:10,background:"transparent",border:"none",cursor:"pointer",borderRadius:"8px"}}/>
@@ -2817,11 +2985,11 @@ export default function App(){
       <div style={{position:"relative",zIndex:10,height:"100%",overflowY:"auto",WebkitOverflowScrolling:"touch"}}>
         <div style={{maxWidth:720,margin:"0 auto",padding:"28px 22px 80px"}}>
 
-          {/* Return to cabin */}
-          <button onClick={transitionToCabin} style={{background:"rgba(26,22,18,0.5)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",border:"1px solid rgba(201,169,110,0.15)",borderRadius:999,padding:"8px 20px",cursor:"pointer",color:"rgba(255,248,232,0.6)",fontFamily:SANS,fontSize:"0.78rem",marginBottom:28,transition:"all 0.2s",display:"inline-flex",alignItems:"center",gap:6}}
+          {/* Return to village map */}
+          <button onClick={()=>setScreen("map")} style={{background:"rgba(26,22,18,0.5)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",border:"1px solid rgba(201,169,110,0.15)",borderRadius:999,padding:"8px 20px",cursor:"pointer",color:"rgba(255,248,232,0.6)",fontFamily:SANS,fontSize:"0.78rem",marginBottom:28,transition:"all 0.2s",display:"inline-flex",alignItems:"center",gap:6}}
             onMouseEnter={e=>{e.currentTarget.style.background="rgba(201,169,110,0.15)";e.currentTarget.style.color=B.goldL;}}
             onMouseLeave={e=>{e.currentTarget.style.background="rgba(26,22,18,0.5)";e.currentTarget.style.color="rgba(255,248,232,0.6)";}}>
-            ← Return to cabin
+            🗺️ Back to village
           </button>
 
           {/* Title */}
@@ -3133,6 +3301,78 @@ export default function App(){
     </div>
   );}
 
+  /* ══ WORLD MAP — Navigation Hub ═══════════════════ */
+  if(screen==="map"){
+    // Helper: navigate from map to a destination with transition
+    const mapGoTo=(dest)=>{
+      setSpaceTransit(true);
+      setTransitDir("fromMap");
+      setTimeout(()=>{
+        if(dest==="cabin"){setScreen("cabin");}
+        else if(dest==="garden"){setScreen("garden");}
+        else if(dest==="hall"){setScreen("hall");}
+        else if(dest==="market"){setScreen("market");}
+        else if(dest==="upper-room"){setScreen("upper-room");}
+        else{setScreen(dest);}
+        setSpaceTransit(false);setTransitDir(null);
+      },700);
+    };
+    return(
+      <div style={{position:"fixed",inset:0,overflow:"hidden",fontFamily:SANS}}>
+        <style>{GFONTS}{CSS}</style>
+
+        {/* ── Full-screen immersive map background ── */}
+        <ImmersiveMap/>
+
+        {/* ═══ LOCATION HOTSPOTS — positioned over map labels ═══ */}
+        {MAP_LOCATIONS.map((loc,idx)=>(
+          <button key={loc.id} className="map-hotspot" onClick={()=>mapGoTo(loc.id)} style={{
+            position:"absolute",left:loc.left,top:loc.top,
+            transform:"translate(-50%,-50%)",
+            width:"min(18vw,80px)",height:"min(18vw,80px)",
+            borderRadius:"50%",border:"none",zIndex:10,
+            background:"rgba(255,210,120,0.03)",
+            animation:`mapHotspotFadeIn .5s ${idx*0.12}s ease both, mapHotspotPulse ${3+idx*0.4}s ${idx*0.5}s ease-in-out infinite`,
+            display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,
+            padding:0,overflow:"visible",
+          }}>
+            {/* Lantern glow ring */}
+            <div style={{position:"absolute",inset:"-30%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,210,120,0.08) 0%, transparent 65%)",pointerEvents:"none"}}/>
+            {/* Emoji icon */}
+            <span style={{fontSize:"clamp(1.1rem,3.5vw,1.6rem)",lineHeight:1,filter:"drop-shadow(0 2px 6px rgba(0,0,0,0.5))",zIndex:1}}>{loc.emoji}</span>
+          </button>
+        ))}
+
+        {/* ═══ FLOATING LABELS — beside each hotspot ═══ */}
+        {MAP_LOCATIONS.map((loc,idx)=>(
+          <div key={loc.id+"-label"} style={{
+            position:"absolute",left:loc.left,top:`calc(${loc.top} + min(10vw,46px))`,
+            transform:"translateX(-50%)",
+            zIndex:12,pointerEvents:"none",
+            display:"flex",flexDirection:"column",alignItems:"center",gap:1,
+            animation:`fadeUp .6s ${0.3+idx*0.12}s ease both, mapLabelFloat ${4+idx*0.5}s ${idx*0.3}s ease-in-out infinite`,
+          }}>
+            <div style={{background:"rgba(10,8,6,0.72)",backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",border:"1px solid rgba(255,210,120,0.12)",borderRadius:10,padding:"4px 10px",whiteSpace:"nowrap"}}>
+              <span style={{fontFamily:DISPLAY,fontWeight:700,fontSize:"clamp(0.58rem,1.6vw,0.78rem)",color:"#F5E8C8",textShadow:"0 1px 4px rgba(0,0,0,0.6)",letterSpacing:"0.02em"}}>{loc.label}</span>
+            </div>
+            <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.42rem,1.1vw,0.55rem)",color:"rgba(245,232,200,0.35)",textShadow:"0 1px 3px rgba(0,0,0,0.7)"}}>{loc.desc}</span>
+          </div>
+        ))}
+
+        {/* ═══ TOP TITLE ═══ */}
+        <div style={{position:"absolute",top:"3%",left:"50%",transform:"translateX(-50%)",zIndex:20,display:"flex",flexDirection:"column",alignItems:"center",gap:2,animation:"fadeUp .8s ease both"}}>
+          <div style={{background:"rgba(10,8,6,0.6)",backdropFilter:"blur(10px)",WebkitBackdropFilter:"blur(10px)",border:"1px solid rgba(255,210,120,0.1)",borderRadius:14,padding:"6px 18px"}}>
+            <span style={{fontFamily:DISPLAY,fontWeight:700,fontSize:"clamp(0.75rem,2vw,1rem)",color:"#F5E8C8",letterSpacing:"0.04em",textShadow:"0 1px 4px rgba(0,0,0,0.5)"}}>The Village</span>
+          </div>
+          <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.48rem,1.2vw,0.6rem)",color:"rgba(245,232,200,0.3)"}}>Choose your path</span>
+        </div>
+
+        {/* ═══ SPACE TRANSIT OVERLAY ═══ */}
+        {spaceTransit&&<div style={{position:"fixed",inset:0,zIndex:9999,background:"#0A0806",animation:"spaceFadeIn .6s ease both",pointerEvents:"all"}}/>}
+      </div>
+    );
+  }
+
   /* ══ PRAYER GARDEN ═══════════════════════════════ */
   if(screen==="garden"){
     void gardenTick;
@@ -3205,11 +3445,11 @@ export default function App(){
           );
         })}
 
-        {/* ═══ DOOR — back to cabin (glowing archway at top center) ═══ */}
-        <button onClick={()=>{setScreen("cabin");setDoorChoice(false);setGardenTab("garden");setSelectedPlot(null);}} style={{position:"absolute",left:"35%",top:"6%",width:"30%",height:"16%",zIndex:12,background:"transparent",border:"none",cursor:"pointer",borderRadius:"50% 50% 8px 8px",animation:"gardenDoorGlow 3s ease-in-out infinite"}}>
+        {/* ═══ DOOR — back to map (glowing archway at top center) ═══ */}
+        <button onClick={()=>{setScreen("map");setGardenTab("garden");setSelectedPlot(null);}} style={{position:"absolute",left:"35%",top:"6%",width:"30%",height:"16%",zIndex:12,background:"transparent",border:"none",cursor:"pointer",borderRadius:"50% 50% 8px 8px",animation:"gardenDoorGlow 3s ease-in-out infinite"}}>
           <div style={{position:"absolute",bottom:"8%",left:"50%",transform:"translateX(-50%)",display:"flex",alignItems:"center",gap:4,background:"rgba(10,8,6,0.55)",backdropFilter:"blur(6px)",WebkitBackdropFilter:"blur(6px)",borderRadius:10,padding:"4px 10px",whiteSpace:"nowrap",pointerEvents:"none"}}>
-            <span style={{fontSize:"0.6rem",opacity:0.8}}>🏠</span>
-            <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.5rem",color:"rgba(255,248,232,0.55)",letterSpacing:"0.02em"}}>Return to cabin</span>
+            <span style={{fontSize:"0.6rem",opacity:0.8}}>🗺️</span>
+            <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.5rem",color:"rgba(255,248,232,0.55)",letterSpacing:"0.02em"}}>Back to village</span>
           </div>
         </button>
 
@@ -3569,6 +3809,58 @@ export default function App(){
           </div>}
 
         </main>
+      </div>
+    );
+  }
+
+  /* ══ MARKET — Placeholder ═══════════════════════ */
+  if(screen==="market"){
+    return(
+      <div style={{position:"fixed",inset:0,overflow:"hidden",fontFamily:SANS,background:"linear-gradient(160deg,#1A1408,#241E12)"}}>
+        <style>{GFONTS}{CSS}</style>
+        <div style={{position:"relative",zIndex:10,height:"100%",overflowY:"auto",WebkitOverflowScrolling:"touch"}}>
+          <div style={{maxWidth:720,margin:"0 auto",padding:"28px 22px 80px"}}>
+            <button onClick={()=>setScreen("map")} style={{background:"rgba(26,22,18,0.5)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",border:"1px solid rgba(201,169,110,0.15)",borderRadius:999,padding:"8px 20px",cursor:"pointer",color:"rgba(255,248,232,0.6)",fontFamily:SANS,fontSize:"0.78rem",marginBottom:28,transition:"all 0.2s",display:"inline-flex",alignItems:"center",gap:6}}>
+              🗺️ Back to village
+            </button>
+            <div style={{textAlign:"center",marginBottom:32,animation:"fadeUp .6s ease both"}}>
+              <div style={{fontSize:"2.5rem",marginBottom:12}}>🏪</div>
+              <h1 style={{fontFamily:DISPLAY,fontSize:"2rem",fontWeight:700,color:B.goldL,margin:"0 0 8px",textShadow:"0 2px 12px rgba(0,0,0,0.5)"}}>The Market</h1>
+              <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"1rem",color:"rgba(255,248,232,0.45)",margin:"0 0 14px"}}>Trade, barter, and provision for your journey.</p>
+              <div style={{width:60,height:1,background:"rgba(201,169,110,0.3)",margin:"0 auto"}}/>
+            </div>
+            <div style={{background:"rgba(30,24,14,0.6)",border:"1px solid rgba(201,169,110,0.15)",borderRadius:16,padding:"40px 24px",textAlign:"center"}}>
+              <p style={{fontFamily:SERIF,fontStyle:"italic",color:"rgba(255,248,232,0.3)",fontSize:"0.9rem"}}>The merchants are preparing their stalls…</p>
+              <p style={{fontFamily:SANS,fontSize:"0.72rem",color:"rgba(255,248,232,0.2)",marginTop:8}}>Coming soon</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* ══ UPPER ROOM — Placeholder ══════════════════ */
+  if(screen==="upper-room"){
+    return(
+      <div style={{position:"fixed",inset:0,overflow:"hidden",fontFamily:SANS,background:"linear-gradient(160deg,#12101A,#1A1428)"}}>
+        <style>{GFONTS}{CSS}</style>
+        <div style={{position:"relative",zIndex:10,height:"100%",overflowY:"auto",WebkitOverflowScrolling:"touch"}}>
+          <div style={{maxWidth:720,margin:"0 auto",padding:"28px 22px 80px"}}>
+            <button onClick={()=>setScreen("map")} style={{background:"rgba(26,22,30,0.5)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",border:"1px solid rgba(180,160,210,0.15)",borderRadius:999,padding:"8px 20px",cursor:"pointer",color:"rgba(230,220,248,0.6)",fontFamily:SANS,fontSize:"0.78rem",marginBottom:28,transition:"all 0.2s",display:"inline-flex",alignItems:"center",gap:6}}>
+              🗺️ Back to village
+            </button>
+            <div style={{textAlign:"center",marginBottom:32,animation:"fadeUp .6s ease both"}}>
+              <div style={{fontSize:"2.5rem",marginBottom:12}}>⛪</div>
+              <h1 style={{fontFamily:DISPLAY,fontSize:"2rem",fontWeight:700,color:"#D8C8F0",margin:"0 0 8px",textShadow:"0 2px 12px rgba(0,0,0,0.5)"}}>The Upper Room</h1>
+              <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"1rem",color:"rgba(200,190,230,0.45)",margin:"0 0 14px"}}>A sacred space for worship and encounter.</p>
+              <div style={{width:60,height:1,background:"rgba(180,160,210,0.3)",margin:"0 auto"}}/>
+            </div>
+            <div style={{background:"rgba(20,18,32,0.6)",border:"1px solid rgba(180,160,210,0.15)",borderRadius:16,padding:"40px 24px",textAlign:"center"}}>
+              <p style={{fontFamily:SERIF,fontStyle:"italic",color:"rgba(200,190,230,0.3)",fontSize:"0.9rem"}}>The candles are being lit…</p>
+              <p style={{fontFamily:SANS,fontSize:"0.72rem",color:"rgba(200,190,230,0.2)",marginTop:8}}>Coming soon</p>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
