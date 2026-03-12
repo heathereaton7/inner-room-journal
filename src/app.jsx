@@ -1555,18 +1555,22 @@ export default function App(){
       {/* ═══ DOOR CHOICE OVERLAY ═══ */}
       {doorChoice&&<div style={{position:"fixed",inset:0,zIndex:100}}>
         <div onClick={()=>setDoorChoice(false)} style={{position:"absolute",inset:0,background:"rgba(10,8,6,0.7)",backdropFilter:"blur(6px)",WebkitBackdropFilter:"blur(6px)",animation:"spaceFadeIn .25s ease"}}/>
-        <div style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",display:"flex",gap:16,animation:"doorChoiceFadeIn .4s cubic-bezier(.22,1,.36,1) both",maxWidth:"min(90vw,400px)",width:"100%"}}>
+        <div style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",display:"flex",flexDirection:"column",gap:14,animation:"doorChoiceFadeIn .4s cubic-bezier(.22,1,.36,1) both",width:"min(82vw,320px)"}}>
           {/* Hall */}
-          <button onClick={()=>{setDoorChoice(false);transitionToHall();}} style={{flex:1,background:"rgba(40,28,10,0.92)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",border:"1px solid rgba(201,169,110,0.25)",borderRadius:18,padding:"32px 16px",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:12,transition:"all .2s",boxShadow:"0 8px 32px rgba(0,0,0,0.4)"}} onMouseEnter={e=>e.currentTarget.style.borderColor="rgba(201,169,110,0.5)"} onMouseLeave={e=>e.currentTarget.style.borderColor="rgba(201,169,110,0.25)"}>
-            <span style={{fontSize:"2rem",filter:"drop-shadow(0 2px 8px rgba(201,169,110,0.3))"}}>🕯️</span>
-            <span style={{fontFamily:DISPLAY,fontSize:"1.05rem",fontWeight:700,color:B.goldL}}>The Hall</span>
-            <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.72rem",color:"rgba(255,248,232,0.4)",textAlign:"center",lineHeight:1.4}}>Prayer wall & community</span>
+          <button onClick={()=>{setDoorChoice(false);transitionToHall();}} style={{width:"100%",background:"rgba(40,28,10,0.92)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",border:"1px solid rgba(201,169,110,0.25)",borderRadius:18,padding:"20px 20px",cursor:"pointer",display:"flex",alignItems:"center",gap:16,transition:"all .2s",boxShadow:"0 8px 32px rgba(0,0,0,0.4)"}} onMouseEnter={e=>e.currentTarget.style.borderColor="rgba(201,169,110,0.5)"} onMouseLeave={e=>e.currentTarget.style.borderColor="rgba(201,169,110,0.25)"}>
+            <span style={{fontSize:"1.8rem",filter:"drop-shadow(0 2px 8px rgba(201,169,110,0.3))",flexShrink:0}}>🕯️</span>
+            <div style={{display:"flex",flexDirection:"column",alignItems:"flex-start",gap:2}}>
+              <span style={{fontFamily:DISPLAY,fontSize:"1.05rem",fontWeight:700,color:B.goldL}}>The Hall</span>
+              <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.72rem",color:"rgba(255,248,232,0.4)",lineHeight:1.4}}>Prayer wall & community</span>
+            </div>
           </button>
           {/* Garden */}
-          <button onClick={()=>transitionToGarden()} style={{flex:1,background:"rgba(20,32,20,0.92)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",border:"1px solid rgba(90,138,106,0.25)",borderRadius:18,padding:"32px 16px",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:12,transition:"all .2s",boxShadow:"0 8px 32px rgba(0,0,0,0.4)"}} onMouseEnter={e=>e.currentTarget.style.borderColor="rgba(90,138,106,0.5)"} onMouseLeave={e=>e.currentTarget.style.borderColor="rgba(90,138,106,0.25)"}>
-            <span style={{fontSize:"2rem",filter:"drop-shadow(0 2px 8px rgba(90,138,106,0.3))"}}>🌿</span>
-            <span style={{fontFamily:DISPLAY,fontSize:"1.05rem",fontWeight:700,color:"#BED3C4"}}>The Garden</span>
-            <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.72rem",color:"rgba(190,211,196,0.5)",textAlign:"center",lineHeight:1.4}}>Grow your prayers</span>
+          <button onClick={()=>transitionToGarden()} style={{width:"100%",background:"rgba(20,32,20,0.92)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",border:"1px solid rgba(90,138,106,0.25)",borderRadius:18,padding:"20px 20px",cursor:"pointer",display:"flex",alignItems:"center",gap:16,transition:"all .2s",boxShadow:"0 8px 32px rgba(0,0,0,0.4)"}} onMouseEnter={e=>e.currentTarget.style.borderColor="rgba(90,138,106,0.5)"} onMouseLeave={e=>e.currentTarget.style.borderColor="rgba(90,138,106,0.25)"}>
+            <span style={{fontSize:"1.8rem",filter:"drop-shadow(0 2px 8px rgba(90,138,106,0.3))",flexShrink:0}}>🌿</span>
+            <div style={{display:"flex",flexDirection:"column",alignItems:"flex-start",gap:2}}>
+              <span style={{fontFamily:DISPLAY,fontSize:"1.05rem",fontWeight:700,color:"#BED3C4"}}>The Garden</span>
+              <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.72rem",color:"rgba(190,211,196,0.5)",lineHeight:1.4}}>Grow your prayers</span>
+            </div>
           </button>
         </div>
       </div>}
