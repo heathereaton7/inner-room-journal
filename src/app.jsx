@@ -639,9 +639,31 @@ function RoomGlow({id}){
 }
 
 /* ═══════════════════════════════════════════════════
-   IMMERSIVE CABIN — Premium Parallax Interior
-   Touch/gyroscope-responsive cabin with warm ambient effects
+   IMMERSIVE CABIN — Premium Parallax Interior (Temporary Fallback)
+   Touch/gyroscope-responsive cabin with warm ambient effects.
+   This is the temporary mode while the real 3D GLB cabin is being built.
+   When the real model is ready, CabinScene3D will be restored and this
+   component becomes the fallback for devices that can't run WebGL.
+
+   BACKGROUND IMAGE REQUIREMENTS (approved concept art):
+   The image must show the cabin from the couch perspective and include:
+   - Gray L-shaped sectional couch in foreground
+   - Stone fireplace with wooden cross on left wall
+   - Massive panoramic window showing dark pine forest on back wall
+   - Exposed beam ceiling with draped string lights
+   - Large cream/white shag rug on dark wood floor
+   - Coffee table with Bible and small cross
+   - Desk nook with glowing lamp in far corner
+   - Bookshelf full of books near fireplace
+   - Horizontal wood plank wall paneling throughout
+   See docs/CABIN_VISUAL_BUILD_BRIEF.md for full spec.
 ═══════════════════════════════════════════════════ */
+
+// ⚠️ REPLACE THIS IMAGE — current cabin-interior.png does NOT match the approved concept art.
+// It shows a desk closeup with gothic door + waterfalls. The approved art shows the full room
+// from the couch perspective with fireplace, panoramic window, sectional couch, and string lights.
+// Drop the correct image into /public/cabin-room.png and update this path.
+const CABIN_FALLBACK_IMAGE="/cabin-interior.png";
 
 function ImmersiveCabin(){
   const containerRef=useRef(null);
@@ -810,7 +832,7 @@ function ImmersiveCabin(){
       {/* Cabin image — oversized for parallax movement */}
       <img
         ref={imgRef}
-        src="/cabin-interior.png"
+        src={CABIN_FALLBACK_IMAGE}
         alt="Cabin interior"
         onLoad={()=>{imgLoaded.current=true;}}
         style={{
@@ -869,7 +891,10 @@ export default function App(){
   const [windowPanel,   setWindowPanel]   = useState(null);
   const [showStreak,    setShowStreak]    = useState(false);
   const [showInsights,  setShowInsights]  = useState(false);
-  /* cabin3D/cabin3DError removed — ImmersiveCabin is now the default */
+  // Cabin rendering mode: "immersive" (parallax fallback) or "3d" (future real GLB)
+  // Defaults to "immersive" until a proper cabin model is built
+  const [cabinMode,     setCabinMode]     = useState("immersive"); // "immersive" | "3d"
+  const [cabin3DReady,  setCabin3DReady]  = useState(false);       // flips true when real GLB is deployed
   const streakTimerRef = useRef(null);
   const [entries,       setEntries]       = useState([]);
   const [streak,        setStreak]        = useState(0);
@@ -1709,8 +1734,17 @@ export default function App(){
     <div style={{position:"fixed",inset:0,overflow:"hidden",fontFamily:SANS}}>
       <style>{GFONTS}{CSS}</style>
 
-      {/* ── Full-screen immersive cabin background ── */}
-      <ImmersiveCabin/>
+      {/* ── Full-screen cabin background ── */}
+      {/* cabinMode "immersive" = parallax fallback (temporary until real 3D cabin is built) */}
+      {/* cabinMode "3d" = future React Three Fiber scene (swap in when GLB is ready) */}
+      {cabinMode==="3d"&&cabin3DReady?(
+        /* Future: <CabinScene3D/> — will render the real GLB model here */
+        <div style={{position:"absolute",inset:0,background:"#060402",zIndex:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
+          <span style={{color:"rgba(255,248,232,0.3)",fontFamily:SERIF,fontStyle:"italic",fontSize:"0.8rem"}}>3D cabin loading…</span>
+        </div>
+      ):(
+        <ImmersiveCabin/>
+      )}
 
       {/* ── Owned furniture decorations ── */}
       {ownedItems.map(itemId=>{
