@@ -914,6 +914,198 @@ function ImmersiveCabin(){
 /* CabinScene3D is replaced by ImmersiveCabin above — GLB model will return when rebuilt */
 
 /* ═══════════════════════════════════════════════════
+   IMMERSIVE GARDEN — Enchanted greenhouse with garden.png
+   Stone path leading to glowing archway door, circular
+   dirt plots on either side, lanterns, string lights,
+   lush plants and lavender throughout.
+═══════════════════════════════════════════════════ */
+const GARDEN_BG_IMAGE="/garden.png";
+
+// 12 plots mapped to the circular dirt patches in garden.png
+// Arranged in 6 rows of 2 (left + right of stone path), scaling down with perspective
+const GARDEN_PLOT_POSITIONS=[
+  // Row 1 — bottom (closest)
+  {left:"18%",top:"74%",size:"13vw",maxSize:"72px"},
+  {left:"63%",top:"74%",size:"13vw",maxSize:"72px"},
+  // Row 2
+  {left:"13%",top:"62%",size:"11vw",maxSize:"62px"},
+  {left:"68%",top:"62%",size:"11vw",maxSize:"62px"},
+  // Row 3
+  {left:"11%",top:"51%",size:"10vw",maxSize:"54px"},
+  {left:"72%",top:"51%",size:"10vw",maxSize:"54px"},
+  // Row 4
+  {left:"16%",top:"42%",size:"9vw",maxSize:"48px"},
+  {left:"68%",top:"42%",size:"9vw",maxSize:"48px"},
+  // Row 5
+  {left:"22%",top:"34%",size:"8vw",maxSize:"42px"},
+  {left:"62%",top:"34%",size:"8vw",maxSize:"42px"},
+  // Row 6 — top (farthest, near door)
+  {left:"30%",top:"27%",size:"7vw",maxSize:"36px"},
+  {left:"55%",top:"27%",size:"7vw",maxSize:"36px"},
+];
+
+function ImmersiveGarden(){
+  const containerRef=useRef(null);
+  const canvasRef=useRef(null);
+  const offsetX=useRef(0);
+  const offsetY=useRef(0);
+  const targetX=useRef(0);
+  const targetY=useRef(0);
+  const dragStart=useRef(null);
+  const animFrame=useRef(null);
+  const particles=useRef([]);
+  const gardenFireflies=useRef([]);
+  const time=useRef(0);
+  const imgRef=useRef(null);
+
+  const PARALLAX=30;
+  const SENSITIVITY=0.5;
+
+  // Initialize pollen/dust + fireflies
+  useEffect(()=>{
+    const pts=[];
+    for(let i=0;i<25;i++){
+      pts.push({
+        x:Math.random(),y:Math.random(),
+        size:Math.random()*2+0.6,
+        speed:Math.random()*0.00025+0.0001,
+        drift:Math.random()*0.0003-0.00015,
+        opacity:Math.random()*0.35+0.08,
+        phase:Math.random()*Math.PI*2,
+        warmth:Math.random(),
+      });
+    }
+    particles.current=pts;
+    const ffs=[];
+    for(let i=0;i<22;i++){
+      ffs.push({
+        x:0.08+Math.random()*0.84,
+        y:0.10+Math.random()*0.75,
+        size:Math.random()*1.8+1.2,
+        sx:(Math.random()-0.5)*0.00025,
+        sy:(Math.random()-0.5)*0.00018,
+        phase:Math.random()*Math.PI*2,
+        blink:Math.random()*0.003+0.001,
+        isGold:Math.random()>0.6, // mix of green and golden fireflies
+      });
+    }
+    gardenFireflies.current=ffs;
+  },[]);
+
+  // Gyroscope
+  useEffect(()=>{
+    let active=true;
+    const handle=(e)=>{
+      if(!active)return;
+      targetX.current=Math.max(-1,Math.min(1,(e.gamma||0)/30))*PARALLAX;
+      targetY.current=Math.max(-1,Math.min(1,((e.beta||0)-45)/30))*PARALLAX;
+    };
+    if(typeof DeviceOrientationEvent!=="undefined"&&typeof DeviceOrientationEvent.requestPermission==="function"){
+      const req=()=>{DeviceOrientationEvent.requestPermission().then(r=>{if(r==="granted")window.addEventListener("deviceorientation",handle);}).catch(()=>{});window.removeEventListener("touchstart",req);};
+      window.addEventListener("touchstart",req,{once:true});
+    } else { window.addEventListener("deviceorientation",handle); }
+    return()=>{active=false;window.removeEventListener("deviceorientation",handle);};
+  },[]);
+
+  // Touch/mouse drag
+  useEffect(()=>{
+    const el=containerRef.current; if(!el) return;
+    const start=(x,y)=>{dragStart.current={x,y,ox:targetX.current,oy:targetY.current};};
+    const move=(x,y)=>{if(!dragStart.current)return;targetX.current=Math.max(-PARALLAX,Math.min(PARALLAX,dragStart.current.ox+(x-dragStart.current.x)*SENSITIVITY));targetY.current=Math.max(-PARALLAX,Math.min(PARALLAX,dragStart.current.oy+(y-dragStart.current.y)*SENSITIVITY));};
+    const end=()=>{dragStart.current=null;};
+    const ts=e=>{const t=e.touches[0];start(t.clientX,t.clientY);};
+    const tm=e=>{const t=e.touches[0];move(t.clientX,t.clientY);};
+    el.addEventListener("touchstart",ts,{passive:true});el.addEventListener("touchmove",tm,{passive:true});el.addEventListener("touchend",end);
+    el.addEventListener("mousedown",e=>start(e.clientX,e.clientY));
+    const mm=e=>move(e.clientX,e.clientY);
+    window.addEventListener("mousemove",mm);window.addEventListener("mouseup",end);
+    return()=>{el.removeEventListener("touchstart",ts);el.removeEventListener("touchmove",tm);el.removeEventListener("touchend",end);window.removeEventListener("mousemove",mm);window.removeEventListener("mouseup",end);};
+  },[]);
+
+  // Animation loop
+  useEffect(()=>{
+    const loop=()=>{
+      time.current+=16;
+      offsetX.current+=(targetX.current-offsetX.current)*0.08;
+      offsetY.current+=(targetY.current-offsetY.current)*0.08;
+      const bx=Math.sin(time.current*0.0004)*2;
+      const by=Math.cos(time.current*0.0003)*1.5;
+      if(imgRef.current) imgRef.current.style.transform=`translate(${-PARALLAX+offsetX.current+bx}px,${-PARALLAX+offsetY.current+by}px)`;
+      const cvs=canvasRef.current;
+      if(cvs){
+        const ctx=cvs.getContext("2d"),w=cvs.width,h=cvs.height;
+        ctx.clearRect(0,0,w,h);
+        // Floating pollen/dust
+        particles.current.forEach(p=>{
+          p.y-=p.speed; p.x+=p.drift+Math.sin(time.current*0.001+p.phase)*0.0001;
+          if(p.y<-0.05){p.y=1.05;p.x=Math.random();}
+          const fl=0.7+0.3*Math.sin(time.current*0.002+p.phase);
+          const a=p.opacity*fl;
+          const r=240,g=Math.round(220+p.warmth*30),b=Math.round(160+p.warmth*60);
+          const px=p.x*w,py=p.y*h;
+          ctx.beginPath();ctx.arc(px,py,p.size,0,Math.PI*2);
+          ctx.fillStyle=`rgba(${r},${g},${b},${a})`;ctx.fill();
+          if(p.size>1.2){ctx.beginPath();ctx.arc(px,py,p.size*2.5,0,Math.PI*2);ctx.fillStyle=`rgba(${r},${g},${b},${a*0.12})`;ctx.fill();}
+        });
+        // Fireflies
+        gardenFireflies.current.forEach(ff=>{
+          ff.x+=ff.sx+Math.sin(time.current*0.0005+ff.phase)*0.00008;
+          ff.y+=ff.sy+Math.cos(time.current*0.0006+ff.phase)*0.00006;
+          if(ff.x<0.05||ff.x>0.95)ff.sx*=-1;
+          if(ff.y<0.08||ff.y>0.88)ff.sy*=-1;
+          ff.x=Math.max(0.05,Math.min(0.95,ff.x));
+          ff.y=Math.max(0.08,Math.min(0.88,ff.y));
+          const blink=Math.sin(time.current*ff.blink+ff.phase);
+          const a=Math.max(0,blink*0.7+0.3)*0.55;
+          const px=ff.x*w,py=ff.y*h;
+          if(ff.isGold){
+            ctx.beginPath();ctx.arc(px,py,ff.size*6,0,Math.PI*2);ctx.fillStyle=`rgba(255,220,100,${a*0.06})`;ctx.fill();
+            ctx.beginPath();ctx.arc(px,py,ff.size*3,0,Math.PI*2);ctx.fillStyle=`rgba(255,230,120,${a*0.15})`;ctx.fill();
+            ctx.beginPath();ctx.arc(px,py,ff.size,0,Math.PI*2);ctx.fillStyle=`rgba(255,240,160,${a})`;ctx.fill();
+          } else {
+            ctx.beginPath();ctx.arc(px,py,ff.size*6,0,Math.PI*2);ctx.fillStyle=`rgba(140,255,100,${a*0.06})`;ctx.fill();
+            ctx.beginPath();ctx.arc(px,py,ff.size*3,0,Math.PI*2);ctx.fillStyle=`rgba(160,255,110,${a*0.15})`;ctx.fill();
+            ctx.beginPath();ctx.arc(px,py,ff.size,0,Math.PI*2);ctx.fillStyle=`rgba(190,255,150,${a})`;ctx.fill();
+          }
+        });
+      }
+      animFrame.current=requestAnimationFrame(loop);
+    };
+    animFrame.current=requestAnimationFrame(loop);
+    return()=>{if(animFrame.current)cancelAnimationFrame(animFrame.current);};
+  },[]);
+
+  // Resize canvas
+  useEffect(()=>{
+    const resize=()=>{const c=canvasRef.current;if(c){c.width=window.innerWidth;c.height=window.innerHeight;}};
+    resize();window.addEventListener("resize",resize);
+    return()=>window.removeEventListener("resize",resize);
+  },[]);
+
+  return(
+    <div ref={containerRef} style={{position:"absolute",inset:0,zIndex:0,overflow:"hidden",background:"#080A06",cursor:"grab"}} onMouseDown={()=>{if(containerRef.current)containerRef.current.style.cursor="grabbing";}} onMouseUp={()=>{if(containerRef.current)containerRef.current.style.cursor="grab";}}>
+      <img ref={imgRef} src={GARDEN_BG_IMAGE} alt="Prayer Garden" style={{position:"absolute",top:0,left:0,width:`calc(100% + ${PARALLAX*2}px)`,height:`calc(100% + ${PARALLAX*2}px)`,objectFit:"cover",transform:`translate(${-PARALLAX}px,${-PARALLAX}px)`,willChange:"transform",userSelect:"none",WebkitUserDrag:"none",pointerEvents:"none"}} draggable={false}/>
+      {/* Warm lantern glow overlay — left side */}
+      <div className="garden-lantern-glow" style={{position:"absolute",left:"5%",top:"55%",width:"15%",height:"20%",pointerEvents:"none",zIndex:1,borderRadius:"50%",background:"radial-gradient(circle,rgba(255,180,60,0.10) 0%, transparent 70%)",mixBlendMode:"screen"}}/>
+      {/* Lantern glow — right side */}
+      <div className="garden-lantern-glow2" style={{position:"absolute",right:"5%",top:"55%",width:"15%",height:"20%",pointerEvents:"none",zIndex:1,borderRadius:"50%",background:"radial-gradient(circle,rgba(255,180,60,0.10) 0%, transparent 70%)",mixBlendMode:"screen"}}/>
+      {/* Archway door glow */}
+      <div className="garden-door-glow" style={{position:"absolute",left:"35%",top:"10%",width:"30%",height:"20%",pointerEvents:"none",zIndex:1,background:"radial-gradient(ellipse,rgba(255,200,80,0.12) 0%, transparent 65%)",mixBlendMode:"screen"}}/>
+      {/* String light shimmer across greenhouse ceiling */}
+      <div className="garden-string-lights" style={{position:"absolute",left:"5%",right:"5%",top:"2%",height:"12%",pointerEvents:"none",zIndex:1,background:"linear-gradient(90deg, transparent 0%, rgba(255,220,140,0.03) 12%, rgba(255,210,120,0.05) 28%, rgba(255,220,140,0.03) 42%, rgba(255,210,120,0.05) 58%, rgba(255,220,140,0.03) 72%, rgba(255,210,120,0.05) 88%, transparent 100%)",mixBlendMode:"screen"}}/>
+      {/* Path glow — warm light on the stone path */}
+      <div style={{position:"absolute",left:"30%",top:"40%",width:"40%",height:"55%",pointerEvents:"none",zIndex:1,background:"radial-gradient(ellipse at 50% 80%,rgba(255,190,90,0.04) 0%, transparent 60%)",mixBlendMode:"screen"}}/>
+      {/* Firefly + pollen canvas */}
+      <canvas ref={canvasRef} style={{position:"absolute",inset:0,pointerEvents:"none",zIndex:2}}/>
+      {/* Cinematic vignette */}
+      <div style={{position:"absolute",inset:0,pointerEvents:"none",zIndex:3,background:"radial-gradient(ellipse at center 60%, transparent 30%, rgba(6,8,4,0.50) 100%)"}}/>
+      {/* Top shadow */}
+      <div style={{position:"absolute",top:0,left:0,right:0,height:"20%",pointerEvents:"none",zIndex:3,background:"linear-gradient(to bottom, rgba(6,8,4,0.25), transparent)"}}/>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════
    MAIN APP
 ═══════════════════════════════════════════════════ */
 export default function App(){
@@ -1632,17 +1824,27 @@ export default function App(){
     @keyframes doorZoomBg{0%{transform:scale(1);filter:brightness(1)}100%{transform:scale(1.12);filter:brightness(1.3)}}
     @keyframes gardenSway{0%,100%{transform:rotate(-2deg)}50%{transform:rotate(2deg)}}
     @keyframes gardenGrow{from{transform:scale(0.6);opacity:0}to{transform:scale(1);opacity:1}}
-    @keyframes harvestGlow{0%,100%{filter:drop-shadow(0 0 4px rgba(212,180,100,0.3))}50%{filter:drop-shadow(0 0 12px rgba(212,180,100,0.6))}}
+    @keyframes harvestGlow{0%,100%{filter:drop-shadow(0 0 6px rgba(255,220,80,0.4)) brightness(1.1)}50%{filter:drop-shadow(0 0 18px rgba(255,200,60,0.7)) brightness(1.2)}}
     @keyframes harvestBounce{0%{transform:scale(1)}25%{transform:scale(1.15)}50%{transform:scale(0.95)}75%{transform:scale(1.05)}100%{transform:scale(1)}}
-    @keyframes gardenPlotFadeIn{from{opacity:0;transform:scale(0.9)}to{opacity:1;transform:scale(1)}}
+    @keyframes gardenPlotFadeIn{from{opacity:0;transform:translate(-50%,-50%) scale(0.8)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
     @keyframes doorChoiceFadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
-    @keyframes bloomPulse{0%,100%{filter:drop-shadow(0 0 6px rgba(90,138,106,0.3))}50%{filter:drop-shadow(0 0 16px rgba(90,138,106,0.6))}}
-    @keyframes emptyPlotPulse{0%,100%{opacity:0.3;transform:scale(1)}50%{opacity:0.6;transform:scale(1.15)}}
+    @keyframes bloomPulse{0%,100%{filter:drop-shadow(0 0 6px rgba(180,140,255,0.3))}50%{filter:drop-shadow(0 0 16px rgba(180,140,255,0.6))}}
+    @keyframes emptyPlotPulse{0%,100%{opacity:0.35;transform:scale(1)}50%{opacity:0.7;transform:scale(1.12)}}
+    @keyframes gardenPlotHover{0%,100%{box-shadow:0 0 8px rgba(255,200,80,0.08)}50%{box-shadow:0 0 18px rgba(255,200,80,0.2)}}
+    @keyframes gardenDoorGlow{0%,100%{box-shadow:0 0 20px rgba(255,200,80,0.15),0 0 50px rgba(255,200,80,0.05)}50%{box-shadow:0 0 35px rgba(255,200,80,0.3),0 0 80px rgba(255,200,80,0.1)}}
+    .garden-lantern-glow{animation:candleGlowPulse 4s ease-in-out infinite}
+    .garden-lantern-glow2{animation:candleGlowPulse 4.8s ease-in-out infinite 1s}
+    .garden-door-glow{animation:candleGlowPulse 3.5s ease-in-out infinite 0.5s}
+    .garden-string-lights{animation:stringLightTwinkle 7s ease-in-out infinite}
+    .garden-plot-hotspot{transition:all .25s ease;cursor:pointer}
+    .garden-plot-hotspot:hover{transform:translate(-50%,-50%) scale(1.12)!important}
+    .garden-plot-hotspot:active{transform:translate(-50%,-50%) scale(0.92)!important}
     .garden-plot{transition:all .2s ease;cursor:pointer}
     .garden-plot:hover{transform:translateY(-2px);box-shadow:0 4px 16px rgba(0,0,0,0.15)!important}
     .garden-plot:active{transform:scale(0.96)}
     .craft-btn{transition:all .2s}
     .craft-btn:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,0.15)!important}
+    @keyframes panelSlideUp{from{transform:translateY(100%);opacity:0.5}to{transform:translateY(0);opacity:1}}
   `;
 
   /* ── DARK HEADER (reusable) ── */
@@ -2933,166 +3135,196 @@ export default function App(){
 
   /* ══ PRAYER GARDEN ═══════════════════════════════ */
   if(screen==="garden"){
-    void gardenTick; // referenced so the 60s interval triggers re-render of growth stages
+    void gardenTick;
     const availablePrayers=getAvailablePrayers();
     const invItems=Object.entries(inventory).filter(([,v])=>v>0);
     const totalInv=invItems.reduce((s,[,v])=>s+v,0);
-    // Growth progress helper
     const getGrowthPercent=(plot)=>{
       if(plot.stage==="empty"||!plot.plantedAt) return 0;
       const cs=getComputedStage(plot);
       if(cs==="harvestable") return 100;
       const plant=GARDEN_PLANTS.find(p=>p.id===plot.plantType);
       if(!plant) return 0;
-      const elapsed=(Date.now()-plot.plantedAt)/60000; // minutes
+      const elapsed=(Date.now()-plot.plantedAt)/60000;
       const bonus=plot.prayerCount*PRAYER_BONUS_MINS;
       let total=0;
       for(let i=0;i<plant.growthBase.length;i++) total+=Math.max(0.5,plant.growthBase[i]-bonus);
       return Math.min(100,Math.round((elapsed/total)*100));
     };
+    const growingCount=gardenPlots.filter(p=>p.stage!=="empty"&&getComputedStage(p)!=="harvestable").length;
+    const readyCount=gardenPlots.filter(p=>p.stage!=="empty"&&getComputedStage(p)==="harvestable").length;
+
     return(
-      <div style={{minHeight:"100vh",background:"linear-gradient(160deg,#1A1E14,#1E2818)",color:"#E8F0E0",fontFamily:SANS}}>
+      <div style={{position:"fixed",inset:0,overflow:"hidden",fontFamily:SANS}}>
         <style>{GFONTS}{CSS}</style>
-        <DarkHeader title="🌿 Prayer Garden" onBack={()=>{setScreen("cabin");setDoorChoice(false);setGardenTab("garden");}} extra={<div style={{display:"flex",alignItems:"center",gap:6,background:"rgba(212,180,100,0.1)",border:"1px solid rgba(212,180,100,0.2)",borderRadius:10,padding:"5px 12px"}}><span style={{fontSize:"0.9rem"}}>🕯️</span><span style={{fontFamily:DISPLAY,fontSize:"0.9rem",fontWeight:700,color:B.goldL}}>{candles}</span></div>}/>
-        <main style={{maxWidth:"600px",margin:"0 auto",padding:"20px 18px 80px"}}>
 
-          {/* Tab bar */}
-          <div style={{display:"flex",gap:8,marginBottom:20}}>
-            {[{id:"garden",label:"🌱 Garden"},{id:"inventory",label:"🧺 Inventory"},{id:"crafting",label:"⚙️ Crafting"}].map(t=>
-              <button key={t.id} onClick={()=>{setGardenTab(t.id);setCraftingStation(null);}} style={{flex:1,background:gardenTab===t.id?"rgba(90,138,106,0.15)":"transparent",border:`1px solid ${gardenTab===t.id?"rgba(90,138,106,0.35)":"rgba(190,211,196,0.1)"}`,color:gardenTab===t.id?"#BED3C4":"rgba(190,211,196,0.4)",padding:"8px 12px",borderRadius:10,cursor:"pointer",fontSize:"0.78rem",fontFamily:SANS,fontWeight:gardenTab===t.id?600:400,transition:"all 0.15s"}}>{t.label}</button>
-            )}
-          </div>
+        {/* ── Full-screen immersive garden background ── */}
+        <ImmersiveGarden/>
 
-          {/* ═══ GARDEN TAB ═══ */}
-          {gardenTab==="garden"&&<>
-            {/* Garden status summary */}
-            {(()=>{
-              const growing=gardenPlots.filter(p=>p.stage!=="empty"&&getComputedStage(p)!=="harvestable").length;
-              const ready=gardenPlots.filter(p=>p.stage!=="empty"&&getComputedStage(p)==="harvestable").length;
-              const empty=gardenPlots.filter(p=>p.stage==="empty").length;
-              if(growing===0&&ready===0) return null;
-              return(
-                <div style={{display:"flex",gap:12,marginBottom:16,padding:"10px 14px",background:"rgba(90,138,106,0.06)",border:"1px solid rgba(90,138,106,0.12)",borderRadius:12,justifyContent:"center",flexWrap:"wrap"}}>
-                  {growing>0&&<span style={{fontFamily:SANS,fontSize:"0.72rem",color:"rgba(190,211,196,0.55)"}}>🌱 {growing} growing</span>}
-                  {ready>0&&<span style={{fontFamily:SANS,fontSize:"0.72rem",color:B.goldL,fontWeight:600}}>✨ {ready} ready to harvest</span>}
-                  {empty>0&&<span style={{fontFamily:SANS,fontSize:"0.72rem",color:"rgba(190,211,196,0.3)"}}>{empty} empty</span>}
-                </div>
-              );
-            })()}
-            {/* Garden grid — 4 columns × 3 rows */}
-            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10}}>
-              {gardenPlots.map((plot,idx)=>{
-                const cs=getComputedStage(plot);
-                const isHarvestable=cs==="harvestable";
-                const isEmpty=cs==="empty";
-                const prayer=plot.prayerId?prayerPosts.find(p=>p.id===plot.prayerId):null;
-                const isAnswered=prayer&&prayer.status==="answered";
-                const pct=getGrowthPercent(plot);
-                return(
-                  <div key={plot.id} className="garden-plot" onClick={()=>{
-                    if(isEmpty) openPlantModal(plot.id);
-                    else if(isHarvestable) harvestPlot(plot.id);
-                    else setSelectedPlot(selectedPlot===plot.id?null:plot.id);
-                  }} style={{
-                    background:isEmpty?"transparent":isHarvestable?"rgba(212,180,100,0.08)":"rgba(90,138,106,0.06)",
-                    border:`1px ${isEmpty?"dashed":"solid"} ${isHarvestable?"rgba(212,180,100,0.35)":isEmpty?"rgba(190,211,196,0.15)":"rgba(90,138,106,0.25)"}`,
-                    borderRadius:14,padding:"14px 8px",display:"flex",flexDirection:"column",alignItems:"center",gap:6,
-                    minHeight:100,justifyContent:"center",position:"relative",
-                    animation:`gardenPlotFadeIn .4s ${idx*0.05}s ease both`,
-                  }}>
-                    {isEmpty?(
-                      <>
-                        <span style={{fontSize:"1.4rem",color:"rgba(190,211,196,0.3)",animation:"emptyPlotPulse 3s ease-in-out infinite"}}>+</span>
-                        <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.62rem",color:"rgba(190,211,196,0.3)"}}>Plant</span>
-                      </>
-                    ):(
-                      <>
-                        <span style={{fontSize:"1.6rem",animation:isHarvestable?"harvestGlow 2s ease-in-out infinite":isAnswered?"bloomPulse 2s ease-in-out infinite":"gardenSway 4s ease-in-out infinite",transformOrigin:"bottom center"}}>{getPlantEmoji(plot)}</span>
-                        {isAnswered&&!isHarvestable&&<span style={{position:"absolute",top:4,right:6,fontSize:"0.55rem"}}>🌸</span>}
-                        {isHarvestable?(
-                          <span style={{fontFamily:SANS,fontSize:"0.6rem",fontWeight:600,color:B.goldL,animation:"harvestBounce 1.5s ease-in-out infinite"}}>Harvest!</span>
-                        ):(
-                          <div style={{width:"80%",height:3,background:"rgba(190,211,196,0.1)",borderRadius:2,overflow:"hidden"}}>
-                            <div style={{width:`${pct}%`,height:"100%",background:"linear-gradient(90deg,#5A8A6A,#9AB8A4)",borderRadius:2,transition:"width 0.5s ease"}}/>
-                          </div>
-                        )}
-                      </>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Selected plot detail */}
-            {selectedPlot&&(()=>{
-              const plot=gardenPlots.find(p=>p.id===selectedPlot);
-              if(!plot||plot.stage==="empty") return null;
-              const plant=GARDEN_PLANTS.find(p=>p.id===plot.plantType);
-              const prayer=prayerPosts.find(p=>p.id===plot.prayerId);
-              const cs=getComputedStage(plot);
-              const pct=getGrowthPercent(plot);
-              return(
-                <div style={{marginTop:16,background:"rgba(90,138,106,0.08)",border:"1px solid rgba(90,138,106,0.2)",borderRadius:16,padding:"18px 16px",animation:"fadeUp .3s ease both"}}>
-                  <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
-                    <span style={{fontSize:"1.4rem"}}>{getPlantEmoji(plot)}</span>
-                    <div>
-                      <div style={{fontFamily:DISPLAY,fontSize:"0.92rem",fontWeight:700,color:"#BED3C4"}}>{plant?.name||"Plant"}</div>
-                      <div style={{fontFamily:SANS,fontSize:"0.68rem",color:"rgba(190,211,196,0.5)"}}>Stage: {cs} · {pct}% grown</div>
+        {/* ═══ GARDEN PLOT HOTSPOTS — mapped to circular dirt patches ═══ */}
+        {gardenPlots.map((plot,idx)=>{
+          const pos=GARDEN_PLOT_POSITIONS[idx];
+          if(!pos) return null;
+          const cs=getComputedStage(plot);
+          const isHarvestable=cs==="harvestable";
+          const isEmpty=cs==="empty";
+          const prayer=plot.prayerId?prayerPosts.find(p=>p.id===plot.prayerId):null;
+          const isAnswered=prayer&&prayer.status==="answered";
+          const pct=getGrowthPercent(plot);
+          return(
+            <button key={plot.id} className="garden-plot-hotspot" onClick={()=>{
+              if(isEmpty) openPlantModal(plot.id);
+              else if(isHarvestable) harvestPlot(plot.id);
+              else setSelectedPlot(selectedPlot===plot.id?null:plot.id);
+            }} style={{
+              position:"absolute",left:pos.left,top:pos.top,
+              width:`min(${pos.size},${pos.maxSize})`,height:`min(${pos.size},${pos.maxSize})`,
+              transform:"translate(-50%,-50%)",
+              borderRadius:"50%",border:"none",cursor:"pointer",zIndex:10,
+              background:isEmpty?"rgba(80,60,30,0.25)":isHarvestable?"rgba(255,200,60,0.15)":"rgba(90,138,106,0.12)",
+              boxShadow:isHarvestable?"0 0 16px rgba(255,200,60,0.35), 0 0 40px rgba(255,200,60,0.1)":isEmpty?"none":"0 0 10px rgba(90,138,106,0.15)",
+              animation:isHarvestable?`gardenDoorGlow 2.5s ease-in-out infinite`:`gardenPlotFadeIn .5s ${idx*0.06}s ease both`,
+              display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:1,
+              padding:0,overflow:"visible",
+            }}>
+              {isEmpty?(
+                <span style={{fontSize:"clamp(0.7rem,2vw,1.1rem)",color:"rgba(220,200,160,0.45)",animation:"emptyPlotPulse 3.5s ease-in-out infinite",lineHeight:1}}>+</span>
+              ):(
+                <>
+                  <span style={{fontSize:"clamp(0.9rem,2.5vw,1.5rem)",lineHeight:1,animation:isHarvestable?"harvestGlow 2s ease-in-out infinite":isAnswered?"bloomPulse 2s ease-in-out infinite":"gardenSway 4s ease-in-out infinite",transformOrigin:"bottom center",filter:"drop-shadow(0 2px 4px rgba(0,0,0,0.4))"}}>{getPlantEmoji(plot)}</span>
+                  {isAnswered&&!isHarvestable&&<span style={{position:"absolute",top:"-4px",right:"-2px",fontSize:"0.45rem"}}>🌸</span>}
+                  {isHarvestable&&<span style={{fontSize:"clamp(0.35rem,0.9vw,0.5rem)",fontFamily:SANS,fontWeight:700,color:"#FFE880",textShadow:"0 1px 4px rgba(0,0,0,0.7)",lineHeight:1,animation:"harvestBounce 1.5s ease-in-out infinite"}}>Harvest</span>}
+                  {!isHarvestable&&!isEmpty&&(
+                    <div style={{width:"70%",height:2,background:"rgba(0,0,0,0.3)",borderRadius:1,overflow:"hidden",marginTop:1}}>
+                      <div style={{width:`${pct}%`,height:"100%",background:"linear-gradient(90deg,#5A8A6A,#BED3C4)",borderRadius:1,transition:"width 0.5s"}}/>
                     </div>
+                  )}
+                </>
+              )}
+            </button>
+          );
+        })}
+
+        {/* ═══ DOOR — back to cabin (glowing archway at top center) ═══ */}
+        <button onClick={()=>{setScreen("cabin");setDoorChoice(false);setGardenTab("garden");setSelectedPlot(null);}} style={{position:"absolute",left:"35%",top:"6%",width:"30%",height:"16%",zIndex:12,background:"transparent",border:"none",cursor:"pointer",borderRadius:"50% 50% 8px 8px",animation:"gardenDoorGlow 3s ease-in-out infinite"}}>
+          <div style={{position:"absolute",bottom:"8%",left:"50%",transform:"translateX(-50%)",display:"flex",alignItems:"center",gap:4,background:"rgba(10,8,6,0.55)",backdropFilter:"blur(6px)",WebkitBackdropFilter:"blur(6px)",borderRadius:10,padding:"4px 10px",whiteSpace:"nowrap",pointerEvents:"none"}}>
+            <span style={{fontSize:"0.6rem",opacity:0.8}}>🏠</span>
+            <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.5rem",color:"rgba(255,248,232,0.55)",letterSpacing:"0.02em"}}>Return to cabin</span>
+          </div>
+        </button>
+
+        {/* ═══ TOP HUD — candle balance + garden status ═══ */}
+        <div style={{position:"absolute",left:"3%",top:"3%",zIndex:20,display:"flex",alignItems:"center",gap:8,animation:"fadeUp .6s ease both"}}>
+          <div style={{background:"rgba(10,8,6,0.65)",backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",border:"1px solid rgba(212,180,100,0.15)",borderRadius:10,padding:"5px 12px",display:"flex",alignItems:"center",gap:6}}>
+            <span style={{fontSize:"0.8rem"}}>🕯️</span>
+            <span style={{fontFamily:DISPLAY,fontSize:"0.82rem",fontWeight:700,color:B.goldL}}>{candles}</span>
+          </div>
+          {readyCount>0&&<div style={{background:"rgba(10,8,6,0.65)",backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",border:"1px solid rgba(255,200,60,0.2)",borderRadius:10,padding:"5px 10px",display:"flex",alignItems:"center",gap:4}}>
+            <span style={{fontSize:"0.65rem"}}>✨</span>
+            <span style={{fontFamily:SANS,fontSize:"0.68rem",fontWeight:600,color:"#FFE880"}}>{readyCount} ready</span>
+          </div>}
+          {growingCount>0&&<div style={{background:"rgba(10,8,6,0.55)",backdropFilter:"blur(6px)",WebkitBackdropFilter:"blur(6px)",border:"1px solid rgba(90,138,106,0.15)",borderRadius:10,padding:"5px 10px",display:"flex",alignItems:"center",gap:4}}>
+            <span style={{fontSize:"0.65rem"}}>🌱</span>
+            <span style={{fontFamily:SANS,fontSize:"0.68rem",color:"rgba(190,211,196,0.5)"}}>{growingCount}</span>
+          </div>}
+        </div>
+
+        {/* ═══ BOTTOM FLOATING BUTTONS — Inventory & Crafting ═══ */}
+        <div style={{position:"absolute",bottom:"4%",left:"50%",transform:"translateX(-50%)",zIndex:20,display:"flex",gap:10,animation:"fadeUp .8s .3s ease both"}}>
+          <button onClick={()=>{setGardenTab(gardenTab==="inventory"?"garden":"inventory");setCraftingStation(null);}} style={{background:gardenTab==="inventory"?"rgba(90,138,106,0.25)":"rgba(10,8,6,0.65)",backdropFilter:"blur(10px)",WebkitBackdropFilter:"blur(10px)",border:`1px solid ${gardenTab==="inventory"?"rgba(90,138,106,0.4)":"rgba(190,211,196,0.15)"}`,borderRadius:14,padding:"10px 18px",cursor:"pointer",display:"flex",alignItems:"center",gap:6,boxShadow:"0 4px 16px rgba(0,0,0,0.3)"}}>
+            <span style={{fontSize:"0.85rem"}}>🧺</span>
+            <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.72rem",color:gardenTab==="inventory"?"#BED3C4":"rgba(190,211,196,0.5)"}}>Inventory</span>
+            {totalInv>0&&<span style={{fontFamily:SANS,fontSize:"0.6rem",fontWeight:700,color:B.goldL,background:"rgba(212,180,100,0.15)",borderRadius:6,padding:"1px 5px"}}>{totalInv}</span>}
+          </button>
+          <button onClick={()=>{setGardenTab(gardenTab==="crafting"?"garden":"crafting");setCraftingStation(null);}} style={{background:gardenTab==="crafting"?"rgba(90,138,106,0.25)":"rgba(10,8,6,0.65)",backdropFilter:"blur(10px)",WebkitBackdropFilter:"blur(10px)",border:`1px solid ${gardenTab==="crafting"?"rgba(90,138,106,0.4)":"rgba(190,211,196,0.15)"}`,borderRadius:14,padding:"10px 18px",cursor:"pointer",display:"flex",alignItems:"center",gap:6,boxShadow:"0 4px 16px rgba(0,0,0,0.3)"}}>
+            <span style={{fontSize:"0.85rem"}}>⚙️</span>
+            <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.72rem",color:gardenTab==="crafting"?"#BED3C4":"rgba(190,211,196,0.5)"}}>Crafting</span>
+          </button>
+        </div>
+
+        {/* ═══ SELECTED PLOT DETAIL — floating card ═══ */}
+        {selectedPlot&&(()=>{
+          const plot=gardenPlots.find(p=>p.id===selectedPlot);
+          if(!plot||plot.stage==="empty") return null;
+          const plant=GARDEN_PLANTS.find(p=>p.id===plot.plantType);
+          const prayer=prayerPosts.find(p=>p.id===plot.prayerId);
+          const cs=getComputedStage(plot);
+          const pct=getGrowthPercent(plot);
+          return(
+            <div onClick={()=>setSelectedPlot(null)} style={{position:"fixed",inset:0,zIndex:50}}>
+              <div style={{position:"absolute",inset:0,background:"rgba(6,8,4,0.4)"}}/>
+              <div onClick={e=>e.stopPropagation()} style={{position:"absolute",bottom:"14%",left:"50%",transform:"translateX(-50%)",width:"min(88vw,340px)",background:"rgba(18,22,14,0.94)",backdropFilter:"blur(16px)",WebkitBackdropFilter:"blur(16px)",border:"1px solid rgba(90,138,106,0.25)",borderRadius:18,padding:"20px 18px",animation:"fadeUp .3s ease both",boxShadow:"0 8px 32px rgba(0,0,0,0.5)"}}>
+                <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
+                  <span style={{fontSize:"1.6rem"}}>{getPlantEmoji(plot)}</span>
+                  <div style={{flex:1}}>
+                    <div style={{fontFamily:DISPLAY,fontSize:"0.95rem",fontWeight:700,color:"#BED3C4"}}>{plant?.name||"Plant"}</div>
+                    <div style={{fontFamily:SANS,fontSize:"0.68rem",color:"rgba(190,211,196,0.5)"}}>Stage: {cs} · {pct}% grown</div>
                   </div>
-                  {prayer&&<div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.8rem",color:"rgba(190,211,196,0.6)",lineHeight:1.5,borderTop:"1px solid rgba(90,138,106,0.12)",paddingTop:10}}>
-                    🙏 {prayer.text.slice(0,120)}{prayer.text.length>120?"…":""}
-                  </div>}
-                  {prayer?.status==="answered"&&<div style={{marginTop:8,fontFamily:SANS,fontSize:"0.7rem",fontWeight:600,color:"#9AB8A4"}}>✦ Prayer answered — in full bloom</div>}
-                  <div style={{marginTop:8,fontFamily:SANS,fontSize:"0.65rem",color:"rgba(190,211,196,0.35)"}}>Prayers offered: {plot.prayerCount}</div>
+                  <button onClick={()=>setSelectedPlot(null)} style={{background:"none",border:"none",color:"rgba(190,211,196,0.3)",fontSize:"1rem",cursor:"pointer",padding:4}}>✕</button>
                 </div>
-              );
-            })()}
+                {/* Growth bar */}
+                <div style={{width:"100%",height:4,background:"rgba(190,211,196,0.1)",borderRadius:2,overflow:"hidden",marginBottom:10}}>
+                  <div style={{width:`${pct}%`,height:"100%",background:"linear-gradient(90deg,#5A8A6A,#9AB8A4)",borderRadius:2,transition:"width 0.5s"}}/>
+                </div>
+                {prayer&&<div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.8rem",color:"rgba(190,211,196,0.55)",lineHeight:1.5,borderTop:"1px solid rgba(90,138,106,0.12)",paddingTop:10}}>
+                  🙏 {prayer.text.slice(0,120)}{prayer.text.length>120?"…":""}
+                </div>}
+                {prayer?.status==="answered"&&<div style={{marginTop:8,fontFamily:SANS,fontSize:"0.72rem",fontWeight:600,color:"#9AB8A4"}}>✦ Prayer answered — in full bloom</div>}
+                <div style={{marginTop:8,fontFamily:SANS,fontSize:"0.65rem",color:"rgba(190,211,196,0.3)"}}>Prayers offered: {plot.prayerCount}</div>
+              </div>
+            </div>
+          );
+        })()}
 
-            {/* Empty state */}
-            {gardenPlots.every(p=>p.stage==="empty")&&<div style={{textAlign:"center",marginTop:24}}>
-              <p style={{fontFamily:SERIF,fontStyle:"italic",color:"rgba(190,211,196,0.4)",fontSize:"0.85rem",lineHeight:1.6}}>Your garden is empty.<br/>Tap a plot to plant a prayer.</p>
-            </div>}
-          </>}
-
-          {/* ═══ INVENTORY TAB ═══ */}
-          {gardenTab==="inventory"&&<>
+        {/* ═══ INVENTORY PANEL (slides up from bottom) ═══ */}
+        {gardenTab==="inventory"&&<div style={{position:"fixed",inset:0,zIndex:40}} onClick={()=>setGardenTab("garden")}>
+          <div style={{position:"absolute",inset:0,background:"rgba(6,8,4,0.35)"}}/>
+          <div onClick={e=>e.stopPropagation()} style={{position:"absolute",bottom:0,left:0,right:0,maxHeight:"55vh",background:"rgba(18,22,14,0.96)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",border:"1px solid rgba(90,138,106,0.2)",borderRadius:"20px 20px 0 0",padding:"20px 18px 30px",animation:"panelSlideUp .35s cubic-bezier(.22,1,.36,1) both",overflowY:"auto"}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
+              <div style={{fontFamily:DISPLAY,fontSize:"1rem",fontWeight:700,color:"#BED3C4"}}>🧺 Inventory</div>
+              <button onClick={()=>setGardenTab("garden")} style={{background:"none",border:"none",color:"rgba(190,211,196,0.3)",fontSize:"0.9rem",cursor:"pointer"}}>✕</button>
+            </div>
             {invItems.length===0?(
-              <div style={{textAlign:"center",marginTop:40}}>
-                <div style={{fontSize:"2rem",marginBottom:12,opacity:0.4}}>🧺</div>
-                <p style={{fontFamily:SERIF,fontStyle:"italic",color:"rgba(190,211,196,0.35)",fontSize:"0.88rem"}}>Your harvest will appear here.</p>
-                <p style={{fontFamily:SANS,fontSize:"0.72rem",color:"rgba(190,211,196,0.25)",marginTop:8}}>Grow and harvest plants in the garden.</p>
+              <div style={{textAlign:"center",padding:"20px 0"}}>
+                <p style={{fontFamily:SERIF,fontStyle:"italic",color:"rgba(190,211,196,0.35)",fontSize:"0.85rem"}}>Your harvest will appear here.</p>
+                <p style={{fontFamily:SANS,fontSize:"0.7rem",color:"rgba(190,211,196,0.2)",marginTop:6}}>Grow and harvest plants in the garden.</p>
               </div>
             ):(
-              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12}}>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10}}>
                 {invItems.map(([item,qty])=>{
-                  // Find emoji from plants or crafting outputs
                   const plantMatch=GARDEN_PLANTS.find(p=>p.harvestItem===item);
                   const craftMatch=CRAFTING_STATIONS.flatMap(s=>s.recipes).find(r=>r.output===item);
                   const emoji=plantMatch?.harvestEmoji||craftMatch?.outputEmoji||"📦";
                   const name=plantMatch?.harvestItem||craftMatch?.outputName||item;
                   const displayName=name.replace(/_/g," ").replace(/\b\w/g,c=>c.toUpperCase());
                   return(
-                    <div key={item} style={{background:"rgba(90,138,106,0.06)",border:"1px solid rgba(90,138,106,0.15)",borderRadius:14,padding:"16px 10px",display:"flex",flexDirection:"column",alignItems:"center",gap:6,animation:"gardenPlotFadeIn .3s ease both"}}>
-                      <span style={{fontSize:"1.5rem"}}>{emoji}</span>
-                      <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.72rem",color:"rgba(190,211,196,0.7)",textAlign:"center",lineHeight:1.3}}>{displayName}</span>
-                      <span style={{fontFamily:DISPLAY,fontSize:"1rem",fontWeight:700,color:"#BED3C4"}}>×{qty}</span>
+                    <div key={item} style={{background:"rgba(90,138,106,0.06)",border:"1px solid rgba(90,138,106,0.15)",borderRadius:12,padding:"12px 8px",display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
+                      <span style={{fontSize:"1.3rem"}}>{emoji}</span>
+                      <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.65rem",color:"rgba(190,211,196,0.6)",textAlign:"center",lineHeight:1.2}}>{displayName}</span>
+                      <span style={{fontFamily:DISPLAY,fontSize:"0.9rem",fontWeight:700,color:"#BED3C4"}}>×{qty}</span>
                     </div>
                   );
                 })}
               </div>
             )}
-          </>}
+          </div>
+        </div>}
 
-          {/* ═══ CRAFTING TAB ═══ */}
-          {gardenTab==="crafting"&&<>
+        {/* ═══ CRAFTING PANEL (slides up from bottom) ═══ */}
+        {gardenTab==="crafting"&&<div style={{position:"fixed",inset:0,zIndex:40}} onClick={()=>{setGardenTab("garden");setCraftingStation(null);}}>
+          <div style={{position:"absolute",inset:0,background:"rgba(6,8,4,0.35)"}}/>
+          <div onClick={e=>e.stopPropagation()} style={{position:"absolute",bottom:0,left:0,right:0,maxHeight:"65vh",background:"rgba(18,22,14,0.96)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",border:"1px solid rgba(90,138,106,0.2)",borderRadius:"20px 20px 0 0",padding:"20px 18px 30px",animation:"panelSlideUp .35s cubic-bezier(.22,1,.36,1) both",overflowY:"auto"}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
+              <div style={{fontFamily:DISPLAY,fontSize:"1rem",fontWeight:700,color:"#BED3C4"}}>⚙️ Crafting</div>
+              <button onClick={()=>{setGardenTab("garden");setCraftingStation(null);}} style={{background:"none",border:"none",color:"rgba(190,211,196,0.3)",fontSize:"0.9rem",cursor:"pointer"}}>✕</button>
+            </div>
             {!craftingStation?(
-              <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:14}}>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:12}}>
                 {CRAFTING_STATIONS.map(station=>(
-                  <button key={station.id} className="craft-btn" onClick={()=>setCraftingStation(station.id)} style={{background:"rgba(90,138,106,0.06)",border:"1px solid rgba(90,138,106,0.2)",borderRadius:16,padding:"24px 14px",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:10,animation:"gardenPlotFadeIn .3s ease both"}}>
-                    <span style={{fontSize:"1.8rem"}}>{station.emoji}</span>
-                    <span style={{fontFamily:DISPLAY,fontSize:"0.92rem",fontWeight:700,color:"#BED3C4"}}>{station.name}</span>
-                    <span style={{fontFamily:SANS,fontSize:"0.65rem",color:"rgba(190,211,196,0.4)"}}>{station.recipes.length} recipe{station.recipes.length>1?"s":""}</span>
+                  <button key={station.id} className="craft-btn" onClick={()=>setCraftingStation(station.id)} style={{background:"rgba(90,138,106,0.06)",border:"1px solid rgba(90,138,106,0.2)",borderRadius:14,padding:"18px 12px",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:8}}>
+                    <span style={{fontSize:"1.6rem"}}>{station.emoji}</span>
+                    <span style={{fontFamily:DISPLAY,fontSize:"0.85rem",fontWeight:700,color:"#BED3C4"}}>{station.name}</span>
+                    <span style={{fontFamily:SANS,fontSize:"0.6rem",color:"rgba(190,211,196,0.4)"}}>{station.recipes.length} recipe{station.recipes.length>1?"s":""}</span>
                   </button>
                 ))}
               </div>
@@ -3100,35 +3332,32 @@ export default function App(){
               const station=CRAFTING_STATIONS.find(s=>s.id===craftingStation);
               if(!station) return null;
               return(
-                <div style={{animation:"fadeUp .3s ease both"}}>
-                  <button onClick={()=>setCraftingStation(null)} style={{background:"transparent",border:"none",cursor:"pointer",color:"rgba(190,211,196,0.4)",fontSize:"0.78rem",fontFamily:SANS,marginBottom:14,padding:0}}>← All stations</button>
-                  <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:20}}>
-                    <span style={{fontSize:"1.6rem"}}>{station.emoji}</span>
-                    <span style={{fontFamily:DISPLAY,fontSize:"1.1rem",fontWeight:700,color:"#BED3C4"}}>{station.name}</span>
+                <div>
+                  <button onClick={()=>setCraftingStation(null)} style={{background:"transparent",border:"none",cursor:"pointer",color:"rgba(190,211,196,0.4)",fontSize:"0.75rem",fontFamily:SANS,padding:0,marginBottom:12}}>← All stations</button>
+                  <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16}}>
+                    <span style={{fontSize:"1.4rem"}}>{station.emoji}</span>
+                    <span style={{fontFamily:DISPLAY,fontSize:"1rem",fontWeight:700,color:"#BED3C4"}}>{station.name}</span>
                   </div>
-                  <div style={{display:"flex",flexDirection:"column",gap:12}}>
+                  <div style={{display:"flex",flexDirection:"column",gap:10}}>
                     {station.recipes.map((recipe,ri)=>{
                       const canCraft=Object.entries(recipe.inputs).every(([item,qty])=>(inventory[item]||0)>=qty);
                       return(
-                        <div key={ri} style={{background:canCraft?"rgba(90,138,106,0.08)":"rgba(255,255,255,0.02)",border:`1px solid ${canCraft?"rgba(90,138,106,0.25)":"rgba(190,211,196,0.08)"}`,borderRadius:14,padding:"16px",overflow:"hidden"}}>
-                          {/* Top row: inputs → output */}
-                          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
+                        <div key={ri} style={{background:canCraft?"rgba(90,138,106,0.08)":"rgba(255,255,255,0.02)",border:`1px solid ${canCraft?"rgba(90,138,106,0.25)":"rgba(190,211,196,0.08)"}`,borderRadius:12,padding:"14px"}}>
+                          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
                             <div style={{flex:1}}>
-                              <div style={{fontFamily:SANS,fontSize:"0.62rem",color:"rgba(190,211,196,0.35)",marginBottom:4,textTransform:"uppercase",letterSpacing:"0.05em"}}>Needs</div>
+                              <div style={{fontFamily:SANS,fontSize:"0.6rem",color:"rgba(190,211,196,0.35)",marginBottom:3,textTransform:"uppercase",letterSpacing:"0.05em"}}>Needs</div>
                               {Object.entries(recipe.inputs).map(([item,qty])=>{
                                 const has=inventory[item]||0;
-                                const enough=has>=qty;
-                                return <div key={item} style={{fontFamily:SANS,fontSize:"0.73rem",color:enough?"rgba(190,211,196,0.7)":"rgba(255,150,150,0.6)",marginBottom:2}}>{item.replace(/_/g," ")} {has}/{qty}</div>;
+                                return <div key={item} style={{fontFamily:SANS,fontSize:"0.7rem",color:has>=qty?"rgba(190,211,196,0.7)":"rgba(255,150,150,0.6)",marginBottom:1}}>{item.replace(/_/g," ")} {has}/{qty}</div>;
                               })}
                             </div>
-                            <span style={{color:"rgba(190,211,196,0.2)",fontSize:"0.85rem",flexShrink:0}}>→</span>
-                            <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3,flexShrink:0}}>
-                              <span style={{fontSize:"1.3rem"}}>{recipe.outputEmoji}</span>
-                              <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.66rem",color:"rgba(190,211,196,0.6)",textAlign:"center"}}>{recipe.outputName}</span>
+                            <span style={{color:"rgba(190,211,196,0.2)",fontSize:"0.8rem"}}>→</span>
+                            <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>
+                              <span style={{fontSize:"1.2rem"}}>{recipe.outputEmoji}</span>
+                              <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.62rem",color:"rgba(190,211,196,0.5)",textAlign:"center"}}>{recipe.outputName}</span>
                             </div>
                           </div>
-                          {/* Bottom: craft button full-width */}
-                          <button onClick={()=>{if(canCraft)craftItem(station.id,ri);}} style={{width:"100%",background:canCraft?"rgba(90,138,106,0.2)":"rgba(255,255,255,0.03)",border:`1px solid ${canCraft?"rgba(90,138,106,0.35)":"rgba(190,211,196,0.08)"}`,borderRadius:10,padding:"10px 14px",fontSize:"0.75rem",fontFamily:SANS,fontWeight:600,color:canCraft?"#BED3C4":"rgba(190,211,196,0.2)",cursor:canCraft?"pointer":"default",transition:"all .15s"}}>{canCraft?"✦ Craft":"Craft"}</button>
+                          <button onClick={()=>{if(canCraft)craftItem(station.id,ri);}} style={{width:"100%",background:canCraft?"rgba(90,138,106,0.2)":"rgba(255,255,255,0.03)",border:`1px solid ${canCraft?"rgba(90,138,106,0.35)":"rgba(190,211,196,0.08)"}`,borderRadius:8,padding:"8px 12px",fontSize:"0.72rem",fontFamily:SANS,fontWeight:600,color:canCraft?"#BED3C4":"rgba(190,211,196,0.2)",cursor:canCraft?"pointer":"default"}}>{canCraft?"✦ Craft":"Craft"}</button>
                         </div>
                       );
                     })}
@@ -3136,15 +3365,13 @@ export default function App(){
                 </div>
               );
             })()}
-          </>}
-
-        </main>
+          </div>
+        </div>}
 
         {/* ═══ PLANT SELECTION MODAL ═══ */}
         {plantModal&&<div style={{position:"fixed",inset:0,zIndex:300}}>
-          <div onClick={()=>{setPlantModal(null);setPlantStep(1);setPlantPrayerId(null);}} style={{position:"absolute",inset:0,background:"rgba(10,8,6,0.75)",backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",animation:"spaceFadeIn .2s ease"}}/>
-          <div style={{position:"absolute",bottom:0,left:0,right:0,maxHeight:"75vh",background:"rgba(26,30,20,0.97)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",border:"1px solid rgba(90,138,106,0.2)",borderRadius:"20px 20px 0 0",padding:"24px 20px 32px",animation:"bookSlideUp .35s cubic-bezier(.22,1,.36,1) both",overflowY:"auto"}}>
-
+          <div onClick={()=>{setPlantModal(null);setPlantStep(1);setPlantPrayerId(null);}} style={{position:"absolute",inset:0,background:"rgba(6,8,4,0.7)",backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",animation:"spaceFadeIn .2s ease"}}/>
+          <div style={{position:"absolute",bottom:0,left:0,right:0,maxHeight:"75vh",background:"rgba(18,22,14,0.97)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",border:"1px solid rgba(90,138,106,0.2)",borderRadius:"20px 20px 0 0",padding:"24px 20px 32px",animation:"panelSlideUp .35s cubic-bezier(.22,1,.36,1) both",overflowY:"auto"}}>
             {plantStep===1?(
               <>
                 <div style={{fontFamily:DISPLAY,fontSize:"1rem",fontWeight:700,color:"#BED3C4",marginBottom:4}}>Choose a Prayer</div>
