@@ -258,6 +258,148 @@ function aggregateThemes(entries){
   return Object.entries(t).map(([k,v])=>({theme:k,count:v,pct:Math.round(v/sum*100)})).sort((a,b)=>b.count-a.count);
 }
 
+/* ═══════════════════════════════════════════════════
+   GROWTH INSIGHTS — KEYWORD DICTIONARIES
+═══════════════════════════════════════════════════ */
+const EMOTION_WORDS={
+  joy:["joy","joyful","happy","happiness","glad","delight","cheerful","elated","excited","blessed"],
+  peace:["peace","peaceful","calm","rest","still","quiet","serene","tranquil","centered","settled"],
+  anxiety:["anxiety","anxious","worry","worried","nervous","stressed","overwhelmed","panic","dread","uneasy"],
+  fear:["fear","afraid","scared","terrified","frightened","timid","paralyzed","helpless","threatened","insecure"],
+  anger:["anger","angry","frustrated","furious","irritated","resentful","bitter","enraged","mad","hostile"],
+  gratitude:["grateful","thankful","gratitude","appreciate","blessed","fortunate","humbled","gift","abundance","praise"],
+  loneliness:["lonely","alone","isolated","abandoned","rejected","disconnected","invisible","forgotten","empty","unseen"],
+  hope:["hope","hopeful","optimistic","encouraged","expectant","confident","looking forward","anticipate","possibilities","promise"],
+};
+const LIFE_THEMES={
+  relationships:["relationship","friend","friendship","partner","spouse","husband","wife","marriage","connection","community","people","companion"],
+  family:["family","mother","father","mom","dad","parent","child","children","son","daughter","sibling","brother","sister"],
+  calling:["calling","purpose","vocation","mission","ministry","assignment","destiny","path","direction","gifting","anointing","commission"],
+  faith:["faith","believe","trust","God","Jesus","Spirit","prayer","scripture","church","worship","devotion","gospel"],
+  forgiveness:["forgive","forgiveness","pardon","mercy","reconcile","release","grudge","offense","bitterness","grace","restore","heal"],
+  fear_theme:["fear","afraid","anxious","worry","dread","panic","overwhelm","doubt","uncertainty","insecurity","control","paralyzed"],
+  identity:["identity","worth","value","enough","belong","purpose","who I am","self","confidence","image","comparison","approval"],
+  control:["control","grip","manage","fix","plan","force","striving","surrender","let go","trust","release","rest"],
+  waiting:["waiting","patience","season","delay","longing","unfulfilled","hope","endure","persevere","trust","stillness","slow"],
+};
+const FAITH_WORDS={
+  prayerLang:["pray","prayer","praying","intercede","petition","supplication","knees","crying out","asking God","Lord hear"],
+  godRef:["God","Lord","Jesus","Christ","Holy Spirit","Father","Almighty","Savior","Redeemer","Creator","King of kings","Most High"],
+  surrenderLang:["surrender","yield","submit","let go","thy will","your will","not my will","give it to God","lay it down","release to you","trust you","in your hands"],
+};
+const SCRIPTURE_PATTERN=/\b(\d\s*)?[A-Z][a-z]+\s+\d{1,3}:\d{1,3}(?:-\d{1,3})?\b/g;
+const IDENTITY_NEG=["i can't","i'm not enough","i'm broken","i'm worthless","i'm a failure","i don't matter","i'll never","i'm too much","nobody loves","i'm stupid","i'm ugly","i hate myself","i'm not good enough","i'm unlovable","what's wrong with me","i'm invisible","i'm hopeless"];
+const IDENTITY_POS=["i am enough","i'm growing","God made me","i am loved","i'm becoming","i am worthy","i can do","i'm learning","God is with me","i am chosen","i am strong","i'm healing","i am free","i belong","i am called","i'm brave"];
+const GROWTH_MARKERS={
+  forgiveness:["forgive","forgave","forgiven","letting go","released","pardoned","mercy"],
+  surrender:["surrender","yielded","submitted","let go","gave it to God","thy will","released"],
+  gratitude:["grateful","thankful","praise","thanks","appreciation","blessed","counting blessings"],
+  repentance:["repent","repentance","confess","confession","turn from","sorry Lord","convicted"],
+  trust:["trust","trusting","leaning on","relying on","depending on","faith in","confidence in"],
+  obedience:["obey","obedience","obedient","follow","following","submitted","said yes"],
+};
+const STOP_WORDS=new Set(["the","be","to","of","and","a","in","that","have","i","it","for","not","on","with","he","as","you","do","at","this","but","his","by","from","they","we","her","she","or","an","will","my","one","all","would","there","their","what","so","up","out","if","about","who","get","which","go","me","when","make","can","like","time","no","just","him","know","take","people","into","year","your","good","some","could","them","see","other","than","then","now","look","only","come","its","over","think","also","back","after","use","two","how","our","work","first","well","way","even","new","want","because","any","these","give","day","most","us","is","am","are","was","were","been","being","had","has","does","did","got","getting","got","been","had","has","having","doing","would","should","could","might","must","shall","may","need","really","very","much","more","many","still","already","too","thing","things","something","anything","nothing","everything","going","every","each","been","feel","feeling","felt","lot","kind","maybe","around","through","right","own","say","said","been","those","same","both","before","long","down"]);
+const EMOTION_COLORS={joy:"#E8B84B",peace:"#7B9E6B",anxiety:"#C97B4B",fear:"#8B6B8B",anger:"#C45B5B",gratitude:"#D4A853",loneliness:"#6B7B9E",hope:"#5BA8A0"};
+
+/* ═══════════════════════════════════════════════════
+   GROWTH INSIGHTS — ANALYSIS ENGINE
+═══════════════════════════════════════════════════ */
+function computeInsights(entries,prayerPosts){
+  const emotions={};Object.keys(EMOTION_WORDS).forEach(k=>{emotions[k]={count:0,entries:[]};});
+  const lifeThemes={};Object.keys(LIFE_THEMES).forEach(k=>{lifeThemes[k]={count:0,pct:0};});
+  const faithMentions={scriptures:[],prayerLang:0,godRefs:0,surrenderLang:0};
+  const identity={negative:[],positive:[]};
+  const growthMarkers={};Object.keys(GROWTH_MARKERS).forEach(k=>{growthMarkers[k]=0;});
+  const timeOfDay={morning:0,afternoon:0,evening:0,night:0};
+  const wordFreq={};
+  const emotionTimeline=[];
+
+  entries.forEach(e=>{
+    const low=e.text.toLowerCase();
+    // Emotions
+    let entryEmotions=[];
+    Object.entries(EMOTION_WORDS).forEach(([emo,words])=>{
+      const hits=words.filter(w=>low.includes(w)).length;
+      if(hits>0){emotions[emo].count+=hits;emotions[emo].entries.push(e.id);entryEmotions.push(emo);}
+    });
+    emotionTimeline.push({id:e.id,date:e.date,emotions:entryEmotions});
+    // Life themes
+    Object.entries(LIFE_THEMES).forEach(([th,words])=>{
+      const hits=words.filter(w=>low.includes(w)).length;
+      lifeThemes[th].count+=hits;
+    });
+    // Faith
+    const scrMatches=e.text.match(SCRIPTURE_PATTERN);
+    if(scrMatches) scrMatches.forEach(ref=>faithMentions.scriptures.push({ref,entryId:e.id,date:e.date}));
+    FAITH_WORDS.prayerLang.forEach(w=>{if(low.includes(w.toLowerCase())) faithMentions.prayerLang++;});
+    FAITH_WORDS.godRef.forEach(w=>{if(low.includes(w.toLowerCase())) faithMentions.godRefs++;});
+    FAITH_WORDS.surrenderLang.forEach(w=>{if(low.includes(w.toLowerCase())) faithMentions.surrenderLang++;});
+    // Identity
+    IDENTITY_NEG.forEach(p=>{if(low.includes(p)) identity.negative.push({text:p,entryId:e.id,date:e.date});});
+    IDENTITY_POS.forEach(p=>{if(low.includes(p)) identity.positive.push({text:p,entryId:e.id,date:e.date});});
+    // Growth markers
+    Object.entries(GROWTH_MARKERS).forEach(([mk,words])=>{words.forEach(w=>{if(low.includes(w)) growthMarkers[mk]++;});});
+    // Time of day
+    const ts=parseInt(e.id);
+    if(!isNaN(ts)){const h=new Date(ts).getHours();if(h>=5&&h<12)timeOfDay.morning++;else if(h>=12&&h<17)timeOfDay.afternoon++;else if(h>=17&&h<21)timeOfDay.evening++;else timeOfDay.night++;}
+    // Word frequency
+    e.text.replace(/[^a-zA-Z\s]/g,"").toLowerCase().split(/\s+/).forEach(w=>{if(w.length>=3&&!STOP_WORDS.has(w)) wordFreq[w]=(wordFreq[w]||0)+1;});
+  });
+
+  // Life theme percentages
+  const themeSum=Object.values(lifeThemes).reduce((a,b)=>a+b.count,0)||1;
+  Object.keys(lifeThemes).forEach(k=>{lifeThemes[k].pct=Math.round(lifeThemes[k].count/themeSum*100);});
+
+  // Breakthroughs: detect negative→positive shifts in rolling 3-entry windows
+  const breakthroughs=[];
+  const negEmos=new Set(["anxiety","fear","anger","loneliness"]);
+  const posEmos=new Set(["joy","peace","gratitude","hope"]);
+  for(let i=2;i<emotionTimeline.length;i++){
+    const prev=emotionTimeline[i-2].emotions.concat(emotionTimeline[i-1].emotions);
+    const curr=emotionTimeline[i].emotions;
+    const hadNeg=prev.some(em=>negEmos.has(em));
+    const hasPos=curr.some(em=>posEmos.has(em));
+    const noNeg=!curr.some(em=>negEmos.has(em));
+    if(hadNeg&&hasPos&&noNeg){
+      breakthroughs.push({date:emotionTimeline[i].date,from:prev.filter(em=>negEmos.has(em))[0],to:curr.filter(em=>posEmos.has(em))[0],entryId:emotionTimeline[i].id});
+    }
+  }
+
+  return {emotions,lifeThemes,faithMentions,identity,growthMarkers,timeOfDay,wordFreq,breakthroughs};
+}
+
+function computeWeeklyDigest(entries,insights){
+  const now=new Date();const weekAgo=new Date(now-7*24*60*60*1000);
+  const weekEntries=entries.filter(e=>new Date(e.date)>=weekAgo);
+  const rooms={};weekEntries.forEach(e=>{if(e.roomLabel)rooms[e.roomLabel]=(rooms[e.roomLabel]||0)+1;});
+  const topRooms=Object.entries(rooms).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([r])=>r);
+  const totalWords=weekEntries.reduce((s,e)=>s+(e.words||wc(e.text)),0);
+  const topEmotions=Object.entries(insights.emotions).sort((a,b)=>b[1].count-a[1].count).slice(0,3).map(([k])=>k);
+  return {entryCount:weekEntries.length,totalWords,topRooms,topEmotions};
+}
+
+function computeSeasonalSummary(entries,insights,days){
+  const now=new Date();const cutoff=new Date(now-days*24*60*60*1000);
+  const filtered=entries.filter(e=>new Date(e.date)>=cutoff);
+  const totalWords=filtered.reduce((s,e)=>s+(e.words||wc(e.text)),0);
+  const avgWords=filtered.length?Math.round(totalWords/filtered.length):0;
+  const topThemes=Object.entries(insights.lifeThemes).sort((a,b)=>b[1].count-a[1].count).slice(0,3).map(([k])=>k);
+  return {entries:filtered.length,totalWords,avgWords,topThemes,days};
+}
+
+function computeFutureYou(entries){
+  if(entries.length<5) return null;
+  const sorted=[...entries].sort((a,b)=>a.id-b.id);
+  const first=sorted[0];const latest=sorted[sorted.length-1];
+  const firstLow=first.text.toLowerCase();const latestLow=latest.text.toLowerCase();
+  const firstNeg=IDENTITY_NEG.filter(p=>firstLow.includes(p));
+  const firstPos=IDENTITY_POS.filter(p=>firstLow.includes(p));
+  const latestNeg=IDENTITY_NEG.filter(p=>latestLow.includes(p));
+  const latestPos=IDENTITY_POS.filter(p=>latestLow.includes(p));
+  const daysBetween=Math.round((parseInt(latest.id)-parseInt(first.id))/(1000*60*60*24));
+  return {first:{date:first.date,snippet:first.text.slice(0,120),negPatterns:firstNeg,posPatterns:firstPos},latest:{date:latest.date,snippet:latest.text.slice(0,120),negPatterns:latestNeg,posPatterns:latestPos},daysBetween};
+}
+
 async function dbLoad(k){
   try{
     if(window.storage){const r=await window.storage.get(k);return r?.value?JSON.parse(r.value):null;}
@@ -500,6 +642,10 @@ export default function App(){
   const [calYear,        setCalYear]        = useState(()=>new Date().getFullYear());
   const [calSelectedDay, setCalSelectedDay] = useState(null);
   const [expandedEntry,  setExpandedEntry]  = useState(null);
+  // journey / insights
+  const [journeyTab,     setJourneyTab]     = useState("overview");
+  const [seasonalPeriod, setSeasonalPeriod] = useState(30);
+  const [prayerFilter,   setPrayerFilter]   = useState("active");
 
   // ── LOAD ──
   useEffect(()=>{
@@ -508,7 +654,14 @@ export default function App(){
       const pp   = await dbLoad("irj-prayer")  || SAMPLE_PRAYERS;
       const ob   = await dbLoad("irj-onboarded");
       const sc   = await dbLoad("irj-saved-cards") || [];
-      setEntries(ens); setPrayerPosts(pp); setSavedCards(sc);
+      // Migrate prayers: add status/answeredDate/category if missing
+      let migrated=false;
+      const mpp=pp.map(p=>{
+        if(!p.status){migrated=true;return {...p,status:"active",answeredDate:null,category:p.tag};}
+        return p;
+      });
+      if(migrated) dbSave("irj-prayer",mpp);
+      setEntries(ens); setPrayerPosts(mpp); setSavedCards(sc);
       let s=0,d=new Date(),map={};
       ens.forEach(e=>{map[e.date]=true;});
       while(map[isoDate(d)]){s++;d.setDate(d.getDate()-1);} setStreak(s);
@@ -642,12 +795,20 @@ export default function App(){
   // ── PRAYER ──
   function postPrayer(){
     if(!newPrayer.trim()) return;
-    const p={id:Date.now().toString(),date:todayStr(),text:newPrayer.trim(),tag:prayerTag||"General",prayers:0};
+    const p={id:Date.now().toString(),date:todayStr(),text:newPrayer.trim(),tag:prayerTag||"General",prayers:0,status:"active",answeredDate:null,category:prayerTag||"General"};
     const next=[p,...prayerPosts]; setPrayerPosts(next); dbSave("irj-prayer",next);
     setNewPrayer(""); setPrayerTag("");
   }
   function prayFor(id){
     const next=prayerPosts.map(p=>p.id===id?{...p,prayers:p.prayers+1}:p);
+    setPrayerPosts(next); dbSave("irj-prayer",next);
+  }
+  function markPrayerAnswered(id){
+    const next=prayerPosts.map(p=>p.id===id?{...p,status:"answered",answeredDate:todayStr()}:p);
+    setPrayerPosts(next); dbSave("irj-prayer",next);
+  }
+  function reactivatePrayer(id){
+    const next=prayerPosts.map(p=>p.id===id?{...p,status:"active",answeredDate:null}:p);
     setPrayerPosts(next); dbSave("irj-prayer",next);
   }
 
@@ -817,6 +978,17 @@ export default function App(){
     entries.forEach(e=>{if(!map[e.date]) map[e.date]=[];map[e.date].push(e);});
     return map;
   },[entries]);
+
+  // ── GROWTH INSIGHTS COMPUTED ──
+  const insights = useMemo(()=>computeInsights(entries,prayerPosts),[entries,prayerPosts]);
+  const weeklyDigest = useMemo(()=>computeWeeklyDigest(entries,insights),[entries,insights]);
+  const futureYou = useMemo(()=>computeFutureYou(entries),[entries]);
+  const prayerTimeline = useMemo(()=>{
+    const active=prayerPosts.filter(p=>p.status!=="answered");
+    const answered=prayerPosts.filter(p=>p.status==="answered").sort((a,b)=>(b.answeredDate||"").localeCompare(a.answeredDate||""));
+    const categories={};prayerPosts.forEach(p=>{const c=p.category||p.tag||"General";categories[c]=(categories[c]||0)+1;});
+    return {active,answered,categories,total:prayerPosts.length};
+  },[prayerPosts]);
 
   function calNavigate(dir){
     setCalSelectedDay(null);setExpandedEntry(null);
@@ -1199,6 +1371,7 @@ export default function App(){
               <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.85rem",color:"rgba(255,248,232,0.35)",lineHeight:1.6}}>Your insights will emerge as you reflect. Open a book to begin.</p>
             </div>}
             {entries.length>0&&<button onClick={()=>{setShowInsights(false);goToHistory();}} style={{width:"100%",marginTop:16,background:"rgba(201,169,110,0.08)",border:"1px solid rgba(201,169,110,0.15)",borderRadius:10,padding:"11px",color:B.goldL,fontFamily:SERIF,fontStyle:"italic",fontSize:"0.82rem",cursor:"pointer",textAlign:"center"}}>View all reflections 📖</button>}
+            <button onClick={()=>{setShowInsights(false);setJourneyTab("overview");setScreen("insights");}} style={{width:"100%",marginTop:8,background:"rgba(201,169,110,0.12)",border:"1px solid rgba(201,169,110,0.2)",borderRadius:10,padding:"11px",color:B.goldL,fontFamily:SERIF,fontStyle:"italic",fontSize:"0.82rem",cursor:"pointer",textAlign:"center"}}>View full journey ✨</button>
           </div>
         </div>
       </div>}
@@ -1818,15 +1991,28 @@ export default function App(){
                 <button onClick={postPrayer} disabled={!newPrayer.trim()} style={{background:newPrayer.trim()?"rgba(90,138,106,0.3)":"transparent",border:`1px solid ${newPrayer.trim()?"rgba(90,138,106,0.4)":"rgba(255,255,255,0.06)"}`,color:newPrayer.trim()?"#BED3C4":"rgba(255,255,255,0.2)",padding:"8px 20px",borderRadius:7,cursor:newPrayer.trim()?"pointer":"default",fontSize:"0.8rem",fontFamily:SANS,fontWeight:600,transition:"all 0.2s"}}>Post anonymously 🙏</button>
               </div>
             </div>
+            <div style={{display:"flex",gap:6,marginBottom:10}}>
+              {["active","answered","all"].map(f=>(
+                <button key={f} onClick={()=>setPrayerFilter(f)} style={{background:prayerFilter===f?B.night:"transparent",border:`1px solid ${prayerFilter===f?"rgba(201,169,110,0.3)":"rgba(201,169,110,0.1)"}`,color:prayerFilter===f?B.goldL:"rgba(255,248,232,0.35)",padding:"4px 12px",borderRadius:99,fontSize:"0.68rem",fontFamily:SANS,fontWeight:600,cursor:"pointer",textTransform:"capitalize"}}>{f}</button>
+              ))}
+            </div>
             <div style={{display:"flex",flexDirection:"column",gap:9}}>
-              {filteredPrayers.map(p=>(
-                <div key={p.id} style={{background:"rgba(26,22,18,0.5)",backdropFilter:"blur(6px)",WebkitBackdropFilter:"blur(6px)",border:"1px solid rgba(201,169,110,0.08)",borderRadius:12,padding:"15px 17px"}}>
+              {filteredPrayers.filter(p=>prayerFilter==="all"?true:prayerFilter==="answered"?p.status==="answered":p.status!=="answered").map(p=>(
+                <div key={p.id} style={{background:"rgba(26,22,18,0.5)",backdropFilter:"blur(6px)",WebkitBackdropFilter:"blur(6px)",border:"1px solid "+(p.status==="answered"?"rgba(201,169,110,0.25)":"rgba(201,169,110,0.08)"),borderLeft:p.status==="answered"?"3px solid rgba(201,169,110,0.5)":"3px solid transparent",borderRadius:12,padding:"15px 17px",opacity:p.status==="answered"?0.7:1}}>
                   <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:7}}>
                     <span style={{fontSize:"0.6rem",background:"rgba(200,164,106,0.1)",color:B.gold,border:"1px solid rgba(200,164,106,0.2)",padding:"2px 8px",borderRadius:99,fontFamily:SANS,fontWeight:600}}>{p.tag}</span>
+                    {p.status==="answered"&&<span style={{fontSize:"0.58rem",background:"rgba(201,169,110,0.15)",color:B.gold,padding:"2px 8px",borderRadius:99,fontFamily:SANS,fontWeight:600}}>✓ Answered</span>}
                     <span style={{fontSize:"0.66rem",color:"rgba(255,248,232,0.25)",fontFamily:SANS,marginLeft:"auto"}}>{p.date}</span>
                   </div>
                   <p style={{fontFamily:SERIF,fontSize:"0.92rem",color:"rgba(255,248,232,0.7)",margin:"0 0 10px",lineHeight:1.65}}>{p.text}</p>
-                  <button onClick={()=>prayFor(p.id)} style={{background:"rgba(90,138,106,0.15)",border:"1px solid rgba(90,138,106,0.25)",color:"#BED3C4",padding:"5px 14px",borderRadius:7,cursor:"pointer",fontSize:"0.74rem",fontFamily:SANS,fontWeight:600,transition:"all 0.15s"}} onMouseEnter={e=>e.target.style.background="rgba(90,138,106,0.3)"} onMouseLeave={e=>e.target.style.background="rgba(90,138,106,0.15)"}>🙏 Praying ({p.prayers})</button>
+                  <div style={{display:"flex",gap:8}}>
+                    <button onClick={()=>prayFor(p.id)} style={{background:"rgba(90,138,106,0.15)",border:"1px solid rgba(90,138,106,0.25)",color:"#BED3C4",padding:"5px 14px",borderRadius:7,cursor:"pointer",fontSize:"0.74rem",fontFamily:SANS,fontWeight:600,transition:"all 0.15s"}} onMouseEnter={e=>e.target.style.background="rgba(90,138,106,0.3)"} onMouseLeave={e=>e.target.style.background="rgba(90,138,106,0.15)"}>🙏 Praying ({p.prayers})</button>
+                    {p.status==="answered"?
+                      <button onClick={()=>reactivatePrayer(p.id)} style={{background:"transparent",border:"1px solid rgba(201,169,110,0.15)",color:"rgba(255,248,232,0.35)",padding:"5px 12px",borderRadius:7,cursor:"pointer",fontSize:"0.72rem",fontFamily:SANS,fontWeight:600}}>Reactivate</button>
+                    :
+                      <button onClick={()=>markPrayerAnswered(p.id)} style={{background:"rgba(201,169,110,0.1)",border:"1px solid rgba(201,169,110,0.2)",color:B.gold,padding:"5px 12px",borderRadius:7,cursor:"pointer",fontSize:"0.72rem",fontFamily:SANS,fontWeight:600,transition:"all 0.15s"}} onMouseEnter={e=>e.target.style.background="rgba(201,169,110,0.2)"} onMouseLeave={e=>e.target.style.background="rgba(201,169,110,0.1)"}>✓ Answered</button>
+                    }
+                  </div>
                 </div>
               ))}
             </div>
@@ -1855,41 +2041,223 @@ export default function App(){
   );
 
   /* ══ INSIGHTS ══════════════════════════════════════ */
-  if(screen==="insights") return(
+  if(screen==="insights"){
+    const JCard=({children,style,...p})=><div style={{background:B.white,border:`1px solid ${B.beigeD}`,borderRadius:12,padding:"20px",boxShadow:"0 1px 8px rgba(0,0,0,0.04)",marginBottom:12,animation:"fadeUp .45s ease both",...style}} {...p}>{children}</div>;
+    const JBar=({label,value,max,color,sub})=>{const pct=max?Math.round(value/max*100):0;return(<div style={{marginBottom:10}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}><span style={{fontSize:"0.82rem",color:B.ink,textTransform:"capitalize"}}>{label}</span><span style={{fontSize:"0.74rem",color:B.inkLL}}>{sub||value}</span></div><div style={{height:5,background:B.beigeD,borderRadius:99,overflow:"hidden"}}><div style={{height:"100%",width:`${pct}%`,background:color||`linear-gradient(90deg,${B.sageDk},${B.sage})`,borderRadius:99,transition:"width 0.7s ease"}}/></div></div>);};
+    const JTabPill=({k,label})=><button onClick={()=>setJourneyTab(k)} style={{background:journeyTab===k?B.night:"transparent",border:`1px solid ${journeyTab===k?"rgba(201,169,110,0.3)":B.beigeD}`,color:journeyTab===k?B.goldL:B.inkL,padding:"6px 14px",borderRadius:99,fontSize:"0.72rem",fontFamily:SANS,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap",transition:"all 0.2s"}}>{label}</button>;
+    const seasonalData=computeSeasonalSummary(entries,insights,seasonalPeriod);
+    const emMax=Math.max(1,...Object.values(insights.emotions).map(v=>v.count));
+    const thMax=Math.max(1,...Object.values(insights.lifeThemes).map(v=>v.count));
+    const gmMax=Math.max(1,...Object.values(insights.growthMarkers));
+    const todMax=Math.max(1,...Object.values(insights.timeOfDay));
+    const topWords=Object.entries(insights.wordFreq).sort((a,b)=>b[1]-a[1]).slice(0,40);
+    const wfMax=topWords.length?topWords[0][1]:1;
+    const wordColors=[B.gold,B.sageDk,B.ink,B.sage,"#8B6B4B","#6B7B9E"];
+
+    return(
     <div style={{minHeight:"100vh",background:B.beige,color:B.ink,fontFamily:SANS}}>
       <style>{GFONTS}{CSS}</style>
-      <DarkHeader title="📊 Your Insights" onBack={()=>setScreen("cabin")}/>
+      <DarkHeader title="✨ Your Journey" onBack={()=>setScreen("cabin")}/>
       <main style={{maxWidth:"700px",margin:"0 auto",padding:"28px 22px 80px"}}>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:"10px",marginBottom:"14px"}}>
-          {[{e:"📝",v:entries.length,l:"Reflections"},{e:"✍️",v:totalWords.toLocaleString(),l:"Words written"},{e:"🔥",v:`${streak}d`,l:"Streak"}].map((s,i)=>(
-            <div key={s.l} style={{background:B.white,border:`1px solid ${B.beigeD}`,borderRadius:"12px",padding:"18px 13px",textAlign:"center",boxShadow:"0 1px 8px rgba(0,0,0,0.04)",animation:`fadeUp .45s ${i*.1}s ease both`}}>
-              <div style={{fontSize:"1.3rem",marginBottom:"6px"}}>{s.e}</div>
-              <div style={{fontFamily:SERIF,fontSize:"1.5rem",fontWeight:700,color:B.sageDk}}>{s.v}</div>
-              <div style={{fontSize:"0.67rem",color:B.inkLL,letterSpacing:"0.07em",textTransform:"uppercase",fontWeight:500,marginTop:"3px"}}>{s.l}</div>
-            </div>
-          ))}
+        {/* Tab bar */}
+        <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:14,marginBottom:4,WebkitOverflowScrolling:"touch"}}>
+          {[["overview","Overview"],["emotions","Emotions"],["themes","Themes"],["faith","Faith"],["prayers","Prayers"],["identity","Identity"],["growth","Growth"],["cloud","Words"],["future","Future You"]].map(([k,l])=><JTabPill key={k} k={k} label={l}/>)}
         </div>
-        {entries.length>0&&(
-          <>
-            <div style={{background:B.white,border:`1px solid ${B.beigeD}`,borderRadius:"12px",padding:"22px",marginBottom:"12px",boxShadow:"0 1px 8px rgba(0,0,0,0.04)"}}>
-              <UILabel>Theme breakdown</UILabel>
-              {themeData.filter(t=>t.count>0).map(t=>(
-                <div key={t.theme} style={{marginBottom:"10px"}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:"4px"}}><span style={{fontSize:"0.84rem",color:B.ink,textTransform:"capitalize"}}>{t.theme}</span><span style={{fontSize:"0.76rem",color:B.inkLL}}>{t.pct}%</span></div><div style={{height:"5px",background:B.beigeD,borderRadius:"99px",overflow:"hidden"}}><div style={{height:"100%",width:`${t.pct}%`,background:`linear-gradient(90deg,${B.sageDk},${B.sage})`,borderRadius:"99px",transition:"width 0.7s ease"}}/></div></div>
-              ))}
+
+        {entries.length===0&&<JCard style={{padding:"48px 28px",textAlign:"center"}}><div style={{fontSize:"1.8rem",marginBottom:12}}>🌱</div><p style={{fontFamily:SERIF,fontStyle:"italic",color:B.inkL,margin:"0 0 18px"}}>Your insights will emerge as you reflect. Begin with any room.</p><button onClick={()=>setScreen("cabin")} style={{background:B.night,border:"none",color:B.goldL,padding:"11px 26px",borderRadius:8,cursor:"pointer",fontSize:"0.83rem",fontFamily:SANS,fontWeight:600}}>Choose a room →</button></JCard>}
+
+        {entries.length>0&&journeyTab==="overview"&&<>
+          {/* Stats grid */}
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:14}}>
+            {[{e:"📝",v:entries.length,l:"Reflections"},{e:"✍️",v:totalWords.toLocaleString(),l:"Words written"},{e:"🔥",v:`${streak}d`,l:"Streak"}].map((s,i)=>(
+              <div key={s.l} style={{background:B.white,border:`1px solid ${B.beigeD}`,borderRadius:12,padding:"18px 13px",textAlign:"center",boxShadow:"0 1px 8px rgba(0,0,0,0.04)",animation:`fadeUp .45s ${i*.1}s ease both`}}>
+                <div style={{fontSize:"1.3rem",marginBottom:6}}>{s.e}</div>
+                <div style={{fontFamily:SERIF,fontSize:"1.5rem",fontWeight:700,color:B.sageDk}}>{s.v}</div>
+                <div style={{fontSize:"0.67rem",color:B.inkLL,letterSpacing:"0.07em",textTransform:"uppercase",fontWeight:500,marginTop:3}}>{s.l}</div>
+              </div>
+            ))}
+          </div>
+          {/* Weekly digest */}
+          <JCard><UILabel>This Week</UILabel>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+              <div><span style={{fontSize:"1.2rem",fontFamily:SERIF,fontWeight:700,color:B.sageDk}}>{weeklyDigest.entryCount}</span><span style={{fontSize:"0.72rem",color:B.inkLL,marginLeft:6}}>entries</span></div>
+              <div><span style={{fontSize:"1.2rem",fontFamily:SERIF,fontWeight:700,color:B.sageDk}}>{weeklyDigest.totalWords.toLocaleString()}</span><span style={{fontSize:"0.72rem",color:B.inkLL,marginLeft:6}}>words</span></div>
             </div>
-            <div style={{background:B.white,border:`1px solid ${B.beigeD}`,borderRadius:"12px",padding:"22px",boxShadow:"0 1px 8px rgba(0,0,0,0.04)"}}>
-              <UILabel>Journey progress</UILabel>
-              {[...REFLECTION_ROOMS,...COMMUNITY_ROOMS].map(room=>{
-                const prog=roomProg(room),pct=Math.round(prog/room.days.length*100);
-                return(<div key={room.id} style={{marginBottom:"10px"}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:"4px"}}><span style={{fontSize:"0.82rem",color:B.ink}}>{room.emoji} {room.label}</span><span style={{fontSize:"0.74rem",color:B.inkLL}}>{prog}/{room.days.length}</span></div><div style={{height:"4px",background:B.beigeD,borderRadius:"99px",overflow:"hidden"}}><div style={{height:"100%",width:`${pct}%`,background:th(room.id).accent,borderRadius:"99px",transition:"width 0.6s"}}/></div></div>);
+            {weeklyDigest.topEmotions.length>0&&<p style={{fontSize:"0.78rem",color:B.inkL,margin:"10px 0 0",fontFamily:SERIF,fontStyle:"italic"}}>Top emotions: {weeklyDigest.topEmotions.join(", ")}</p>}
+            {weeklyDigest.topRooms.length>0&&<p style={{fontSize:"0.78rem",color:B.inkL,margin:"4px 0 0",fontFamily:SERIF,fontStyle:"italic"}}>Active rooms: {weeklyDigest.topRooms.join(", ")}</p>}
+          </JCard>
+          {/* Top 3 emotions mini-bars */}
+          <JCard><UILabel>Emotional landscape</UILabel>
+            {Object.entries(insights.emotions).sort((a,b)=>b[1].count-a[1].count).slice(0,3).map(([emo,d])=><JBar key={emo} label={emo} value={d.count} max={emMax} color={EMOTION_COLORS[emo]} sub={`${d.count} mentions`}/>)}
+          </JCard>
+          {/* Time of day */}
+          <JCard><UILabel>When you reflect</UILabel>
+            {[["🌅 Morning","morning"],["☀️ Afternoon","afternoon"],["🌆 Evening","evening"],["🌙 Night","night"]].map(([l,k])=><JBar key={k} label={l} value={insights.timeOfDay[k]} max={todMax} color={B.sageDk} sub={`${insights.timeOfDay[k]} entries`}/>)}
+          </JCard>
+          {/* Seasonal summary */}
+          <JCard>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+              <UILabel style={{margin:0}}>Seasonal Summary</UILabel>
+              <div style={{display:"flex",gap:4}}>
+                {[30,90,365].map(d=><button key={d} onClick={()=>setSeasonalPeriod(d)} style={{background:seasonalPeriod===d?B.night:"transparent",border:`1px solid ${seasonalPeriod===d?"rgba(201,169,110,0.25)":B.beigeD}`,color:seasonalPeriod===d?B.goldL:B.inkL,padding:"3px 10px",borderRadius:99,fontSize:"0.66rem",fontFamily:SANS,fontWeight:600,cursor:"pointer"}}>{d}d</button>)}
+              </div>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,textAlign:"center"}}>
+              <div><div style={{fontFamily:SERIF,fontSize:"1.1rem",fontWeight:700,color:B.sageDk}}>{seasonalData.entries}</div><div style={{fontSize:"0.65rem",color:B.inkLL}}>entries</div></div>
+              <div><div style={{fontFamily:SERIF,fontSize:"1.1rem",fontWeight:700,color:B.sageDk}}>{seasonalData.totalWords.toLocaleString()}</div><div style={{fontSize:"0.65rem",color:B.inkLL}}>words</div></div>
+              <div><div style={{fontFamily:SERIF,fontSize:"1.1rem",fontWeight:700,color:B.sageDk}}>{seasonalData.avgWords}</div><div style={{fontSize:"0.65rem",color:B.inkLL}}>avg/entry</div></div>
+            </div>
+            {seasonalData.topThemes.length>0&&<p style={{fontSize:"0.78rem",color:B.inkL,margin:"10px 0 0",fontFamily:SERIF,fontStyle:"italic"}}>Top themes: {seasonalData.topThemes.join(", ")}</p>}
+          </JCard>
+          {/* Breakthroughs */}
+          {insights.breakthroughs.length>0&&<JCard style={{borderLeft:`3px solid ${B.gold}`}}>
+            <UILabel>✨ Breakthrough moment</UILabel>
+            <p style={{fontFamily:SERIF,fontSize:"0.88rem",color:B.ink,margin:0,lineHeight:1.6}}>
+              On {insights.breakthroughs[insights.breakthroughs.length-1].date}, your writing shifted from <strong style={{color:EMOTION_COLORS[insights.breakthroughs[insights.breakthroughs.length-1].from]||B.ink}}>{insights.breakthroughs[insights.breakthroughs.length-1].from}</strong> to <strong style={{color:EMOTION_COLORS[insights.breakthroughs[insights.breakthroughs.length-1].to]||B.sageDk}}>{insights.breakthroughs[insights.breakthroughs.length-1].to}</strong>.
+            </p>
+          </JCard>}
+          {/* Room progress */}
+          <JCard><UILabel>Journey progress</UILabel>
+            {[...REFLECTION_ROOMS,...COMMUNITY_ROOMS].map(room=>{
+              const prog=roomProg(room),pct=Math.round(prog/room.days.length*100);
+              return(<div key={room.id} style={{marginBottom:10}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}><span style={{fontSize:"0.82rem",color:B.ink}}>{room.emoji} {room.label}</span><span style={{fontSize:"0.74rem",color:B.inkLL}}>{prog}/{room.days.length}</span></div><div style={{height:4,background:B.beigeD,borderRadius:99,overflow:"hidden"}}><div style={{height:"100%",width:`${pct}%`,background:th(room.id).accent,borderRadius:99,transition:"width 0.6s"}}/></div></div>);
+            })}
+          </JCard>
+        </>}
+
+        {entries.length>0&&journeyTab==="emotions"&&<>
+          <JCard><UILabel>Emotional patterns</UILabel>
+            {Object.entries(insights.emotions).sort((a,b)=>b[1].count-a[1].count).map(([emo,d])=><JBar key={emo} label={emo} value={d.count} max={emMax} color={EMOTION_COLORS[emo]} sub={`${d.count} mentions`}/>)}
+            {Object.values(insights.emotions).every(d=>d.count===0)&&<p style={{fontFamily:SERIF,fontStyle:"italic",color:B.inkL,margin:0}}>Keep reflecting — emotional patterns will emerge over time.</p>}
+          </JCard>
+          {Object.entries(insights.emotions).sort((a,b)=>b[1].count-a[1].count)[0]?.[1]?.count>0&&<JCard>
+            <p style={{fontFamily:SERIF,fontSize:"0.88rem",color:B.ink,margin:0,lineHeight:1.65,fontStyle:"italic"}}>
+              Your most frequent emotion is <strong style={{color:EMOTION_COLORS[Object.entries(insights.emotions).sort((a,b)=>b[1].count-a[1].count)[0][0]]}}>{Object.entries(insights.emotions).sort((a,b)=>b[1].count-a[1].count)[0][0]}</strong> with {Object.entries(insights.emotions).sort((a,b)=>b[1].count-a[1].count)[0][1].count} mentions across your reflections.
+            </p>
+          </JCard>}
+        </>}
+
+        {entries.length>0&&journeyTab==="themes"&&<>
+          <JCard><UILabel>Life themes</UILabel>
+            {Object.entries(insights.lifeThemes).sort((a,b)=>b[1].count-a[1].count).map(([th,d])=><JBar key={th} label={th.replace("_"," ")} value={d.count} max={thMax} color={`linear-gradient(90deg,${B.sageDk},${B.sage})`} sub={`${d.pct}%`}/>)}
+          </JCard>
+        </>}
+
+        {entries.length>0&&journeyTab==="faith"&&<>
+          <JCard><UILabel>Faith & Scripture</UILabel>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,textAlign:"center",marginBottom:14}}>
+              <div><div style={{fontFamily:SERIF,fontSize:"1.3rem",fontWeight:700,color:B.sageDk}}>{insights.faithMentions.prayerLang}</div><div style={{fontSize:"0.65rem",color:B.inkLL}}>Prayer language</div></div>
+              <div><div style={{fontFamily:SERIF,fontSize:"1.3rem",fontWeight:700,color:B.sageDk}}>{insights.faithMentions.godRefs}</div><div style={{fontSize:"0.65rem",color:B.inkLL}}>God references</div></div>
+              <div><div style={{fontFamily:SERIF,fontSize:"1.3rem",fontWeight:700,color:B.sageDk}}>{insights.faithMentions.surrenderLang}</div><div style={{fontSize:"0.65rem",color:B.inkLL}}>Surrender language</div></div>
+            </div>
+          </JCard>
+          {insights.faithMentions.scriptures.length>0&&<JCard><UILabel>Scripture references</UILabel>
+            {insights.faithMentions.scriptures.map((s,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:i<insights.faithMentions.scriptures.length-1?`1px solid ${B.beigeD}`:"none"}}><span style={{fontFamily:SERIF,fontSize:"0.88rem",color:B.ink}}>{s.ref}</span><span style={{fontSize:"0.72rem",color:B.inkLL}}>{s.date}</span></div>)}
+          </JCard>}
+          {insights.faithMentions.scriptures.length===0&&<JCard style={{textAlign:"center",padding:"32px 20px"}}><p style={{fontFamily:SERIF,fontStyle:"italic",color:B.inkL,margin:0}}>No scripture references found yet. Try including verse references (e.g. John 3:16) in your reflections.</p></JCard>}
+        </>}
+
+        {journeyTab==="prayers"&&<>
+          <JCard>
+            <UILabel>Prayer journey</UILabel>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,textAlign:"center",marginBottom:14}}>
+              <div><div style={{fontFamily:SERIF,fontSize:"1.3rem",fontWeight:700,color:B.sageDk}}>{prayerTimeline.total}</div><div style={{fontSize:"0.65rem",color:B.inkLL}}>Total prayers</div></div>
+              <div><div style={{fontFamily:SERIF,fontSize:"1.3rem",fontWeight:700,color:B.sageDk}}>{prayerTimeline.active.length}</div><div style={{fontSize:"0.65rem",color:B.inkLL}}>Active</div></div>
+              <div><div style={{fontFamily:SERIF,fontSize:"1.3rem",fontWeight:700,color:B.gold}}>{prayerTimeline.answered.length}</div><div style={{fontSize:"0.65rem",color:B.inkLL}}>Answered</div></div>
+            </div>
+            {Object.keys(prayerTimeline.categories).length>0&&<>
+              <UILabel>By category</UILabel>
+              {Object.entries(prayerTimeline.categories).sort((a,b)=>b[1]-a[1]).map(([cat,cnt])=><JBar key={cat} label={cat} value={cnt} max={prayerTimeline.total} color={B.sageDk} sub={cnt}/>)}
+            </>}
+          </JCard>
+          <JCard>
+            <div style={{display:"flex",gap:6,marginBottom:12}}>
+              {["active","answered","all"].map(f=><button key={f} onClick={()=>setPrayerFilter(f)} style={{background:prayerFilter===f?B.night:"transparent",border:`1px solid ${prayerFilter===f?"rgba(201,169,110,0.25)":B.beigeD}`,color:prayerFilter===f?B.goldL:B.inkL,padding:"4px 12px",borderRadius:99,fontSize:"0.68rem",fontFamily:SANS,fontWeight:600,cursor:"pointer",textTransform:"capitalize"}}>{f}</button>)}
+            </div>
+            {prayerPosts.filter(p=>prayerFilter==="all"?true:prayerFilter==="answered"?p.status==="answered":p.status!=="answered").map(p=>(
+              <div key={p.id} style={{padding:"12px 0",borderBottom:`1px solid ${B.beigeD}`,opacity:p.status==="answered"?0.7:1}}>
+                <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4}}>
+                  <span style={{fontSize:"0.6rem",background:"rgba(90,138,106,0.1)",color:B.sageDk,padding:"2px 8px",borderRadius:99,fontFamily:SANS,fontWeight:600}}>{p.tag}</span>
+                  {p.status==="answered"&&<span style={{fontSize:"0.58rem",background:"rgba(201,169,110,0.12)",color:B.gold,padding:"2px 8px",borderRadius:99,fontFamily:SANS,fontWeight:600}}>✓ Answered{p.answeredDate?` ${p.answeredDate}`:""}</span>}
+                  <span style={{fontSize:"0.66rem",color:B.inkLL,fontFamily:SANS,marginLeft:"auto"}}>{p.date}</span>
+                </div>
+                <p style={{fontFamily:SERIF,fontSize:"0.86rem",color:B.ink,margin:"0 0 6px",lineHeight:1.55}}>{p.text}</p>
+              </div>
+            ))}
+            {prayerPosts.length===0&&<p style={{fontFamily:SERIF,fontStyle:"italic",color:B.inkL,margin:0}}>No prayers posted yet. Visit the Community Hall to share a prayer.</p>}
+          </JCard>
+        </>}
+
+        {entries.length>0&&journeyTab==="identity"&&<>
+          <JCard><UILabel>Identity language</UILabel>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+              <div>
+                <div style={{fontSize:"0.72rem",fontFamily:SANS,fontWeight:600,color:"#C45B5B",marginBottom:8,textTransform:"uppercase",letterSpacing:"0.08em"}}>Negative patterns ({insights.identity.negative.length})</div>
+                {insights.identity.negative.length===0&&<p style={{fontFamily:SERIF,fontStyle:"italic",color:B.inkL,fontSize:"0.8rem",margin:0}}>None found</p>}
+                {insights.identity.negative.slice(0,8).map((p,i)=><div key={i} style={{fontSize:"0.78rem",fontFamily:SERIF,color:B.inkL,padding:"4px 0",borderBottom:`1px solid ${B.beigeD}`}}>"{p.text}"</div>)}
+              </div>
+              <div>
+                <div style={{fontSize:"0.72rem",fontFamily:SANS,fontWeight:600,color:"#5BA8A0",marginBottom:8,textTransform:"uppercase",letterSpacing:"0.08em"}}>Growth patterns ({insights.identity.positive.length})</div>
+                {insights.identity.positive.length===0&&<p style={{fontFamily:SERIF,fontStyle:"italic",color:B.inkL,fontSize:"0.8rem",margin:0}}>None found</p>}
+                {insights.identity.positive.slice(0,8).map((p,i)=><div key={i} style={{fontSize:"0.78rem",fontFamily:SERIF,color:B.inkL,padding:"4px 0",borderBottom:`1px solid ${B.beigeD}`}}>"{p.text}"</div>)}
+              </div>
+            </div>
+          </JCard>
+          <JCard style={{textAlign:"center",padding:"24px 20px"}}>
+            {(()=>{const neg=insights.identity.negative.length,pos=insights.identity.positive.length,total=neg+pos||1;const ratio=Math.round(pos/total*100);return<>
+              <div style={{fontFamily:SERIF,fontSize:"1.5rem",fontWeight:700,color:ratio>=50?B.sageDk:"#C45B5B"}}>{ratio}%</div>
+              <div style={{fontSize:"0.72rem",color:B.inkLL,marginBottom:8}}>growth language ratio</div>
+              <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.85rem",color:B.inkL,margin:0,lineHeight:1.6}}>
+                {ratio>=70?"Your words reflect deep identity roots. You're seeing yourself through God's eyes.":ratio>=40?"Growth is happening — you're shifting from old patterns to new truth.":"Be gentle with yourself. Healing is a journey, not a destination."}
+              </p>
+            </>;})()}
+          </JCard>
+        </>}
+
+        {entries.length>0&&journeyTab==="growth"&&<>
+          <JCard><UILabel>Spiritual growth markers</UILabel>
+            {[["forgiveness","🕊️"],["surrender","🤲"],["gratitude","🙏"],["repentance","💧"],["trust","🤝"],["obedience","👣"]].map(([mk,emoji])=><JBar key={mk} label={`${emoji} ${mk}`} value={insights.growthMarkers[mk]} max={gmMax} color={B.sageDk} sub={`${insights.growthMarkers[mk]} mentions`}/>)}
+            {Object.values(insights.growthMarkers).every(v=>v===0)&&<p style={{fontFamily:SERIF,fontStyle:"italic",color:B.inkL,margin:"8px 0 0"}}>Growth markers will appear as you reflect on your spiritual journey.</p>}
+          </JCard>
+        </>}
+
+        {entries.length>0&&journeyTab==="cloud"&&<>
+          <JCard><UILabel>Word cloud</UILabel>
+            {topWords.length>0?<div style={{display:"flex",flexWrap:"wrap",gap:"6px 10px",justifyContent:"center",padding:"12px 0"}}>
+              {topWords.map(([word,count],i)=>{
+                const sz=0.7+((count/wfMax)*1.5);
+                return<span key={word} style={{fontSize:`${sz}rem`,fontFamily:SERIF,color:wordColors[i%wordColors.length],opacity:0.7+((count/wfMax)*0.3),cursor:"default",transition:"transform 0.2s"}} title={`${word}: ${count} times`}>{word}</span>;
               })}
-            </div>
-          </>
-        )}
-        {entries.length===0&&<div style={{background:B.white,borderRadius:"12px",padding:"48px 28px",textAlign:"center",border:`1px solid ${B.beigeD}`}}><div style={{fontSize:"1.8rem",marginBottom:"12px"}}>🌱</div><p style={{fontFamily:SERIF,fontStyle:"italic",color:B.inkL,margin:"0 0 18px"}}>Your insights will emerge as you reflect. Begin with any room.</p><button onClick={()=>setScreen("cabin")} style={{background:B.night,border:"none",color:B.goldL,padding:"11px 26px",borderRadius:"8px",cursor:"pointer",fontSize:"0.83rem",fontFamily:SANS,fontWeight:600}}>Choose a room →</button></div>}
+            </div>:<p style={{fontFamily:SERIF,fontStyle:"italic",color:B.inkL,margin:0}}>Write more to see your word patterns emerge.</p>}
+          </JCard>
+        </>}
+
+        {journeyTab==="future"&&<>
+          {futureYou?<>
+            <JCard style={{borderLeft:`3px solid ${B.sageDk}`}}>
+              <UILabel>Your first entry</UILabel>
+              <div style={{fontSize:"0.72rem",color:B.inkLL,marginBottom:6}}>{futureYou.first.date}</div>
+              <p style={{fontFamily:SERIF,fontSize:"0.88rem",color:B.ink,margin:"0 0 8px",lineHeight:1.6,fontStyle:"italic"}}>"{futureYou.first.snippet}…"</p>
+              {futureYou.first.negPatterns.length>0&&<div style={{fontSize:"0.72rem",color:"#C45B5B"}}>Identity patterns: {futureYou.first.negPatterns.join(", ")}</div>}
+              {futureYou.first.posPatterns.length>0&&<div style={{fontSize:"0.72rem",color:"#5BA8A0"}}>Growth patterns: {futureYou.first.posPatterns.join(", ")}</div>}
+            </JCard>
+            <div style={{textAlign:"center",padding:"8px 0"}}><span style={{fontSize:"0.72rem",color:B.inkLL,fontFamily:SANS}}>{futureYou.daysBetween} days between</span></div>
+            <JCard style={{borderLeft:`3px solid ${B.gold}`}}>
+              <UILabel>Your latest entry</UILabel>
+              <div style={{fontSize:"0.72rem",color:B.inkLL,marginBottom:6}}>{futureYou.latest.date}</div>
+              <p style={{fontFamily:SERIF,fontSize:"0.88rem",color:B.ink,margin:"0 0 8px",lineHeight:1.6,fontStyle:"italic"}}>"{futureYou.latest.snippet}…"</p>
+              {futureYou.latest.negPatterns.length>0&&<div style={{fontSize:"0.72rem",color:"#C45B5B"}}>Identity patterns: {futureYou.latest.negPatterns.join(", ")}</div>}
+              {futureYou.latest.posPatterns.length>0&&<div style={{fontSize:"0.72rem",color:"#5BA8A0"}}>Growth patterns: {futureYou.latest.posPatterns.join(", ")}</div>}
+            </JCard>
+          </>:<JCard style={{textAlign:"center",padding:"48px 24px"}}>
+            <div style={{fontSize:"1.6rem",marginBottom:12}}>🪞</div>
+            <p style={{fontFamily:SERIF,fontStyle:"italic",color:B.inkL,margin:"0 0 4px",lineHeight:1.6}}>Keep reflecting — after 5 entries, you'll be able to see how far you've come.</p>
+            <p style={{fontSize:"0.74rem",color:B.inkLL,margin:0}}>{entries.length}/5 entries so far</p>
+          </JCard>}
+        </>}
       </main>
     </div>
-  );
+  );}
 
   /* ══ HISTORY (Calendar) ═══════════════════════════ */
   if(screen==="history"){
