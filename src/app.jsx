@@ -425,16 +425,17 @@ const SHOP_ITEMS=[
    PRAYER GARDEN — PLANTS
 ═══════════════════════════════════════════════════ */
 const GARDEN_PLANTS=[
-  {id:"wheat",       name:"Wheat",        emoji:"🌾", stageEmojis:["🌱","🌿","🌾","🌾","🌾"], harvestItem:"wheat",       harvestEmoji:"🌾", plantCost:2, growthBase:[4,5,6,3]},
-  {id:"barley",      name:"Barley",       emoji:"🌿", stageEmojis:["🌱","🌿","🌿","🌿","🌿"], harvestItem:"barley",      harvestEmoji:"🌿", plantCost:2, growthBase:[4,5,6,3]},
-  {id:"grape",       name:"Grape Vine",   emoji:"🍇", stageEmojis:["🌱","🌿","🍃","🍇","🍇"], harvestItem:"grapes",      harvestEmoji:"🍇", plantCost:3, growthBase:[5,6,7,4]},
-  {id:"fig",         name:"Fig Tree",     emoji:"🌳", stageEmojis:["🌱","🌿","🌳","🌳","🌳"], harvestItem:"figs",        harvestEmoji:"🫒", plantCost:4, growthBase:[5,7,8,4]},
-  {id:"olive",       name:"Olive Tree",   emoji:"🫒", stageEmojis:["🌱","🌿","🌳","🫒","🫒"], harvestItem:"olives",      harvestEmoji:"🫒", plantCost:5, growthBase:[6,7,8,5]},
-  {id:"pomegranate", name:"Pomegranate",  emoji:"🍎", stageEmojis:["🌱","🌿","🌳","🍎","🍎"], harvestItem:"pomegranates",harvestEmoji:"🍎", plantCost:6, growthBase:[6,8,9,5]},
-  {id:"date_palm",   name:"Date Palm",    emoji:"🌴", stageEmojis:["🌱","🌿","🌴","🌴","🌴"], harvestItem:"dates",       harvestEmoji:"🌴", plantCost:7, growthBase:[7,8,10,5]},
+  // growthBase values are in MINUTES per stage: [seed→sprout, sprout→young, young→mature, mature→harvest]
+  {id:"wheat",       name:"Wheat",        emoji:"🌾", stageEmojis:["🌱","🌿","🌾","🌾","🌾"], harvestItem:"wheat",       harvestEmoji:"🌾", plantCost:2, growthBase:[5,6,7,5]},       // 23 min total
+  {id:"barley",      name:"Barley",       emoji:"🌿", stageEmojis:["🌱","🌿","🌿","🌿","🌿"], harvestItem:"barley",      harvestEmoji:"🌿", plantCost:2, growthBase:[5,6,7,5]},       // 23 min total
+  {id:"grape",       name:"Grape Vine",   emoji:"🍇", stageEmojis:["🌱","🌿","🍃","🍇","🍇"], harvestItem:"grapes",      harvestEmoji:"🍇", plantCost:3, growthBase:[5,7,8,5]},       // 25 min total
+  {id:"fig",         name:"Fig Tree",     emoji:"🌳", stageEmojis:["🌱","🌿","🌳","🌳","🌳"], harvestItem:"figs",        harvestEmoji:"🫒", plantCost:4, growthBase:[6,7,9,6]},       // 28 min total
+  {id:"olive",       name:"Olive Tree",   emoji:"🫒", stageEmojis:["🌱","🌿","🌳","🫒","🫒"], harvestItem:"olives",      harvestEmoji:"🫒", plantCost:5, growthBase:[6,8,10,6]},      // 30 min total
+  {id:"pomegranate", name:"Pomegranate",  emoji:"🍎", stageEmojis:["🌱","🌿","🌳","🍎","🍎"], harvestItem:"pomegranates",harvestEmoji:"🍎", plantCost:6, growthBase:[7,8,11,7]},      // 33 min total
+  {id:"date_palm",   name:"Date Palm",    emoji:"🌴", stageEmojis:["🌱","🌿","🌴","🌴","🌴"], harvestItem:"dates",       harvestEmoji:"🌴", plantCost:7, growthBase:[7,9,12,7]},      // 35 min total
 ];
-const GROWTH_STAGES=["seed","sprout","growing","mature","harvestable"];
-const PRAYER_BONUS_HOURS=0.5; // each prayer reduces stage time by 30 min
+const GROWTH_STAGES=["seed","sprout","young plant","mature plant","harvestable"];
+const PRAYER_BONUS_MINS=2; // each prayer reduces each stage by 2 min
 
 /* ═══════════════════════════════════════════════════
    PRAYER GARDEN — CRAFTING STATIONS
@@ -725,10 +726,10 @@ export default function App(){
   const [gardenTick,     setGardenTick]   = useState(0); // forces re-render for growth updates
 
   // ── GARDEN GROWTH TIMER ──
-  // Ticks every 60s while on garden screen so progress bars & stages update live
+  // Ticks every 30s while on garden screen so progress bars & stages update live
   useEffect(()=>{
     if(screen!=="garden") return;
-    const id=setInterval(()=>setGardenTick(t=>t+1),60000);
+    const id=setInterval(()=>setGardenTick(t=>t+1),30000);
     return ()=>clearInterval(id);
   },[screen]);
 
@@ -1000,11 +1001,11 @@ export default function App(){
     if(prayer&&prayer.status==="answered") return "harvestable";
     const plant=GARDEN_PLANTS.find(p=>p.id===plot.plantType);
     if(!plant) return plot.stage;
-    const elapsed=(Date.now()-plot.plantedAt)/3600000; // hours
-    const bonus=plot.prayerCount*PRAYER_BONUS_HOURS;
+    const elapsed=(Date.now()-plot.plantedAt)/60000; // minutes
+    const bonus=plot.prayerCount*PRAYER_BONUS_MINS;
     let accumulated=0;
     for(let i=0;i<plant.growthBase.length;i++){
-      accumulated+=Math.max(0.5,plant.growthBase[i]-bonus);
+      accumulated+=Math.max(0.5,plant.growthBase[i]-bonus); // min 30 sec per stage
       if(elapsed<accumulated) return GROWTH_STAGES[i];
     }
     return "harvestable";
@@ -2640,8 +2641,8 @@ export default function App(){
       if(cs==="harvestable") return 100;
       const plant=GARDEN_PLANTS.find(p=>p.id===plot.plantType);
       if(!plant) return 0;
-      const elapsed=(Date.now()-plot.plantedAt)/3600000;
-      const bonus=plot.prayerCount*PRAYER_BONUS_HOURS;
+      const elapsed=(Date.now()-plot.plantedAt)/60000; // minutes
+      const bonus=plot.prayerCount*PRAYER_BONUS_MINS;
       let total=0;
       for(let i=0;i<plant.growthBase.length;i++) total+=Math.max(0.5,plant.growthBase[i]-bonus);
       return Math.min(100,Math.round((elapsed/total)*100));
