@@ -2332,6 +2332,8 @@ export default function App(){
   const [bibleLoading,  setBibleLoading]  = useState(false);
   const [bibleSearch,   setBibleSearch]   = useState("");
   const bibleDataRef = useRef(null);
+  // ── Market stalls ──
+  const [marketStall, setMarketStall] = useState(null); // null|"harvest"
   // ── Verse selection, saving, sharing ──
   const [selectedVerses,    setSelectedVerses]    = useState(new Set());
   const [savedVerses,       setSavedVerses]       = useState([]);
@@ -2497,7 +2499,7 @@ export default function App(){
       setScreen("welcome");
       setCardQ(shuffle(ALL_CARD_QS)[0]);
       // preload spatial world backgrounds
-      ["cabin-interior.png","upper-room-hall.png"].forEach(src=>{const img=new Image();img.src="/"+src;});
+      ["cabin-interior.png","upper-room-hall.png","harvest-market.png"].forEach(src=>{const img=new Image();img.src="/"+src;});
     })();
   },[]);
 
@@ -5189,13 +5191,13 @@ export default function App(){
         <ImmersiveMarket/>
 
         {/* ── Back to village ── */}
-        <button onClick={()=>setScreen("map")} style={{position:"absolute",top:20,left:16,zIndex:14,background:"rgba(10,8,16,0.55)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",border:"1px solid rgba(201,169,110,0.15)",borderRadius:999,padding:"8px 20px",cursor:"pointer",color:"rgba(255,248,232,0.6)",fontFamily:SANS,fontSize:"0.78rem",transition:"all 0.2s",display:"inline-flex",alignItems:"center",gap:6,animation:"fadeUp .6s ease both"}}>
+        <button onClick={()=>{setMarketStall(null);setScreen("map");}} style={{position:"absolute",top:20,left:16,zIndex:14,background:"rgba(10,8,16,0.55)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",border:"1px solid rgba(201,169,110,0.15)",borderRadius:999,padding:"8px 20px",cursor:"pointer",color:"rgba(255,248,232,0.6)",fontFamily:SANS,fontSize:"0.78rem",transition:"all 0.2s",display:"inline-flex",alignItems:"center",gap:6,animation:"fadeUp .6s ease both"}}>
           Back to village
         </button>
 
         {/* ── Market stall hotspots ── */}
         {/* Harvest Market — left stall */}
-        <button style={{position:"absolute",left:"2%",top:"20%",width:"30%",height:"35%",zIndex:11,background:"transparent",border:"none",padding:0,cursor:"pointer",outline:"none",WebkitTapHighlightColor:"transparent"}}>
+        <button onClick={()=>setMarketStall("harvest")} style={{position:"absolute",left:"2%",top:"20%",width:"30%",height:"35%",zIndex:11,background:"transparent",border:"none",padding:0,cursor:"pointer",outline:"none",WebkitTapHighlightColor:"transparent"}}>
           <div style={{position:"absolute",left:"25%",top:"15%",width:"55%",height:"50%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,210,120,0.28) 0%,rgba(255,180,80,0.10) 40%,transparent 72%)",pointerEvents:"none",animation:"hotspotPulse 3s ease-in-out infinite"}}/>
           <div style={{position:"absolute",left:"32%",top:"22%",width:"40%",height:"38%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,240,170,0.18) 0%,transparent 55%)",pointerEvents:"none",animation:"hotspotPulse 3.5s ease-in-out infinite",animationDelay:"0.6s"}}/>
         </button>
@@ -5213,9 +5215,52 @@ export default function App(){
         </button>
 
         {/* ── Coming soon overlay — bottom of path ── */}
-        <div style={{position:"absolute",bottom:24,left:"50%",transform:"translateX(-50%)",zIndex:14,background:"rgba(10,8,16,0.55)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",border:"1px solid rgba(201,169,110,0.15)",borderRadius:14,padding:"12px 28px",textAlign:"center",animation:"fadeUp .8s .4s ease both"}}>
-          <p style={{fontFamily:SERIF,fontStyle:"italic",color:"rgba(255,248,232,0.4)",fontSize:"0.85rem",margin:0}}>The merchants are preparing their stalls...</p>
-        </div>
+        {!marketStall&&(
+          <div style={{position:"absolute",bottom:24,left:"50%",transform:"translateX(-50%)",zIndex:14,background:"rgba(10,8,16,0.55)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",border:"1px solid rgba(201,169,110,0.15)",borderRadius:14,padding:"12px 28px",textAlign:"center",animation:"fadeUp .8s .4s ease both"}}>
+            <p style={{fontFamily:SERIF,fontStyle:"italic",color:"rgba(255,248,232,0.4)",fontSize:"0.85rem",margin:0}}>Tap a stall to browse...</p>
+          </div>
+        )}
+
+        {/* ── HARVEST MARKET CLOSE-UP ── */}
+        {marketStall==="harvest"&&(
+          <div style={{position:"fixed",inset:0,zIndex:100,background:"#0A0810",animation:"overlayFadeIn .35s ease both",display:"flex",flexDirection:"column"}}>
+            {/* Header */}
+            <header style={{position:"relative",zIndex:10,background:"rgba(10,8,16,0.75)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",padding:"0 16px",height:54,display:"flex",alignItems:"center",gap:10,borderBottom:"1px solid rgba(201,169,110,0.12)",flexShrink:0}}>
+              <button onClick={()=>setMarketStall(null)} style={{background:"transparent",border:"none",cursor:"pointer",color:"rgba(255,240,200,0.55)",fontSize:"0.8rem",fontFamily:SANS,padding:"4px 0",transition:"color 0.15s"}}>{"< Market"}</button>
+              <div style={{height:14,width:1,background:"rgba(201,169,110,0.18)"}}/>
+              <span style={{fontFamily:SERIF,fontStyle:"italic",color:"rgba(255,240,200,0.75)",fontSize:"0.92rem"}}>Harvest Market</span>
+            </header>
+            {/* Full-bleed image + scroll content */}
+            <div style={{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch"}}>
+              {/* Close-up image */}
+              <div style={{position:"relative",width:"100%",maxHeight:"65vh",overflow:"hidden"}}>
+                <img src="/harvest-market.png" alt="Harvest Market stall" style={{width:"100%",height:"100%",objectFit:"cover",objectPosition:"center 30%",display:"block"}}/>
+                {/* Warm glow overlay on the image */}
+                <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse at 50% 40%, rgba(255,190,80,0.08) 0%, transparent 60%)",mixBlendMode:"screen",pointerEvents:"none"}}/>
+                {/* Bottom fade into content */}
+                <div style={{position:"absolute",bottom:0,left:0,right:0,height:"40%",background:"linear-gradient(to top, #0A0810 0%, rgba(10,8,16,0.6) 50%, transparent 100%)",pointerEvents:"none"}}/>
+              </div>
+              {/* Stall info */}
+              <div style={{maxWidth:600,margin:"-40px auto 0",padding:"0 22px 80px",position:"relative",zIndex:2}}>
+                <h2 style={{fontFamily:DISPLAY,fontSize:"1.6rem",fontWeight:700,color:"rgba(255,240,200,0.85)",margin:"0 0 8px",textShadow:"0 2px 12px rgba(0,0,0,0.5)"}}>Harvest Market</h2>
+                <div style={{width:50,height:2,background:"rgba(201,169,110,0.35)",borderRadius:1,marginBottom:16}}/>
+                <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.95rem",color:"rgba(255,240,200,0.45)",lineHeight:1.7,margin:"0 0 28px"}}>Fresh produce, flowers, and goods from the village harvest. The scent of wildflowers and ripe fruit fills the air.</p>
+                {/* Placeholder stall items */}
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                  {[{name:"Wildflowers",desc:"A bundle of hand-picked blooms",icon:"*"},{name:"Fresh Fruit",desc:"Sun-ripened from the orchard",icon:"*"},{name:"Honey Jar",desc:"Golden and sweet from village bees",icon:"*"},{name:"Herb Bundle",desc:"Fragrant herbs for cooking or tea",icon:"*"}].map((item,i)=>(
+                    <div key={i} style={{background:"rgba(255,240,200,0.04)",border:"1px solid rgba(201,169,110,0.12)",borderRadius:14,padding:"18px 16px",animation:`fadeUp .5s ${0.2+i*0.1}s ease both`,opacity:0}}>
+                      <p style={{fontFamily:SERIF,fontSize:"0.9rem",color:"rgba(255,240,200,0.65)",margin:"0 0 4px",fontWeight:500}}>{item.name}</p>
+                      <p style={{fontFamily:SANS,fontSize:"0.72rem",color:"rgba(255,240,200,0.3)",margin:0,lineHeight:1.5}}>{item.desc}</p>
+                    </div>
+                  ))}
+                </div>
+                <div style={{textAlign:"center",marginTop:28}}>
+                  <p style={{fontFamily:SERIF,fontStyle:"italic",color:"rgba(255,240,200,0.25)",fontSize:"0.82rem"}}>More goods arriving soon...</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
