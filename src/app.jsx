@@ -5926,7 +5926,7 @@ function AppInner(){
         </div>
 
         {/* ═══ BOTTOM FLOATING BUTTONS — Inventory & Crafting ═══ */}
-        <div style={{position:"absolute",bottom:"4%",left:"50%",transform:"translateX(-50%)",zIndex:20,display:"flex",gap:10,animation:"fadeUp .8s .3s ease both"}}>
+        <div style={{position:"absolute",bottom:"12%",left:"50%",transform:"translateX(-50%)",zIndex:20,display:"flex",gap:10,animation:"fadeUp .8s .3s ease both"}}>
           <button onClick={()=>{setGardenTab(gardenTab==="inventory"?"garden":"inventory");setCraftingStation(null);}} style={{background:gardenTab==="inventory"?"rgba(90,138,106,0.25)":"rgba(10,8,6,0.65)",backdropFilter:"blur(10px)",WebkitBackdropFilter:"blur(10px)",border:`1px solid ${gardenTab==="inventory"?"rgba(90,138,106,0.4)":"rgba(190,211,196,0.15)"}`,borderRadius:14,padding:"10px 18px",cursor:"pointer",display:"flex",alignItems:"center",gap:6,boxShadow:"0 4px 16px rgba(0,0,0,0.3)"}}>
             <span style={{fontSize:"0.85rem"}}>🧺</span>
             <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.72rem",color:gardenTab==="inventory"?"#BED3C4":"rgba(190,211,196,0.5)"}}>Inventory</span>
