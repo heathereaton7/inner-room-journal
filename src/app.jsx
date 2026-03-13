@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback, Component } from "react";
-import { auth, db, googleProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged, doc, getDoc, setDoc } from "./firebase.js";
+import { auth, db, functions, googleProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged, doc, getDoc, setDoc, collection, getDocs, query, where, orderBy, limit, addDoc, deleteDoc, serverTimestamp, Timestamp, httpsCallable } from "./firebase.js";
 /* R3F imports removed — ImmersiveCabin uses pure DOM/Canvas2D for performance */
 
 /* ═══════════════════════════════════════════════════
@@ -2462,6 +2462,18 @@ function AppInner(){
   const [farmPlots,    setFarmPlots]    = useState([]); // economy garden plots
   const [gardenMode,   setGardenMode]   = useState("farm"); // "farm"|"prayers"
   const [toast,        setToast]        = useState(null); // {msg,emoji} — ephemeral notification
+  // ── Multiplayer state ──
+  const [userProfile,       setUserProfile]       = useState(null);
+  const [communityListings, setCommunityListings] = useState([]);
+  const [communityPrayers,  setCommunityPrayers]  = useState([]);
+  const [communityEvents,   setCommunityEvents]   = useState([]);
+  const [visitingFarm,      setVisitingFarm]      = useState(null); // {userId,username,farmPlots,gardenPlots}
+  const [communityTab,      setCommunityTab]      = useState("browse"); // "browse"|"myListings"|"npc"
+  const [prayerWallTab,     setPrayerWallTab]     = useState("mine"); // "mine"|"community"
+  const [farmerSearch,      setFarmerSearch]       = useState("");
+  const [farmerResults,     setFarmerResults]     = useState([]);
+  const [communityLoading,  setCommunityLoading]  = useState(false);
+  const [listingForm,       setListingForm]       = useState(null); // {itemType,quantity,pricePerUnit}
   // ── Verse selection, saving, sharing ──
   const [selectedVerses,    setSelectedVerses]    = useState(new Set());
   const [savedVerses,       setSavedVerses]       = useState([]);
@@ -2642,7 +2654,10 @@ function AppInner(){
     const unsub=onAuthStateChanged(auth,async(u)=>{
       setUser(u);
       setAuthLoading(false);
-      if(u) await syncWithCloud(u.uid);
+      if(u){
+        await syncWithCloud(u.uid);
+        ensureUserProfile(u.uid, u.displayName);
+      }
     });
     return ()=>unsub();
   },[]);
@@ -3009,7 +3024,7 @@ function AppInner(){
   async function persistBank(b){ setBank(b); await dbSave("irj-bank",b); }
   async function persistSellBasket(b){ setSellBasket(b); await dbSave("irj-sell-basket",b); }
   async function persistInventory(inv){ setInventory(inv); await dbSave("irj-inventory",inv); }
-  async function persistFarmPlots(fp){ setFarmPlots(fp); await dbSave("irj-farm-plots",fp); }
+  async function persistFarmPlots(fp){ setFarmPlots(fp); await dbSave("irj-farm-plots",fp); publishFarmSnapshot(fp); }
 
   function addToInventory(itemId, qty=1){
     setInventory(prev=>{
@@ -3048,6 +3063,232 @@ function AppInner(){
       return next;
     });
     return true;
+  }
+
+  // ── MULTIPLAYER — User Profiles ──
+  async function ensureUserProfile(uid, displayName){
+    if(!db) return;
+    try{
+      const profileRef=doc(db,"userProfiles",uid);
+      const snap=await getDoc(profileRef);
+      if(!snap.exists()){
+        await setDoc(profileRef,{username:displayName||"Anonymous Traveler",level:1,lastLogin:serverTimestamp(),farmPublic:true});
+      } else {
+        await setDoc(profileRef,{lastLogin:serverTimestamp()},{merge:true});
+      }
+      const updated=await getDoc(profileRef);
+      setUserProfile({id:uid,...updated.data()});
+    }catch(e){console.warn("ensureUserProfile error:",e);}
+  }
+
+  async function publishFarmSnapshot(fp){
+    if(!db||!user) return;
+    try{
+      const profileRef=doc(db,"userProfiles",user.uid);
+      await setDoc(profileRef,{publishedFarm:fp||farmPlots,publishedGarden:gardenPlots},{merge:true});
+    }catch(e){console.warn("publishFarmSnapshot error:",e);}
+  }
+
+  // ── MULTIPLAYER — Community Market ──
+  async function loadCommunityListings(){
+    if(!db) return;
+    setCommunityLoading(true);
+    try{
+      const q=query(collection(db,"marketListings"),where("status","==","active"),orderBy("createdAt","desc"),limit(50));
+      const snap=await getDocs(q);
+      setCommunityListings(snap.docs.map(d=>({id:d.id,...d.data()})));
+    }catch(e){console.warn("loadCommunityListings error:",e);}
+    setCommunityLoading(false);
+  }
+
+  async function createListing(itemType,quantity,pricePerUnit){
+    if(!functions||!user) return;
+    setCommunityLoading(true);
+    try{
+      const fn=httpsCallable(functions,"createMarketListing");
+      const result=await fn({itemType,quantity,pricePerUnit});
+      if(result.data.success){
+        // Update local inventory to reflect server deduction
+        setInventory(prev=>{
+          const next={...prev,[itemType]:(prev[itemType]||0)-quantity};
+          if(next[itemType]<=0) delete next[itemType];
+          dbSave("irj-inventory",next);
+          return next;
+        });
+        setToast({msg:"Listed on the market!",emoji:ITEM_CATALOG[itemType]?.emoji||"📦"});
+        setListingForm(null);
+        await loadCommunityListings();
+      }
+    }catch(e){
+      setToast({msg:e.message||"Failed to list item",emoji:"❌"});
+    }
+    setCommunityLoading(false);
+  }
+
+  async function purchaseListing(listing){
+    if(!functions||!user) return;
+    setCommunityLoading(true);
+    try{
+      const fn=httpsCallable(functions,"purchaseMarketListing");
+      const result=await fn({listingId:listing.id});
+      if(result.data.success){
+        // Update local state to reflect server changes
+        setInventory(prev=>{
+          const next={...prev,[result.data.itemType]:(prev[result.data.itemType]||0)+result.data.quantity};
+          dbSave("irj-inventory",next);
+          return next;
+        });
+        setBank(prev=>{
+          const next={...prev,coins:result.data.newCoins};
+          dbSave("irj-bank",next);
+          return next;
+        });
+        setToast({msg:`Bought ${result.data.quantity}x ${ITEM_CATALOG[result.data.itemType]?.name||result.data.itemType}!`,emoji:ITEM_CATALOG[result.data.itemType]?.emoji||"📦"});
+        await loadCommunityListings();
+      }
+    }catch(e){
+      setToast({msg:e.message||"Purchase failed",emoji:"❌"});
+    }
+    setCommunityLoading(false);
+  }
+
+  async function cancelListing(listingId){
+    if(!functions||!user) return;
+    setCommunityLoading(true);
+    try{
+      const fn=httpsCallable(functions,"cancelMarketListing");
+      const result=await fn({listingId});
+      if(result.data.success){
+        setInventory(prev=>{
+          const next={...prev,[result.data.itemType]:(prev[result.data.itemType]||0)+result.data.quantity};
+          dbSave("irj-inventory",next);
+          return next;
+        });
+        setToast({msg:"Listing cancelled, items returned",emoji:"↩️"});
+        await loadCommunityListings();
+      }
+    }catch(e){
+      setToast({msg:e.message||"Cancel failed",emoji:"❌"});
+    }
+    setCommunityLoading(false);
+  }
+
+  // ── MULTIPLAYER — Community Prayers ──
+  async function loadCommunityPrayers(){
+    if(!db) return;
+    setCommunityLoading(true);
+    try{
+      const q=query(collection(db,"prayerRequests"),where("status","==","active"),orderBy("createdAt","desc"),limit(40));
+      const snap=await getDocs(q);
+      setCommunityPrayers(snap.docs.map(d=>({id:d.id,...d.data()})));
+    }catch(e){console.warn("loadCommunityPrayers error:",e);}
+    setCommunityLoading(false);
+  }
+
+  async function postCommunityPrayer(){
+    if(!db||!user||!newPrayer.trim()) return;
+    try{
+      await addDoc(collection(db,"prayerRequests"),{
+        userId:user.uid,
+        username:userProfile?.username||"Anonymous",
+        message:newPrayer.trim(),
+        tag:prayerTag||"General",
+        createdAt:serverTimestamp(),
+        prayedCount:0,
+        status:"active",
+      });
+      setNewPrayer(""); setPrayerTag("");
+      setToast({msg:"Prayer shared with community",emoji:"🕯️"});
+      await loadCommunityPrayers();
+    }catch(e){
+      setToast({msg:e.message||"Failed to post prayer",emoji:"❌"});
+    }
+  }
+
+  async function prayForCommunityRequest(requestId){
+    if(!functions||!user) return;
+    try{
+      const fn=httpsCallable(functions,"prayForRequest");
+      const result=await fn({requestId});
+      if(result.data.success){
+        setPrayedFor(prev=>{const np=[...prev,requestId];dbSave("irj-prayed",np);return np;});
+        addCandles(2,"You lit a candle for this prayer");
+        await loadCommunityPrayers();
+      }
+    }catch(e){
+      if(e.code==="functions/already-exists"){
+        setToast({msg:"You already prayed for this",emoji:"🙏"});
+      } else {
+        setToast({msg:e.message||"Failed",emoji:"❌"});
+      }
+    }
+  }
+
+  // ── MULTIPLAYER — Community Events ──
+  async function loadCommunityEvents(){
+    if(!db) return;
+    try{
+      const q=query(collection(db,"communityEvents"),where("status","==","active"),limit(10));
+      const snap=await getDocs(q);
+      setCommunityEvents(snap.docs.map(d=>({id:d.id,...d.data()})));
+    }catch(e){console.warn("loadCommunityEvents error:",e);}
+  }
+
+  async function contributeToEvent(eventId,itemType,quantity){
+    if(!functions||!user) return;
+    try{
+      const fn=httpsCallable(functions,"contributeToEvent");
+      const result=await fn({eventId,itemType,quantity});
+      if(result.data.success){
+        setInventory(prev=>{
+          const next={...prev,[itemType]:(prev[itemType]||0)-quantity};
+          if(next[itemType]<=0) delete next[itemType];
+          dbSave("irj-inventory",next);
+          return next;
+        });
+        setToast({msg:result.data.completed?"Event goal reached!":"Contribution added!",emoji:"🎉"});
+        await loadCommunityEvents();
+      }
+    }catch(e){
+      setToast({msg:e.message||"Contribution failed",emoji:"❌"});
+    }
+  }
+
+  // ── MULTIPLAYER — Farm Visiting ──
+  async function searchFarmers(searchTerm){
+    if(!db) return;
+    setCommunityLoading(true);
+    try{
+      const q=query(collection(db,"userProfiles"),where("farmPublic","==",true),limit(20));
+      const snap=await getDocs(q);
+      const results=snap.docs
+        .map(d=>({id:d.id,...d.data()}))
+        .filter(p=>p.id!==user?.uid)
+        .filter(p=>!searchTerm||p.username.toLowerCase().includes(searchTerm.toLowerCase()));
+      setFarmerResults(results);
+    }catch(e){console.warn("searchFarmers error:",e);}
+    setCommunityLoading(false);
+  }
+
+  async function visitFarm(userId){
+    if(!db) return;
+    setCommunityLoading(true);
+    try{
+      const profileDoc=await getDoc(doc(db,"userProfiles",userId));
+      if(!profileDoc.exists()){setToast({msg:"Farm not found",emoji:"❌"});setCommunityLoading(false);return;}
+      const profile=profileDoc.data();
+      setVisitingFarm({
+        userId,
+        username:profile.username||"Anonymous",
+        farmPlots:profile.publishedFarm||[],
+        gardenPlots:profile.publishedGarden||[],
+      });
+      setPrevScreen(screen);
+      setScreen("visit-farm");
+    }catch(e){
+      setToast({msg:"Could not visit farm",emoji:"❌"});
+    }
+    setCommunityLoading(false);
   }
 
   // ── FARM GARDEN (economy crops) ──
@@ -4850,52 +5091,132 @@ function AppInner(){
               <span style={{fontSize:"0.65rem",fontFamily:SANS,fontWeight:600,letterSpacing:"0.14em",color:B.gold,textTransform:"uppercase"}}>Prayer Wall</span>
               <div style={{flex:1,height:1,background:"rgba(201,169,110,0.12)"}}/>
             </div>
-            <div style={{background:"rgba(26,22,18,0.6)",backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",border:"1px solid rgba(201,169,110,0.1)",borderRadius:12,padding:18,marginBottom:14}}>
-              <textarea value={newPrayer} onChange={e=>setNewPrayer(e.target.value)} placeholder="Share what's on your heart…" style={{width:"100%",background:"rgba(255,248,232,0.04)",border:"1px solid rgba(201,169,110,0.1)",borderRadius:8,color:B.goldL,fontSize:"0.88rem",fontFamily:SERIF,padding:13,minHeight:70,boxSizing:"border-box",marginBottom:9,lineHeight:1.7,transition:"border-color 0.2s",resize:"vertical"}} onFocus={e=>e.target.style.borderColor="rgba(201,169,110,0.3)"} onBlur={e=>e.target.style.borderColor="rgba(201,169,110,0.1)"}/>
-              <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-                <select value={prayerTag} onChange={e=>setPrayerTag(e.target.value)} style={{background:"rgba(255,248,232,0.04)",border:"1px solid rgba(201,169,110,0.1)",borderRadius:7,color:"rgba(255,248,232,0.5)",fontSize:"0.8rem",fontFamily:SANS,padding:"7px 11px",flex:1,minWidth:120}}>
-                  <option value="">Tag a topic…</option>
-                  {["Healing","Marriage","Singleness","Motherhood","Grief","Anxiety","Finances","Purpose","Forgiveness","Depression","Faith","Career"].map(t=><option key={t}>{t}</option>)}
-                </select>
-                <button onClick={postPrayer} disabled={!newPrayer.trim()} style={{background:newPrayer.trim()?"rgba(90,138,106,0.3)":"transparent",border:`1px solid ${newPrayer.trim()?"rgba(90,138,106,0.4)":"rgba(255,255,255,0.06)"}`,color:newPrayer.trim()?"#BED3C4":"rgba(255,255,255,0.2)",padding:"8px 20px",borderRadius:7,cursor:newPrayer.trim()?"pointer":"default",fontSize:"0.8rem",fontFamily:SANS,fontWeight:600,transition:"all 0.2s"}}>Post anonymously 🙏</button>
-              </div>
-            </div>
-            <div style={{display:"flex",gap:6,marginBottom:10}}>
-              {["active","answered","all"].map(f=>(
-                <button key={f} onClick={()=>setPrayerFilter(f)} style={{background:prayerFilter===f?B.night:"transparent",border:`1px solid ${prayerFilter===f?"rgba(201,169,110,0.3)":"rgba(201,169,110,0.1)"}`,color:prayerFilter===f?B.goldL:"rgba(255,248,232,0.35)",padding:"4px 12px",borderRadius:99,fontSize:"0.68rem",fontFamily:SANS,fontWeight:600,cursor:"pointer",textTransform:"capitalize"}}>{f}</button>
+            {/* Prayer wall tabs: My Prayers / Community */}
+            <div style={{display:"flex",gap:0,marginBottom:14,borderRadius:10,overflow:"hidden",border:"1px solid rgba(201,169,110,0.12)"}}>
+              {[["mine","My Prayers"],["community","Community"]].map(([k,label])=>(
+                <button key={k} onClick={()=>{setPrayerWallTab(k);if(k==="community") loadCommunityPrayers();}} style={{flex:1,padding:"9px 0",background:prayerWallTab===k?"rgba(201,169,110,0.1)":"rgba(26,22,18,0.5)",border:"none",color:prayerWallTab===k?B.goldL:"rgba(255,248,232,0.35)",fontSize:"0.74rem",fontFamily:SANS,fontWeight:600,cursor:"pointer",transition:"all 0.2s"}}>{label}</button>
               ))}
             </div>
-            <div style={{display:"flex",flexDirection:"column",gap:9}}>
-              {filteredPrayers.filter(p=>prayerFilter==="all"?true:prayerFilter==="answered"?p.status==="answered":p.status!=="answered").map(p=>(
-                <div key={p.id} style={{background:"rgba(26,22,18,0.5)",backdropFilter:"blur(6px)",WebkitBackdropFilter:"blur(6px)",border:"1px solid "+(p.status==="answered"?"rgba(201,169,110,0.25)":"rgba(201,169,110,0.08)"),borderLeft:p.status==="answered"?"3px solid rgba(201,169,110,0.5)":"3px solid transparent",borderRadius:12,padding:"15px 17px",opacity:p.status==="answered"?0.7:1}}>
-                  <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:7}}>
-                    <span style={{fontSize:"0.6rem",background:"rgba(200,164,106,0.1)",color:B.gold,border:"1px solid rgba(200,164,106,0.2)",padding:"2px 8px",borderRadius:99,fontFamily:SANS,fontWeight:600}}>{p.tag}</span>
-                    {p.status==="answered"&&<span style={{fontSize:"0.58rem",background:"rgba(201,169,110,0.15)",color:B.gold,padding:"2px 8px",borderRadius:99,fontFamily:SANS,fontWeight:600}}>✓ Answered</span>}
-                    <span style={{fontSize:"0.66rem",color:"rgba(255,248,232,0.25)",fontFamily:SANS,marginLeft:"auto"}}>{p.date}</span>
+
+            {/* ── MY PRAYERS TAB ── */}
+            {prayerWallTab==="mine"&&<>
+              <div style={{background:"rgba(26,22,18,0.6)",backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",border:"1px solid rgba(201,169,110,0.1)",borderRadius:12,padding:18,marginBottom:14}}>
+                <textarea value={newPrayer} onChange={e=>setNewPrayer(e.target.value)} placeholder="Share what's on your heart…" style={{width:"100%",background:"rgba(255,248,232,0.04)",border:"1px solid rgba(201,169,110,0.1)",borderRadius:8,color:B.goldL,fontSize:"0.88rem",fontFamily:SERIF,padding:13,minHeight:70,boxSizing:"border-box",marginBottom:9,lineHeight:1.7,transition:"border-color 0.2s",resize:"vertical"}} onFocus={e=>e.target.style.borderColor="rgba(201,169,110,0.3)"} onBlur={e=>e.target.style.borderColor="rgba(201,169,110,0.1)"}/>
+                <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                  <select value={prayerTag} onChange={e=>setPrayerTag(e.target.value)} style={{background:"rgba(255,248,232,0.04)",border:"1px solid rgba(201,169,110,0.1)",borderRadius:7,color:"rgba(255,248,232,0.5)",fontSize:"0.8rem",fontFamily:SANS,padding:"7px 11px",flex:1,minWidth:120}}>
+                    <option value="">Tag a topic…</option>
+                    {["Healing","Marriage","Singleness","Motherhood","Grief","Anxiety","Finances","Purpose","Forgiveness","Depression","Faith","Career"].map(t=><option key={t}>{t}</option>)}
+                  </select>
+                  <button onClick={postPrayer} disabled={!newPrayer.trim()} style={{background:newPrayer.trim()?"rgba(90,138,106,0.3)":"transparent",border:`1px solid ${newPrayer.trim()?"rgba(90,138,106,0.4)":"rgba(255,255,255,0.06)"}`,color:newPrayer.trim()?"#BED3C4":"rgba(255,255,255,0.2)",padding:"8px 20px",borderRadius:7,cursor:newPrayer.trim()?"pointer":"default",fontSize:"0.8rem",fontFamily:SANS,fontWeight:600,transition:"all 0.2s"}}>Post</button>
+                </div>
+              </div>
+              <div style={{display:"flex",gap:6,marginBottom:10}}>
+                {["active","answered","all"].map(f=>(
+                  <button key={f} onClick={()=>setPrayerFilter(f)} style={{background:prayerFilter===f?B.night:"transparent",border:`1px solid ${prayerFilter===f?"rgba(201,169,110,0.3)":"rgba(201,169,110,0.1)"}`,color:prayerFilter===f?B.goldL:"rgba(255,248,232,0.35)",padding:"4px 12px",borderRadius:99,fontSize:"0.68rem",fontFamily:SANS,fontWeight:600,cursor:"pointer",textTransform:"capitalize"}}>{f}</button>
+                ))}
+              </div>
+              <div style={{display:"flex",flexDirection:"column",gap:9}}>
+                {filteredPrayers.filter(p=>prayerFilter==="all"?true:prayerFilter==="answered"?p.status==="answered":p.status!=="answered").map(p=>(
+                  <div key={p.id} style={{background:"rgba(26,22,18,0.5)",backdropFilter:"blur(6px)",WebkitBackdropFilter:"blur(6px)",border:"1px solid "+(p.status==="answered"?"rgba(201,169,110,0.25)":"rgba(201,169,110,0.08)"),borderLeft:p.status==="answered"?"3px solid rgba(201,169,110,0.5)":"3px solid transparent",borderRadius:12,padding:"15px 17px",opacity:p.status==="answered"?0.7:1}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:7}}>
+                      <span style={{fontSize:"0.6rem",background:"rgba(200,164,106,0.1)",color:B.gold,border:"1px solid rgba(200,164,106,0.2)",padding:"2px 8px",borderRadius:99,fontFamily:SANS,fontWeight:600}}>{p.tag}</span>
+                      {p.status==="answered"&&<span style={{fontSize:"0.58rem",background:"rgba(201,169,110,0.15)",color:B.gold,padding:"2px 8px",borderRadius:99,fontFamily:SANS,fontWeight:600}}>Answered</span>}
+                      <span style={{fontSize:"0.66rem",color:"rgba(255,248,232,0.25)",fontFamily:SANS,marginLeft:"auto"}}>{p.date}</span>
+                    </div>
+                    <p style={{fontFamily:SERIF,fontSize:"0.92rem",color:"rgba(255,248,232,0.7)",margin:"0 0 10px",lineHeight:1.65}}>{p.text}</p>
+                    <div style={{display:"flex",gap:8}}>
+                      {prayedFor.includes(p.id)?(<span style={{background:"rgba(90,138,106,0.08)",border:"1px solid rgba(90,138,106,0.15)",color:"rgba(190,211,196,0.5)",padding:"5px 14px",borderRadius:7,fontSize:"0.74rem",fontFamily:SANS,fontWeight:600}}>Praying ({p.prayers})</span>):(<button onClick={()=>prayFor(p.id)} style={{background:"rgba(90,138,106,0.15)",border:"1px solid rgba(90,138,106,0.25)",color:"#BED3C4",padding:"5px 14px",borderRadius:7,cursor:"pointer",fontSize:"0.74rem",fontFamily:SANS,fontWeight:600,transition:"all 0.15s"}} onMouseEnter={e=>e.target.style.background="rgba(90,138,106,0.3)"} onMouseLeave={e=>e.target.style.background="rgba(90,138,106,0.15)"}>Pray ({p.prayers})</button>)}
+                      {p.status==="answered"?
+                        <button onClick={()=>reactivatePrayer(p.id)} style={{background:"transparent",border:"1px solid rgba(201,169,110,0.15)",color:"rgba(255,248,232,0.35)",padding:"5px 12px",borderRadius:7,cursor:"pointer",fontSize:"0.72rem",fontFamily:SANS,fontWeight:600}}>Reactivate</button>
+                      :
+                        <button onClick={()=>markPrayerAnswered(p.id)} style={{background:"rgba(201,169,110,0.1)",border:"1px solid rgba(201,169,110,0.2)",color:B.gold,padding:"5px 12px",borderRadius:7,cursor:"pointer",fontSize:"0.72rem",fontFamily:SANS,fontWeight:600,transition:"all 0.15s"}} onMouseEnter={e=>e.target.style.background="rgba(201,169,110,0.2)"} onMouseLeave={e=>e.target.style.background="rgba(201,169,110,0.1)"}>Answered</button>
+                      }
+                    </div>
                   </div>
-                  <p style={{fontFamily:SERIF,fontSize:"0.92rem",color:"rgba(255,248,232,0.7)",margin:"0 0 10px",lineHeight:1.65}}>{p.text}</p>
-                  <div style={{display:"flex",gap:8}}>
-                    {prayedFor.includes(p.id)?(<span style={{background:"rgba(90,138,106,0.08)",border:"1px solid rgba(90,138,106,0.15)",color:"rgba(190,211,196,0.5)",padding:"5px 14px",borderRadius:7,fontSize:"0.74rem",fontFamily:SANS,fontWeight:600}}>🙏 Praying ({p.prayers})</span>):(<button onClick={()=>prayFor(p.id)} style={{background:"rgba(90,138,106,0.15)",border:"1px solid rgba(90,138,106,0.25)",color:"#BED3C4",padding:"5px 14px",borderRadius:7,cursor:"pointer",fontSize:"0.74rem",fontFamily:SANS,fontWeight:600,transition:"all 0.15s"}} onMouseEnter={e=>e.target.style.background="rgba(90,138,106,0.3)"} onMouseLeave={e=>e.target.style.background="rgba(90,138,106,0.15)"}>🙏 Pray ({p.prayers})</button>)}
-                    {p.status==="answered"?
-                      <button onClick={()=>reactivatePrayer(p.id)} style={{background:"transparent",border:"1px solid rgba(201,169,110,0.15)",color:"rgba(255,248,232,0.35)",padding:"5px 12px",borderRadius:7,cursor:"pointer",fontSize:"0.72rem",fontFamily:SANS,fontWeight:600}}>Reactivate</button>
-                    :
-                      <button onClick={()=>markPrayerAnswered(p.id)} style={{background:"rgba(201,169,110,0.1)",border:"1px solid rgba(201,169,110,0.2)",color:B.gold,padding:"5px 12px",borderRadius:7,cursor:"pointer",fontSize:"0.72rem",fontFamily:SANS,fontWeight:600,transition:"all 0.15s"}} onMouseEnter={e=>e.target.style.background="rgba(201,169,110,0.2)"} onMouseLeave={e=>e.target.style.background="rgba(201,169,110,0.1)"}>✓ Answered</button>
-                    }
+                ))}
+              </div>
+            </>}
+
+            {/* ── COMMUNITY PRAYERS TAB ── */}
+            {prayerWallTab==="community"&&<>
+              {!user&&<div style={{background:"rgba(26,22,18,0.6)",border:"1px solid rgba(201,169,110,0.1)",borderRadius:12,padding:24,textAlign:"center"}}>
+                <p style={{fontFamily:SERIF,fontStyle:"italic",color:"rgba(255,248,232,0.5)",fontSize:"0.9rem",margin:0}}>Sign in to see community prayers</p>
+              </div>}
+              {user&&<>
+                {/* Post a community prayer */}
+                <div style={{background:"rgba(26,22,18,0.6)",backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",border:"1px solid rgba(201,169,110,0.1)",borderRadius:12,padding:18,marginBottom:14}}>
+                  <textarea value={newPrayer} onChange={e=>setNewPrayer(e.target.value)} placeholder="Share a prayer request with the community…" style={{width:"100%",background:"rgba(255,248,232,0.04)",border:"1px solid rgba(201,169,110,0.1)",borderRadius:8,color:B.goldL,fontSize:"0.88rem",fontFamily:SERIF,padding:13,minHeight:60,boxSizing:"border-box",marginBottom:9,lineHeight:1.7,transition:"border-color 0.2s",resize:"vertical"}} onFocus={e=>e.target.style.borderColor="rgba(201,169,110,0.3)"} onBlur={e=>e.target.style.borderColor="rgba(201,169,110,0.1)"}/>
+                  <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                    <select value={prayerTag} onChange={e=>setPrayerTag(e.target.value)} style={{background:"rgba(255,248,232,0.04)",border:"1px solid rgba(201,169,110,0.1)",borderRadius:7,color:"rgba(255,248,232,0.5)",fontSize:"0.8rem",fontFamily:SANS,padding:"7px 11px",flex:1,minWidth:120}}>
+                      <option value="">Tag a topic…</option>
+                      {["Healing","Marriage","Singleness","Motherhood","Grief","Anxiety","Finances","Purpose","Forgiveness","Depression","Faith","Career"].map(t=><option key={t}>{t}</option>)}
+                    </select>
+                    <button onClick={postCommunityPrayer} disabled={!newPrayer.trim()||communityLoading} style={{background:newPrayer.trim()?"rgba(90,138,106,0.3)":"transparent",border:`1px solid ${newPrayer.trim()?"rgba(90,138,106,0.4)":"rgba(255,255,255,0.06)"}`,color:newPrayer.trim()?"#BED3C4":"rgba(255,255,255,0.2)",padding:"8px 20px",borderRadius:7,cursor:newPrayer.trim()?"pointer":"default",fontSize:"0.8rem",fontFamily:SANS,fontWeight:600,transition:"all 0.2s"}}>{communityLoading?"Posting...":"Share prayer"}</button>
                   </div>
                 </div>
-              ))}
-            </div>
+                {/* Refresh button */}
+                <div style={{display:"flex",justifyContent:"flex-end",marginBottom:10}}>
+                  <button onClick={loadCommunityPrayers} disabled={communityLoading} style={{background:"rgba(201,169,110,0.08)",border:"1px solid rgba(201,169,110,0.15)",borderRadius:8,padding:"4px 12px",cursor:"pointer",color:B.gold,fontSize:"0.68rem",fontFamily:SANS,fontWeight:600}}>{communityLoading?"Loading...":"Refresh"}</button>
+                </div>
+                {communityPrayers.length===0&&!communityLoading&&<div style={{textAlign:"center",padding:"20px 0"}}>
+                  <p style={{fontFamily:SERIF,fontStyle:"italic",color:"rgba(255,248,232,0.35)",fontSize:"0.88rem",margin:0}}>No community prayers yet. Be the first to share.</p>
+                </div>}
+                <div style={{display:"flex",flexDirection:"column",gap:9}}>
+                  {communityPrayers.map(cp=>(
+                    <div key={cp.id} style={{background:"rgba(26,22,18,0.5)",backdropFilter:"blur(6px)",WebkitBackdropFilter:"blur(6px)",border:"1px solid rgba(201,169,110,0.08)",borderRadius:12,padding:"15px 17px"}}>
+                      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:7}}>
+                        {cp.category&&<span style={{fontSize:"0.6rem",background:"rgba(200,164,106,0.1)",color:B.gold,border:"1px solid rgba(200,164,106,0.2)",padding:"2px 8px",borderRadius:99,fontFamily:SANS,fontWeight:600}}>{cp.category}</span>}
+                        <span style={{fontSize:"0.66rem",color:"rgba(255,248,232,0.25)",fontFamily:SANS,marginLeft:"auto"}}>{cp.createdAt?.toDate?cp.createdAt.toDate().toLocaleDateString():""}</span>
+                      </div>
+                      <p style={{fontFamily:SERIF,fontSize:"0.92rem",color:"rgba(255,248,232,0.7)",margin:"0 0 10px",lineHeight:1.65}}>{cp.text}</p>
+                      <div style={{display:"flex",alignItems:"center",gap:8}}>
+                        <span style={{fontSize:"0.66rem",color:"rgba(255,248,232,0.25)",fontFamily:SANS}}>by {cp.authorName||"Anonymous"}</span>
+                        <div style={{flex:1}}/>
+                        {cp.userId===user.uid?
+                          <span style={{fontSize:"0.7rem",fontFamily:SANS,color:"rgba(255,248,232,0.3)"}}>Your prayer ({cp.prayedCount||0} praying)</span>
+                        :
+                          <button onClick={()=>prayForCommunityRequest(cp.id)} style={{background:"rgba(90,138,106,0.15)",border:"1px solid rgba(90,138,106,0.25)",color:"#BED3C4",padding:"5px 14px",borderRadius:7,cursor:"pointer",fontSize:"0.74rem",fontFamily:SANS,fontWeight:600,transition:"all 0.15s"}} onMouseEnter={e=>e.target.style.background="rgba(90,138,106,0.3)"} onMouseLeave={e=>e.target.style.background="rgba(90,138,106,0.15)"}>Prayed for you ({cp.prayedCount||0})</button>
+                        }
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>}
+            </>}
           </div>
 
-          {/* ── FIND OTHERS ── */}
-          <div style={{background:"rgba(26,22,18,0.5)",backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",border:"1px solid rgba(201,169,110,0.08)",borderRadius:12,padding:24,textAlign:"center"}}>
-            <div style={{fontSize:"1.5rem",marginBottom:10}}>🌿</div>
-            <h3 style={{fontFamily:SERIF,fontSize:"1.15rem",fontWeight:700,color:B.goldL,margin:"0 0 8px"}}>Find Your People</h3>
-            <p style={{fontFamily:SERIF,fontStyle:"italic",color:"rgba(255,248,232,0.35)",fontSize:"0.86rem",margin:"0 0 16px",lineHeight:1.6}}>Connect with others walking through similar seasons.</p>
-            <div style={{display:"flex",flexWrap:"wrap",gap:6,justifyContent:"center",marginBottom:16}}>
-              {["Divorced","Single","New Moms","Grieving","Waiting","Healing","Empty Nesters","Faith"].map(tag=><span key={tag} style={{fontSize:"0.7rem",background:"rgba(200,164,106,0.08)",color:B.gold,border:"1px solid rgba(200,164,106,0.15)",padding:"4px 12px",borderRadius:99,fontFamily:SANS}}>{tag}</span>)}
+          {/* ── FIND FARMERS / VISIT FARMS ── */}
+          <div style={{marginBottom:32}}>
+            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
+              <div style={{width:18,height:1,background:"rgba(201,169,110,0.25)"}}/>
+              <span style={{fontSize:"0.65rem",fontFamily:SANS,fontWeight:600,letterSpacing:"0.14em",color:B.gold,textTransform:"uppercase"}}>Visit Farms</span>
+              <div style={{flex:1,height:1,background:"rgba(201,169,110,0.12)"}}/>
             </div>
-            <p style={{fontSize:"0.72rem",color:"rgba(255,248,232,0.2)",fontFamily:SANS,lineHeight:1.6,margin:0}}>Full matching coming in the app launch. 💛</p>
+            {!user&&<div style={{background:"rgba(26,22,18,0.5)",border:"1px solid rgba(201,169,110,0.08)",borderRadius:12,padding:24,textAlign:"center"}}>
+              <p style={{fontFamily:SERIF,fontStyle:"italic",color:"rgba(255,248,232,0.35)",fontSize:"0.88rem",margin:0}}>Sign in to visit other farms</p>
+            </div>}
+            {user&&<>
+              <div style={{display:"flex",gap:8,marginBottom:14}}>
+                <input value={farmerSearch} onChange={e=>setFarmerSearch(e.target.value)} placeholder="Search farmers..." style={{flex:1,background:"rgba(255,248,232,0.04)",border:"1px solid rgba(201,169,110,0.12)",borderRadius:8,color:B.goldL,fontSize:"0.82rem",fontFamily:SANS,padding:"9px 12px",boxSizing:"border-box"}} onKeyDown={e=>{if(e.key==="Enter") searchFarmers(farmerSearch);}}/>
+                <button onClick={()=>searchFarmers(farmerSearch)} disabled={communityLoading} style={{background:"rgba(201,169,110,0.1)",border:"1px solid rgba(201,169,110,0.2)",borderRadius:8,padding:"8px 16px",cursor:"pointer",color:B.gold,fontSize:"0.78rem",fontFamily:SANS,fontWeight:600}}>{communityLoading?"...":"Search"}</button>
+              </div>
+              {farmerResults.length===0&&<div style={{background:"rgba(26,22,18,0.5)",border:"1px solid rgba(201,169,110,0.08)",borderRadius:12,padding:20,textAlign:"center"}}>
+                <p style={{fontFamily:SERIF,fontStyle:"italic",color:"rgba(255,248,232,0.3)",fontSize:"0.84rem",margin:"0 0 6px"}}>Search for other farmers or browse random farms</p>
+                <button onClick={()=>searchFarmers("")} style={{background:"rgba(201,169,110,0.08)",border:"1px solid rgba(201,169,110,0.15)",borderRadius:8,padding:"6px 16px",cursor:"pointer",color:B.gold,fontSize:"0.72rem",fontFamily:SANS,fontWeight:600,marginTop:6}}>Browse farms</button>
+              </div>}
+              <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                {farmerResults.map(farmer=>(
+                  <div key={farmer.id} style={{background:"rgba(26,22,18,0.5)",backdropFilter:"blur(6px)",WebkitBackdropFilter:"blur(6px)",border:"1px solid rgba(201,169,110,0.08)",borderRadius:12,padding:"14px 16px",display:"flex",alignItems:"center",gap:12}}>
+                    <div style={{width:36,height:36,borderRadius:"50%",background:"rgba(201,169,110,0.12)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1rem",flexShrink:0}}>{farmer.username?farmer.username[0].toUpperCase():"?"}</div>
+                    <div style={{flex:1}}>
+                      <div style={{fontFamily:SERIF,fontSize:"0.9rem",color:B.goldL,fontWeight:500}}>{farmer.username||"Anonymous"}</div>
+                      <div style={{fontFamily:SANS,fontSize:"0.68rem",color:"rgba(255,248,232,0.3)"}}>{farmer.publishedFarm?.length||0} plots</div>
+                    </div>
+                    <button onClick={()=>visitFarm(farmer.id)} style={{background:"rgba(90,138,106,0.15)",border:"1px solid rgba(90,138,106,0.25)",borderRadius:8,padding:"7px 16px",cursor:"pointer",color:"#BED3C4",fontSize:"0.74rem",fontFamily:SANS,fontWeight:600,transition:"all 0.15s"}} onMouseEnter={e=>e.target.style.background="rgba(90,138,106,0.3)"} onMouseLeave={e=>e.target.style.background="rgba(90,138,106,0.15)"}>Visit Farm</button>
+                  </div>
+                ))}
+              </div>
+            </>}
           </div>
         </div>
       </div>
@@ -5168,6 +5489,77 @@ function AppInner(){
 
         {/* ═══ SPACE TRANSIT OVERLAY ═══ */}
         {spaceTransit&&<div style={{position:"fixed",inset:0,zIndex:9999,background:"#0A0806",animation:"spaceFadeIn .6s ease both",pointerEvents:"all"}}/>}
+      </div>
+    );
+  }
+
+  /* ══ VISIT FARM — read-only view of another player's farm ═══════════ */
+  if(screen==="visit-farm"&&visitingFarm){
+    const vfPlots=visitingFarm.publishedFarm||[];
+    const vfGetStage=(plot)=>{
+      if(plot.stage==="empty"||!plot.plantedAt) return "empty";
+      const plant=FARM_PLANTS.find(p=>p.id===plot.plantType);
+      if(!plant) return plot.stage;
+      const elapsed=(Date.now()-plot.plantedAt)/60000;
+      let accumulated=0;
+      for(let i=0;i<plant.growthBase.length;i++){
+        accumulated+=plant.growthBase[i];
+        if(elapsed<accumulated) return GROWTH_STAGES[i];
+      }
+      return "harvestable";
+    };
+    const vfGetEmoji=(plot)=>{
+      if(plot.stage==="empty") return "";
+      const plant=FARM_PLANTS.find(p=>p.id===plot.plantType);
+      if(!plant) return "...";
+      const stage=vfGetStage(plot);
+      const idx=GROWTH_STAGES.indexOf(stage);
+      return plant.stageEmojis[Math.max(0,idx)]||plant.emoji;
+    };
+    return(
+      <div style={{position:"fixed",inset:0,overflow:"hidden",fontFamily:SANS}}>
+        <style>{GFONTS}{CSS}</style>
+        <ImmersiveGarden/>
+        <div style={{position:"relative",zIndex:10,height:"100%",overflowY:"auto",WebkitOverflowScrolling:"touch"}}>
+          <div style={{maxWidth:720,margin:"0 auto",padding:"28px 22px 80px"}}>
+            {/* Back button */}
+            <button onClick={()=>{setVisitingFarm(null);setScreen("hall");}} style={{background:"rgba(12,22,8,0.55)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",border:"1px solid rgba(90,138,106,0.15)",borderRadius:999,padding:"8px 20px",cursor:"pointer",color:"rgba(190,211,196,0.6)",fontFamily:SANS,fontSize:"0.78rem",marginBottom:28,transition:"all 0.2s",display:"inline-flex",alignItems:"center",gap:6,animation:"fadeUp .6s ease both"}}>
+              Back to hall
+            </button>
+            {/* Title */}
+            <div style={{textAlign:"center",marginBottom:28,animation:"fadeUp .6s .1s ease both",opacity:0}}>
+              <h1 style={{fontFamily:DISPLAY,fontSize:"1.6rem",fontWeight:700,color:"rgba(190,211,196,0.9)",margin:"0 0 8px",textShadow:"0 2px 12px rgba(0,0,0,0.5)"}}>Visiting {visitingFarm.username||"Anonymous"}'s Farm</h1>
+              <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.88rem",color:"rgba(190,211,196,0.4)",margin:0}}>A peaceful walk through their garden</p>
+            </div>
+            {/* Farm grid */}
+            {vfPlots.length===0?
+              <div style={{textAlign:"center",padding:"40px 0"}}>
+                <p style={{fontFamily:SERIF,fontStyle:"italic",color:"rgba(190,211,196,0.35)",fontSize:"0.92rem"}}>This farmer hasn't published their farm yet.</p>
+              </div>
+            :
+              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10}}>
+                {vfPlots.map((plot,i)=>{
+                  const stage=vfGetStage(plot);
+                  const emoji=vfGetEmoji(plot);
+                  const plant=FARM_PLANTS.find(p=>p.id===plot.plantType);
+                  const isEmpty=stage==="empty";
+                  return(
+                    <div key={plot.id||i} style={{background:isEmpty?"rgba(12,22,8,0.4)":"rgba(22,36,18,0.55)",backdropFilter:"blur(6px)",WebkitBackdropFilter:"blur(6px)",border:`1px solid ${isEmpty?"rgba(90,138,106,0.08)":"rgba(90,138,106,0.18)"}`,borderRadius:14,padding:"16px 10px",textAlign:"center",animation:`fadeUp .4s ${0.1+i*0.05}s ease both`,opacity:0}}>
+                      {isEmpty?
+                        <div style={{fontSize:"1.4rem",opacity:0.2,marginBottom:4}}>.</div>
+                      :<>
+                        <div style={{fontSize:"1.8rem",marginBottom:6}}>{emoji}</div>
+                        <div style={{fontFamily:SERIF,fontSize:"0.72rem",color:"rgba(190,211,196,0.6)",marginBottom:2}}>{plant?.name||plot.plantType}</div>
+                        <div style={{fontFamily:SANS,fontSize:"0.62rem",color:"rgba(190,211,196,0.3)",textTransform:"capitalize"}}>{stage}</div>
+                      </>}
+                    </div>
+                  );
+                })}
+              </div>
+            }
+          </div>
+        </div>
+        <MapHudButton/>
       </div>
     );
   }
@@ -6020,57 +6412,171 @@ function AppInner(){
           );
         })()}
 
-        {/* ── BARTER POST OVERLAY ── */}
+        {/* ── COMMUNITY MARKET OVERLAY (was Barter Post) ── */}
         {shopStall==="barter"&&(
           <div style={{position:"fixed",inset:0,zIndex:100,background:"#0A0810",animation:"overlayFadeIn .35s ease both",display:"flex",flexDirection:"column"}}>
             <header style={{position:"relative",zIndex:10,background:"rgba(10,8,16,0.75)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",padding:"0 16px",height:54,display:"flex",alignItems:"center",gap:10,borderBottom:"1px solid rgba(201,169,110,0.12)",flexShrink:0}}>
-              <button onClick={()=>setShopStall(null)} style={{background:"transparent",border:"none",cursor:"pointer",color:"rgba(255,240,200,0.55)",fontSize:"0.8rem",fontFamily:SANS,padding:"4px 0"}}>{"< Market"}</button>
+              <button onClick={()=>{setShopStall(null);setCommunityTab("browse");setListingForm(null);}} style={{background:"transparent",border:"none",cursor:"pointer",color:"rgba(255,240,200,0.55)",fontSize:"0.8rem",fontFamily:SANS,padding:"4px 0"}}>{"< Market"}</button>
               <div style={{height:14,width:1,background:"rgba(201,169,110,0.18)"}}/>
-              <span style={{fontFamily:SERIF,fontStyle:"italic",color:"rgba(255,240,200,0.75)",fontSize:"0.92rem"}}>Barter Post</span>
+              <span style={{fontFamily:SERIF,fontStyle:"italic",color:"rgba(255,240,200,0.75)",fontSize:"0.92rem"}}>Community Market</span>
+              <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:6}}>
+                <span style={{fontSize:"0.7rem",fontFamily:SANS,color:"rgba(255,240,200,0.35)"}}>coins</span>
+                <span style={{fontSize:"0.82rem",fontFamily:SANS,fontWeight:700,color:B.goldL}}>{bank.coins||0}</span>
+              </div>
             </header>
+            {/* Tab bar */}
+            <div style={{display:"flex",gap:0,borderBottom:"1px solid rgba(201,169,110,0.1)",flexShrink:0}}>
+              {[["browse","Browse"],["myListings","My Listings"],["npcTrades","NPC Trades"]].map(([k,label])=>(
+                <button key={k} onClick={()=>{setCommunityTab(k);if(k==="browse") loadCommunityListings();}} style={{flex:1,padding:"10px 0",background:communityTab===k?"rgba(201,169,110,0.08)":"transparent",border:"none",borderBottom:communityTab===k?"2px solid rgba(201,169,110,0.6)":"2px solid transparent",color:communityTab===k?"rgba(255,240,200,0.85)":"rgba(255,240,200,0.4)",fontSize:"0.72rem",fontFamily:SANS,fontWeight:600,cursor:"pointer",transition:"all 0.2s",letterSpacing:"0.02em"}}>{label}</button>
+              ))}
+            </div>
             <div style={{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch"}}>
               <div style={{maxWidth:600,margin:"0 auto",padding:"18px 22px 80px"}}>
-                <h2 style={{fontFamily:DISPLAY,fontSize:"1.4rem",fontWeight:700,color:"rgba(255,240,200,0.85)",margin:"0 0 6px"}}>Barter Post</h2>
-                <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.82rem",color:"rgba(255,240,200,0.4)",margin:"0 0 18px"}}>Trade goods with traveling merchants. No coins needed.</p>
 
-                {NPC_TRADES.map((trade,i)=>{
-                  const canTrade=Object.entries(trade.want).every(([k,v])=>(inventory[k]||0)>=v);
-                  return(
-                    <div key={trade.id} style={{background:"rgba(255,240,200,0.04)",border:"1px solid rgba(201,169,110,0.12)",borderRadius:14,padding:"16px",marginBottom:10,animation:`fadeUp .4s ${0.1+i*0.08}s ease both`,opacity:0}}>
-                      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
-                        <span style={{fontSize:"1.6rem"}}>{trade.emoji}</span>
-                        <span style={{fontFamily:SERIF,fontSize:"0.95rem",color:"rgba(255,240,200,0.75)",fontWeight:500}}>{trade.npc}</span>
-                      </div>
-                      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10,flexWrap:"wrap"}}>
-                        <div style={{flex:1}}>
-                          <p style={{fontFamily:SANS,fontSize:"0.68rem",color:"rgba(255,240,200,0.35)",margin:"0 0 4px",textTransform:"uppercase",letterSpacing:"0.5px"}}>They want</p>
-                          {Object.entries(trade.want).map(([k,v])=>{
-                            const cat=ITEM_CATALOG[k];
-                            const owned=inventory[k]||0;
-                            return <p key={k} style={{fontFamily:SANS,fontSize:"0.78rem",color:owned>=v?"rgba(180,220,160,0.8)":"rgba(255,160,160,0.7)",margin:"2px 0"}}>{cat?cat.emoji:""} {cat?cat.name:k} x{v} <span style={{fontSize:"0.68rem",color:"rgba(255,240,200,0.3)"}}>(own {owned})</span></p>;
-                          })}
+                {/* ── BROWSE TAB ── */}
+                {communityTab==="browse"&&(<>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+                    <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.82rem",color:"rgba(255,240,200,0.4)",margin:0}}>Items listed by other players</p>
+                    <button onClick={loadCommunityListings} disabled={communityLoading} style={{background:"rgba(201,169,110,0.1)",border:"1px solid rgba(201,169,110,0.2)",borderRadius:8,padding:"5px 12px",cursor:"pointer",color:B.gold,fontSize:"0.7rem",fontFamily:SANS,fontWeight:600}}>{communityLoading?"Loading...":"Refresh"}</button>
+                  </div>
+                  {!user&&<div style={{background:"rgba(255,240,200,0.04)",border:"1px solid rgba(201,169,110,0.12)",borderRadius:12,padding:24,textAlign:"center"}}>
+                    <p style={{fontFamily:SERIF,fontStyle:"italic",color:"rgba(255,240,200,0.5)",fontSize:"0.9rem",margin:0}}>Sign in to browse community listings</p>
+                  </div>}
+                  {user&&communityListings.length===0&&!communityLoading&&<div style={{background:"rgba(255,240,200,0.04)",border:"1px solid rgba(201,169,110,0.12)",borderRadius:12,padding:24,textAlign:"center"}}>
+                    <p style={{fontFamily:SERIF,fontStyle:"italic",color:"rgba(255,240,200,0.35)",fontSize:"0.88rem",margin:"0 0 6px"}}>No listings right now</p>
+                    <p style={{fontFamily:SANS,fontSize:"0.72rem",color:"rgba(255,240,200,0.2)",margin:0}}>Be the first to list something!</p>
+                  </div>}
+                  {communityListings.map((listing,i)=>{
+                    const cat=ITEM_CATALOG[listing.itemType];
+                    const canBuy=user&&listing.sellerId!==user.uid&&(bank.coins||0)>=listing.totalPrice;
+                    return(
+                      <div key={listing.id} style={{background:"rgba(255,240,200,0.04)",border:"1px solid rgba(201,169,110,0.12)",borderRadius:14,padding:"14px 16px",marginBottom:10,animation:`fadeUp .4s ${0.1+i*0.06}s ease both`,opacity:0}}>
+                        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
+                          <span style={{fontSize:"1.4rem"}}>{cat?.emoji||"..."}</span>
+                          <div style={{flex:1}}>
+                            <div style={{fontFamily:SERIF,fontSize:"0.9rem",color:"rgba(255,240,200,0.8)",fontWeight:500}}>{cat?.name||listing.itemType} x{listing.quantity}</div>
+                            <div style={{fontFamily:SANS,fontSize:"0.68rem",color:"rgba(255,240,200,0.3)"}}>by {listing.sellerName}</div>
+                          </div>
+                          <div style={{textAlign:"right"}}>
+                            <div style={{fontFamily:SANS,fontSize:"0.88rem",fontWeight:700,color:B.goldL}}>{listing.totalPrice} coins</div>
+                            <div style={{fontFamily:SANS,fontSize:"0.62rem",color:"rgba(255,240,200,0.3)"}}>{listing.pricePerUnit}/ea</div>
+                          </div>
                         </div>
-                        <div style={{fontSize:"1.2rem",color:"rgba(255,240,200,0.25)"}}>→</div>
-                        <div style={{flex:1}}>
-                          <p style={{fontFamily:SANS,fontSize:"0.68rem",color:"rgba(255,240,200,0.35)",margin:"0 0 4px",textTransform:"uppercase",letterSpacing:"0.5px"}}>You get</p>
-                          {Object.entries(trade.offer).map(([k,v])=>{
-                            const cat=ITEM_CATALOG[k];
-                            return <p key={k} style={{fontFamily:SANS,fontSize:"0.78rem",color:"rgba(255,240,200,0.65)",margin:"2px 0"}}>{cat?cat.emoji:""} {cat?cat.name:k} x{v}</p>;
-                          })}
-                        </div>
+                        {user&&listing.sellerId===user.uid?
+                          <div style={{fontSize:"0.72rem",fontFamily:SANS,color:"rgba(255,240,200,0.3)",textAlign:"center",padding:"6px 0"}}>Your listing</div>
+                        :
+                          <button onClick={async()=>{if(!canBuy)return;await purchaseListing(listing);}} disabled={!canBuy} style={{width:"100%",padding:"8px 0",background:canBuy?"rgba(90,138,106,0.15)":"rgba(255,240,200,0.03)",border:`1px solid ${canBuy?"rgba(90,138,106,0.3)":"rgba(201,169,110,0.08)"}`,borderRadius:10,cursor:canBuy?"pointer":"default",color:canBuy?"#BED3C4":"rgba(255,240,200,0.25)",fontFamily:SANS,fontSize:"0.78rem",fontWeight:600,transition:"all 0.15s",opacity:canBuy?1:0.5}}>
+                            {!user?"Sign in to buy":canBuy?`Buy for ${listing.totalPrice} coins`:`Not enough coins (${bank.coins||0})`}
+                          </button>
+                        }
                       </div>
-                      <button onClick={()=>{
-                        if(!canTrade)return;
-                        Object.entries(trade.want).forEach(([k,v])=>removeFromInventory(k,v));
-                        Object.entries(trade.offer).forEach(([k,v])=>addToInventory(k,v));
-                        const firstOffer=Object.keys(trade.offer)[0];
-                        setToast({msg:`Traded with ${trade.npc}!`,emoji:ITEM_CATALOG[firstOffer]?ITEM_CATALOG[firstOffer].emoji:"..."});
-                      }} disabled={!canTrade} style={{width:"100%",padding:"8px 0",background:canTrade?"rgba(201,169,110,0.12)":"rgba(255,240,200,0.03)",border:"1px solid "+(canTrade?"rgba(201,169,110,0.2)":"rgba(201,169,110,0.08)"),borderRadius:10,cursor:canTrade?"pointer":"default",color:canTrade?"rgba(255,240,200,0.7)":"rgba(255,240,200,0.25)",fontFamily:SANS,fontSize:"0.78rem",fontWeight:500,transition:"all 0.15s",opacity:canTrade?1:0.5}}>
-                        {canTrade?"Trade":"Need more items"}
-                      </button>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </>)}
+
+                {/* ── MY LISTINGS TAB ── */}
+                {communityTab==="myListings"&&(<>
+                  {!user&&<div style={{background:"rgba(255,240,200,0.04)",border:"1px solid rgba(201,169,110,0.12)",borderRadius:12,padding:24,textAlign:"center"}}>
+                    <p style={{fontFamily:SERIF,fontStyle:"italic",color:"rgba(255,240,200,0.5)",fontSize:"0.9rem",margin:0}}>Sign in to list items</p>
+                  </div>}
+                  {user&&<>
+                    {/* Create listing form */}
+                    {!listingForm?
+                      <button onClick={()=>setListingForm({itemType:"",quantity:1,pricePerUnit:1})} style={{width:"100%",padding:"12px 0",background:"rgba(201,169,110,0.08)",border:"1px dashed rgba(201,169,110,0.25)",borderRadius:12,cursor:"pointer",color:B.gold,fontFamily:SANS,fontSize:"0.82rem",fontWeight:600,marginBottom:16,transition:"all 0.15s"}} onMouseEnter={e=>e.currentTarget.style.background="rgba(201,169,110,0.14)"} onMouseLeave={e=>e.currentTarget.style.background="rgba(201,169,110,0.08)"}>+ List an item for sale</button>
+                    :
+                      <div style={{background:"rgba(255,240,200,0.04)",border:"1px solid rgba(201,169,110,0.15)",borderRadius:14,padding:16,marginBottom:16,animation:"fadeUp .3s ease both"}}>
+                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+                          <span style={{fontFamily:SERIF,fontStyle:"italic",color:"rgba(255,240,200,0.7)",fontSize:"0.88rem"}}>New Listing</span>
+                          <button onClick={()=>setListingForm(null)} style={{background:"transparent",border:"none",cursor:"pointer",color:"rgba(255,240,200,0.35)",fontSize:"0.9rem"}}>x</button>
+                        </div>
+                        <select value={listingForm.itemType} onChange={e=>setListingForm(f=>({...f,itemType:e.target.value}))} style={{width:"100%",background:"rgba(255,248,232,0.04)",border:"1px solid rgba(201,169,110,0.15)",borderRadius:8,color:"rgba(255,240,200,0.7)",fontSize:"0.82rem",fontFamily:SANS,padding:"9px 11px",marginBottom:8}}>
+                          <option value="">Choose an item...</option>
+                          {Object.entries(inventory).filter(([,v])=>v>0).map(([k,v])=>{
+                            const cat=ITEM_CATALOG[k];
+                            return <option key={k} value={k}>{cat?.emoji||""} {cat?.name||k} (own {v})</option>;
+                          })}
+                        </select>
+                        <div style={{display:"flex",gap:8,marginBottom:8}}>
+                          <div style={{flex:1}}>
+                            <label style={{fontSize:"0.66rem",fontFamily:SANS,color:"rgba(255,240,200,0.35)",marginBottom:3,display:"block"}}>Quantity</label>
+                            <input type="number" min="1" max={listingForm.itemType?(inventory[listingForm.itemType]||0):999} value={listingForm.quantity} onChange={e=>setListingForm(f=>({...f,quantity:Math.max(1,parseInt(e.target.value)||1)}))} style={{width:"100%",background:"rgba(255,248,232,0.04)",border:"1px solid rgba(201,169,110,0.15)",borderRadius:8,color:"rgba(255,240,200,0.7)",fontSize:"0.82rem",fontFamily:SANS,padding:"8px 10px",boxSizing:"border-box"}}/>
+                          </div>
+                          <div style={{flex:1}}>
+                            <label style={{fontSize:"0.66rem",fontFamily:SANS,color:"rgba(255,240,200,0.35)",marginBottom:3,display:"block"}}>Price/unit</label>
+                            <input type="number" min="1" max="9999" value={listingForm.pricePerUnit} onChange={e=>setListingForm(f=>({...f,pricePerUnit:Math.max(1,parseInt(e.target.value)||1)}))} style={{width:"100%",background:"rgba(255,248,232,0.04)",border:"1px solid rgba(201,169,110,0.15)",borderRadius:8,color:"rgba(255,240,200,0.7)",fontSize:"0.82rem",fontFamily:SANS,padding:"8px 10px",boxSizing:"border-box"}}/>
+                          </div>
+                        </div>
+                        {listingForm.itemType&&<p style={{fontSize:"0.72rem",fontFamily:SANS,color:"rgba(255,240,200,0.35)",margin:"0 0 10px"}}>Total: {listingForm.quantity*listingForm.pricePerUnit} coins for {listingForm.quantity}x {ITEM_CATALOG[listingForm.itemType]?.name||listingForm.itemType}</p>}
+                        <button onClick={async()=>{
+                          if(!listingForm.itemType) return;
+                          await createListing(listingForm.itemType,listingForm.quantity,listingForm.pricePerUnit);
+                          setListingForm(null);
+                        }} disabled={!listingForm.itemType||communityLoading} style={{width:"100%",padding:"9px 0",background:listingForm.itemType?"rgba(90,138,106,0.15)":"rgba(255,240,200,0.03)",border:`1px solid ${listingForm.itemType?"rgba(90,138,106,0.3)":"rgba(201,169,110,0.08)"}`,borderRadius:10,cursor:listingForm.itemType?"pointer":"default",color:listingForm.itemType?"#BED3C4":"rgba(255,240,200,0.25)",fontFamily:SANS,fontSize:"0.78rem",fontWeight:600,transition:"all 0.15s"}}>{communityLoading?"Listing...":"List for sale"}</button>
+                      </div>
+                    }
+                    {/* Active listings by this user */}
+                    <p style={{fontFamily:SANS,fontSize:"0.68rem",color:"rgba(255,240,200,0.3)",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:8}}>Your active listings</p>
+                    {communityListings.filter(l=>l.sellerId===user.uid).length===0&&<p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.82rem",color:"rgba(255,240,200,0.25)",margin:"0 0 16px"}}>You don't have any active listings.</p>}
+                    {communityListings.filter(l=>l.sellerId===user.uid).map(listing=>{
+                      const cat=ITEM_CATALOG[listing.itemType];
+                      return(
+                        <div key={listing.id} style={{background:"rgba(255,240,200,0.04)",border:"1px solid rgba(201,169,110,0.12)",borderRadius:14,padding:"14px 16px",marginBottom:10,display:"flex",alignItems:"center",gap:12}}>
+                          <span style={{fontSize:"1.3rem"}}>{cat?.emoji||"..."}</span>
+                          <div style={{flex:1}}>
+                            <div style={{fontFamily:SERIF,fontSize:"0.88rem",color:"rgba(255,240,200,0.7)"}}>{cat?.name||listing.itemType} x{listing.quantity}</div>
+                            <div style={{fontFamily:SANS,fontSize:"0.68rem",color:"rgba(255,240,200,0.3)"}}>{listing.totalPrice} coins ({listing.pricePerUnit}/ea)</div>
+                          </div>
+                          <button onClick={()=>cancelListing(listing.id)} disabled={communityLoading} style={{background:"rgba(255,120,100,0.1)",border:"1px solid rgba(255,120,100,0.2)",borderRadius:8,padding:"6px 14px",cursor:"pointer",color:"rgba(255,160,140,0.7)",fontSize:"0.72rem",fontFamily:SANS,fontWeight:600}}>Cancel</button>
+                        </div>
+                      );
+                    })}
+                  </>}
+                </>)}
+
+                {/* ── NPC TRADES TAB ── */}
+                {communityTab==="npcTrades"&&(<>
+                  <h2 style={{fontFamily:DISPLAY,fontSize:"1.2rem",fontWeight:700,color:"rgba(255,240,200,0.85)",margin:"0 0 6px"}}>Traveling Merchants</h2>
+                  <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.82rem",color:"rgba(255,240,200,0.4)",margin:"0 0 18px"}}>Trade goods with NPCs. No coins needed.</p>
+                  {NPC_TRADES.map((trade,i)=>{
+                    const canTrade=Object.entries(trade.want).every(([k,v])=>(inventory[k]||0)>=v);
+                    return(
+                      <div key={trade.id} style={{background:"rgba(255,240,200,0.04)",border:"1px solid rgba(201,169,110,0.12)",borderRadius:14,padding:"16px",marginBottom:10,animation:`fadeUp .4s ${0.1+i*0.08}s ease both`,opacity:0}}>
+                        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
+                          <span style={{fontSize:"1.6rem"}}>{trade.emoji}</span>
+                          <span style={{fontFamily:SERIF,fontSize:"0.95rem",color:"rgba(255,240,200,0.75)",fontWeight:500}}>{trade.npc}</span>
+                        </div>
+                        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10,flexWrap:"wrap"}}>
+                          <div style={{flex:1}}>
+                            <p style={{fontFamily:SANS,fontSize:"0.68rem",color:"rgba(255,240,200,0.35)",margin:"0 0 4px",textTransform:"uppercase",letterSpacing:"0.5px"}}>They want</p>
+                            {Object.entries(trade.want).map(([k,v])=>{
+                              const cat=ITEM_CATALOG[k];
+                              const owned=inventory[k]||0;
+                              return <p key={k} style={{fontFamily:SANS,fontSize:"0.78rem",color:owned>=v?"rgba(180,220,160,0.8)":"rgba(255,160,160,0.7)",margin:"2px 0"}}>{cat?cat.emoji:""} {cat?cat.name:k} x{v} <span style={{fontSize:"0.68rem",color:"rgba(255,240,200,0.3)"}}>(own {owned})</span></p>;
+                            })}
+                          </div>
+                          <div style={{fontSize:"1.2rem",color:"rgba(255,240,200,0.25)"}}>→</div>
+                          <div style={{flex:1}}>
+                            <p style={{fontFamily:SANS,fontSize:"0.68rem",color:"rgba(255,240,200,0.35)",margin:"0 0 4px",textTransform:"uppercase",letterSpacing:"0.5px"}}>You get</p>
+                            {Object.entries(trade.offer).map(([k,v])=>{
+                              const cat=ITEM_CATALOG[k];
+                              return <p key={k} style={{fontFamily:SANS,fontSize:"0.78rem",color:"rgba(255,240,200,0.65)",margin:"2px 0"}}>{cat?cat.emoji:""} {cat?cat.name:k} x{v}</p>;
+                            })}
+                          </div>
+                        </div>
+                        <button onClick={()=>{
+                          if(!canTrade)return;
+                          Object.entries(trade.want).forEach(([k,v])=>removeFromInventory(k,v));
+                          Object.entries(trade.offer).forEach(([k,v])=>addToInventory(k,v));
+                          const firstOffer=Object.keys(trade.offer)[0];
+                          setToast({msg:`Traded with ${trade.npc}!`,emoji:ITEM_CATALOG[firstOffer]?ITEM_CATALOG[firstOffer].emoji:"..."});
+                        }} disabled={!canTrade} style={{width:"100%",padding:"8px 0",background:canTrade?"rgba(201,169,110,0.12)":"rgba(255,240,200,0.03)",border:"1px solid "+(canTrade?"rgba(201,169,110,0.2)":"rgba(201,169,110,0.08)"),borderRadius:10,cursor:canTrade?"pointer":"default",color:canTrade?"rgba(255,240,200,0.7)":"rgba(255,240,200,0.25)",fontFamily:SANS,fontSize:"0.78rem",fontWeight:500,transition:"all 0.15s",opacity:canTrade?1:0.5}}>
+                          {canTrade?"Trade":"Need more items"}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </>)}
+
               </div>
             </div>
           </div>

@@ -13,7 +13,21 @@ import {
   doc,
   getDoc,
   setDoc,
+  collection,
+  getDocs,
+  query,
+  where,
+  orderBy,
+  limit,
+  addDoc,
+  deleteDoc,
+  serverTimestamp,
+  Timestamp,
 } from "firebase/firestore";
+import {
+  getFunctions,
+  httpsCallable,
+} from "firebase/functions";
 
 const firebaseConfig = {
   apiKey:            import.meta.env.VITE_FIREBASE_API_KEY,
@@ -28,17 +42,20 @@ const firebaseConfig = {
 let auth = null;
 let db = null;
 let googleProvider = null;
+let functions = null;
 
 if (firebaseConfig.apiKey) {
   const app = initializeApp(firebaseConfig);
   auth = getAuth(app);
   db = getFirestore(app);
   googleProvider = new GoogleAuthProvider();
+  try { functions = getFunctions(app); } catch(e) { console.warn("Firebase Functions not available:", e.message); }
 }
 
 export {
   auth,
   db,
+  functions,
   googleProvider,
   signInWithPopup,
   signInWithRedirect,
@@ -48,4 +65,15 @@ export {
   doc,
   getDoc,
   setDoc,
+  collection,
+  getDocs,
+  query,
+  where,
+  orderBy,
+  limit,
+  addDoc,
+  deleteDoc,
+  serverTimestamp,
+  Timestamp,
+  httpsCallable,
 };
