@@ -248,10 +248,10 @@ const BOOK_CONTENT = {
 function getBookPageCount(bookType, section){
   if(bookType==="journal"){
     if(!section) return 2; // cover + TOC
-    if(section==="blank") return 3; // cover + TOC + write
+    if(section==="blank") return 4; // cover + TOC + write + history
     if(section==="rooms") return REFLECTION_ROOMS.length+6; // cover + TOC + 7 rooms + jesus + locked + daily + entries
-    if(section==="dreams") return 2+(BOOK_CONTENT.dreams?.pages.length||4);
-    if(section==="prayers") return 4; // cover + TOC + write + list
+    if(section==="dreams") return 3+(BOOK_CONTENT.dreams?.pages.length||4); // cover + TOC + prompts + history
+    if(section==="prayers") return 4; // cover + TOC + write + history
   }
   const bc=BOOK_CONTENT[bookType];
   return bc? bc.pages.length+1 : 12;
@@ -261,6 +261,8 @@ function getBookPageCount(bookType, section){
    HELPERS
 ═══════════════════════════════════════════════════ */
 function todayStr(){ return new Date().toISOString().slice(0,10); }
+function nowTime(){ return new Date().toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}); }
+function entryTime(e){ if(e.time) return e.time; const ts=parseInt(e.id); if(!ts||isNaN(ts)) return ""; return new Date(ts).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}); }
 function isoDate(d){ return d.toISOString().slice(0,10); }
 function wc(t){ return t.trim().split(/\s+/).filter(Boolean).length; }
 function shuffle(a){ return [...a].sort(()=>Math.random()-.5); }
@@ -2364,6 +2366,7 @@ export default function App(){
   const [bookText,      setBookText]      = useState("");
   const [bookSaveMsg,   setBookSaveMsg]   = useState("");
   const [journalSection,setJournalSection]= useState(null); // null|"blank"|"rooms"|"dreams"|"prayers"
+  const [historyMode,   setHistoryMode]   = useState("list"); // "list" | "calendar"
   const [prayerPosts,   setPrayerPosts]   = useState([]);
   const [newPrayer,     setNewPrayer]     = useState("");
   const [prayerTag,     setPrayerTag]     = useState("");
@@ -2885,7 +2888,7 @@ export default function App(){
   function saveEntry(){
     if(!jTexts[0].trim()||!activeRoom) return;
     const dayData=activeRoom.days?.[activeDay];
-    const e={id:Date.now().toString(),date:todayStr(),roomId:activeRoom.id,roomLabel:activeRoom.label||"",roomEmoji:activeRoom.emoji||"",day:activeDay,prompt:dayData?.q||"",text:jTexts.filter(Boolean).join("\n\n---\n\n"),words:jTexts.filter(Boolean).reduce((s,t)=>s+wc(t),0)};
+    const e={id:Date.now().toString(),date:todayStr(),time:nowTime(),roomId:activeRoom.id,roomLabel:activeRoom.label||"",roomEmoji:activeRoom.emoji||"",day:activeDay,prompt:dayData?.q||"",text:jTexts.filter(Boolean).join("\n\n---\n\n"),words:jTexts.filter(Boolean).reduce((s,t)=>s+wc(t),0)};
     persistEntries([e,...entries]);
     addCandles(3,"Reflection saved +3 🕯️");
     setSaveMsg("✓ Saved to your history"); setTimeout(()=>{setSaveMsg("");setScreen(prevScreen);},2200);
@@ -2895,7 +2898,7 @@ export default function App(){
     const pg=BOOK_CONTENT[deskBook].pages[bookPage-1];
     if(!pg) return;
     const book=SHELF_BOOKS.find(b=>b.id===deskBook);
-    const e={id:Date.now().toString(),date:todayStr(),roomId:deskBook,roomLabel:book?.label||deskBook,roomEmoji:book?.emoji||"📖",day:bookPage-1,prompt:pg.prompt||"",text:bookText.trim(),words:wc(bookText)};
+    const e={id:Date.now().toString(),date:todayStr(),time:nowTime(),roomId:deskBook,roomLabel:book?.label||deskBook,roomEmoji:book?.emoji||"📖",day:bookPage-1,prompt:pg.prompt||"",text:bookText.trim(),words:wc(bookText)};
     persistEntries([e,...entries]);
     addCandles(3,"Reflection saved +3 🕯️");
     setBookSaveMsg("✓ Saved to history 📖"); setTimeout(()=>setBookSaveMsg(""),2500);
@@ -2905,7 +2908,7 @@ export default function App(){
   function savePrayerJournalEntry(){
     if(!bookText.trim()) return;
     // Save as prayer post
-    const p={id:Date.now().toString(),date:todayStr(),text:bookText.trim(),tag:"Journal Prayer",prayers:0,status:"active",answeredDate:null,category:"Journal Prayer"};
+    const p={id:Date.now().toString(),date:todayStr(),time:nowTime(),text:bookText.trim(),tag:"Journal Prayer",prayers:0,status:"active",answeredDate:null,category:"Journal Prayer"};
     const nextPrayers=[p,...prayerPosts]; setPrayerPosts(nextPrayers); dbSave("irj-prayer",nextPrayers);
     // Water the most recently planted growing garden plot
     setGardenPlots(prev=>{
@@ -2925,7 +2928,7 @@ export default function App(){
   // ── PRAYER ──
   function postPrayer(){
     if(!newPrayer.trim()) return;
-    const p={id:Date.now().toString(),date:todayStr(),text:newPrayer.trim(),tag:prayerTag||"General",prayers:0,status:"active",answeredDate:null,category:prayerTag||"General"};
+    const p={id:Date.now().toString(),date:todayStr(),time:nowTime(),text:newPrayer.trim(),tag:prayerTag||"General",prayers:0,status:"active",answeredDate:null,category:prayerTag||"General"};
     const next=[p,...prayerPosts]; setPrayerPosts(next); dbSave("irj-prayer",next);
     setNewPrayer(""); setPrayerTag("");
   }
@@ -3349,6 +3352,115 @@ export default function App(){
     else{calMonth===11?(setCalMonth(0),setCalYear(y=>y+1)):setCalMonth(m=>m+1);}
   }
   function goToHistory(){setCalMonth(new Date().getMonth());setCalYear(new Date().getFullYear());setCalSelectedDay(null);setExpandedEntry(null);setScreen("history");}
+
+  /* ── SECTION HISTORY RENDERER (shared by all journal sections) ── */
+  function renderSectionHistory(sectionEntries, label, onNewEntry, isPrayer){
+    const MN=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    const DN=["S","M","T","W","T","F","S"];
+    const sorted=[...sectionEntries].sort((a,b)=>parseInt(b.id)-parseInt(a.id));
+    const firstDow=new Date(calYear,calMonth,1).getDay();
+    const dim=new Date(calYear,calMonth+1,0).getDate();
+    const isCurMonth=calMonth===new Date().getMonth()&&calYear===new Date().getFullYear();
+    const todayD=new Date().getDate();
+    const byDate={};
+    sectionEntries.forEach(e=>{const d=e.date;if(!byDate[d])byDate[d]=[];byDate[d].push(e);});
+    const selStr=calSelectedDay?`${calYear}-${String(calMonth+1).padStart(2,"0")}-${String(calSelectedDay).padStart(2,"0")}`:null;
+    const selEntries=selStr?(byDate[selStr]||[]):[];
+    const monthKey=`${calYear}-${String(calMonth+1).padStart(2,"0")}`;
+    const monthCount=sorted.filter(e=>e.date.startsWith(monthKey)).length;
+
+    return<>
+      {/* New entry button */}
+      <button onClick={onNewEntry} style={{width:"100%",background:"linear-gradient(135deg,rgba(93,74,46,0.1),rgba(93,74,46,0.04))",border:"1px solid rgba(93,74,46,0.22)",color:"#5C4A2E",padding:"11px 16px",borderRadius:8,fontFamily:SERIF,fontStyle:"italic",fontSize:"0.82rem",cursor:"pointer",transition:"all .2s",marginBottom:14,letterSpacing:"0.02em",textAlign:"center"}}>
+        Write a new {label}
+      </button>
+
+      {/* List / Calendar toggle */}
+      <div style={{display:"flex",gap:4,justifyContent:"center",marginBottom:14}}>
+        {["list","calendar"].map(m=><button key={m} onClick={()=>{setHistoryMode(m);if(m==="calendar"){setCalMonth(new Date().getMonth());setCalYear(new Date().getFullYear());setCalSelectedDay(null);}}} style={{background:historyMode===m?"rgba(93,74,46,0.15)":"rgba(139,109,69,0.06)",border:"1px solid rgba(139,109,69,0.12)",borderRadius:16,padding:"5px 14px",cursor:"pointer",fontFamily:SANS,fontSize:"0.66rem",fontWeight:600,color:historyMode===m?"#3D2B18":"rgba(107,85,58,0.5)",letterSpacing:"0.06em",textTransform:"capitalize",transition:"all .2s"}}>{m}</button>)}
+      </div>
+
+      {/* LIST MODE */}
+      {historyMode==="list"&&<>
+        {sorted.length===0?<div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",textAlign:"center",padding:"0 12px"}}>
+          <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.86rem",color:"rgba(107,85,58,0.4)",lineHeight:1.7}}>No {label==="entry"?"entries":label+"s"} yet. Start writing!</p>
+        </div>:(
+          <div style={{flex:1,overflowY:"auto",display:"flex",flexDirection:"column",gap:9}}>
+            {sorted.map(e=>{
+              const isExp=expandedEntry===e.id;
+              return(<div key={e.id} onClick={()=>setExpandedEntry(isExp?null:e.id)} style={{background:"rgba(139,109,69,0.05)",border:"1px solid rgba(139,109,69,0.1)",borderRadius:8,padding:"10px 12px",cursor:"pointer",transition:"all .2s"}}>
+                <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4}}>
+                  <span style={{fontSize:"0.66rem",fontWeight:600,color:"rgba(107,85,58,0.5)",fontFamily:SANS}}>{e.date} {entryTime(e)}</span>
+                  <span style={{marginLeft:"auto",fontSize:"0.58rem",color:"rgba(107,85,58,0.3)",fontFamily:SANS}}>{e.words||wc(e.text||"")} words</span>
+                </div>
+                {e.prompt&&e.prompt!=="Free write"&&<p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.72rem",color:"rgba(107,85,58,0.38)",margin:"0 0 4px",lineHeight:1.5}}>{e.prompt}</p>}
+                {isPrayer&&(()=>{const plot=gardenPlots.find(g=>g.prayerId===e.id&&g.stage!=="empty");const stage=plot?getComputedStage(plot):null;return plot?<span style={{fontSize:"0.6rem",fontFamily:SANS,color:"rgba(107,85,58,0.45)",marginBottom:3,display:"block"}}>{getPlantEmoji(plot)} {stage}</span>:null;})()}
+                <p style={{fontFamily:SERIF,fontSize:"0.78rem",color:"#4A3826",lineHeight:1.6,margin:0,whiteSpace:isExp?"pre-wrap":"normal"}}>{isExp?(e.text||""):((e.text||"").length>120?(e.text||"").slice(0,120)+"...":(e.text||""))}</p>
+                {!isExp&&(e.text||"").length>120&&<span style={{fontSize:"0.6rem",color:"rgba(139,109,69,0.5)",fontFamily:SANS}}>Tap to read more</span>}
+                {isExp&&<span style={{fontSize:"0.6rem",color:"rgba(139,109,69,0.5)",fontFamily:SANS,marginTop:4,display:"block"}}>Tap to collapse</span>}
+              </div>);
+            })}
+          </div>
+        )}
+      </>}
+
+      {/* CALENDAR MODE */}
+      {historyMode==="calendar"&&<>
+        {/* Month nav */}
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10,padding:"0 2px"}}>
+          <button onClick={()=>calNavigate("prev")} style={{background:"rgba(139,109,69,0.06)",border:"1px solid rgba(139,109,69,0.12)",borderRadius:"50%",width:28,height:28,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"0.8rem",color:"#5C4A2E"}}>&#8249;</button>
+          <div style={{textAlign:"center"}}>
+            <div style={{fontFamily:DISPLAY,fontSize:"0.88rem",fontWeight:700,color:"#3D2B18"}}>{["January","February","March","April","May","June","July","August","September","October","November","December"][calMonth]}</div>
+            <div style={{fontFamily:SANS,fontSize:"0.56rem",color:"rgba(107,85,58,0.4)",letterSpacing:"0.08em"}}>{calYear}</div>
+          </div>
+          <button onClick={()=>calNavigate("next")} style={{background:"rgba(139,109,69,0.06)",border:"1px solid rgba(139,109,69,0.12)",borderRadius:"50%",width:28,height:28,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"0.8rem",color:"#5C4A2E"}}>&#8250;</button>
+        </div>
+
+        {/* Calendar grid */}
+        <div style={{background:"rgba(139,109,69,0.04)",border:"1px solid rgba(139,109,69,0.1)",borderRadius:10,padding:"8px 6px",marginBottom:10}}>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:1,marginBottom:4}}>
+            {DN.map((d,i)=><div key={i} style={{textAlign:"center",fontSize:"0.52rem",fontFamily:SANS,fontWeight:600,color:"rgba(107,85,58,0.35)",padding:"2px 0"}}>{d}</div>)}
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:1}}>
+            {Array.from({length:firstDow}).map((_,i)=><div key={`e${i}`} style={{aspectRatio:"1",padding:2}}/>)}
+            {Array.from({length:dim}).map((_,i)=>{
+              const day=i+1;
+              const ds=`${calYear}-${String(calMonth+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+              const de=byDate[ds]||[];
+              const has=de.length>0;
+              const isSel=calSelectedDay===day;
+              const isT=isCurMonth&&day===todayD;
+              return(
+                <button key={day} onClick={()=>{setCalSelectedDay(isSel?null:day);setExpandedEntry(null);}}
+                  style={{aspectRatio:"1",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:isSel?"#3D2B18":isT?"rgba(139,109,69,0.08)":"transparent",border:isT&&!isSel?"1px solid rgba(139,109,69,0.3)":"1px solid transparent",borderRadius:8,cursor:"pointer",position:"relative",transition:"all .15s",padding:0}}>
+                  <span style={{fontSize:"0.7rem",fontFamily:SERIF,fontWeight:isSel||isT?700:400,color:isSel?"#F5E6C8":isT?"#8B6D45":has?"#3D2B18":"rgba(107,85,58,0.3)"}}>{day}</span>
+                  {has&&<div style={{display:"flex",gap:1,position:"absolute",bottom:2}}>
+                    {de.slice(0,3).map((_,j)=><div key={j} style={{width:3,height:3,borderRadius:"50%",background:isSel?"#F5E6C8":"#8B6D45",opacity:0.7}}/>)}
+                  </div>}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Selected day entries or month summary */}
+        {!calSelectedDay&&<p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.74rem",color:"rgba(107,85,58,0.4)",textAlign:"center",margin:"4px 0"}}>{monthCount>0?`${monthCount} ${monthCount===1?label:(label==="entry"?"entries":label+"s")} this month`:`No ${label==="entry"?"entries":label+"s"} this month`}</p>}
+        {calSelectedDay&&selEntries.length===0&&<p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.74rem",color:"rgba(107,85,58,0.35)",textAlign:"center",margin:"4px 0"}}>No {label==="entry"?"entries":label+"s"} on this day</p>}
+        {calSelectedDay&&selEntries.length>0&&<div style={{flex:1,overflowY:"auto",display:"flex",flexDirection:"column",gap:8}}>
+          {selEntries.map(e=>{
+            const isExp=expandedEntry===e.id;
+            return(<div key={e.id} onClick={()=>setExpandedEntry(isExp?null:e.id)} style={{background:"rgba(139,109,69,0.05)",border:"1px solid rgba(139,109,69,0.1)",borderRadius:8,padding:"8px 10px",cursor:"pointer"}}>
+              <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3}}>
+                <span style={{fontSize:"0.62rem",fontWeight:600,color:"rgba(107,85,58,0.5)",fontFamily:SANS}}>{entryTime(e)}</span>
+                <span style={{marginLeft:"auto",fontSize:"0.56rem",color:"rgba(107,85,58,0.3)",fontFamily:SANS}}>{e.words||wc(e.text||"")} words</span>
+              </div>
+              <p style={{fontFamily:SERIF,fontSize:"0.76rem",color:"#4A3826",lineHeight:1.5,margin:0,whiteSpace:isExp?"pre-wrap":"normal"}}>{isExp?(e.text||""):((e.text||"").length>100?(e.text||"").slice(0,100)+"...":(e.text||""))}</p>
+            </div>);
+          })}
+        </div>}
+      </>}
+    </>;
+  }
 
   /* ── GLOBAL CSS ── */
   const CSS=`
@@ -4099,7 +4211,7 @@ export default function App(){
                         {id:"dreams",label:"Dream Journal",desc:"Record your dreams"},
                         {id:"prayers",label:"Prayer Journal",desc:"Prayers that water your garden"},
                       ].map(opt=>(
-                        <button key={opt.id} onClick={()=>{setJournalSection(opt.id);setBookPage(2);setFlipDir("fwd");setBookText("");setBookSaveMsg("");}} style={{background:"rgba(139,109,69,0.06)",border:"1px solid rgba(139,109,69,0.15)",borderRadius:10,padding:"14px 16px",cursor:"pointer",display:"flex",alignItems:"center",gap:12,transition:"all .2s",textAlign:"left"}} onMouseEnter={e=>e.currentTarget.style.background="rgba(139,109,69,0.12)"} onMouseLeave={e=>e.currentTarget.style.background="rgba(139,109,69,0.06)"}>
+                        <button key={opt.id} onClick={()=>{setJournalSection(opt.id);setBookPage(2);setFlipDir("fwd");setBookText("");setBookSaveMsg("");setHistoryMode("list");}} style={{background:"rgba(139,109,69,0.06)",border:"1px solid rgba(139,109,69,0.15)",borderRadius:10,padding:"14px 16px",cursor:"pointer",display:"flex",alignItems:"center",gap:12,transition:"all .2s",textAlign:"left"}} onMouseEnter={e=>e.currentTarget.style.background="rgba(139,109,69,0.12)"} onMouseLeave={e=>e.currentTarget.style.background="rgba(139,109,69,0.06)"}>
                           <div>
                             <div style={{fontFamily:DISPLAY,fontSize:"0.92rem",fontWeight:700,color:"#3D2B18",marginBottom:2}}>{opt.label}</div>
                             <div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.76rem",color:"rgba(107,85,58,0.5)"}}>{opt.desc}</div>
@@ -4125,8 +4237,24 @@ export default function App(){
                     </div>
                     {bookText.trim()&&<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 12px",marginTop:8,background:"rgba(139,109,69,0.08)",borderRadius:8,border:"1px solid rgba(139,109,69,0.15)"}}>
                       <span style={{fontSize:"0.7rem",color:"rgba(107,85,58,0.5)",fontFamily:SANS}}>{bookSaveMsg||`${wc(bookText)} words`}</span>
-                      <button onClick={()=>{const e={id:Date.now().toString(),date:todayStr(),roomId:"blank",roomLabel:"Blank Journal",roomEmoji:"📝",day:0,prompt:"Free write",text:bookText.trim(),words:wc(bookText)};persistEntries([e,...entries]);addCandles(3,"Reflection saved +3");setBookSaveMsg("Saved!");setTimeout(()=>setBookSaveMsg(""),2500);}} style={{background:"linear-gradient(135deg,#5C4A2E,#3D2B18)",border:"none",color:"#F5E6C8",padding:"6px 18px",borderRadius:6,cursor:"pointer",fontSize:"0.76rem",fontFamily:SANS,fontWeight:600}}>Save</button>
+                      <button onClick={()=>{const e={id:Date.now().toString(),date:todayStr(),time:nowTime(),roomId:"blank",roomLabel:"Blank Journal",roomEmoji:"📝",day:0,prompt:"Free write",text:bookText.trim(),words:wc(bookText)};persistEntries([e,...entries]);addCandles(3,"Reflection saved +3");setBookSaveMsg("Saved!");setTimeout(()=>setBookSaveMsg(""),2500);}} style={{background:"linear-gradient(135deg,#5C4A2E,#3D2B18)",border:"none",color:"#F5E6C8",padding:"6px 18px",borderRadius:6,cursor:"pointer",fontSize:"0.76rem",fontFamily:SANS,fontWeight:600}}>Save</button>
                     </div>}
+                  </div>
+                </>}
+
+                {/* ── SECTION: BLANK JOURNAL HISTORY (page 3) ── */}
+                {journalSection==="blank"&&bookPage===3&&<>
+                  <div style={{flex:1,display:"flex",flexDirection:"column",animation:"pageContentReveal .5s .1s ease both"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+                      <button onClick={()=>{setJournalSection(null);setBookPage(1);setFlipDir("bwd");}} style={{background:"transparent",border:"none",cursor:"pointer",fontFamily:SERIF,fontSize:"0.74rem",color:"rgba(107,85,58,0.5)",padding:0}}>&#8249; Contents</button>
+                    </div>
+                    <h2 style={{fontFamily:DISPLAY,fontSize:"clamp(1.05rem,4vw,1.2rem)",fontWeight:700,color:"#3D2B18",margin:"0 0 10px",textAlign:"center"}}>Past Entries</h2>
+                    <div style={{width:40,height:1,background:"linear-gradient(90deg,transparent,rgba(139,109,69,0.3),transparent)",margin:"0 auto 12px"}}/>
+                    {renderSectionHistory(
+                      entries.filter(e=>e.roomId==="blank"),
+                      "entry",
+                      ()=>{setBookPage(2);setFlipDir("bwd");setBookText("");setHistoryMode("list");}
+                    )}
                   </div>
                 </>}
 
@@ -4213,29 +4341,12 @@ export default function App(){
                       })()}
                       {/* Past Entries (roomIdx 10) */}
                       {roomIdx===REFLECTION_ROOMS.length+3&&<>
-                        <div style={{textAlign:"center",marginBottom:14}}>
-                          <h2 style={{fontFamily:DISPLAY,fontSize:"clamp(1.05rem,4vw,1.2rem)",fontWeight:700,color:"#3D2B18",margin:"0 0 4px"}}>Past Entries</h2>
-                          <div style={{fontFamily:SANS,fontSize:"0.6rem",color:"rgba(107,85,58,0.5)",letterSpacing:"0.1em",textTransform:"uppercase",marginTop:3}}>{entries.length} reflection{entries.length===1?"":"s"}</div>
-                        </div>
-                        <div style={{width:40,height:1,background:"linear-gradient(90deg,transparent,rgba(139,109,69,0.3),transparent)",margin:"0 auto 14px"}}/>
-                        {entries.length===0?<div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",textAlign:"center",padding:"0 12px"}}>
-                          <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.88rem",color:"rgba(107,85,58,0.4)",lineHeight:1.7}}>Your reflections will appear here as you journal.</p>
-                        </div>:(
-                          <div style={{flex:1,overflowY:"auto",display:"flex",flexDirection:"column",gap:10}}>
-                            {entries.slice(0,8).map(e=>{
-                              const allR=[...REFLECTION_ROOMS,...COMMUNITY_ROOMS,LOCKED_ROOM,{id:"jesus",label:"Jesus Questions",emoji:"✝️"}];
-                              const room=allR.find(r=>r.id===e.roomId)||{emoji:e.roomEmoji||"📝",label:e.roomLabel||"Reflection"};
-                              return(<div key={e.id} style={{background:"rgba(139,109,69,0.05)",border:"1px solid rgba(139,109,69,0.1)",borderRadius:8,padding:"10px 12px"}}>
-                                <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4}}>
-                                  <span style={{fontSize:"0.7rem"}}>{room.emoji}</span>
-                                  <span style={{fontSize:"0.62rem",fontWeight:600,color:"rgba(107,85,58,0.5)",fontFamily:SANS}}>{room.label}</span>
-                                  <span style={{marginLeft:"auto",fontSize:"0.58rem",color:"rgba(107,85,58,0.3)"}}>{e.date}</span>
-                                </div>
-                                <p style={{fontFamily:SERIF,fontSize:"0.78rem",color:"#4A3826",lineHeight:1.6,margin:0}}>{e.text.length>120?e.text.slice(0,120)+"...":e.text}</p>
-                              </div>);
-                            })}
-                            {entries.length>8&&<p style={{textAlign:"center",fontFamily:SERIF,fontStyle:"italic",fontSize:"0.72rem",color:"rgba(107,85,58,0.35)",margin:"8px 0 0"}}>+ {entries.length-8} more entries</p>}
-                          </div>
+                        <h2 style={{fontFamily:DISPLAY,fontSize:"clamp(1.05rem,4vw,1.2rem)",fontWeight:700,color:"#3D2B18",margin:"0 0 10px",textAlign:"center"}}>Past Reflections</h2>
+                        <div style={{width:40,height:1,background:"linear-gradient(90deg,transparent,rgba(139,109,69,0.3),transparent)",margin:"0 auto 12px"}}/>
+                        {renderSectionHistory(
+                          entries.filter(e=>REFLECTION_ROOMS.some(r=>r.id===e.roomId)||e.roomId==="jesus"),
+                          "reflection",
+                          ()=>{setBookPage(2);setFlipDir("bwd");setHistoryMode("list");}
                         )}
                       </>}
                       <div style={{textAlign:"center",fontFamily:SANS,fontSize:"0.6rem",color:"rgba(107,85,58,0.3)",letterSpacing:"0.1em",textTransform:"uppercase",marginTop:10}}>{bookPage+1} of {TOTAL_BOOK_PAGES}</div>
@@ -4248,7 +4359,18 @@ export default function App(){
                   const dreamPages=BOOK_CONTENT.dreams?.pages||[];
                   const pgIdx=bookPage-2;
                   const pg=dreamPages[pgIdx];
-                  if(!pg) return null;
+                  if(!pg) return<div style={{flex:1,display:"flex",flexDirection:"column",animation:"pageContentReveal .5s .1s ease both"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+                      <button onClick={()=>{setJournalSection(null);setBookPage(1);setFlipDir("bwd");}} style={{background:"transparent",border:"none",cursor:"pointer",fontFamily:SERIF,fontSize:"0.74rem",color:"rgba(107,85,58,0.5)",padding:0}}>&#8249; Contents</button>
+                    </div>
+                    <h2 style={{fontFamily:DISPLAY,fontSize:"clamp(1.05rem,4vw,1.2rem)",fontWeight:700,color:"#3D2B18",margin:"0 0 10px",textAlign:"center"}}>Dream History</h2>
+                    <div style={{width:40,height:1,background:"linear-gradient(90deg,transparent,rgba(139,109,69,0.3),transparent)",margin:"0 auto 12px"}}/>
+                    {renderSectionHistory(
+                      entries.filter(e=>e.roomId==="dreams"),
+                      "dream",
+                      ()=>{setBookPage(2);setFlipDir("bwd");setBookText("");setHistoryMode("list");}
+                    )}
+                  </div>;
                   return<div style={{flex:1,display:"flex",flexDirection:"column",animation:"pageContentReveal .5s .1s ease both"}}>
                     <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
                       <button onClick={()=>{setJournalSection(null);setBookPage(1);setFlipDir("bwd");}} style={{background:"transparent",border:"none",cursor:"pointer",fontFamily:SERIF,fontSize:"0.74rem",color:"rgba(107,85,58,0.5)",padding:0}}>&#8249; Contents</button>
@@ -4266,7 +4388,7 @@ export default function App(){
                     </div>
                     {bookText.trim()&&<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 12px",marginTop:8,background:"rgba(139,109,69,0.08)",borderRadius:8,border:"1px solid rgba(139,109,69,0.15)"}}>
                       <span style={{fontSize:"0.7rem",color:"rgba(107,85,58,0.5)",fontFamily:SANS}}>{bookSaveMsg||`${wc(bookText)} words`}</span>
-                      <button onClick={()=>{const e={id:Date.now().toString(),date:todayStr(),roomId:"dreams",roomLabel:"Dream Journal",roomEmoji:"🌙",day:pgIdx,prompt:pg.prompt,text:bookText.trim(),words:wc(bookText)};persistEntries([e,...entries]);addCandles(3,"Dream saved +3");setBookSaveMsg("Saved!");setTimeout(()=>setBookSaveMsg(""),2500);}} style={{background:"linear-gradient(135deg,#5C4A2E,#3D2B18)",border:"none",color:"#F5E6C8",padding:"6px 18px",borderRadius:6,cursor:"pointer",fontSize:"0.76rem",fontFamily:SANS,fontWeight:600}}>Save</button>
+                      <button onClick={()=>{const e={id:Date.now().toString(),date:todayStr(),time:nowTime(),roomId:"dreams",roomLabel:"Dream Journal",roomEmoji:"🌙",day:pgIdx,prompt:pg.prompt,text:bookText.trim(),words:wc(bookText)};persistEntries([e,...entries]);addCandles(3,"Dream saved +3");setBookSaveMsg("Saved!");setTimeout(()=>setBookSaveMsg(""),2500);}} style={{background:"linear-gradient(135deg,#5C4A2E,#3D2B18)",border:"none",color:"#F5E6C8",padding:"6px 18px",borderRadius:6,cursor:"pointer",fontSize:"0.76rem",fontFamily:SANS,fontWeight:600}}>Save</button>
                     </div>}
                   </div>;
                 })()}
@@ -4290,29 +4412,15 @@ export default function App(){
                         <button onClick={savePrayerJournalEntry} style={{background:"linear-gradient(135deg,#3D6B3D,#2E5A2E)",border:"none",color:"#E8F5E8",padding:"6px 18px",borderRadius:6,cursor:"pointer",fontSize:"0.76rem",fontFamily:SANS,fontWeight:600}}>Save & Water Garden</button>
                       </div>}
                     </>}
-                    {/* Page 3: Prayer list with garden status */}
+                    {/* Page 3: Prayer history with garden status */}
                     {bookPage===3&&<>
-                      <h2 style={{fontFamily:DISPLAY,fontSize:"clamp(1.05rem,4vw,1.2rem)",fontWeight:700,color:"#3D2B18",margin:"0 0 4px",textAlign:"center"}}>Your Prayers</h2>
-                      <div style={{fontFamily:SANS,fontSize:"0.6rem",color:"rgba(107,85,58,0.5)",letterSpacing:"0.1em",textTransform:"uppercase",marginTop:3,textAlign:"center"}}>{prayerPosts.length} prayer{prayerPosts.length===1?"":"s"}</div>
-                      <div style={{width:40,height:1,background:"linear-gradient(90deg,transparent,rgba(139,109,69,0.3),transparent)",margin:"10px auto 14px"}}/>
-                      {prayerPosts.length===0?<div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",textAlign:"center"}}>
-                        <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.88rem",color:"rgba(107,85,58,0.4)",lineHeight:1.7}}>Your prayers will appear here. Turn back to write one.</p>
-                      </div>:(
-                        <div style={{flex:1,overflowY:"auto",display:"flex",flexDirection:"column",gap:10}}>
-                          {prayerPosts.slice(0,10).map(p=>{
-                            const plot=gardenPlots.find(g=>g.prayerId===p.id&&g.stage!=="empty");
-                            const stage=plot?getComputedStage(plot):null;
-                            return(<div key={p.id} style={{background:"rgba(139,109,69,0.05)",border:"1px solid rgba(139,109,69,0.1)",borderRadius:8,padding:"10px 12px"}}>
-                              <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4}}>
-                                <span style={{fontSize:"0.7rem",fontFamily:SERIF,color:"rgba(107,85,58,0.4)"}}>{plot?getPlantEmoji(plot):"~"}</span>
-                                <span style={{fontSize:"0.62rem",fontWeight:600,color:p.status==="answered"?"#4A8B4A":"rgba(107,85,58,0.5)",fontFamily:SANS}}>{p.status==="answered"?"Answered":stage||"Not yet planted"}</span>
-                                <span style={{marginLeft:"auto",fontSize:"0.58rem",color:"rgba(107,85,58,0.3)"}}>{p.date}</span>
-                              </div>
-                              <p style={{fontFamily:SERIF,fontSize:"0.78rem",color:"#4A3826",lineHeight:1.6,margin:0}}>{(p.text||"").length>100?(p.text||"").slice(0,100)+"...":(p.text||"")}</p>
-                            </div>);
-                          })}
-                          {prayerPosts.length>10&&<p style={{textAlign:"center",fontFamily:SERIF,fontStyle:"italic",fontSize:"0.72rem",color:"rgba(107,85,58,0.35)",margin:"8px 0 0"}}>+ {prayerPosts.length-10} more prayers</p>}
-                        </div>
+                      <h2 style={{fontFamily:DISPLAY,fontSize:"clamp(1.05rem,4vw,1.2rem)",fontWeight:700,color:"#3D2B18",margin:"0 0 10px",textAlign:"center"}}>Your Prayers</h2>
+                      <div style={{width:40,height:1,background:"linear-gradient(90deg,transparent,rgba(139,109,69,0.3),transparent)",margin:"0 auto 12px"}}/>
+                      {renderSectionHistory(
+                        prayerPosts.map(p=>({...p,words:wc(p.text||""),roomId:"prayers",prompt:p.tag||""})),
+                        "prayer",
+                        ()=>{setBookPage(2);setFlipDir("bwd");setBookText("");setHistoryMode("list");},
+                        true
                       )}
                     </>}
                   </div>
