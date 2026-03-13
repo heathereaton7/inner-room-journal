@@ -2337,6 +2337,7 @@ export default function App(){
     @keyframes doorLabelFade{0%,100%{opacity:0.5}50%{opacity:1}}
     @keyframes magicGlow{0%,100%{box-shadow:0 0 12px rgba(255,210,120,0.12),0 0 30px rgba(255,200,100,0.06),inset 0 0 8px rgba(255,210,120,0.04)}50%{box-shadow:0 0 22px rgba(255,210,120,0.28),0 0 50px rgba(255,200,100,0.12),inset 0 0 14px rgba(255,210,120,0.08)}}
     @keyframes magicGlowOuter{0%,100%{opacity:0.3;transform:scale(1)}50%{opacity:0.7;transform:scale(1.04)}}
+    @keyframes magGlassPulse{0%,100%{opacity:0.35;transform:scale(1)}50%{opacity:1;transform:scale(1.18)}}
     .magic-hotspot{cursor:pointer;transition:all .3s ease}
     .magic-hotspot:hover{box-shadow:0 0 30px rgba(255,210,120,0.35),0 0 60px rgba(255,200,100,0.15)!important}
     .magic-hotspot:active{transform:scale(0.97)!important;box-shadow:0 0 15px rgba(255,210,120,0.2)!important}
@@ -2549,8 +2550,7 @@ export default function App(){
         if(!item) return null;
         return(
           <div key={item.id} style={{position:"absolute",top:item.pos.top,left:item.pos.left,width:item.pos.width,zIndex:5,pointerEvents:"none",animation:"fadeUp 0.6s ease both"}}>
-            <img src={item.asset} alt={item.name} onError={e=>{e.target.style.display="none";e.target.nextSibling.style.display="block";}} style={{width:"100%",height:"auto",display:"block"}}/>
-            <span style={{display:"none",fontSize:"clamp(20px,4vw,40px)",filter:"drop-shadow(0 2px 6px rgba(0,0,0,0.4))",textAlign:"center",width:"100%"}}>{item.emoji}</span>
+            <img src={item.asset} alt={item.name} onError={e=>{e.target.parentNode.style.display="none";}} style={{width:"100%",height:"auto",display:"block"}}/>
           </div>
         );
       })}
@@ -2565,10 +2565,11 @@ export default function App(){
           Glow class: "magic-hotspot" + animation:"magicGlow ..." for the enchanted look.
           The outer <div> with magicGlowOuter adds the soft radial aura around each hotspot. ─── */}
 
-      {/* 1. MAP ON SHELF — rolled paper map on the wooden shelf behind the sectional → world map */}
+      {/* 1. MAP ON SHELF — rolled paper map with magnifying glass on the wooden shelf → world map */}
       <button onClick={()=>transitionToMap()} style={{position:"absolute",left:"28%",top:"82%",width:"44%",height:"14%",zIndex:11,background:"transparent",border:"none",padding:0,cursor:"pointer",borderRadius:"10px",outline:"none",WebkitTapHighlightColor:"transparent"}}>
-        <div style={{position:"absolute",inset:"-25%",borderRadius:"50%",background:"radial-gradient(ellipse at center,rgba(255,210,120,0.12) 0%,rgba(255,200,100,0.04) 45%,transparent 75%)",pointerEvents:"none",animation:"magicGlowOuter 4s ease-in-out infinite"}}/>
-        <div style={{position:"absolute",inset:"-10%",borderRadius:"50%",background:"radial-gradient(ellipse at center,rgba(255,180,80,0.07) 0%,transparent 55%)",pointerEvents:"none",animation:"magicGlowOuter 5s ease-in-out infinite",animationDelay:"1s"}}/>
+        {/* Pulse glow on magnifying glass */}
+        <div style={{position:"absolute",left:"42%",top:"5%",width:"26%",height:"85%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,220,140,0.22) 0%,rgba(255,200,100,0.08) 40%,transparent 70%)",pointerEvents:"none",animation:"magGlassPulse 2.8s ease-in-out infinite"}}/>
+        <div style={{position:"absolute",left:"46%",top:"15%",width:"18%",height:"65%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,240,180,0.16) 0%,transparent 55%)",pointerEvents:"none",animation:"magGlassPulse 3.2s ease-in-out infinite",animationDelay:"0.6s"}}/>
       </button>
 
       {/* 2. STAIRS — wooden stairs on the RIGHT → downstairs kitchen */}
