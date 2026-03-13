@@ -2883,8 +2883,9 @@ export default function App(){
     setJournalStep(0); setJTexts(["","",""]); setScreen("journal");
   }
   function saveEntry(){
-    if(!jTexts[0].trim()) return;
-    const e={id:Date.now().toString(),date:todayStr(),roomId:activeRoom.id,roomLabel:activeRoom.label,roomEmoji:activeRoom.emoji,day:activeDay,prompt:activeRoom.days[activeDay].q,text:jTexts.filter(Boolean).join("\n\n---\n\n"),words:jTexts.filter(Boolean).reduce((s,t)=>s+wc(t),0)};
+    if(!jTexts[0].trim()||!activeRoom) return;
+    const dayData=activeRoom.days?.[activeDay];
+    const e={id:Date.now().toString(),date:todayStr(),roomId:activeRoom.id,roomLabel:activeRoom.label||"",roomEmoji:activeRoom.emoji||"",day:activeDay,prompt:dayData?.q||"",text:jTexts.filter(Boolean).join("\n\n---\n\n"),words:jTexts.filter(Boolean).reduce((s,t)=>s+wc(t),0)};
     persistEntries([e,...entries]);
     addCandles(3,"Reflection saved +3 🕯️");
     setSaveMsg("✓ Saved to your history"); setTimeout(()=>{setSaveMsg("");setScreen(prevScreen);},2200);
@@ -2892,8 +2893,9 @@ export default function App(){
   function saveBookEntry(){
     if(!bookText.trim()||!BOOK_CONTENT[deskBook]) return;
     const pg=BOOK_CONTENT[deskBook].pages[bookPage-1];
+    if(!pg) return;
     const book=SHELF_BOOKS.find(b=>b.id===deskBook);
-    const e={id:Date.now().toString(),date:todayStr(),roomId:deskBook,roomLabel:book?.label||deskBook,roomEmoji:book?.emoji||"📖",day:bookPage-1,prompt:pg.prompt,text:bookText.trim(),words:wc(bookText)};
+    const e={id:Date.now().toString(),date:todayStr(),roomId:deskBook,roomLabel:book?.label||deskBook,roomEmoji:book?.emoji||"📖",day:bookPage-1,prompt:pg.prompt||"",text:bookText.trim(),words:wc(bookText)};
     persistEntries([e,...entries]);
     addCandles(3,"Reflection saved +3 🕯️");
     setBookSaveMsg("✓ Saved to history 📖"); setTimeout(()=>setBookSaveMsg(""),2500);
@@ -2936,7 +2938,7 @@ export default function App(){
     setGardenPlots(prev=>{
       const hasPlot=prev.some(p=>p.prayerId===id&&p.stage!=="empty");
       if(!hasPlot) return prev;
-      const next=prev.map(p=>p.prayerId===id&&p.stage!=="empty"?{...p,prayerCount:p.prayerCount+1}:p);
+      const next=prev.map(p=>p.prayerId===id&&p.stage!=="empty"?{...p,prayerCount:(p.prayerCount||0)+1}:p);
       dbSave("irj-garden",next);
       return next;
     });
@@ -3074,11 +3076,11 @@ export default function App(){
     const plant=GARDEN_PLANTS.find(p=>p.id===plot.plantType);
     if(!plant) return plot.stage;
     const elapsed=(Date.now()-plot.plantedAt)/60000; // minutes
-    const bonus=plot.prayerCount*PRAYER_BONUS_MINS;
+    const bonus=(plot.prayerCount||0)*PRAYER_BONUS_MINS;
     let accumulated=0;
     for(let i=0;i<plant.growthBase.length;i++){
       accumulated+=Math.max(0.5,plant.growthBase[i]-bonus); // min 30 sec per stage
-      if(elapsed<accumulated) return GROWTH_STAGES[i];
+      if(elapsed<accumulated) return GROWTH_STAGES[i]||"seed";
     }
     return "harvestable";
   }
@@ -3088,7 +3090,7 @@ export default function App(){
     const plant=GARDEN_PLANTS.find(p=>p.id===plot.plantType);
     if(!plant) return "🌱";
     const si=getStageIndex(getComputedStage(plot));
-    return plant.stageEmojis[Math.max(0,si)]||"🌱";
+    return plant.stageEmojis?.[Math.max(0,si)]||"🌱";
   }
   function plantSeed(plotId,prayerId,plantTypeId){
     const plant=GARDEN_PLANTS.find(p=>p.id===plantTypeId);
@@ -4161,20 +4163,23 @@ export default function App(){
                         </>;
                       })()}
                       {/* Jesus Questions (roomIdx 7) */}
-                      {roomIdx===REFLECTION_ROOMS.length&&<>
+                      {roomIdx===REFLECTION_ROOMS.length&&(()=>{
+                        const jq=JESUS_QUESTIONS[Math.min(jesusIdx,JESUS_QUESTIONS.length-1)];
+                        if(!jq) return null;
+                        return<>
                         <div style={{textAlign:"center",marginBottom:14}}>
                           <div style={{fontSize:"1.8rem",marginBottom:8}}>&#10013;&#65039;</div>
                           <h2 style={{fontFamily:DISPLAY,fontSize:"clamp(1.1rem,4.5vw,1.3rem)",fontWeight:700,color:"#3D2B18",margin:"0 0 4px",textAlign:"center"}}>Questions Jesus Asked</h2>
                         </div>
                         <div style={{width:40,height:1,background:"linear-gradient(90deg,transparent,rgba(139,109,69,0.3),transparent)",margin:"0 auto 16px"}}/>
-                        <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.88rem,3vw,1rem)",color:"#5C4A2E",lineHeight:1.7,textAlign:"center",margin:"0 4px"}}>"{JESUS_QUESTIONS[jesusIdx].q}"</p>
-                        <p style={{fontFamily:SANS,fontSize:"0.66rem",color:"rgba(107,85,58,0.4)",margin:"8px 0 0",textAlign:"center"}}>{JESUS_QUESTIONS[jesusIdx].ref}</p>
+                        <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.88rem,3vw,1rem)",color:"#5C4A2E",lineHeight:1.7,textAlign:"center",margin:"0 4px"}}>"{jq.q}"</p>
+                        <p style={{fontFamily:SANS,fontSize:"0.66rem",color:"rgba(107,85,58,0.4)",margin:"8px 0 0",textAlign:"center"}}>{jq.ref}</p>
                         <div style={{background:"rgba(139,109,69,0.06)",borderRadius:8,padding:"12px 16px",margin:"18px 0",border:"1px solid rgba(139,109,69,0.1)"}}>
-                          <p style={{fontFamily:SERIF,fontSize:"0.82rem",color:"#4A3826",lineHeight:1.55,margin:0,textAlign:"center"}}>{JESUS_QUESTIONS[jesusIdx].app}</p>
+                          <p style={{fontFamily:SERIF,fontSize:"0.82rem",color:"#4A3826",lineHeight:1.55,margin:0,textAlign:"center"}}>{jq.app}</p>
                         </div>
                         <div style={{flex:1}}/>
                         <button className="book-room" onClick={()=>{setBookOpen(false);setScreen("jesus");}} style={{alignSelf:"center",background:"linear-gradient(135deg,rgba(93,74,46,0.1),rgba(93,74,46,0.04))",border:"1px solid rgba(93,74,46,0.22)",color:"#5C4A2E",padding:"11px 32px",borderRadius:8,fontFamily:SERIF,fontStyle:"italic",fontSize:"0.84rem",cursor:"pointer",transition:"all .2s"}}>Open Scripture questions</button>
-                      </>}
+                      </>;})()}
                       {/* Locked Room (roomIdx 8) */}
                       {roomIdx===REFLECTION_ROOMS.length+1&&(()=>{
                         const unlocked=streak>=7;
@@ -4303,7 +4308,7 @@ export default function App(){
                                 <span style={{fontSize:"0.62rem",fontWeight:600,color:p.status==="answered"?"#4A8B4A":"rgba(107,85,58,0.5)",fontFamily:SANS}}>{p.status==="answered"?"Answered":stage||"Not yet planted"}</span>
                                 <span style={{marginLeft:"auto",fontSize:"0.58rem",color:"rgba(107,85,58,0.3)"}}>{p.date}</span>
                               </div>
-                              <p style={{fontFamily:SERIF,fontSize:"0.78rem",color:"#4A3826",lineHeight:1.6,margin:0}}>{p.text.length>100?p.text.slice(0,100)+"...":p.text}</p>
+                              <p style={{fontFamily:SERIF,fontSize:"0.78rem",color:"#4A3826",lineHeight:1.6,margin:0}}>{(p.text||"").length>100?(p.text||"").slice(0,100)+"...":(p.text||"")}</p>
                             </div>);
                           })}
                           {prayerPosts.length>10&&<p style={{textAlign:"center",fontFamily:SERIF,fontStyle:"italic",fontSize:"0.72rem",color:"rgba(107,85,58,0.35)",margin:"8px 0 0"}}>+ {prayerPosts.length-10} more prayers</p>}
@@ -4333,6 +4338,7 @@ export default function App(){
                 {/* CONTENT PAGES */}
                 {bookPage>=1&&bookPage<=BOOK_CONTENT[deskBook].pages.length&&(()=>{
                   const pg=BOOK_CONTENT[deskBook].pages[bookPage-1];
+                  if(!pg) return null;
                   return<>
                     <div style={{flex:1,display:"flex",flexDirection:"column",animation:"pageContentReveal .5s .1s ease both"}}>
                       <div style={{textAlign:"center",marginBottom:14}}>
@@ -4496,7 +4502,7 @@ export default function App(){
 
   /* ══ JESUS ROOM ═══════════════════════════════════ */
   if(screen==="jesus"){
-    const t=th("jesus"),jq=JESUS_QUESTIONS[jesusIdx];
+    const t=th("jesus"),jq=JESUS_QUESTIONS[Math.min(jesusIdx,JESUS_QUESTIONS.length-1)]||JESUS_QUESTIONS[0];
     return(
       <div style={{minHeight:"100vh",background:"linear-gradient(160deg,#1A1208,#2A1E08)",color:"#FFF8E8",fontFamily:SANS,position:"relative"}}>
         <style>{GFONTS}{CSS}</style>
@@ -5047,7 +5053,7 @@ export default function App(){
       const plant=GARDEN_PLANTS.find(p=>p.id===plot.plantType);
       if(!plant) return 0;
       const elapsed=(Date.now()-plot.plantedAt)/60000;
-      const bonus=plot.prayerCount*PRAYER_BONUS_MINS;
+      const bonus=(plot.prayerCount||0)*PRAYER_BONUS_MINS;
       let total=0;
       for(let i=0;i<plant.growthBase.length;i++) total+=Math.max(0.5,plant.growthBase[i]-bonus);
       return Math.min(100,Math.round((elapsed/total)*100));
@@ -5188,10 +5194,10 @@ export default function App(){
                   <div style={{width:`${pct}%`,height:"100%",background:"linear-gradient(90deg,#5A8A6A,#9AB8A4)",borderRadius:2,transition:"width 0.5s"}}/>
                 </div>
                 {prayer&&<div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.8rem",color:"rgba(190,211,196,0.55)",lineHeight:1.5,borderTop:"1px solid rgba(90,138,106,0.12)",paddingTop:10}}>
-                  🙏 {prayer.text.slice(0,120)}{prayer.text.length>120?"…":""}
+                  🙏 {(prayer.text||"").slice(0,120)}{(prayer.text||"").length>120?"…":""}
                 </div>}
                 {prayer?.status==="answered"&&<div style={{marginTop:8,fontFamily:SANS,fontSize:"0.72rem",fontWeight:600,color:"#9AB8A4"}}>✦ Prayer answered — in full bloom</div>}
-                {!isFarmMode&&<div style={{marginTop:8,fontFamily:SANS,fontSize:"0.65rem",color:"rgba(190,211,196,0.3)"}}>Prayers offered: {plot.prayerCount}</div>}
+                {!isFarmMode&&<div style={{marginTop:8,fontFamily:SANS,fontSize:"0.65rem",color:"rgba(190,211,196,0.3)"}}>Prayers offered: {plot.prayerCount||0}</div>}
                 {isFarmMode&&plant&&<div style={{marginTop:8,fontFamily:SANS,fontSize:"0.65rem",color:"rgba(190,211,196,0.3)"}}>Sells for {ITEM_CATALOG[plant.harvestItem]?.sellPrice||0} coins</div>}
               </div>
             </div>
