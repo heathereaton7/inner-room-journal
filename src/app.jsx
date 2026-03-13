@@ -150,6 +150,14 @@ const CARD_RATIOS = [
   {id:"wide",  label:"Wide",    w:1200,h:628, desc:"Twitter/LinkedIn",icon:"🖥️"},
 ];
 
+const VERSE_THEMES = [
+  {id:"candlelight",label:"Candlelight",preview:"linear-gradient(135deg,#12101A,#1E1828)",bg:"linear-gradient(135deg,#12101A 0%,#1E1828 50%,#14111E 100%)",text:"#E8D4A0",sub:"rgba(200,190,230,0.40)",brand:"rgba(201,169,110,0.7)",dot:"#C9A96E",fontType:"serif"},
+  {id:"parchment",label:"Parchment",preview:"linear-gradient(135deg,#F5F0E8,#EDE5D5)",bg:"linear-gradient(135deg,#F5F0E8 0%,#EDE5D5 50%,#F0EBE0 100%)",text:"#2A2018",sub:"rgba(42,32,24,0.45)",brand:"rgba(90,138,106,0.8)",dot:"#5A8A6A",fontType:"serif"},
+  {id:"midnight",label:"Midnight",preview:"linear-gradient(135deg,#0A0818,#1A1232)",bg:"linear-gradient(135deg,#0A0818 0%,#1A1232 50%,#0E0B1E 100%)",text:"#D8C8F0",sub:"rgba(200,190,230,0.40)",brand:"rgba(180,160,210,0.7)",dot:"#B4A0D2",fontType:"display"},
+  {id:"dawn",label:"Golden Dawn",preview:"linear-gradient(160deg,#2A1E08,#4A3418)",bg:"linear-gradient(160deg,#2A1E08 0%,#3A2A10 40%,#4A3418 100%)",text:"#FFF4D8",sub:"rgba(255,244,216,0.45)",brand:"rgba(212,180,100,0.8)",dot:"#D4B464",fontType:"display"},
+  {id:"sage",label:"Sage",preview:"linear-gradient(135deg,#2A3828,#3A4A38)",bg:"linear-gradient(135deg,#2A3828 0%,#3A4A38 50%,#2E3E2C 100%)",text:"#E8F2E4",sub:"rgba(232,242,228,0.45)",brand:"rgba(190,211,196,0.8)",dot:"#BED3C4",fontType:"serif"},
+];
+
 const VIRAL_QS = [
   "What are you pretending not to know?","What are you afraid would change if you were fully honest?",
   "What are you trying to prove, and to whom?","What truth about yourself are you avoiding?",
@@ -473,7 +481,7 @@ async function dbSave(k,v){
     localStorage.setItem(k,JSON.stringify(v));
     // Dual-write to Firestore when signed in
     if(auth?.currentUser){
-      const fieldMap={"irj-entries":"entries","irj-prayer":"prayerPosts","irj-saved-cards":"savedCards","irj-onboarded":"isOnboarded","irj-candles":"candles","irj-prayed":"prayedFor","irj-owned-items":"ownedItems","irj-garden":"gardenPlots","irj-inventory":"inventory"};
+      const fieldMap={"irj-entries":"entries","irj-prayer":"prayerPosts","irj-saved-cards":"savedCards","irj-onboarded":"isOnboarded","irj-candles":"candles","irj-prayed":"prayedFor","irj-owned-items":"ownedItems","irj-garden":"gardenPlots","irj-inventory":"inventory","irj-saved-verses":"savedVerses"};
       const field=fieldMap[k];
       if(field){
         const userRef=doc(db,"users",auth.currentUser.uid);
@@ -537,6 +545,64 @@ function renderCard(canvas, {question, theme, ratio}){
 }
 
 /* ═══════════════════════════════════════════════════
+   VERSE CARD RENDERER (canvas)
+═══════════════════════════════════════════════════ */
+function renderVerseCard(canvas,{text,ref,theme,ratio}){
+  const ctx=canvas.getContext("2d");
+  const {w,h}=ratio;
+  canvas.width=w;canvas.height=h;
+  const colors=theme.bg.match(/#[0-9A-Fa-f]{6}/g)||["#12101A","#1E1828"];
+  const g=ctx.createLinearGradient(0,0,w,h);
+  colors.forEach((c,i)=>g.addColorStop(i/Math.max(colors.length-1,1),c));
+  ctx.fillStyle=g;ctx.fillRect(0,0,w,h);
+  // noise
+  const nd=ctx.getImageData(0,0,w,h);
+  for(let i=0;i<nd.data.length;i+=4){const n=(Math.random()-.5)*8;nd.data[i]=Math.min(255,Math.max(0,nd.data[i]+n));nd.data[i+1]=Math.min(255,Math.max(0,nd.data[i+1]+n));nd.data[i+2]=Math.min(255,Math.max(0,nd.data[i+2]+n));}
+  ctx.putImageData(nd,0,0);
+  // glow
+  const gl=ctx.createRadialGradient(w*.5,h*.38,0,w*.5,h*.38,w*.6);
+  gl.addColorStop(0,theme.dot+"14");gl.addColorStop(1,"transparent");
+  ctx.fillStyle=gl;ctx.fillRect(0,0,w,h);
+  // top line + dot
+  const lg=ctx.createLinearGradient(w*.2,0,w*.8,0);
+  lg.addColorStop(0,"transparent");lg.addColorStop(.5,theme.dot+"66");lg.addColorStop(1,"transparent");
+  ctx.strokeStyle=lg;ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.moveTo(w*.25,h*.1);ctx.lineTo(w*.75,h*.1);ctx.stroke();
+  ctx.beginPath();ctx.arc(w*.5,h*.1,3,0,Math.PI*2);ctx.fillStyle=theme.dot;ctx.fill();
+  // verse text
+  const ff=theme.fontType==="display"?"'Playfair Display',serif":theme.fontType==="sans"?"DM Sans,sans-serif":"'Cormorant Garamond',serif";
+  let fs=ratio.id==="wide"?44:ratio.id==="story"?58:54;
+  if(text.length>100) fs*=0.85;
+  if(text.length>200) fs*=0.80;
+  if(text.length>300) fs*=0.75;
+  if(text.length>450) fs*=0.70;
+  ctx.font=`italic ${fs}px ${ff}`;
+  ctx.fillStyle=theme.text;
+  ctx.textAlign="center";
+  const maxW=w*(ratio.id==="wide"?.72:.78);
+  const words=text.split(" ");const lines=[];let cur="";
+  for(const wd of words){const t=cur?cur+" "+wd:wd;if(ctx.measureText(t).width>maxW&&cur){lines.push(cur);cur=wd;}else cur=t;}
+  if(cur)lines.push(cur);
+  const lh=fs*1.5;const totalH=lines.length*lh;
+  const sy=(ratio.id==="story"?h*.42:h*.44)-totalH/2+lh*.5;
+  lines.forEach((l,i)=>ctx.fillText(l,w*.5,sy+i*lh));
+  // reference
+  const refY=sy+totalH+fs*0.6;
+  ctx.font=`500 ${ratio.id==="wide"?22:28}px DM Sans,sans-serif`;
+  ctx.fillStyle=theme.sub;
+  ctx.fillText("-- "+ref,w*.5,refY);
+  // bottom line + brand
+  const by=ratio.id==="story"?h*.82:h*.86;
+  const lg2=ctx.createLinearGradient(w*.3,0,w*.7,0);
+  lg2.addColorStop(0,"transparent");lg2.addColorStop(.5,theme.dot+"44");lg2.addColorStop(1,"transparent");
+  ctx.strokeStyle=lg2;ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(w*.3,by);ctx.lineTo(w*.7,by);ctx.stroke();
+  ctx.font=`300 ${ratio.id==="wide"?20:26}px 'Cormorant Garamond',serif`;
+  ctx.fillStyle=theme.brand;
+  ctx.fillText("inner room journal",w*.5,by+36);
+}
+
+/* ═══════════════════════════════════════════════════
    CARD PREVIEW (live CSS)
 ═══════════════════════════════════════════════════ */
 function CardPreview({question,theme,ratio,scale=1}){
@@ -554,6 +620,29 @@ function CardPreview({question,theme,ratio,scale=1}){
       <div style={{position:"absolute",bottom:"14%",display:"flex",flexDirection:"column",alignItems:"center",gap:"5px"}}>
         <div style={{width:"36px",height:"1px",background:`linear-gradient(90deg,transparent,${theme.dot}44,transparent)`}}/>
         <div style={{fontFamily:SERIF,fontSize:"0.55rem",color:theme.brand,letterSpacing:"0.06em"}}>inner room journal</div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════
+   VERSE PREVIEW (live CSS)
+═══════════════════════════════════════════════════ */
+function VersePreview({text,refText,theme,ratio,scale=1}){
+  const isStory=ratio.id==="story",isWide=ratio.id==="wide";
+  const pw=isWide?340:isStory?200:270,ph=isWide?178:isStory?356:270;
+  const ff=theme.fontType==="display"?DISPLAY:theme.fontType==="sans"?SANS:SERIF;
+  const qs=text.length>150?"0.68rem":text.length>80?"0.78rem":isWide?"0.82rem":isStory?"0.92rem":"0.88rem";
+  return(
+    <div style={{width:pw,height:ph,background:theme.bg,borderRadius:12,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:16,boxSizing:"border-box",position:"relative",overflow:"hidden",boxShadow:"0 16px 48px rgba(0,0,0,0.3)",transform:`scale(${scale})`,transformOrigin:"center",flexShrink:0}}>
+      <div style={{position:"absolute",top:"35%",left:"50%",transform:"translate(-50%,-50%)",width:"70%",height:"70%",borderRadius:"50%",background:`radial-gradient(ellipse,${theme.dot}14 0%,transparent 70%)`,pointerEvents:"none"}}/>
+      <div style={{position:"absolute",top:"10%",left:"20%",right:"20%",height:"1px",background:`linear-gradient(90deg,transparent,${theme.dot}55,transparent)`}}/>
+      <div style={{position:"absolute",top:"calc(10% - 2px)",left:"50%",transform:"translateX(-50%)",width:5,height:5,borderRadius:"50%",background:theme.dot}}/>
+      <p style={{fontFamily:ff,fontStyle:"italic",fontSize:qs,color:theme.text,textAlign:"center",lineHeight:1.55,margin:"0 0 6px",padding:"0 4px",maxWidth:"100%",display:"-webkit-box",WebkitLineClamp:isStory?8:5,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{text}</p>
+      <p style={{fontFamily:SANS,fontSize:"0.52rem",color:theme.sub,margin:"4px 0 0",letterSpacing:"0.04em"}}>-- {refText}</p>
+      <div style={{position:"absolute",bottom:"12%",display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
+        <div style={{width:30,height:"1px",background:`linear-gradient(90deg,transparent,${theme.dot}44,transparent)`}}/>
+        <div style={{fontFamily:SERIF,fontSize:"0.48rem",color:theme.brand,letterSpacing:"0.06em"}}>inner room journal</div>
       </div>
     </div>
   );
@@ -2243,6 +2332,16 @@ export default function App(){
   const [bibleLoading,  setBibleLoading]  = useState(false);
   const [bibleSearch,   setBibleSearch]   = useState("");
   const bibleDataRef = useRef(null);
+  // ── Verse selection, saving, sharing ──
+  const [selectedVerses,    setSelectedVerses]    = useState(new Set());
+  const [savedVerses,       setSavedVerses]       = useState([]);
+  const [verseActionBar,    setVerseActionBar]    = useState(false);
+  const [savedVersesView,   setSavedVersesView]   = useState(false);
+  const [verseShareOverlay, setVerseShareOverlay] = useState(null);
+  const [verseTheme,        setVerseTheme]        = useState(VERSE_THEMES[0]);
+  const [verseRatio,        setVerseRatio]        = useState(CARD_RATIOS[0]);
+  const [verseCopied,       setVerseCopied]       = useState(false);
+  const [verseImportPicker, setVerseImportPicker] = useState(false);
 
   // ── OUTDOOR IMAGE RECT — keeps glow overlays aligned to actual image features ──
   // The outdoor.png is displayed with object-fit:cover + object-position:center 30%
@@ -2348,6 +2447,8 @@ export default function App(){
   useEffect(()=>{
     const el=document.querySelector("[data-bible-scroll]");
     if(el) el.scrollTop=0;
+    setSelectedVerses(new Set());
+    setVerseActionBar(false);
   },[bibleChapter,bibleBook]);
 
   // ── HOTSPOT DEBUG MODE ──
@@ -2379,6 +2480,7 @@ export default function App(){
       const oi   = await dbLoad("irj-owned-items") || [];
       const gp   = await dbLoad("irj-garden") || Array.from({length:12},(_,i)=>({id:i+1,prayerId:null,plantType:null,stage:"empty",plantedAt:null,prayerCount:0}));
       const inv  = await dbLoad("irj-inventory") || {};
+      const sv   = await dbLoad("irj-saved-verses") || [];
       // Migrate prayers: add status/answeredDate/category if missing
       let migrated=false;
       const mpp=pp.map(p=>{
@@ -2387,7 +2489,7 @@ export default function App(){
       });
       if(migrated) dbSave("irj-prayer",mpp);
       setEntries(ens); setPrayerPosts(mpp); setSavedCards(sc);
-      setCandles(cn); setPrayedFor(pf); setOwnedItems(oi); setGardenPlots(gp); setInventory(inv);
+      setCandles(cn); setPrayedFor(pf); setOwnedItems(oi); setGardenPlots(gp); setInventory(inv); setSavedVerses(sv);
       let s=0,d=new Date(),map={};
       ens.forEach(e=>{map[e.date]=true;});
       while(map[isoDate(d)]){s++;d.setDate(d.getDate()-1);} setStreak(s);
@@ -2438,6 +2540,7 @@ export default function App(){
       const localOwned=await dbLoad("irj-owned-items")||[];
       const localGarden=await dbLoad("irj-garden")||[];
       const localInv=await dbLoad("irj-inventory")||{};
+      const localVerses=await dbLoad("irj-saved-verses")||[];
 
       const mergedEntries=mergeById(localEntries,cloud.entries||[]);
       const mergedPrayers=mergeById(localPrayers,cloud.prayerPosts||[]);
@@ -2459,6 +2562,7 @@ export default function App(){
       const cloudInv=cloud.inventory||{};
       const mergedInv={...cloudInv};
       Object.keys(localInv).forEach(k=>{mergedInv[k]=Math.max(localInv[k]||0,mergedInv[k]||0);});
+      const mergedVerses=mergeById(localVerses,cloud.savedVerses||[]);
 
       localStorage.setItem("irj-entries",JSON.stringify(mergedEntries));
       localStorage.setItem("irj-prayer",JSON.stringify(mergedPrayers));
@@ -2469,6 +2573,7 @@ export default function App(){
       localStorage.setItem("irj-owned-items",JSON.stringify(mergedOwned));
       localStorage.setItem("irj-garden",JSON.stringify(mergedGarden));
       localStorage.setItem("irj-inventory",JSON.stringify(mergedInv));
+      localStorage.setItem("irj-saved-verses",JSON.stringify(mergedVerses));
 
       await setDoc(userRef,{
         entries:mergedEntries,
@@ -2480,6 +2585,7 @@ export default function App(){
         ownedItems:mergedOwned,
         gardenPlots:mergedGarden,
         inventory:mergedInv,
+        savedVerses:mergedVerses,
         lastSyncedAt:new Date().toISOString(),
       });
 
@@ -2492,6 +2598,7 @@ export default function App(){
       setOwnedItems(mergedOwned);
       setGardenPlots(mergedGarden);
       setInventory(mergedInv);
+      setSavedVerses(mergedVerses);
 
       let s=0,d=new Date(),map={};
       mergedEntries.forEach(e=>{map[e.date]=true;});
@@ -2530,6 +2637,80 @@ export default function App(){
     let s=0,d=new Date(),map={};
     list.forEach(e=>{map[e.date]=true;});
     while(map[isoDate(d)]){s++;d.setDate(d.getDate()-1);} setStreak(s);
+  }
+
+  // ── SAVED VERSES ──
+  async function persistSavedVerses(list){
+    setSavedVerses(list); await dbSave("irj-saved-verses",list);
+  }
+  function toggleVerseSelection(idx){
+    setSelectedVerses(prev=>{
+      const next=new Set(prev);
+      if(next.has(idx)) next.delete(idx); else next.add(idx);
+      setVerseActionBar(next.size>0);
+      return next;
+    });
+  }
+  function getSelectedVerseText(){
+    const bibleData=bibleDataRef.current;
+    if(!bibleData) return {text:"",ref:""};
+    const chap=bibleData[bibleBook].chapters[bibleChapter];
+    const indices=[...selectedVerses].sort((a,b)=>a-b);
+    const text=indices.map(i=>chap[i]).join(" ");
+    const bookName=bibleData[bibleBook].name;
+    const chapNum=bibleChapter+1;
+    const verseNums=indices.map(i=>i+1);
+    let rangeStr="";
+    if(verseNums.length===1) rangeStr=`${verseNums[0]}`;
+    else{
+      // Compress consecutive ranges: 1,2,3,5 => "1-3, 5"
+      const ranges=[];let start=verseNums[0],end=verseNums[0];
+      for(let k=1;k<verseNums.length;k++){
+        if(verseNums[k]===end+1) end=verseNums[k];
+        else{ranges.push(start===end?`${start}`:`${start}-${end}`);start=end=verseNums[k];}
+      }
+      ranges.push(start===end?`${start}`:`${start}-${end}`);
+      rangeStr=ranges.join(", ");
+    }
+    const ref=`${bookName} ${chapNum}:${rangeStr}`;
+    return {text,ref};
+  }
+  function saveSelectedVerses(){
+    const {text,ref}=getSelectedVerseText();
+    if(!text) return;
+    const indices=[...selectedVerses].sort((a,b)=>a-b);
+    const sv={id:Date.now().toString(),bookIdx:bibleBook,chapIdx:bibleChapter,verseStart:indices[0],verseEnd:indices[indices.length-1],text,ref,date:todayStr(),highlightColor:"#D4A840"};
+    persistSavedVerses([sv,...savedVerses]);
+    setSelectedVerses(new Set());
+    setVerseActionBar(false);
+  }
+  function deleteSavedVerse(id){
+    persistSavedVerses(savedVerses.filter(v=>v.id!==id));
+  }
+  function insertVerseIntoJournal(verse){
+    const quote=`"${verse.text}"\n-- ${verse.ref}\n\n`;
+    setJTexts(tx=>{const n=[...tx];n[0]=quote+n[0];return n;});
+    setVerseImportPicker(false);
+  }
+  async function downloadVerseCard(){
+    const {text,ref}=verseShareOverlay||{};
+    if(!text) return;
+    const canvas=await renderVerseCard(text,ref,verseTheme,verseRatio);
+    const link=document.createElement("a");
+    link.download=`verse-${Date.now()}.png`;
+    link.href=canvas.toDataURL("image/png");
+    link.click();
+  }
+  async function copyVerseCard(){
+    const {text,ref}=verseShareOverlay||{};
+    if(!text) return;
+    try{
+      const canvas=await renderVerseCard(text,ref,verseTheme,verseRatio);
+      const blob=await new Promise(r=>canvas.toBlob(r,"image/png"));
+      await navigator.clipboard.write([new ClipboardItem({"image/png":blob})]);
+      setVerseCopied(true);
+      setTimeout(()=>setVerseCopied(false),2000);
+    }catch(e){console.error("Copy failed:",e);}
   }
 
   // ── JOURNAL ──
@@ -3036,6 +3217,10 @@ export default function App(){
     .map-hotspot:hover{box-shadow:0 0 35px rgba(255,210,120,0.45),0 0 70px rgba(255,210,120,0.15)!important;transform:translate(-50%,-50%) scale(1.08)!important}
     .map-hotspot:active{transform:translate(-50%,-50%) scale(0.94)!important}
     @keyframes verseReveal{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes actionBarSlideUp{from{opacity:0;transform:translateY(40px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes overlayFadeIn{from{opacity:0}to{opacity:1}}
+    @keyframes panelSlideUp{from{opacity:0;transform:translateY(100%)}to{opacity:1;transform:translateY(0)}}
+    .verse-tap:active{transform:scale(0.98);}
     .bible-book{transition:all .2s ease;cursor:pointer}.bible-book:hover{background:rgba(180,160,210,0.12)!important;transform:translateX(4px)}.bible-book:active{transform:translateX(2px) scale(0.98)}
     .bible-chap{transition:all .2s ease;cursor:pointer}.bible-chap:hover{background:rgba(180,160,210,0.18)!important;transform:scale(1.08)}.bible-chap:active{transform:scale(0.94)}
   `;
@@ -3850,7 +4035,10 @@ export default function App(){
               <textarea value={jTexts[0]} onChange={e=>setJTexts(tx=>{const n=[...tx];n[0]=e.target.value;return n;})} placeholder="Begin here. This space is only for you…" style={{width:"100%",background:"transparent",border:"none",minHeight:"190px",lineHeight:"1.9",fontSize:"1rem",fontFamily:SERIF,padding:"18px",color:t.text,boxSizing:"border-box"}}/>
               <div style={{padding:"10px 16px",borderTop:`1px solid ${t.border}`,background:"rgba(0,0,0,0.1)",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                 <span style={{fontSize:"0.68rem",color:t.sub,opacity:.55}}>{wc(jTexts[0])>0?`${wc(jTexts[0])} words`:""}</span>
-                {jTexts[0].trim()&&journalStep===0&&<button onClick={()=>setJournalStep(1)} style={{background:"transparent",border:`1px solid ${t.border}`,color:t.sub,padding:"5px 13px",borderRadius:"6px",cursor:"pointer",fontSize:"0.73rem",fontFamily:SANS}} onMouseEnter={e=>{e.target.style.borderColor=t.accent;e.target.style.color=t.accent;}} onMouseLeave={e=>{e.target.style.borderColor=t.border;e.target.style.color=t.sub;}}>Go deeper ↓</button>}
+                <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                  {savedVerses.length>0&&<button onClick={()=>setVerseImportPicker(true)} style={{background:"transparent",border:`1px solid ${t.border}`,color:t.sub,padding:"5px 13px",borderRadius:"6px",cursor:"pointer",fontSize:"0.73rem",fontFamily:SANS,opacity:0.7,transition:"all 0.2s"}} onMouseEnter={e=>{e.target.style.borderColor=t.accent;e.target.style.color=t.accent;e.target.style.opacity="1";}} onMouseLeave={e=>{e.target.style.borderColor=t.border;e.target.style.color=t.sub;e.target.style.opacity="0.7";}}>+ Verse</button>}
+                  {jTexts[0].trim()&&journalStep===0&&<button onClick={()=>setJournalStep(1)} style={{background:"transparent",border:`1px solid ${t.border}`,color:t.sub,padding:"5px 13px",borderRadius:"6px",cursor:"pointer",fontSize:"0.73rem",fontFamily:SANS}} onMouseEnter={e=>{e.target.style.borderColor=t.accent;e.target.style.color=t.accent;}} onMouseLeave={e=>{e.target.style.borderColor=t.border;e.target.style.color=t.sub;}}>Go deeper ↓</button>}
+                </div>
               </div>
             </div>
           </div>
@@ -3882,6 +4070,31 @@ export default function App(){
             </div>
           </div>}
         </main>
+        {/* ── VERSE IMPORT PICKER ── */}
+        {verseImportPicker&&(
+          <div onClick={e=>{if(e.target===e.currentTarget)setVerseImportPicker(false);}} style={{position:"fixed",inset:0,zIndex:500,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"flex-end",justifyContent:"center",animation:"overlayFadeIn .2s ease both"}}>
+            <div style={{background:"#1A1612",borderRadius:"20px 20px 0 0",width:"100%",maxWidth:500,maxHeight:"60vh",display:"flex",flexDirection:"column",animation:"panelSlideUp .3s ease both"}}>
+              <div style={{padding:"16px 20px",borderBottom:"1px solid rgba(201,169,110,0.12)",display:"flex",justifyContent:"space-between",alignItems:"center",flexShrink:0}}>
+                <span style={{fontFamily:SERIF,fontStyle:"italic",color:t.text,fontSize:"0.92rem"}}>Insert a saved verse</span>
+                <button onClick={()=>setVerseImportPicker(false)} style={{background:"transparent",border:"none",cursor:"pointer",color:t.sub,fontSize:"1.1rem",lineHeight:1}}>x</button>
+              </div>
+              <div style={{overflowY:"auto",WebkitOverflowScrolling:"touch",padding:"12px 16px 24px",flex:1}}>
+                {savedVerses.length===0&&(
+                  <div style={{textAlign:"center",padding:"32px 0"}}>
+                    <p style={{fontFamily:SERIF,fontStyle:"italic",color:t.sub,fontSize:"0.88rem",opacity:0.5}}>No saved verses yet</p>
+                    <p style={{fontFamily:SANS,fontSize:"0.72rem",color:t.sub,opacity:0.3,marginTop:6}}>Save verses from the Bible in the Upper Room</p>
+                  </div>
+                )}
+                {savedVerses.map(v=>(
+                  <button key={v.id} onClick={()=>insertVerseIntoJournal(v)} style={{width:"100%",textAlign:"left",background:"rgba(255,255,255,0.03)",border:`1px solid ${t.border}`,borderRadius:10,padding:"14px 16px",marginBottom:8,cursor:"pointer",transition:"all 0.2s"}} onMouseEnter={e=>e.currentTarget.style.borderColor=t.accent} onMouseLeave={e=>e.currentTarget.style.borderColor=t.border}>
+                    <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.85rem",color:t.text,margin:"0 0 4px",lineHeight:1.6,opacity:0.7,overflow:"hidden",textOverflow:"ellipsis",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>"{v.text}"</p>
+                    <p style={{fontFamily:SANS,fontSize:"0.7rem",color:t.sub,margin:0,opacity:0.5}}>-- {v.ref}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -5060,6 +5273,14 @@ export default function App(){
                   {bibleLoading?"Loading Scriptures...":"Open the Scriptures"}
                 </button>
               </div>
+              {/* Saved Verses */}
+              {savedVerses.length>0&&(
+                <div style={{textAlign:"center",marginTop:16,animation:"fadeUp .8s .55s ease both",opacity:0}}>
+                  <button onClick={()=>setSavedVersesView(true)} style={{background:"rgba(212,168,64,0.08)",border:"1px solid rgba(212,168,64,0.18)",borderRadius:20,padding:"10px 28px",cursor:"pointer",color:"rgba(212,168,64,0.7)",fontFamily:SANS,fontSize:"0.82rem",transition:"all 0.3s"}}>
+                    Saved Verses ({savedVerses.length})
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -5145,12 +5366,14 @@ export default function App(){
               {/* ── READING VIEW ── */}
               {bibleView==="reading"&&(
                 <div style={{maxWidth:680,margin:"0 auto",padding:"24px 20px 100px"}}>
-                  {bibleData[bibleBook].chapters[bibleChapter].map((verse,i)=>(
-                    <p key={i} style={{fontFamily:SERIF,fontSize:bibleFontSize,color:"#E8E0F0",lineHeight:1.85,margin:"0 0 6px",animation:`verseReveal .35s ${Math.min(i*0.015,1.2)}s ease both`,opacity:0}}>
-                      <span style={{fontFamily:SANS,fontSize:"0.68em",color:"rgba(180,160,210,0.38)",marginRight:8,userSelect:"none",fontWeight:600}}>{i+1}</span>
+                  {bibleData[bibleBook].chapters[bibleChapter].map((verse,i)=>{
+                    const sel=selectedVerses.has(i);
+                    return(
+                    <p key={i} className="verse-tap" onClick={()=>toggleVerseSelection(i)} style={{fontFamily:SERIF,fontSize:bibleFontSize,color:sel?"#FFF8E8":"#E8E0F0",lineHeight:1.85,margin:"0 0 4px",padding:"4px 10px 4px 14px",borderRadius:8,cursor:"pointer",background:sel?"rgba(212,168,64,0.12)":"transparent",borderLeft:sel?"3px solid rgba(212,168,64,0.55)":"3px solid transparent",transition:"all 0.2s ease",animation:`verseReveal .35s ${Math.min(i*0.015,1.2)}s ease both`,opacity:0,WebkitTapHighlightColor:"transparent"}}>
+                      <span style={{fontFamily:SANS,fontSize:"0.68em",color:sel?"rgba(212,168,64,0.75)":"rgba(180,160,210,0.38)",marginRight:8,userSelect:"none",fontWeight:600,transition:"color 0.2s"}}>{i+1}</span>
                       {verse}
-                    </p>
-                  ))}
+                    </p>);
+                  })}
                   {/* Chapter navigation */}
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:40,paddingTop:20,borderTop:"1px solid rgba(180,160,210,0.10)"}}>
                     {bibleChapter>0?(
@@ -5165,8 +5388,84 @@ export default function App(){
                       </button>
                     ):<div/>}
                   </div>
+                  {/* ── FLOATING ACTION BAR ── */}
+                  {verseActionBar&&(
+                    <div style={{position:"fixed",bottom:24,left:"50%",transform:"translateX(-50%)",zIndex:300,background:"rgba(14,11,20,0.85)",backdropFilter:"blur(16px)",WebkitBackdropFilter:"blur(16px)",border:"1px solid rgba(212,168,64,0.25)",borderRadius:18,padding:"10px 18px",display:"flex",alignItems:"center",gap:14,animation:"actionBarSlideUp .3s ease both",boxShadow:"0 8px 32px rgba(0,0,0,0.5)"}}>
+                      <span style={{fontFamily:SANS,fontSize:"0.72rem",color:"rgba(212,168,64,0.7)",whiteSpace:"nowrap"}}>{selectedVerses.size} verse{selectedVerses.size>1?"s":""}</span>
+                      <div style={{width:1,height:20,background:"rgba(212,168,64,0.2)"}}/>
+                      <button onClick={saveSelectedVerses} style={{background:"rgba(212,168,64,0.15)",border:"1px solid rgba(212,168,64,0.30)",borderRadius:10,padding:"7px 16px",cursor:"pointer",color:"#D4A840",fontFamily:SANS,fontSize:"0.76rem",fontWeight:600,transition:"all 0.2s",whiteSpace:"nowrap"}}>Save</button>
+                      <button onClick={()=>{const v=getSelectedVerseText();setVerseShareOverlay(v);}} style={{background:"rgba(180,160,210,0.12)",border:"1px solid rgba(180,160,210,0.20)",borderRadius:10,padding:"7px 16px",cursor:"pointer",color:"#D8C8F0",fontFamily:SANS,fontSize:"0.76rem",transition:"all 0.2s",whiteSpace:"nowrap"}}>Share</button>
+                      <button onClick={()=>{setSelectedVerses(new Set());setVerseActionBar(false);}} style={{background:"transparent",border:"none",cursor:"pointer",color:"rgba(200,190,230,0.4)",fontFamily:SANS,fontSize:"0.76rem",padding:"7px 8px",transition:"color 0.2s"}}>Clear</button>
+                    </div>
+                  )}
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* ── SAVED VERSES VIEW ── */}
+        {savedVersesView&&(
+          <div style={{position:"fixed",inset:0,zIndex:500,background:"rgba(10,8,16,0.97)",display:"flex",flexDirection:"column",animation:"overlayFadeIn .25s ease both"}}>
+            <header style={{background:"#0E0B14",padding:"0 16px",height:54,display:"flex",alignItems:"center",gap:10,boxShadow:"0 2px 16px rgba(0,0,0,0.3)",flexShrink:0}}>
+              <button onClick={()=>setSavedVersesView(false)} style={{background:"transparent",border:"none",cursor:"pointer",color:"rgba(200,190,230,0.55)",fontSize:"0.8rem",fontFamily:SANS,padding:"4px 0"}}>{"< Back"}</button>
+              <div style={{height:14,width:1,background:"rgba(180,160,210,0.2)"}}/>
+              <span style={{fontFamily:SERIF,fontStyle:"italic",color:"#D8C8F0",fontSize:"0.92rem"}}>Saved Verses</span>
+            </header>
+            <div style={{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch",padding:"20px 16px 80px"}}>
+              <div style={{maxWidth:680,margin:"0 auto"}}>
+                {savedVerses.length===0&&(
+                  <div style={{textAlign:"center",marginTop:80}}>
+                    <p style={{fontFamily:SERIF,fontStyle:"italic",color:"rgba(200,190,230,0.3)",fontSize:"1rem"}}>No saved verses yet</p>
+                    <p style={{fontFamily:SANS,fontSize:"0.78rem",color:"rgba(200,190,230,0.2)",marginTop:8}}>Tap verses while reading to select and save them</p>
+                  </div>
+                )}
+                {savedVerses.map(v=>(
+                  <div key={v.id} style={{background:"rgba(180,160,210,0.06)",border:"1px solid rgba(180,160,210,0.10)",borderRadius:14,padding:"18px 16px",marginBottom:12}}>
+                    <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.92rem",color:"rgba(230,220,248,0.65)",lineHeight:1.7,margin:"0 0 8px"}}>"{v.text.length>180?v.text.slice(0,180)+"...":v.text}"</p>
+                    <p style={{fontFamily:SANS,fontSize:"0.75rem",color:"rgba(180,160,210,0.45)",margin:"0 0 12px"}}>-- {v.ref}</p>
+                    <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                      <button onClick={()=>setVerseShareOverlay({text:v.text,ref:v.ref})} style={{background:"rgba(180,160,210,0.10)",border:"1px solid rgba(180,160,210,0.15)",borderRadius:8,padding:"6px 14px",cursor:"pointer",color:"rgba(230,220,248,0.55)",fontFamily:SANS,fontSize:"0.72rem",transition:"all 0.2s"}}>Share</button>
+                      <button onClick={()=>{setBibleBook(v.bookIdx);setBibleChapter(v.chapIdx);setSavedVersesView(false);setBibleView("reading");}} style={{background:"rgba(180,160,210,0.10)",border:"1px solid rgba(180,160,210,0.15)",borderRadius:8,padding:"6px 14px",cursor:"pointer",color:"rgba(230,220,248,0.55)",fontFamily:SANS,fontSize:"0.72rem",transition:"all 0.2s"}}>Read</button>
+                      <button onClick={()=>deleteSavedVerse(v.id)} style={{background:"rgba(180,80,80,0.08)",border:"1px solid rgba(180,80,80,0.15)",borderRadius:8,padding:"6px 14px",cursor:"pointer",color:"rgba(220,120,120,0.55)",fontFamily:SANS,fontSize:"0.72rem",transition:"all 0.2s"}}>Remove</button>
+                    </div>
+                    <p style={{fontFamily:SANS,fontSize:"0.62rem",color:"rgba(200,190,230,0.2)",marginTop:8}}>{v.date}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── VERSE SHARE OVERLAY ── */}
+        {verseShareOverlay&&(
+          <div onClick={e=>{if(e.target===e.currentTarget)setVerseShareOverlay(null);}} style={{position:"fixed",inset:0,zIndex:600,background:"rgba(6,4,12,0.92)",backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",display:"flex",alignItems:"center",justifyContent:"center",animation:"overlayFadeIn .25s ease both"}}>
+            <div style={{background:"#12101A",border:"1px solid rgba(180,160,210,0.15)",borderRadius:20,padding:"28px 24px",maxWidth:420,width:"90%",maxHeight:"85vh",overflowY:"auto",position:"relative"}}>
+              <button onClick={()=>setVerseShareOverlay(null)} style={{position:"absolute",top:12,right:14,background:"transparent",border:"none",cursor:"pointer",color:"rgba(200,190,230,0.4)",fontSize:"1.2rem",lineHeight:1}}>x</button>
+              <p style={{fontFamily:SANS,fontSize:"0.68rem",letterSpacing:"0.08em",textTransform:"uppercase",color:"rgba(200,190,230,0.30)",margin:"0 0 16px",textAlign:"center"}}>Create Verse Image</p>
+              {/* Preview */}
+              <div style={{display:"flex",justifyContent:"center",marginBottom:20}}>
+                <VersePreview text={verseShareOverlay.text} refText={verseShareOverlay.ref} theme={verseTheme} ratio={verseRatio} scale={0.32}/>
+              </div>
+              {/* Theme picker */}
+              <p style={{fontFamily:SANS,fontSize:"0.65rem",color:"rgba(200,190,230,0.30)",margin:"0 0 8px",textTransform:"uppercase",letterSpacing:"0.06em"}}>Theme</p>
+              <div style={{display:"flex",gap:10,marginBottom:18,flexWrap:"wrap"}}>
+                {VERSE_THEMES.map(th=>(
+                  <button key={th.id} onClick={()=>setVerseTheme(th)} title={th.label} style={{width:32,height:32,borderRadius:"50%",background:th.preview,border:verseTheme.id===th.id?"2px solid rgba(212,168,64,0.8)":"2px solid rgba(180,160,210,0.15)",cursor:"pointer",transition:"all 0.2s",boxShadow:verseTheme.id===th.id?"0 0 12px rgba(212,168,64,0.3)":"none"}}/>
+                ))}
+              </div>
+              {/* Ratio picker */}
+              <p style={{fontFamily:SANS,fontSize:"0.65rem",color:"rgba(200,190,230,0.30)",margin:"0 0 8px",textTransform:"uppercase",letterSpacing:"0.06em"}}>Size</p>
+              <div style={{display:"flex",gap:8,marginBottom:22}}>
+                {CARD_RATIOS.map(r=>(
+                  <button key={r.label} onClick={()=>setVerseRatio(r)} style={{background:verseRatio.label===r.label?"rgba(212,168,64,0.15)":"rgba(180,160,210,0.06)",border:verseRatio.label===r.label?"1px solid rgba(212,168,64,0.35)":"1px solid rgba(180,160,210,0.12)",borderRadius:8,padding:"6px 14px",cursor:"pointer",color:verseRatio.label===r.label?"#D4A840":"rgba(200,190,230,0.5)",fontFamily:SANS,fontSize:"0.72rem",transition:"all 0.2s"}}>{r.label}</button>
+                ))}
+              </div>
+              {/* Actions */}
+              <div style={{display:"flex",gap:10}}>
+                <button onClick={downloadVerseCard} style={{flex:1,background:"linear-gradient(135deg,rgba(212,168,64,0.20),rgba(212,168,64,0.06))",border:"1px solid rgba(212,168,64,0.30)",borderRadius:12,padding:"12px 0",cursor:"pointer",color:"#D4A840",fontFamily:SANS,fontSize:"0.82rem",fontWeight:600,transition:"all 0.2s"}}>Download</button>
+                <button onClick={copyVerseCard} style={{flex:1,background:"rgba(180,160,210,0.10)",border:"1px solid rgba(180,160,210,0.18)",borderRadius:12,padding:"12px 0",cursor:"pointer",color:verseCopied?"#5A8A6A":"#D8C8F0",fontFamily:SANS,fontSize:"0.82rem",transition:"all 0.2s"}}>{verseCopied?"Copied!":"Copy"}</button>
+              </div>
             </div>
           </div>
         )}
