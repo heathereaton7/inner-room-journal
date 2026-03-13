@@ -2737,10 +2737,10 @@ export default function App(){
       </button>
 
       {/* 3. OPEN BOOK ON DESK — upper-right corner on the desk near lamp → journal */}
-      <button onClick={()=>{setBookOpen(true);setBookPage(0);setFlipDir(null);}} style={{position:"absolute",right:"6%",top:"20%",width:"18%",height:"16%",zIndex:11,background:"transparent",border:"none",padding:0,cursor:"pointer",borderRadius:"8px",outline:"none",WebkitTapHighlightColor:"transparent"}}>
+      <button onClick={()=>{setBookOpen(true);setBookPage(0);setFlipDir(null);}} style={{position:"absolute",right:"6%",top:"38%",width:"18%",height:"16%",zIndex:11,background:"transparent",border:"none",padding:0,cursor:"pointer",borderRadius:"8px",outline:"none",WebkitTapHighlightColor:"transparent"}}>
         {/* Pulse glow on open book */}
-        <div style={{position:"absolute",left:"10%",top:"30%",width:"80%",height:"90%",borderRadius:"45%",background:"radial-gradient(ellipse at 50% 55%,rgba(255,215,130,0.30) 0%,rgba(255,190,90,0.10) 45%,transparent 72%)",pointerEvents:"none",animation:"hotspotPulse 2.8s ease-in-out infinite",animationDelay:"0.3s"}}/>
-        <div style={{position:"absolute",left:"22%",top:"40%",width:"56%",height:"68%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,245,180,0.20) 0%,transparent 55%)",pointerEvents:"none",animation:"hotspotPulse 3.3s ease-in-out infinite",animationDelay:"1s"}}/>
+        <div style={{position:"absolute",left:"10%",top:"10%",width:"80%",height:"85%",borderRadius:"45%",background:"radial-gradient(ellipse at 50% 55%,rgba(255,215,130,0.30) 0%,rgba(255,190,90,0.10) 45%,transparent 72%)",pointerEvents:"none",animation:"hotspotPulse 2.8s ease-in-out infinite",animationDelay:"0.3s"}}/>
+        <div style={{position:"absolute",left:"22%",top:"18%",width:"56%",height:"65%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,245,180,0.20) 0%,transparent 55%)",pointerEvents:"none",animation:"hotspotPulse 3.3s ease-in-out infinite",animationDelay:"1s"}}/>
       </button>
 
       {/* 4. LEFT WINDOW — left half of the large picture window (forest + starry sky) */}
