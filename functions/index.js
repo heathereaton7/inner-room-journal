@@ -9,7 +9,7 @@ const db = getFirestore();
 const VALID_ITEMS = new Set([
   "herb_seed","carrot_seed","onion_seed","potato_seed","tomato_seed","wheat_seed",
   "herbs","carrot","onion","potato","tomato","wheat","barley","grapes","figs","olives","pomegranates","dates",
-  "mushrooms","berries","eggs","milk","honey",
+  "mushrooms","berries","eggs","milk","honey","wool","feed",
   "olive_oil","lamp_oil","flour","barley_flour","dried_figs","dried_dates","raisins",
   "flatbread","vegetable_soup","bread","roasted_vegetables","stew","honey_cake","fruit_salad",
 ]);

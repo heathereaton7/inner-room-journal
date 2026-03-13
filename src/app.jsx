@@ -508,6 +508,8 @@ const ITEM_CATALOG = {
   eggs:  { name:"Eggs",  emoji:"🥚", cat:"ingredients", buyPrice:5,  sellPrice:4  },
   milk:  { name:"Milk",  emoji:"🥛", cat:"ingredients", buyPrice:5,  sellPrice:4  },
   honey: { name:"Honey", emoji:"🍯", cat:"ingredients", buyPrice:8,  sellPrice:6  },
+  wool:  { name:"Wool",  emoji:"🧶", cat:"ingredients", sellPrice:7  },
+  feed:  { name:"Feed",  emoji:"🌾", cat:"ingredients", buyPrice:3,  sellPrice:1  },
   // === Crafted Intermediates ===
   olive_oil:    { name:"Olive Oil",    emoji:"🫗", cat:"ingredients", sellPrice:12 },
   lamp_oil:     { name:"Lamp Oil",     emoji:"🪔", cat:"ingredients", sellPrice:10 },
@@ -561,6 +563,18 @@ const FARM_PLANTS = [
   { id:"wheat_farm", name:"Wheat", emoji:"🌾", stageEmojis:["🌱","🌿","🌾","🌾","🌾"], harvestItem:"wheat", seedItem:"wheat_seed", growthBase:[10,12,13,10], plantCost:0 },
 ];
 
+/* ═══════════════════════════════════════════════════
+   ECONOMY — FARM ANIMALS (timestamp-based production)
+═══════════════════════════════════════════════════ */
+const ANIMAL_TYPES=[
+  {id:"chicken", name:"Chicken", emoji:"🐔", product:"eggs",  durationMs:3*60*60*1000,  feedCost:1, buyCost:25,  durationLabel:"3h"},
+  {id:"goat",    name:"Goat",    emoji:"🐐", product:"milk",  durationMs:6*60*60*1000,  feedCost:1, buyCost:50,  durationLabel:"6h"},
+  {id:"sheep",   name:"Sheep",   emoji:"🐑", product:"wool",  durationMs:12*60*60*1000, feedCost:1, buyCost:75,  durationLabel:"12h"},
+  {id:"cow",     name:"Cow",     emoji:"🐄", product:"milk",  durationMs:8*60*60*1000,  feedCost:1, buyCost:100, durationLabel:"8h"},
+  {id:"bees",    name:"Bees",    emoji:"🐝", product:"honey", durationMs:24*60*60*1000, feedCost:1, buyCost:120, durationLabel:"24h"},
+];
+const MAX_ANIMALS=6;
+
 async function dbLoad(k){
   try{
     if(window.storage){const r=await window.storage.get(k);return r?.value?JSON.parse(r.value):null;}
@@ -573,7 +587,7 @@ async function dbSave(k,v){
     localStorage.setItem(k,JSON.stringify(v));
     // Dual-write to Firestore when signed in
     if(auth?.currentUser){
-      const fieldMap={"irj-entries":"entries","irj-prayer":"prayerPosts","irj-saved-cards":"savedCards","irj-onboarded":"isOnboarded","irj-candles":"candles","irj-prayed":"prayedFor","irj-owned-items":"ownedItems","irj-garden":"gardenPlots","irj-inventory":"inventory","irj-saved-verses":"savedVerses","irj-bank":"bank","irj-sell-basket":"sellBasket","irj-farm-plots":"farmPlots"};
+      const fieldMap={"irj-entries":"entries","irj-prayer":"prayerPosts","irj-saved-cards":"savedCards","irj-onboarded":"isOnboarded","irj-candles":"candles","irj-prayed":"prayedFor","irj-owned-items":"ownedItems","irj-garden":"gardenPlots","irj-inventory":"inventory","irj-saved-verses":"savedVerses","irj-bank":"bank","irj-sell-basket":"sellBasket","irj-farm-plots":"farmPlots","irj-animals":"animals"};
       const field=fieldMap[k];
       if(field){
         const userRef=doc(db,"users",auth.currentUser.uid);
@@ -1834,6 +1848,16 @@ const GARDEN_PLOT_POSITIONS=[
   {left:"55%",top:"27%",size:"7vw",maxSize:"36px"},
 ];
 
+// Animal pen slots — horizontal row below farm plots, above bottom buttons
+const ANIMAL_PEN_POSITIONS=[
+  {left:"8%", top:"86%",size:"13vw",maxSize:"64px"},
+  {left:"25%",top:"86%",size:"13vw",maxSize:"64px"},
+  {left:"42%",top:"86%",size:"13vw",maxSize:"64px"},
+  {left:"58%",top:"86%",size:"13vw",maxSize:"64px"},
+  {left:"75%",top:"86%",size:"13vw",maxSize:"64px"},
+  {left:"92%",top:"86%",size:"13vw",maxSize:"64px"},
+];
+
 function ImmersiveGarden(){
   const containerRef=useRef(null);
   const canvasRef=useRef(null);
@@ -2460,6 +2484,8 @@ function AppInner(){
   const [shopStall,    setShopStall]    = useState(null);  // "general"|"barter"
   const [inventoryTab, setInventoryTab] = useState("all"); // category filter
   const [farmPlots,    setFarmPlots]    = useState([]); // economy garden plots
+  const [animals,      setAnimals]      = useState([]); // farm animals [{id,typeId,status,produceReadyAt}]
+  const [animalModal,  setAnimalModal]  = useState(null); // null|"buy"|animalId
   const [gardenMode,   setGardenMode]   = useState("farm"); // "farm"|"prayers"
   const [toast,        setToast]        = useState(null); // {msg,emoji} — ephemeral notification
   // ── Multiplayer state ──
@@ -2626,6 +2652,7 @@ function AppInner(){
       const bnk  = await dbLoad("irj-bank") || {coins:0, diamonds:0};
       const sb   = await dbLoad("irj-sell-basket") || [];
       const fp   = await dbLoad("irj-farm-plots") || Array.from({length:12},(_,i)=>({id:i+1,plantType:null,stage:"empty",plantedAt:null}));
+      const an   = await dbLoad("irj-animals") || [];
       // Migrate prayers: add status/answeredDate/category if missing
       let migrated=false;
       const mpp=pp.map(p=>{
@@ -2635,7 +2662,7 @@ function AppInner(){
       if(migrated) dbSave("irj-prayer",mpp);
       setEntries(ens); setPrayerPosts(mpp); setSavedCards(sc);
       setCandles(cn); setPrayedFor(pf); setOwnedItems(oi); setGardenPlots(gp); setInventory(inv); setSavedVerses(sv);
-      setBank(bnk); setSellBasket(sb); setFarmPlots(fp);
+      setBank(bnk); setSellBasket(sb); setFarmPlots(fp); setAnimals(an);
       let s=0,d=new Date(),map={};
       ens.forEach(e=>{map[e.date]=true;});
       while(map[isoDate(d)]){s++;d.setDate(d.getDate()-1);} setStreak(s);
@@ -2725,6 +2752,7 @@ function AppInner(){
       const localBank=await dbLoad("irj-bank")||{coins:0,diamonds:0};
       const localSellBasket=await dbLoad("irj-sell-basket")||[];
       const localFarmPlots=await dbLoad("irj-farm-plots")||[];
+      const localAnimals=await dbLoad("irj-animals")||[];
 
       const mergedEntries=mergeById(localEntries,cloud.entries||[]);
       const mergedPrayers=mergeById(localPrayers,cloud.prayerPosts||[]);
@@ -2760,6 +2788,14 @@ function AppInner(){
         if(lp.stage==="empty"&&cp.stage!=="empty") return cp;
         return lp;
       }):cloudFarmPlots.length?cloudFarmPlots:Array.from({length:12},(_,i)=>({id:i+1,plantType:null,stage:"empty",plantedAt:null}));
+      // Animals: merge by id, local wins
+      const cloudAnimals=cloud.animals||[];
+      const mergedAnimals=localAnimals.length?localAnimals.map(la=>{
+        const ca=cloudAnimals.find(c=>c.id===la.id);
+        return ca&&!la.produceReadyAt&&ca.produceReadyAt?ca:la;
+      }):cloudAnimals;
+      // Add any cloud-only animals not in local
+      cloudAnimals.forEach(ca=>{if(!mergedAnimals.find(a=>a.id===ca.id))mergedAnimals.push(ca);});
 
       localStorage.setItem("irj-entries",JSON.stringify(mergedEntries));
       localStorage.setItem("irj-prayer",JSON.stringify(mergedPrayers));
@@ -2774,6 +2810,7 @@ function AppInner(){
       localStorage.setItem("irj-bank",JSON.stringify(mergedBank));
       localStorage.setItem("irj-sell-basket",JSON.stringify(mergedSellBasket));
       localStorage.setItem("irj-farm-plots",JSON.stringify(mergedFarmPlots));
+      localStorage.setItem("irj-animals",JSON.stringify(mergedAnimals));
 
       await setDoc(userRef,{
         entries:mergedEntries,
@@ -2789,6 +2826,7 @@ function AppInner(){
         bank:mergedBank,
         sellBasket:mergedSellBasket,
         farmPlots:mergedFarmPlots,
+        animals:mergedAnimals,
         lastSyncedAt:new Date().toISOString(),
       });
 
@@ -2805,6 +2843,7 @@ function AppInner(){
       setBank(mergedBank);
       setSellBasket(mergedSellBasket);
       setFarmPlots(mergedFarmPlots);
+      setAnimals(mergedAnimals);
 
       let s=0,d=new Date(),map={};
       mergedEntries.forEach(e=>{map[e.date]=true;});
@@ -3025,6 +3064,7 @@ function AppInner(){
   async function persistSellBasket(b){ setSellBasket(b); await dbSave("irj-sell-basket",b); }
   async function persistInventory(inv){ setInventory(inv); await dbSave("irj-inventory",inv); }
   async function persistFarmPlots(fp){ setFarmPlots(fp); await dbSave("irj-farm-plots",fp); publishFarmSnapshot(fp); }
+  async function persistAnimals(a){ setAnimals(a); await dbSave("irj-animals",a); }
 
   function addToInventory(itemId, qty=1){
     setInventory(prev=>{
@@ -3335,6 +3375,65 @@ function AppInner(){
     });
     setCandleReward({amount:1, message:`Harvested ${plant.name}!`});
     setTimeout(()=>setCandleReward(null),2500);
+  }
+
+  // ── FARM ANIMALS ──
+  function getAnimalProduceStatus(animal){
+    if(!animal.produceReadyAt) return "hungry";
+    if(Date.now()>=animal.produceReadyAt) return "ready";
+    return "producing";
+  }
+  function getAnimalTimeRemaining(animal){
+    if(!animal.produceReadyAt) return "";
+    const diff=animal.produceReadyAt-Date.now();
+    if(diff<=0) return "Ready!";
+    const h=Math.floor(diff/3600000);
+    const m=Math.floor((diff%3600000)/60000);
+    return h>0?`${h}h ${m}m`:`${m}m`;
+  }
+  function feedAnimal(animalId){
+    const animal=animals.find(a=>a.id===animalId);
+    if(!animal) return;
+    if(getAnimalProduceStatus(animal)!=="hungry") return;
+    const type=ANIMAL_TYPES.find(t=>t.id===animal.typeId);
+    if(!type) return;
+    if(!removeFromInventory("feed",type.feedCost)) {
+      setToast({msg:"Need feed! Buy at the shop.",emoji:"🌾"});
+      return;
+    }
+    const next=animals.map(a=>a.id===animalId?{...a,produceReadyAt:Date.now()+type.durationMs}:a);
+    persistAnimals(next);
+    setToast({msg:`Fed ${type.name}!`,emoji:type.emoji});
+  }
+  function collectAnimalProduce(animalId){
+    const animal=animals.find(a=>a.id===animalId);
+    if(!animal) return;
+    if(getAnimalProduceStatus(animal)!=="ready") return;
+    const type=ANIMAL_TYPES.find(t=>t.id===animal.typeId);
+    if(!type) return;
+    addToInventory(type.product,1);
+    const next=animals.map(a=>a.id===animalId?{...a,produceReadyAt:null}:a);
+    persistAnimals(next);
+    const prodName=ITEM_CATALOG[type.product]?.name||type.product;
+    setCandleReward({amount:1, message:`Collected ${prodName}!`});
+    setTimeout(()=>setCandleReward(null),2500);
+  }
+  function buyAnimal(typeId){
+    if(animals.length>=MAX_ANIMALS){
+      setToast({msg:`Max ${MAX_ANIMALS} animals!`,emoji:"🚫"});
+      return;
+    }
+    const type=ANIMAL_TYPES.find(t=>t.id===typeId);
+    if(!type) return;
+    if(!spendCoins(type.buyCost)){
+      setToast({msg:"Not enough coins!",emoji:"🪙"});
+      return;
+    }
+    const newAnimal={id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),typeId,produceReadyAt:null};
+    const next=[...animals,newAnimal];
+    persistAnimals(next);
+    setAnimalModal(null);
+    setToast({msg:`Got a ${type.name}!`,emoji:type.emoji});
   }
 
   // ── PRAYER GARDEN ──
@@ -3858,6 +3957,10 @@ function AppInner(){
     .garden-lantern-glow2{animation:candleGlowPulse 4.8s ease-in-out infinite 1s}
     .garden-door-glow{animation:candleGlowPulse 3.5s ease-in-out infinite 0.5s}
     .garden-string-lights{animation:stringLightTwinkle 7s ease-in-out infinite}
+    @keyframes animalBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+    @keyframes produceFloat{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-6px) scale(1.1)}}
+    .animal-slot{transition:transform .15s ease;cursor:pointer}
+    .animal-slot:active{transform:translate(-50%,-50%) scale(0.9)!important}
     .garden-plot-hotspot{transition:all .25s ease;cursor:pointer}
     .garden-plot-hotspot:hover{transform:translate(-50%,-50%) scale(1.12)!important}
     .garden-plot-hotspot:active{transform:translate(-50%,-50%) scale(0.92)!important}
@@ -5598,6 +5701,8 @@ function AppInner(){
     const getActiveEmoji=(plot)=>isFarmMode?getFarmPlantEmoji(plot):getPlantEmoji(plot);
     const growingCount=activePlots.filter(p=>p.stage!=="empty"&&getActiveStage(p)!=="harvestable").length;
     const readyCount=activePlots.filter(p=>p.stage!=="empty"&&getActiveStage(p)==="harvestable").length;
+    const animalsHungry=animals.filter(a=>getAnimalProduceStatus(a)==="hungry").length;
+    const animalsReady=animals.filter(a=>getAnimalProduceStatus(a)==="ready").length;
 
     return(
       <div style={{position:"fixed",inset:0,overflow:"hidden",fontFamily:SANS}}>
@@ -5656,6 +5761,125 @@ function AppInner(){
           );
         })}
 
+        {/* ═══ ANIMAL PEN — only in farm mode ═══ */}
+        {isFarmMode&&(()=>{
+          const filledSlots=animals.map((animal,idx)=>{
+            const pos=ANIMAL_PEN_POSITIONS[idx];
+            if(!pos) return null;
+            const type=ANIMAL_TYPES.find(t=>t.id===animal.typeId);
+            if(!type) return null;
+            const status=getAnimalProduceStatus(animal);
+            const isReady=status==="ready";
+            const isHungry=status==="hungry";
+            return(
+              <button key={animal.id} className="animal-slot" onClick={()=>{
+                if(isReady) collectAnimalProduce(animal.id);
+                else if(isHungry) feedAnimal(animal.id);
+                else setAnimalModal(animal.id);
+              }} style={{
+                position:"absolute",left:pos.left,top:pos.top,
+                width:`min(${pos.size},${pos.maxSize})`,height:`min(${pos.size},${pos.maxSize})`,
+                transform:"translate(-50%,-50%)",
+                borderRadius:"50%",border:isHungry?"2px dashed rgba(255,200,60,0.3)":isReady?"2px solid rgba(255,200,60,0.5)":"2px solid rgba(90,138,106,0.2)",
+                cursor:"pointer",zIndex:11,padding:0,
+                background:isReady?"rgba(255,200,60,0.08)":isHungry?"rgba(80,60,30,0.2)":"rgba(90,138,106,0.06)",
+                boxShadow:isReady?"0 0 16px rgba(255,200,60,0.3)":"none",
+                display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:0,
+                overflow:"visible",
+              }}>
+                {isReady&&<span style={{position:"absolute",top:"-10px",fontSize:"clamp(0.55rem,1.5vw,0.75rem)",animation:"produceFloat 2s ease-in-out infinite",filter:"drop-shadow(0 1px 3px rgba(0,0,0,0.5))"}}>
+                  {ITEM_CATALOG[type.product]?.emoji||"📦"}
+                </span>}
+                <span style={{fontSize:"clamp(0.8rem,2.2vw,1.3rem)",lineHeight:1,animation:"animalBob 3.5s ease-in-out infinite"}}>{type.emoji}</span>
+                <span style={{fontSize:"clamp(0.35rem,0.85vw,0.45rem)",fontFamily:SANS,fontWeight:600,lineHeight:1,marginTop:1,
+                  color:isReady?"#FFE880":isHungry?"rgba(255,200,60,0.6)":"rgba(190,211,196,0.4)",
+                  textShadow:"0 1px 3px rgba(0,0,0,0.8)",
+                }}>{isReady?"Collect":isHungry?"Feed":getAnimalTimeRemaining(animal)}</span>
+              </button>
+            );
+          });
+          // Empty "+" slots
+          const emptySlots=[];
+          for(let i=animals.length;i<MAX_ANIMALS;i++){
+            const pos=ANIMAL_PEN_POSITIONS[i];
+            if(!pos) break;
+            if(i>animals.length) break; // only show 1 empty slot
+            emptySlots.push(
+              <button key={`empty-${i}`} className="animal-slot" onClick={()=>setAnimalModal("buy")} style={{
+                position:"absolute",left:pos.left,top:pos.top,
+                width:`min(${pos.size},${pos.maxSize})`,height:`min(${pos.size},${pos.maxSize})`,
+                transform:"translate(-50%,-50%)",
+                borderRadius:"50%",border:"2px dashed rgba(190,211,196,0.12)",
+                cursor:"pointer",zIndex:11,padding:0,
+                background:"rgba(80,60,30,0.15)",
+                display:"flex",alignItems:"center",justifyContent:"center",
+              }}>
+                <span style={{fontSize:"clamp(0.6rem,1.5vw,0.9rem)",color:"rgba(220,200,160,0.35)",animation:"emptyPlotPulse 3.5s ease-in-out infinite"}}>+</span>
+              </button>
+            );
+          }
+          return <>{filledSlots}{emptySlots}</>;
+        })()}
+
+        {/* ═══ ANIMAL BUY MODAL ═══ */}
+        {animalModal==="buy"&&<div style={{position:"fixed",inset:0,zIndex:300}}>
+          <div onClick={()=>setAnimalModal(null)} style={{position:"absolute",inset:0,background:"rgba(6,8,4,0.7)",backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",animation:"spaceFadeIn .2s ease"}}/>
+          <div style={{position:"absolute",bottom:0,left:0,right:0,maxHeight:"75vh",background:"rgba(18,22,14,0.97)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",border:"1px solid rgba(90,138,106,0.2)",borderRadius:"20px 20px 0 0",padding:"24px 20px 32px",animation:"panelSlideUp .35s cubic-bezier(.22,1,.36,1) both",overflowY:"auto"}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:4}}>
+              <div style={{fontFamily:DISPLAY,fontSize:"1rem",fontWeight:700,color:"#BED3C4"}}>Buy an Animal</div>
+              <button onClick={()=>setAnimalModal(null)} style={{background:"none",border:"none",color:"rgba(190,211,196,0.3)",fontSize:"0.9rem",cursor:"pointer"}}>✕</button>
+            </div>
+            <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.75rem",color:"rgba(190,211,196,0.4)",marginBottom:16}}>Feed them to produce goods. {animals.length}/{MAX_ANIMALS} slots used.</p>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10}}>
+              {ANIMAL_TYPES.map(type=>{
+                const canAfford=bank.coins>=type.buyCost;
+                const atMax=animals.length>=MAX_ANIMALS;
+                const disabled=!canAfford||atMax;
+                return(
+                  <button key={type.id} onClick={()=>{if(!disabled)buyAnimal(type.id);}} style={{background:disabled?"rgba(255,255,255,0.02)":"rgba(90,138,106,0.06)",border:`1px solid ${disabled?"rgba(190,211,196,0.06)":"rgba(90,138,106,0.2)"}`,borderRadius:14,padding:"14px 10px",cursor:disabled?"default":"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:5,transition:"all .15s",opacity:disabled?0.4:1}}>
+                    <span style={{fontSize:"1.5rem"}}>{type.emoji}</span>
+                    <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.78rem",color:"rgba(190,211,196,0.8)"}}>{type.name}</span>
+                    <span style={{fontFamily:SANS,fontSize:"0.6rem",color:"rgba(190,211,196,0.45)"}}>Produces {ITEM_CATALOG[type.product]?.emoji||""} {ITEM_CATALOG[type.product]?.name||type.product}</span>
+                    <span style={{fontFamily:SANS,fontSize:"0.58rem",color:"rgba(190,211,196,0.35)"}}>Every {type.durationLabel}</span>
+                    <span style={{fontFamily:SANS,fontSize:"0.68rem",fontWeight:600,color:canAfford?B.goldL:"rgba(190,211,196,0.25)"}}>🪙 {type.buyCost}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>}
+
+        {/* ═══ ANIMAL DETAIL MODAL ═══ */}
+        {animalModal&&animalModal!=="buy"&&(()=>{
+          const animal=animals.find(a=>a.id===animalModal);
+          if(!animal) return null;
+          const type=ANIMAL_TYPES.find(t=>t.id===animal.typeId);
+          if(!type) return null;
+          const status=getAnimalProduceStatus(animal);
+          return(
+            <div style={{position:"fixed",inset:0,zIndex:300}}>
+              <div onClick={()=>setAnimalModal(null)} style={{position:"absolute",inset:0,background:"rgba(6,8,4,0.5)",backdropFilter:"blur(6px)",WebkitBackdropFilter:"blur(6px)"}}/>
+              <div onClick={e=>e.stopPropagation()} style={{position:"absolute",bottom:"18%",left:"50%",transform:"translateX(-50%)",width:"min(82vw,300px)",background:"rgba(18,22,14,0.94)",backdropFilter:"blur(16px)",WebkitBackdropFilter:"blur(16px)",border:"1px solid rgba(90,138,106,0.25)",borderRadius:18,padding:"20px 18px",animation:"fadeUp .3s ease both",boxShadow:"0 8px 32px rgba(0,0,0,0.5)"}}>
+                <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
+                  <span style={{fontSize:"1.8rem"}}>{type.emoji}</span>
+                  <div style={{flex:1}}>
+                    <div style={{fontFamily:DISPLAY,fontSize:"0.95rem",fontWeight:700,color:"#BED3C4"}}>{type.name}</div>
+                    <div style={{fontFamily:SANS,fontSize:"0.68rem",color:"rgba(190,211,196,0.5)"}}>
+                      Produces {ITEM_CATALOG[type.product]?.name||type.product} every {type.durationLabel}
+                    </div>
+                  </div>
+                  <button onClick={()=>setAnimalModal(null)} style={{background:"none",border:"none",color:"rgba(190,211,196,0.3)",fontSize:"1rem",cursor:"pointer",padding:4}}>✕</button>
+                </div>
+                <div style={{fontFamily:SANS,fontSize:"0.75rem",color:status==="ready"?"#FFE880":status==="hungry"?"rgba(255,200,60,0.7)":"rgba(190,211,196,0.5)",marginBottom:12}}>
+                  {status==="ready"?"Product ready to collect!":status==="hungry"?"Needs feeding":"Producing... "+getAnimalTimeRemaining(animal)}
+                </div>
+                {status==="hungry"&&<button onClick={()=>{feedAnimal(animal.id);setAnimalModal(null);}} style={{width:"100%",background:"rgba(90,138,106,0.2)",border:"1px solid rgba(90,138,106,0.35)",borderRadius:10,padding:"10px",fontSize:"0.78rem",fontFamily:SANS,fontWeight:600,color:"#BED3C4",cursor:"pointer"}}>🌾 Feed (1 feed)</button>}
+                {status==="ready"&&<button onClick={()=>{collectAnimalProduce(animal.id);setAnimalModal(null);}} style={{width:"100%",background:"rgba(255,200,60,0.15)",border:"1px solid rgba(255,200,60,0.3)",borderRadius:10,padding:"10px",fontSize:"0.78rem",fontFamily:SANS,fontWeight:600,color:"#FFE880",cursor:"pointer"}}>{ITEM_CATALOG[type.product]?.emoji||"📦"} Collect {ITEM_CATALOG[type.product]?.name||type.product}</button>}
+              </div>
+            </div>
+          );
+        })()}
+
         {/* ═══ DOOR — back to map (glowing archway at top center) ═══ */}
         <button onClick={()=>{setScreen("map");setGardenTab("garden");setSelectedPlot(null);}} style={{position:"absolute",left:"35%",top:"6%",width:"30%",height:"16%",zIndex:12,background:"transparent",border:"none",cursor:"pointer",borderRadius:"50% 50% 8px 8px",animation:"gardenDoorGlow 3s ease-in-out infinite"}}>
           <div style={{position:"absolute",bottom:"8%",left:"50%",transform:"translateX(-50%)",display:"flex",alignItems:"center",gap:4,background:"rgba(10,8,6,0.55)",backdropFilter:"blur(6px)",WebkitBackdropFilter:"blur(6px)",borderRadius:10,padding:"4px 10px",whiteSpace:"nowrap",pointerEvents:"none"}}>
@@ -5690,6 +5914,14 @@ function AppInner(){
           {growingCount>0&&<div style={{background:"rgba(10,8,6,0.55)",backdropFilter:"blur(6px)",WebkitBackdropFilter:"blur(6px)",border:"1px solid rgba(90,138,106,0.15)",borderRadius:10,padding:"5px 10px",display:"flex",alignItems:"center",gap:4}}>
             <span style={{fontSize:"0.65rem"}}>🌱</span>
             <span style={{fontFamily:SANS,fontSize:"0.68rem",color:"rgba(190,211,196,0.5)"}}>{growingCount}</span>
+          </div>}
+          {isFarmMode&&animalsReady>0&&<div style={{background:"rgba(10,8,6,0.65)",backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",border:"1px solid rgba(255,200,60,0.2)",borderRadius:10,padding:"5px 10px",display:"flex",alignItems:"center",gap:4}}>
+            <span style={{fontSize:"0.65rem"}}>🐔</span>
+            <span style={{fontFamily:SANS,fontSize:"0.68rem",fontWeight:600,color:"#FFE880"}}>{animalsReady} ready</span>
+          </div>}
+          {isFarmMode&&animalsHungry>0&&<div style={{background:"rgba(10,8,6,0.55)",backdropFilter:"blur(6px)",WebkitBackdropFilter:"blur(6px)",border:"1px solid rgba(255,200,60,0.12)",borderRadius:10,padding:"5px 10px",display:"flex",alignItems:"center",gap:4}}>
+            <span style={{fontSize:"0.65rem"}}>🌾</span>
+            <span style={{fontFamily:SANS,fontSize:"0.68rem",color:"rgba(255,200,60,0.5)"}}>{animalsHungry} hungry</span>
           </div>}
         </div>
 
