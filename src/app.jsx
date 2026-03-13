@@ -1944,6 +1944,7 @@ export default function App(){
   const [isOnboarded,   setIsOnboarded]   = useState(false);
   const [dontShowAgain, setDontShowAgain] = useState(false);
   const [doorOpening,   setDoorOpening]   = useState(false);
+  const [doorPhase,     setDoorPhase]     = useState(null); // null|"walk"|"door"|"enter"
   const [deskBook,      setDeskBook]      = useState("journal");
   const [shelfAnim,     setShelfAnim]     = useState(null);
   const [windowPanel,   setWindowPanel]   = useState(null);
@@ -2700,6 +2701,12 @@ export default function App(){
     @keyframes doorLightBurst{0%{transform:translate(-50%,-50%) scale(0.05);opacity:0}40%{opacity:0.85}100%{transform:translate(-50%,-50%) scale(4);opacity:1}}
     @keyframes doorFadeWarm{0%{opacity:0}55%{opacity:0}100%{opacity:1}}
     @keyframes doorZoomBg{0%{transform:scale(1);filter:brightness(1)}100%{transform:scale(1.12);filter:brightness(1.3)}}
+    @keyframes walkToDoor{0%{transform:scale(1);filter:brightness(1.25)}35%{transform:scale(1.6);filter:brightness(1.15)}65%{transform:scale(3);filter:brightness(0.6)}100%{transform:scale(5.5);filter:brightness(0)}}
+    @keyframes doorReveal{0%{opacity:0;transform:scale(1.12)}25%{opacity:1;transform:scale(1.03)}100%{opacity:1;transform:scale(1)}}
+    @keyframes doorHoldZoom{0%{transform:scale(1)}100%{transform:scale(1.03)}}
+    @keyframes doorEnterZoom{0%{transform:scale(1.03);filter:brightness(1)}60%{transform:scale(1.6);filter:brightness(1.8)}100%{transform:scale(2.2);filter:brightness(2.5)}}
+    @keyframes doorEnterFade{0%{opacity:0}100%{opacity:1}}
+    @keyframes walkVignette{0%{opacity:0}60%{opacity:0.3}100%{opacity:1}}
     @keyframes gardenSway{0%,100%{transform:rotate(-2deg)}50%{transform:rotate(2deg)}}
     @keyframes gardenGrow{from{transform:scale(0.6);opacity:0}to{transform:scale(1);opacity:1}}
     @keyframes harvestGlow{0%,100%{filter:drop-shadow(0 0 6px rgba(255,220,80,0.4)) brightness(1.1)}50%{filter:drop-shadow(0 0 18px rgba(255,200,60,0.7)) brightness(1.2)}}
@@ -2754,7 +2761,7 @@ export default function App(){
     <div style={{minHeight:"100vh",width:"100%",position:"relative",overflow:"hidden",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-end"}}>
       <style>{GFONTS}{CSS}</style>
       {/* Cabin background image — now an <img> so we can calculate rendered rect */}
-      <img ref={outdoorImgRef} src="/outdoor.png" onLoad={recalcOutdoorRect} alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",objectPosition:"center 30%",zIndex:0,filter:"brightness(1.25)",animation:doorOpening?"doorZoomBg 1.6s ease-in forwards":"none"}}/>
+      <img ref={outdoorImgRef} src="/outdoor.png" onLoad={recalcOutdoorRect} alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",objectPosition:"center 30%",zIndex:0,filter:"brightness(1.25)",transformOrigin:"50% 42%",animation:doorOpening?"walkToDoor 1.3s ease-in forwards":"none"}}/>
 
       {/* ── Glow overlays — positioned relative to actual rendered image rectangle ── */}
       {/* This container is sized/positioned to match the real image rect, so child */}
@@ -2796,8 +2803,8 @@ export default function App(){
       <div style={{position:"absolute",inset:0,zIndex:2}}><Stars/></div>
       {/* Fireflies */}
       <div style={{position:"absolute",inset:0,zIndex:2}}><Fireflies/></div>
-      {/* Content — positioned at bottom */}
-      <div style={{position:"relative",zIndex:3,display:"flex",flexDirection:"column",alignItems:"center",padding:"0 28px 48px",maxWidth:"480px",width:"100%"}}>
+      {/* Content — positioned at bottom, pushed up */}
+      <div style={{position:"relative",zIndex:3,display:"flex",flexDirection:"column",alignItems:"center",padding:"0 28px 14px",maxWidth:"480px",width:"100%"}}>
         {/* Decorative top ornament */}
         <div className="fu" style={{display:"flex",alignItems:"center",gap:"12px",marginBottom:"6px"}}>
           <div style={{width:"28px",height:"1px",background:"linear-gradient(90deg,transparent,rgba(201,169,110,0.4))"}}/>
@@ -2813,12 +2820,14 @@ export default function App(){
           <div style={{width:"40px",height:"1px",background:"linear-gradient(90deg,rgba(201,169,110,0.5),transparent)"}}/>
         </div>
         {/* Subtitle */}
-        <p className="fu3" style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.92rem,3.2vw,1.12rem)",color:"rgba(255,248,232,0.72)",margin:"0 0 26px",letterSpacing:"0.04em",textAlign:"center",textShadow:"0 2px 12px rgba(0,0,0,0.6)",lineHeight:1.7,maxWidth:"340px"}}>A quiet place to face the questions that matter.</p>
+        <p className="fu3" style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.92rem,3.2vw,1.12rem)",color:"rgba(255,248,232,0.72)",margin:"0 0 18px",letterSpacing:"0.04em",textAlign:"center",textShadow:"0 2px 12px rgba(0,0,0,0.6)",lineHeight:1.7,maxWidth:"340px"}}>A quiet place to face the questions that matter.</p>
         {/* Door button */}
         <button className="fu4 door-btn" onClick={()=>{
           if(isOnboarded){
-            setDoorOpening(true);
-            setTimeout(()=>{setDoorOpening(false);setScreen("cabin");},1600);
+            setDoorOpening(true);setDoorPhase("walk");
+            setTimeout(()=>setDoorPhase("door"),1300);
+            setTimeout(()=>setDoorPhase("enter"),3300);
+            setTimeout(()=>{setDoorOpening(false);setDoorPhase(null);setScreen("cabin");},4000);
           }else{
             setDontShowAgain(false);startAmbient();setSceneIdx(0);setScenePrev(-1);setSceneTransit(false);setScreen("onboard");
           }
@@ -2829,12 +2838,22 @@ export default function App(){
         {isOnboarded&&<p className="fu4" style={{fontFamily:SANS,fontSize:"0.66rem",color:"rgba(255,248,232,0.22)",marginTop:"14px",letterSpacing:"0.06em"}}>Your journal awaits inside</p>}
       </div>
 
-      {/* ══ DOOR OPENING ANIMATION ══ */}
+      {/* ══ DOOR OPENING ANIMATION — walk → door close-up → enter cabin ══ */}
       {doorOpening&&<div style={{position:"fixed",inset:0,zIndex:100,pointerEvents:"none"}}>
-        {/* Golden light burst from the cabin door area */}
-        <div style={{position:"absolute",top:"52%",left:"50%",width:"200px",height:"200px",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,230,160,0.95) 0%,rgba(255,200,80,0.5) 40%,transparent 70%)",animation:"doorLightBurst 1.5s ease-out forwards"}}/>
-        {/* Warm fade to interior */}
-        <div style={{position:"absolute",inset:0,background:"linear-gradient(to bottom,rgba(255,240,210,0.92),rgba(245,228,195,0.97))",animation:"doorFadeWarm 1.5s ease-in forwards"}}/>
+        {/* Walk phase: closing vignette as we approach the cabin */}
+        {doorPhase==="walk"&&<div style={{position:"absolute",inset:0,background:"radial-gradient(circle at 50% 42%, transparent 10%, rgba(0,0,0,0.9) 75%)",animation:"walkVignette 1.3s ease-in forwards"}}/>}
+
+        {/* Door close-up photo — shown during "door" and "enter" phases */}
+        {(doorPhase==="door"||doorPhase==="enter")&&<img src="/door.png" alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",animation:doorPhase==="enter"?"doorEnterZoom 0.7s ease-in forwards":"doorReveal 0.4s ease-out forwards, doorHoldZoom 2s linear 0.4s forwards"}}/>}
+
+        {/* Flickering lantern glow on the door photo */}
+        {doorPhase==="door"&&<>
+          <div style={{position:"absolute",left:"4%",top:"12%",width:"20%",height:"16%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,200,70,0.55) 0%,rgba(255,160,40,0.18) 50%,transparent 75%)",mixBlendMode:"screen",animation:"lanternFlicker 2s ease-in-out infinite"}}/>
+          <div style={{position:"absolute",left:"76%",top:"12%",width:"20%",height:"16%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,200,70,0.55) 0%,rgba(255,160,40,0.18) 50%,transparent 75%)",mixBlendMode:"screen",animation:"lanternFlicker 2.3s ease-in-out infinite",animationDelay:"0.5s"}}/>
+        </>}
+
+        {/* Enter phase: warm golden light flooding from the opening door */}
+        {doorPhase==="enter"&&<div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse at 50% 35%, rgba(255,240,200,0.98) 0%, rgba(245,228,195,0.96) 60%, rgba(240,220,180,0.94) 100%)",animation:"doorEnterFade 0.6s ease-in forwards"}}/>}
       </div>}
     </div>
   );
