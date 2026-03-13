@@ -2337,7 +2337,7 @@ export default function App(){
     @keyframes doorLabelFade{0%,100%{opacity:0.5}50%{opacity:1}}
     @keyframes magicGlow{0%,100%{box-shadow:0 0 12px rgba(255,210,120,0.12),0 0 30px rgba(255,200,100,0.06),inset 0 0 8px rgba(255,210,120,0.04)}50%{box-shadow:0 0 22px rgba(255,210,120,0.28),0 0 50px rgba(255,200,100,0.12),inset 0 0 14px rgba(255,210,120,0.08)}}
     @keyframes magicGlowOuter{0%,100%{opacity:0.3;transform:scale(1)}50%{opacity:0.7;transform:scale(1.04)}}
-    @keyframes magGlassPulse{0%,100%{opacity:0.35;transform:scale(1)}50%{opacity:1;transform:scale(1.18)}}
+    @keyframes hotspotPulse{0%,100%{opacity:0.25;transform:scale(0.92)}50%{opacity:1;transform:scale(1.3)}}
     .magic-hotspot{cursor:pointer;transition:all .3s ease}
     .magic-hotspot:hover{box-shadow:0 0 30px rgba(255,210,120,0.35),0 0 60px rgba(255,200,100,0.15)!important}
     .magic-hotspot:active{transform:scale(0.97)!important;box-shadow:0 0 15px rgba(255,210,120,0.2)!important}
@@ -2567,21 +2567,23 @@ export default function App(){
 
       {/* 1. MAP ON SHELF — rolled paper map with magnifying glass on the wooden shelf → world map */}
       <button onClick={()=>transitionToMap()} style={{position:"absolute",left:"28%",top:"82%",width:"44%",height:"14%",zIndex:11,background:"transparent",border:"none",padding:0,cursor:"pointer",borderRadius:"10px",outline:"none",WebkitTapHighlightColor:"transparent"}}>
-        {/* Pulse glow on magnifying glass */}
-        <div style={{position:"absolute",left:"42%",top:"5%",width:"26%",height:"85%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,220,140,0.22) 0%,rgba(255,200,100,0.08) 40%,transparent 70%)",pointerEvents:"none",animation:"magGlassPulse 2.8s ease-in-out infinite"}}/>
-        <div style={{position:"absolute",left:"46%",top:"15%",width:"18%",height:"65%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,240,180,0.16) 0%,transparent 55%)",pointerEvents:"none",animation:"magGlassPulse 3.2s ease-in-out infinite",animationDelay:"0.6s"}}/>
+        {/* Pulse glow on magnifying glass — shifted up */}
+        <div style={{position:"absolute",left:"40%",top:"-30%",width:"28%",height:"100%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,220,120,0.32) 0%,rgba(255,190,80,0.12) 40%,transparent 72%)",pointerEvents:"none",animation:"hotspotPulse 2.6s ease-in-out infinite"}}/>
+        <div style={{position:"absolute",left:"45%",top:"-20%",width:"18%",height:"70%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,245,180,0.22) 0%,transparent 55%)",pointerEvents:"none",animation:"hotspotPulse 3s ease-in-out infinite",animationDelay:"0.5s"}}/>
       </button>
 
       {/* 2. STAIRS — wooden stairs on the RIGHT → downstairs kitchen */}
       <button onClick={()=>transitionToKitchen()} style={{position:"absolute",right:"0%",top:"42%",width:"20%",height:"42%",zIndex:12,background:"transparent",border:"none",padding:0,cursor:"pointer",borderRadius:"8px",outline:"none",WebkitTapHighlightColor:"transparent"}}>
-        <div style={{position:"absolute",inset:"-20% -15% -10% -20%",borderRadius:"40%",background:"radial-gradient(ellipse at 60% 50%,rgba(255,190,100,0.10) 0%,rgba(255,170,80,0.03) 50%,transparent 75%)",pointerEvents:"none",animation:"magicGlowOuter 4.5s ease-in-out infinite"}}/>
-        <div style={{position:"absolute",inset:"-8%",borderRadius:"30%",background:"radial-gradient(ellipse at 55% 55%,rgba(255,200,120,0.06) 0%,transparent 55%)",pointerEvents:"none",animation:"magicGlowOuter 5.5s ease-in-out infinite",animationDelay:"0.8s"}}/>
+        {/* Pulse glow on staircase */}
+        <div style={{position:"absolute",left:"15%",top:"20%",width:"70%",height:"50%",borderRadius:"45%",background:"radial-gradient(ellipse at 55% 50%,rgba(255,210,120,0.30) 0%,rgba(255,180,80,0.10) 45%,transparent 72%)",pointerEvents:"none",animation:"hotspotPulse 3s ease-in-out infinite"}}/>
+        <div style={{position:"absolute",left:"25%",top:"28%",width:"50%",height:"38%",borderRadius:"50%",background:"radial-gradient(ellipse at 50% 50%,rgba(255,240,170,0.18) 0%,transparent 55%)",pointerEvents:"none",animation:"hotspotPulse 3.5s ease-in-out infinite",animationDelay:"0.7s"}}/>
       </button>
 
       {/* 3. OPEN BOOK ON DESK — upper-right corner on the desk near lamp → journal */}
       <button onClick={()=>{setBookOpen(true);setBookPage(0);setFlipDir(null);}} style={{position:"absolute",right:"6%",top:"20%",width:"18%",height:"16%",zIndex:11,background:"transparent",border:"none",padding:0,cursor:"pointer",borderRadius:"8px",outline:"none",WebkitTapHighlightColor:"transparent"}}>
-        <div style={{position:"absolute",inset:"-25%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,210,120,0.12) 0%,rgba(255,200,100,0.04) 45%,transparent 75%)",pointerEvents:"none",animation:"magicGlowOuter 3.8s ease-in-out infinite"}}/>
-        <div style={{position:"absolute",inset:"-12%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,220,140,0.07) 0%,transparent 55%)",pointerEvents:"none",animation:"magicGlowOuter 4.8s ease-in-out infinite",animationDelay:"1.2s"}}/>
+        {/* Pulse glow on open book */}
+        <div style={{position:"absolute",left:"10%",top:"5%",width:"80%",height:"90%",borderRadius:"45%",background:"radial-gradient(ellipse at 50% 55%,rgba(255,215,130,0.30) 0%,rgba(255,190,90,0.10) 45%,transparent 72%)",pointerEvents:"none",animation:"hotspotPulse 2.8s ease-in-out infinite",animationDelay:"0.3s"}}/>
+        <div style={{position:"absolute",left:"22%",top:"15%",width:"56%",height:"68%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,245,180,0.20) 0%,transparent 55%)",pointerEvents:"none",animation:"hotspotPulse 3.3s ease-in-out infinite",animationDelay:"1s"}}/>
       </button>
 
       {/* 4. LEFT WINDOW — left half of the large picture window (forest + starry sky) */}
