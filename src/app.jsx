@@ -831,6 +831,7 @@ function ImmersiveStove(){
   const dragStart=useRef(null);
   const animFrame=useRef(null);
   const embers=useRef([]);
+  const flames=useRef([]);
   const time=useRef(0);
   const imgRef=useRef(null);
 
@@ -852,6 +853,20 @@ function ImmersiveStove(){
       });
     }
     embers.current=pts;
+    // Flickering flame tongues in the hearth
+    const fl=[];
+    for(let i=0;i<14;i++){
+      fl.push({
+        x:0.28+Math.random()*0.44,
+        baseY:0.50+Math.random()*0.07,
+        height:Math.random()*0.14+0.08,
+        width:Math.random()*0.024+0.012,
+        speed:Math.random()*0.005+0.003,
+        phase:Math.random()*Math.PI*2,
+        swayAmt:Math.random()*0.014+0.005,
+      });
+    }
+    flames.current=fl;
   },[]);
 
   useEffect(()=>{
@@ -904,6 +919,43 @@ function ImmersiveStove(){
             ctx.beginPath();ctx.arc(px,py,p.size*3,0,Math.PI*2);ctx.fillStyle=`rgba(255,200,120,${a*0.05})`;ctx.fill();
             ctx.beginPath();ctx.arc(px,py,p.size,0,Math.PI*2);ctx.fillStyle=`rgba(255,220,160,${a*0.4})`;ctx.fill();
           }
+        });
+        // ── Flickering flame tongues ──
+        flames.current.forEach(f=>{
+          const t=time.current;
+          const sway=Math.sin(t*f.speed+f.phase)*f.swayAmt*w;
+          const flicker=0.55+0.45*Math.sin(t*f.speed*1.7+f.phase);
+          const fh=f.height*flicker*h;
+          const bx=f.x*w+sway;
+          const by=f.baseY*h;
+          const ty=by-fh;
+          const hw=f.width*w*(0.65+0.35*Math.sin(t*f.speed*2.3+f.phase));
+          const tipSway=Math.sin(t*f.speed*1.3+f.phase*1.5)*hw*0.7;
+          // Outer glow around each flame
+          ctx.beginPath();ctx.arc(bx,by-fh*0.35,fh*0.6,0,Math.PI*2);
+          ctx.fillStyle=`rgba(255,100,20,${0.04*flicker})`;ctx.fill();
+          // Flame tongue shape
+          ctx.beginPath();
+          ctx.moveTo(bx-hw,by);
+          ctx.quadraticCurveTo(bx-hw*0.5,by-fh*0.45,bx+tipSway,ty);
+          ctx.quadraticCurveTo(bx+hw*0.5,by-fh*0.45,bx+hw,by);
+          ctx.closePath();
+          const grad=ctx.createLinearGradient(bx,by,bx,ty);
+          grad.addColorStop(0,`rgba(255,50,5,${0.32*flicker})`);
+          grad.addColorStop(0.25,`rgba(255,110,15,${0.26*flicker})`);
+          grad.addColorStop(0.55,`rgba(255,170,40,${0.18*flicker})`);
+          grad.addColorStop(0.85,`rgba(255,210,80,${0.08*flicker})`);
+          grad.addColorStop(1,`rgba(255,230,120,${0.02*flicker})`);
+          ctx.fillStyle=grad;ctx.fill();
+          // Bright core
+          const coreH=fh*0.4;
+          const coreW=hw*0.4;
+          ctx.beginPath();
+          ctx.moveTo(bx-coreW,by);
+          ctx.quadraticCurveTo(bx-coreW*0.3,by-coreH*0.5,bx+tipSway*0.3,by-coreH);
+          ctx.quadraticCurveTo(bx+coreW*0.3,by-coreH*0.5,bx+coreW,by);
+          ctx.closePath();
+          ctx.fillStyle=`rgba(255,240,180,${0.12*flicker})`;ctx.fill();
         });
       }
       animFrame.current=requestAnimationFrame(loop);
@@ -977,8 +1029,8 @@ function ImmersiveCabin(){
     const ffs=[];
     for(let i=0;i<18;i++){
       ffs.push({
-        x:0.20+Math.random()*0.56,   // within window bounds ~20-76%
-        y:0.12+Math.random()*0.36,    // within window bounds ~12-48%
+        x:0.28+Math.random()*0.34,   // window glass only ~28-62%
+        y:0.10+Math.random()*0.24,    // window glass only ~10-34%
         size:Math.random()*2+1.5,
         sx:(Math.random()-0.5)*0.0003,
         sy:(Math.random()-0.5)*0.0002,
@@ -1099,10 +1151,10 @@ function ImmersiveCabin(){
         fireflies.current.forEach(ff=>{
           ff.x+=ff.sx+Math.sin(time.current*0.0005+ff.phase)*0.0001;
           ff.y+=ff.sy+Math.cos(time.current*0.0007+ff.phase)*0.00008;
-          if(ff.x<0.18||ff.x>0.78)ff.sx*=-1;
-          if(ff.y<0.10||ff.y>0.50)ff.sy*=-1;
-          ff.x=Math.max(0.18,Math.min(0.78,ff.x));
-          ff.y=Math.max(0.10,Math.min(0.50,ff.y));
+          if(ff.x<0.26||ff.x>0.64)ff.sx*=-1;
+          if(ff.y<0.08||ff.y>0.36)ff.sy*=-1;
+          ff.x=Math.max(0.26,Math.min(0.64,ff.x));
+          ff.y=Math.max(0.08,Math.min(0.36,ff.y));
           const blink=Math.sin(time.current*ff.blink+ff.phase);
           const a=Math.max(0,blink*0.7+0.3)*0.6;
           const px=ff.x*w,py=ff.y*h;
@@ -2514,21 +2566,21 @@ export default function App(){
           The outer <div> with magicGlowOuter adds the soft radial aura around each hotspot. ─── */}
 
       {/* 1. MAP ON SHELF — rolled paper map on the wooden shelf behind the sectional → world map */}
-      <button className="magic-hotspot" onClick={()=>transitionToMap()} style={{position:"absolute",left:"28%",top:"82%",width:"44%",height:"14%",zIndex:11,background:"transparent",border:"none",borderRadius:"10px",animation:"magicGlow 4s ease-in-out infinite"}}>
-        {/* Warm enchanted aura around the map */}
-        <div style={{position:"absolute",inset:"-18%",borderRadius:"50%",background:"radial-gradient(ellipse at center,rgba(255,210,120,0.10),rgba(255,200,100,0.03) 55%,transparent 80%)",pointerEvents:"none",animation:"magicGlowOuter 4s ease-in-out infinite"}}/>
+      <button onClick={()=>transitionToMap()} style={{position:"absolute",left:"28%",top:"82%",width:"44%",height:"14%",zIndex:11,background:"transparent",border:"none",padding:0,cursor:"pointer",borderRadius:"10px",outline:"none",WebkitTapHighlightColor:"transparent"}}>
+        <div style={{position:"absolute",inset:"-25%",borderRadius:"50%",background:"radial-gradient(ellipse at center,rgba(255,210,120,0.12) 0%,rgba(255,200,100,0.04) 45%,transparent 75%)",pointerEvents:"none",animation:"magicGlowOuter 4s ease-in-out infinite"}}/>
+        <div style={{position:"absolute",inset:"-10%",borderRadius:"50%",background:"radial-gradient(ellipse at center,rgba(255,180,80,0.07) 0%,transparent 55%)",pointerEvents:"none",animation:"magicGlowOuter 5s ease-in-out infinite",animationDelay:"1s"}}/>
       </button>
 
       {/* 2. STAIRS — wooden stairs on the RIGHT → downstairs kitchen */}
-      <button className="magic-hotspot" onClick={()=>transitionToKitchen()} style={{position:"absolute",right:"0%",top:"42%",width:"20%",height:"42%",zIndex:12,background:"transparent",border:"none",borderRadius:"8px",animation:"magicGlow 4.5s ease-in-out infinite",animationDelay:"0.6s"}}>
-        {/* Warm enchanted aura on the stairs */}
-        <div style={{position:"absolute",inset:"-12%",borderRadius:"12px",background:"radial-gradient(ellipse at center 65%,rgba(255,210,120,0.08),rgba(255,200,100,0.02) 60%,transparent 85%)",pointerEvents:"none",animation:"magicGlowOuter 4.5s ease-in-out infinite",animationDelay:"0.6s"}}/>
+      <button onClick={()=>transitionToKitchen()} style={{position:"absolute",right:"0%",top:"42%",width:"20%",height:"42%",zIndex:12,background:"transparent",border:"none",padding:0,cursor:"pointer",borderRadius:"8px",outline:"none",WebkitTapHighlightColor:"transparent"}}>
+        <div style={{position:"absolute",inset:"-20% -15% -10% -20%",borderRadius:"40%",background:"radial-gradient(ellipse at 60% 50%,rgba(255,190,100,0.10) 0%,rgba(255,170,80,0.03) 50%,transparent 75%)",pointerEvents:"none",animation:"magicGlowOuter 4.5s ease-in-out infinite"}}/>
+        <div style={{position:"absolute",inset:"-8%",borderRadius:"30%",background:"radial-gradient(ellipse at 55% 55%,rgba(255,200,120,0.06) 0%,transparent 55%)",pointerEvents:"none",animation:"magicGlowOuter 5.5s ease-in-out infinite",animationDelay:"0.8s"}}/>
       </button>
 
       {/* 3. OPEN BOOK ON DESK — upper-right corner on the desk near lamp → journal */}
-      <button className="magic-hotspot" onClick={()=>{setBookOpen(true);setBookPage(0);setFlipDir(null);}} style={{position:"absolute",right:"6%",top:"20%",width:"18%",height:"16%",zIndex:11,background:"transparent",border:"none",borderRadius:"8px",animation:"magicGlow 3.8s ease-in-out infinite",animationDelay:"1.2s"}}>
-        {/* Warm enchanted aura on the open book */}
-        <div style={{position:"absolute",inset:"-20%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,210,120,0.10),rgba(255,200,100,0.03) 55%,transparent 80%)",pointerEvents:"none",animation:"magicGlowOuter 3.8s ease-in-out infinite",animationDelay:"1.2s"}}/>
+      <button onClick={()=>{setBookOpen(true);setBookPage(0);setFlipDir(null);}} style={{position:"absolute",right:"6%",top:"20%",width:"18%",height:"16%",zIndex:11,background:"transparent",border:"none",padding:0,cursor:"pointer",borderRadius:"8px",outline:"none",WebkitTapHighlightColor:"transparent"}}>
+        <div style={{position:"absolute",inset:"-25%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,210,120,0.12) 0%,rgba(255,200,100,0.04) 45%,transparent 75%)",pointerEvents:"none",animation:"magicGlowOuter 3.8s ease-in-out infinite"}}/>
+        <div style={{position:"absolute",inset:"-12%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,220,140,0.07) 0%,transparent 55%)",pointerEvents:"none",animation:"magicGlowOuter 4.8s ease-in-out infinite",animationDelay:"1.2s"}}/>
       </button>
 
       {/* 4. LEFT WINDOW — left half of the large picture window (forest + starry sky) */}
