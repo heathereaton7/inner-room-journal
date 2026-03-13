@@ -1997,12 +1997,12 @@ function ImmersiveGarden(){
 const MAP_BG_IMAGE="/newmap.png";
 
 // Hotspot positions mapped to BUILDING locations in newmap.png
-// Each hotspot covers the actual building footprint, not just the text label
+// Each hotspot covers the actual building footprint + label area
 const MAP_LOCATIONS=[
-  {id:"cabin",   label:"Cabin",         left:"28%", top:"78%", w:"42%", h:"22%", desc:"Your quiet place"},
-  {id:"garden",  label:"Prayer Garden", left:"16%", top:"36%", w:"26%", h:"16%", desc:"Grow your prayers"},
-  {id:"market",  label:"Market",        left:"55%", top:"46%", w:"38%", h:"16%", desc:"Trade & provision"},
-  {id:"upper-room",label:"Upper Room",  left:"66%", top:"12%", w:"30%", h:"16%", desc:"Worship & encounter"},
+  {id:"cabin",   label:"Cabin",         left:"24%", top:"80%", w:"40%", h:"24%", desc:"Your quiet place"},
+  {id:"garden",  label:"Prayer Garden", left:"18%", top:"36%", w:"30%", h:"18%", desc:"Grow your prayers"},
+  {id:"market",  label:"Market",        left:"58%", top:"48%", w:"40%", h:"18%", desc:"Trade & provision"},
+  {id:"upper-room",label:"Upper Room",  left:"62%", top:"14%", w:"34%", h:"18%", desc:"Worship & encounter"},
 ];
 
 function ImmersiveMap(){
@@ -3456,10 +3456,9 @@ export default function App(){
     .craft-btn{transition:all .2s}
     .craft-btn:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,0.15)!important}
     @keyframes panelSlideUp{from{transform:translateY(100%);opacity:0.5}to{transform:translateY(0);opacity:1}}
-    @keyframes mapHotspotPulse{0%,100%{box-shadow:0 0 18px rgba(255,210,120,0.15),0 0 40px rgba(255,210,120,0.05);transform:translate(-50%,-50%) scale(1)}50%{box-shadow:0 0 28px rgba(255,210,120,0.3),0 0 60px rgba(255,210,120,0.1);transform:translate(-50%,-50%) scale(1.04)}}
     @keyframes mapHotspotFadeIn{from{opacity:0;transform:translate(-50%,-50%) scale(0.7)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
     @keyframes mapLabelFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
-    .map-hotspot{transition:all .25s ease;cursor:pointer;animation:mapHotspotPulse 3.5s ease-in-out infinite}
+    .map-hotspot{cursor:pointer}
     .map-hotspot:hover{box-shadow:0 0 35px rgba(255,210,120,0.45),0 0 70px rgba(255,210,120,0.15)!important;transform:translate(-50%,-50%) scale(1.08)!important}
     .map-hotspot:active{transform:translate(-50%,-50%) scale(0.94)!important}
     @keyframes verseReveal{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
@@ -4877,19 +4876,15 @@ export default function App(){
 
         {/* ═══ LOCATION HOTSPOTS — positioned over map labels ═══ */}
         {MAP_LOCATIONS.map((loc,idx)=>(
-          <button key={loc.id} className="map-hotspot" onClick={()=>mapGoTo(loc.id)} style={{
+          <button key={loc.id} onClick={()=>mapGoTo(loc.id)} style={{
             position:"absolute",left:loc.left,top:loc.top,
             transform:"translate(-50%,-50%)",
             width:loc.w,height:loc.h,
             borderRadius:16,border:"none",zIndex:10,
-            background:"rgba(255,210,120,0.03)",cursor:"pointer",
-            animation:`mapHotspotFadeIn .5s ${idx*0.12}s ease both, mapHotspotPulse ${3+idx*0.4}s ${idx*0.5}s ease-in-out infinite`,
-            display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,
-            padding:0,overflow:"visible",
-          }}>
-            {/* Lantern glow overlay */}
-            <div style={{position:"absolute",inset:"-10%",borderRadius:20,background:"radial-gradient(ellipse at 50% 50%,rgba(255,210,120,0.08) 0%, transparent 65%)",pointerEvents:"none"}}/>
-          </button>
+            background:"transparent",cursor:"pointer",
+            WebkitTapHighlightColor:"transparent",
+            padding:0,outline:"none",
+          }}/>
         ))}
 
         {/* ═══ SPACE TRANSIT OVERLAY ═══ */}
