@@ -245,8 +245,14 @@ const BOOK_CONTENT = {
   },
 };
 
-function getBookPageCount(bookType){
-  if(bookType==="journal") return REFLECTION_ROOMS.length+5;
+function getBookPageCount(bookType, section){
+  if(bookType==="journal"){
+    if(!section) return 2; // cover + TOC
+    if(section==="blank") return 3; // cover + TOC + write
+    if(section==="rooms") return REFLECTION_ROOMS.length+6; // cover + TOC + 7 rooms + jesus + locked + daily + entries
+    if(section==="dreams") return 2+(BOOK_CONTENT.dreams?.pages.length||4);
+    if(section==="prayers") return 4; // cover + TOC + write + list
+  }
   const bc=BOOK_CONTENT[bookType];
   return bc? bc.pages.length+1 : 12;
 }
@@ -2357,6 +2363,7 @@ export default function App(){
   const [saveMsg,       setSaveMsg]       = useState("");
   const [bookText,      setBookText]      = useState("");
   const [bookSaveMsg,   setBookSaveMsg]   = useState("");
+  const [journalSection,setJournalSection]= useState(null); // null|"blank"|"rooms"|"dreams"|"prayers"
   const [prayerPosts,   setPrayerPosts]   = useState([]);
   const [newPrayer,     setNewPrayer]     = useState("");
   const [prayerTag,     setPrayerTag]     = useState("");
@@ -2892,6 +2899,27 @@ export default function App(){
     setBookSaveMsg("✓ Saved to history 📖"); setTimeout(()=>setBookSaveMsg(""),2500);
   }
 
+  // ── PRAYER JOURNAL → GARDEN LINK ──
+  function savePrayerJournalEntry(){
+    if(!bookText.trim()) return;
+    // Save as prayer post
+    const p={id:Date.now().toString(),date:todayStr(),text:bookText.trim(),tag:"Journal Prayer",prayers:0,status:"active",answeredDate:null,category:"Journal Prayer"};
+    const nextPrayers=[p,...prayerPosts]; setPrayerPosts(nextPrayers); dbSave("irj-prayer",nextPrayers);
+    // Water the most recently planted growing garden plot
+    setGardenPlots(prev=>{
+      const growing=prev.filter(pl=>pl.stage!=="empty"&&pl.plantedAt&&getComputedStage(pl)!=="harvestable");
+      if(!growing.length) return prev;
+      const newest=growing.sort((a,b)=>b.plantedAt-a.plantedAt)[0];
+      const next=prev.map(pl=>pl.id===newest.id?{...pl,prayerCount:(pl.prayerCount||0)+1}:pl);
+      dbSave("irj-garden",next);
+      return next;
+    });
+    addCandles(2,"Prayer saved +2");
+    setBookText("");
+    setBookSaveMsg("Prayer saved & garden watered!");
+    setTimeout(()=>setBookSaveMsg(""),2500);
+  }
+
   // ── PRAYER ──
   function postPrayer(){
     if(!newPrayer.trim()) return;
@@ -3142,6 +3170,7 @@ export default function App(){
   }
   function transitionToJournal(){
     setJournalZoom(true);
+    setJournalSection(null);
     setTimeout(()=>{setJournalZoom(false);setBookOpen(true);setBookPage(0);setFlipDir(null);},1400);
   }
 
@@ -3202,7 +3231,7 @@ export default function App(){
   }
 
   // ── BOOK / PAGE FLIP ──
-  const TOTAL_BOOK_PAGES = getBookPageCount(deskBook);
+  const TOTAL_BOOK_PAGES = getBookPageCount(deskBook, journalSection);
   function flipPage(dir){
     const next = dir === "fwd" ? bookPage + 1 : bookPage - 1;
     if(next < 0 || next >= TOTAL_BOOK_PAGES) return;
@@ -3223,6 +3252,7 @@ export default function App(){
   function selectShelfBook(bookId){
     if(shelfAnim||bookId===deskBook) return;
     setShelfAnim(bookId);
+    setJournalSection(null);
     // Phase 1: book lifts & arcs to desk (1.2s)
     // Phase 2: desk book switches & journal opens (after 1.3s)
     setTimeout(()=>{
@@ -3768,7 +3798,7 @@ export default function App(){
       </button>
 
       {/* 10. BOOKSHELF — far left behind fireplace → shelf books */}
-      {SHELF_BOOKS.map((book,i)=>{
+      {SHELF_BOOKS.filter(b=>b.id!=="prayers"&&b.id!=="dreams").map((book,i)=>{
         const cv=BOOK_COVERS[book.id]||BOOK_COVERS.journal;
         const isActive=deskBook===book.id;
         const bookPositions=[
@@ -4025,7 +4055,7 @@ export default function App(){
       {/* ═══ IMMERSIVE PAGE-FLIPPING JOURNAL ═══ */}
       {bookOpen&&<div style={{position:"fixed",inset:0,zIndex:100}}>
         {/* Backdrop */}
-        <div onClick={()=>setBookOpen(false)} style={{position:"absolute",inset:0,background:"rgba(10,8,6,0.72)",backdropFilter:"blur(3px)",WebkitBackdropFilter:"blur(3px)",animation:"spaceFadeIn .3s ease"}}/>
+        <div onClick={()=>{setBookOpen(false);setJournalSection(null);}} style={{position:"absolute",inset:0,background:"rgba(10,8,6,0.72)",backdropFilter:"blur(3px)",WebkitBackdropFilter:"blur(3px)",animation:"spaceFadeIn .3s ease"}}/>
         <BookSparkles/>
         {/* Book container */}
         <div onTouchStart={bookTouchStart} onTouchEnd={bookTouchEnd} style={{position:"absolute",top:"50%",left:"50%",width:"min(88vw,420px)",height:"min(78vh,640px)",animation:"bookOpenAnim .5s cubic-bezier(.22,1,.36,1) both",display:"flex",flexDirection:"column"}}>
@@ -4044,144 +4074,243 @@ export default function App(){
 
               {/* ══ JOURNAL-TYPE PAGES (Reflection Journal = default desk book) ══ */}
               {deskBook==="journal"&&<>
-                {/* PAGE 0: Welcome */}
+                {/* PAGE 0: Cover — pure journalondesk.png, no text */}
                 {bookPage===0&&<>
-                  <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center",position:"relative",animation:"pageContentReveal .5s .15s ease both",margin:"-28px -22px -16px -30px",overflow:"hidden",borderRadius:"3px 10px 10px 3px"}}>
-                    {/* Journal desk image as cover */}
+                  <div style={{flex:1,position:"relative",animation:"pageContentReveal .5s .15s ease both",margin:"-28px -22px -16px -30px",overflow:"hidden",borderRadius:"3px 10px 10px 3px"}}>
                     <img src="/journalondesk.png" alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",objectPosition:"center 45%",borderRadius:"inherit"}} draggable={false}/>
-                    {/* Warm vignette overlay */}
-                    <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse at 50% 40%,transparent 30%,rgba(30,18,8,0.35) 100%)",pointerEvents:"none",borderRadius:"inherit"}}/>
-                    {/* Title overlay at bottom */}
-                    <div style={{position:"absolute",bottom:0,left:0,right:0,padding:"48px 20px 22px",background:"linear-gradient(transparent,rgba(30,18,8,0.7) 60%,rgba(30,18,8,0.85))",textAlign:"center"}}>
-                      <h2 style={{fontFamily:DISPLAY,fontSize:"clamp(1.2rem,5vw,1.5rem)",fontWeight:700,color:"#FFF8E8",margin:"0 0 4px",letterSpacing:"0.03em",textShadow:"0 2px 8px rgba(0,0,0,0.5)"}}>Your Journal</h2>
-                      <div style={{width:40,height:1,background:"linear-gradient(90deg,transparent,rgba(201,169,110,0.5),transparent)",margin:"6px auto 10px"}}/>
-                      <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.78rem,2.5vw,0.88rem)",color:"rgba(255,248,232,0.6)",lineHeight:1.6,maxWidth:260,margin:"0 auto"}}>A quiet place to sit with the questions that shape your soul.</p>
-                      <p style={{fontFamily:SERIF,fontSize:"0.72rem",color:"rgba(255,248,232,0.35)",marginTop:14,letterSpacing:"0.02em"}}>Turn the page to begin</p>
-                    </div>
+                    {/* Page-turn arrow on the book's right edge */}
+                    <button onClick={()=>flipPage("fwd")} style={{position:"absolute",right:"16%",top:"48%",transform:"translateY(-50%)",width:36,height:36,borderRadius:"50%",background:"rgba(245,230,200,0.75)",border:"1px solid rgba(139,109,69,0.25)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.1rem",color:"#5C4A2E",zIndex:5,boxShadow:"0 2px 10px rgba(0,0,0,0.3)",animation:"pageContentReveal 1s 1s ease both",backdropFilter:"blur(4px)",WebkitBackdropFilter:"blur(4px)"}}>&#8250;</button>
                   </div>
                 </>}
 
-                {/* PAGES 1–7: Reflection Rooms */}
-                {bookPage>=1&&bookPage<=REFLECTION_ROOMS.length&&(()=>{
-                  const room=REFLECTION_ROOMS[bookPage-1],prog=roomProg(room),done=prog>=room.days.length,currentDay=Math.min(prog,room.days.length-1),dayData=room.days[currentDay];
-                  return<>
-                    <div style={{flex:1,display:"flex",flexDirection:"column",animation:"pageContentReveal .5s .1s ease both"}}>
-                      <div style={{textAlign:"center",marginBottom:14}}>
-                        <div style={{fontSize:"1.8rem",marginBottom:6}}>{room.emoji}</div>
-                        <h2 style={{fontFamily:DISPLAY,fontSize:"clamp(1.15rem,4.5vw,1.35rem)",fontWeight:700,color:"#3D2B18",margin:"0 0 4px"}}>{room.label}</h2>
-                        <div style={{fontFamily:SANS,fontSize:"0.6rem",color:"rgba(107,85,58,0.5)",letterSpacing:"0.1em",textTransform:"uppercase",marginTop:3}}>{done?"✓ Complete":`Day ${prog+1} of ${room.days.length}`}</div>
-                      </div>
-                      <div style={{width:40,height:1,background:"linear-gradient(90deg,transparent,rgba(139,109,69,0.3),transparent)",margin:"0 auto 16px"}}/>
-                      <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.85rem,3vw,0.95rem)",color:"#5C4A2E",lineHeight:1.7,textAlign:"center",margin:"0 6px 8px"}}>"{room.question}"</p>
-                      {!done&&<div style={{background:"rgba(139,109,69,0.06)",borderRadius:8,padding:"14px 16px",margin:"12px 0",border:"1px solid rgba(139,109,69,0.1)"}}>
-                        <div style={{fontFamily:SANS,fontSize:"0.56rem",color:"rgba(107,85,58,0.45)",letterSpacing:"0.12em",textTransform:"uppercase",marginBottom:6}}>Today's Prompt</div>
-                        <p style={{fontFamily:SERIF,fontSize:"clamp(0.8rem,2.8vw,0.88rem)",color:"#4A3826",lineHeight:1.6,margin:0}}>{dayData.q}</p>
-                        <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.72rem",color:"rgba(107,85,58,0.38)",margin:"6px 0 0"}}>{dayData.hint}</p>
-                      </div>}
-                      {done&&<div style={{background:"rgba(139,109,69,0.05)",borderRadius:8,padding:"12px 16px",margin:"12px 0",border:"1px dashed rgba(139,109,69,0.12)",textAlign:"center"}}>
-                        <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.82rem",color:"rgba(107,85,58,0.45)",margin:0}}>You've completed all {room.days.length} days in this room.</p>
-                      </div>}
-                      <div style={{flex:1,minHeight:16}}/>
-                      <button className="book-room" onClick={()=>{setBookOpen(false);enterRoom(room,"cabin");}} style={{alignSelf:"center",background:"linear-gradient(135deg,rgba(93,74,46,0.1),rgba(93,74,46,0.04))",border:"1px solid rgba(93,74,46,0.22)",color:"#5C4A2E",padding:"11px 32px",borderRadius:8,fontFamily:SERIF,fontStyle:"italic",fontSize:"0.84rem",cursor:"pointer",transition:"all .2s",letterSpacing:"0.02em"}}>{done?"Revisit this room →":"Begin reflecting →"}</button>
-                    </div>
-                    <div style={{textAlign:"center",fontFamily:SANS,fontSize:"0.6rem",color:"rgba(107,85,58,0.3)",letterSpacing:"0.1em",textTransform:"uppercase",marginTop:10}}>— {bookPage+1} of {TOTAL_BOOK_PAGES} —</div>
-                  </>;
-                })()}
-
-                {/* PAGE 8: Jesus Questions */}
-                {bookPage===REFLECTION_ROOMS.length+1&&<>
-                  <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",animation:"pageContentReveal .5s .1s ease both"}}>
-                    <div style={{fontSize:"1.8rem",marginBottom:8}}>✝️</div>
-                    <h2 style={{fontFamily:DISPLAY,fontSize:"clamp(1.1rem,4.5vw,1.3rem)",fontWeight:700,color:"#3D2B18",margin:"0 0 4px",textAlign:"center"}}>Questions Jesus Asked</h2>
-                    <div style={{fontFamily:SANS,fontSize:"0.6rem",color:"rgba(107,85,58,0.5)",letterSpacing:"0.1em",textTransform:"uppercase",marginTop:3}}>{JESUS_QUESTIONS.length} questions from Scripture</div>
-                    <div style={{width:40,height:1,background:"linear-gradient(90deg,transparent,rgba(139,109,69,0.3),transparent)",margin:"16px auto"}}/>
-                    <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.88rem,3vw,1rem)",color:"#5C4A2E",lineHeight:1.7,textAlign:"center",margin:"0 4px"}}>"{JESUS_QUESTIONS[jesusIdx].q}"</p>
-                    <p style={{fontFamily:SANS,fontSize:"0.66rem",color:"rgba(107,85,58,0.4)",margin:"8px 0 0"}}>— {JESUS_QUESTIONS[jesusIdx].ref}</p>
-                    <div style={{background:"rgba(139,109,69,0.06)",borderRadius:8,padding:"12px 16px",margin:"18px 0",border:"1px solid rgba(139,109,69,0.1)",alignSelf:"stretch"}}>
-                      <p style={{fontFamily:SERIF,fontSize:"0.82rem",color:"#4A3826",lineHeight:1.55,margin:0,textAlign:"center"}}>{JESUS_QUESTIONS[jesusIdx].app}</p>
-                    </div>
-                    <div style={{flex:1}}/>
-                    <button className="book-room" onClick={()=>{setBookOpen(false);setScreen("jesus");}} style={{background:"linear-gradient(135deg,rgba(93,74,46,0.1),rgba(93,74,46,0.04))",border:"1px solid rgba(93,74,46,0.22)",color:"#5C4A2E",padding:"11px 32px",borderRadius:8,fontFamily:SERIF,fontStyle:"italic",fontSize:"0.84rem",cursor:"pointer",transition:"all .2s",letterSpacing:"0.02em"}}>Open Scripture questions →</button>
-                  </div>
-                  <div style={{textAlign:"center",fontFamily:SANS,fontSize:"0.6rem",color:"rgba(107,85,58,0.3)",letterSpacing:"0.1em",textTransform:"uppercase",marginTop:10}}>— {bookPage+1} of {TOTAL_BOOK_PAGES} —</div>
-                </>}
-
-                {/* PAGE 9: Locked Room */}
-                {bookPage===REFLECTION_ROOMS.length+2&&(()=>{
-                  const unlocked=streak>=7;
-                  return<>
-                    <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center",animation:"pageContentReveal .5s .1s ease both"}}>
-                      <div style={{fontSize:"2rem",marginBottom:12}}>{unlocked?"🗝️":"🔒"}</div>
-                      <h2 style={{fontFamily:DISPLAY,fontSize:"clamp(1.1rem,4.5vw,1.3rem)",fontWeight:700,color:unlocked?"#3D2B18":"rgba(61,43,24,0.4)",margin:"0 0 4px"}}>The Locked Room</h2>
-                      <div style={{width:40,height:1,background:`linear-gradient(90deg,transparent,rgba(139,109,69,${unlocked?0.3:0.12}),transparent)`,margin:"12px auto 18px"}}/>
-                      {unlocked?<>
-                        <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.92rem",color:"#5C4A2E",lineHeight:1.7,margin:"0 8px 6px"}}>The deepest questions await — the ones most people never face.</p>
-                        <p style={{fontFamily:SERIF,fontSize:"0.78rem",color:"rgba(107,85,58,0.45)",margin:"0 0 24px"}}>{LOCKED_ROOM.days.length} questions that go beneath everything else.</p>
-                        <button className="book-room" onClick={()=>{setBookOpen(false);enterRoom(LOCKED_ROOM,"cabin");}} style={{background:"linear-gradient(135deg,rgba(93,74,46,0.1),rgba(93,74,46,0.04))",border:"1px solid rgba(93,74,46,0.22)",color:"#5C4A2E",padding:"11px 32px",borderRadius:8,fontFamily:SERIF,fontStyle:"italic",fontSize:"0.84rem",cursor:"pointer",transition:"all .2s",letterSpacing:"0.02em"}}>Enter the locked room →</button>
-                      </>:<>
-                        <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.88rem",color:"rgba(107,85,58,0.4)",lineHeight:1.7,margin:"0 8px"}}>Some rooms only open with consistency.</p>
-                        <div style={{width:"60%",maxWidth:180,height:4,background:"rgba(139,109,69,0.1)",borderRadius:99,margin:"22px auto 8px",overflow:"hidden"}}><div style={{width:`${(streak/7)*100}%`,height:"100%",background:"linear-gradient(90deg,#8B6D45,#C9A96E)",borderRadius:99,transition:"width .4s ease"}}/></div>
-                        <p style={{fontFamily:SANS,fontSize:"0.66rem",color:"rgba(107,85,58,0.35)"}}>{7-streak} more day{7-streak===1?"":"s"} of journaling to unlock</p>
-                      </>}
-                    </div>
-                    <div style={{textAlign:"center",fontFamily:SANS,fontSize:"0.6rem",color:"rgba(107,85,58,0.3)",letterSpacing:"0.1em",textTransform:"uppercase",marginTop:10}}>— {bookPage+1} of {TOTAL_BOOK_PAGES} —</div>
-                  </>;
-                })()}
-
-                {/* PAGE 10: Daily Question */}
-                {bookPage===REFLECTION_ROOMS.length+3&&(()=>{
-                  const dailyQ=VIRAL_QS[new Date().getDate()%VIRAL_QS.length];
-                  return<>
-                    <div style={{flex:1,display:"flex",flexDirection:"column",animation:"pageContentReveal .5s .1s ease both"}}>
-                      <div style={{textAlign:"center",marginBottom:14}}>
-                        <div style={{fontSize:"1.5rem",marginBottom:6}}>✦</div>
-                        <h2 style={{fontFamily:DISPLAY,fontSize:"clamp(1.05rem,4vw,1.2rem)",fontWeight:700,color:"#3D2B18",margin:"0 0 4px"}}>Question to Carry Today</h2>
-                      </div>
-                      <div style={{width:40,height:1,background:"linear-gradient(90deg,transparent,rgba(139,109,69,0.3),transparent)",margin:"0 auto 16px"}}/>
-                      <div style={{background:"rgba(139,109,69,0.06)",borderRadius:8,padding:"18px 16px",border:"1px solid rgba(139,109,69,0.1)",marginBottom:14}}>
-                        <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.88rem,3vw,0.98rem)",color:"#5C4A2E",lineHeight:1.7,margin:0,textAlign:"center"}}>{dailyQ}</p>
-                      </div>
-                      <button className="book-room" onClick={()=>{setBookOpen(false);setCardQ(dailyQ);setIsCustomCard(false);setScreen("cards");}} style={{alignSelf:"center",background:"transparent",border:"1px solid rgba(101,83,55,0.2)",color:"#5C4A2E",padding:"9px 22px",borderRadius:8,fontFamily:SERIF,fontStyle:"italic",fontSize:"0.78rem",cursor:"pointer",transition:"all .2s"}}>Make a card →</button>
-                      <div style={{flex:1,minHeight:20}}/>
-                      <div style={{textAlign:"center",padding:"16px 0 4px",borderTop:"1px solid rgba(139,109,69,0.1)"}}>
-                        <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.78rem",color:"rgba(107,85,58,0.4)",margin:"0 0 4px"}}>When you're ready to walk with others…</p>
-                        <p style={{fontFamily:SANS,fontSize:"0.66rem",color:"rgba(107,85,58,0.28)",margin:0}}>Close your journal and step through the glowing door.</p>
-                      </div>
-                    </div>
-                    <div style={{textAlign:"center",fontFamily:SANS,fontSize:"0.6rem",color:"rgba(107,85,58,0.3)",letterSpacing:"0.1em",textTransform:"uppercase",marginTop:8}}>— {bookPage+1} of {TOTAL_BOOK_PAGES} —</div>
-                  </>;
-                })()}
-
-                {/* PAGE 11: Past Entries */}
-                {bookPage===REFLECTION_ROOMS.length+4&&<>
+                {/* PAGE 1: Table of Contents (section chooser) */}
+                {bookPage===1&&!journalSection&&<>
                   <div style={{flex:1,display:"flex",flexDirection:"column",animation:"pageContentReveal .5s .1s ease both"}}>
-                    <div style={{textAlign:"center",marginBottom:14}}>
-                      <div style={{fontSize:"1.5rem",marginBottom:6}}>📜</div>
-                      <h2 style={{fontFamily:DISPLAY,fontSize:"clamp(1.05rem,4vw,1.2rem)",fontWeight:700,color:"#3D2B18",margin:"0 0 4px"}}>Past Entries</h2>
-                      <div style={{fontFamily:SANS,fontSize:"0.6rem",color:"rgba(107,85,58,0.5)",letterSpacing:"0.1em",textTransform:"uppercase",marginTop:3}}>{entries.length} reflection{entries.length===1?"":"s"}</div>
+                    <div style={{textAlign:"center",marginBottom:18}}>
+                      <h2 style={{fontFamily:DISPLAY,fontSize:"clamp(1.15rem,4.5vw,1.35rem)",fontWeight:700,color:"#3D2B18",margin:"0 0 4px"}}>Choose Your Path</h2>
+                      <div style={{width:50,height:1,background:"linear-gradient(90deg,transparent,#8B6D45,transparent)",margin:"8px auto 0"}}/>
                     </div>
-                    <div style={{width:40,height:1,background:"linear-gradient(90deg,transparent,rgba(139,109,69,0.3),transparent)",margin:"0 auto 14px"}}/>
-                    {entries.length===0?<div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",textAlign:"center",padding:"0 12px"}}>
-                      <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.88rem",color:"rgba(107,85,58,0.4)",lineHeight:1.7}}>Your reflections will appear here as you journal. Open a room to begin.</p>
-                    </div>:(
-                      <div style={{flex:1,overflowY:"auto",display:"flex",flexDirection:"column",gap:10}}>
-                        {entries.slice(0,8).map(e=>{
-                          const allR=[...REFLECTION_ROOMS,...COMMUNITY_ROOMS,LOCKED_ROOM,{id:"jesus",label:"Jesus Questions",emoji:"✝️"}];
-                          const room=allR.find(r=>r.id===e.roomId)||{emoji:e.roomEmoji||"📝",label:e.roomLabel||"Reflection"};
-                          return(<div key={e.id} style={{background:"rgba(139,109,69,0.05)",border:"1px solid rgba(139,109,69,0.1)",borderRadius:8,padding:"10px 12px"}}>
-                            <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4}}>
-                              <span style={{fontSize:"0.7rem"}}>{room.emoji}</span>
-                              <span style={{fontSize:"0.62rem",fontWeight:600,color:"rgba(107,85,58,0.5)",fontFamily:SANS}}>{room.label}</span>
-                              <span style={{marginLeft:"auto",fontSize:"0.58rem",color:"rgba(107,85,58,0.3)"}}>{e.date}</span>
-                            </div>
-                            <p style={{fontFamily:SERIF,fontSize:"0.78rem",color:"#4A3826",lineHeight:1.6,margin:0}}>{e.text.length>120?e.text.slice(0,120)+"…":e.text}</p>
-                          </div>);
-                        })}
-                        {entries.length>8&&<p style={{textAlign:"center",fontFamily:SERIF,fontStyle:"italic",fontSize:"0.72rem",color:"rgba(107,85,58,0.35)",margin:"8px 0 0"}}>+ {entries.length-8} more entries</p>}
-                      </div>
-                    )}
+                    <div style={{flex:1,display:"flex",flexDirection:"column",gap:12,justifyContent:"center"}}>
+                      {[
+                        {id:"blank",label:"Blank Journal",desc:"Free write your thoughts"},
+                        {id:"rooms",label:"Reflection Rooms",desc:"Guided daily reflections"},
+                        {id:"dreams",label:"Dream Journal",desc:"Record your dreams"},
+                        {id:"prayers",label:"Prayer Journal",desc:"Prayers that water your garden"},
+                      ].map(opt=>(
+                        <button key={opt.id} onClick={()=>{setJournalSection(opt.id);setBookPage(2);setFlipDir("fwd");setBookText("");setBookSaveMsg("");}} style={{background:"rgba(139,109,69,0.06)",border:"1px solid rgba(139,109,69,0.15)",borderRadius:10,padding:"14px 16px",cursor:"pointer",display:"flex",alignItems:"center",gap:12,transition:"all .2s",textAlign:"left"}} onMouseEnter={e=>e.currentTarget.style.background="rgba(139,109,69,0.12)"} onMouseLeave={e=>e.currentTarget.style.background="rgba(139,109,69,0.06)"}>
+                          <div>
+                            <div style={{fontFamily:DISPLAY,fontSize:"0.92rem",fontWeight:700,color:"#3D2B18",marginBottom:2}}>{opt.label}</div>
+                            <div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.76rem",color:"rgba(107,85,58,0.5)"}}>{opt.desc}</div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                  <div style={{textAlign:"center",fontFamily:SANS,fontSize:"0.6rem",color:"rgba(107,85,58,0.3)",letterSpacing:"0.1em",textTransform:"uppercase",marginTop:8}}>— {bookPage+1} of {TOTAL_BOOK_PAGES} —</div>
+                </>}
+
+                {/* ── SECTION: BLANK JOURNAL (free write) ── */}
+                {journalSection==="blank"&&bookPage===2&&<>
+                  <div style={{flex:1,display:"flex",flexDirection:"column",animation:"pageContentReveal .5s .1s ease both"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
+                      <button onClick={()=>{setJournalSection(null);setBookPage(1);setFlipDir("bwd");}} style={{background:"transparent",border:"none",cursor:"pointer",fontFamily:SERIF,fontSize:"0.74rem",color:"rgba(107,85,58,0.5)",padding:0}}>&#8249; Contents</button>
+                      <div style={{flex:1}}/>
+                      <span style={{fontFamily:SANS,fontSize:"0.58rem",color:"rgba(107,85,58,0.35)",letterSpacing:"0.1em",textTransform:"uppercase"}}>{todayStr()}</span>
+                    </div>
+                    <h2 style={{fontFamily:DISPLAY,fontSize:"clamp(1.1rem,4vw,1.3rem)",fontWeight:700,color:"#3D2B18",margin:"0 0 12px",textAlign:"center"}}>Free Write</h2>
+                    <div style={{width:40,height:1,background:"linear-gradient(90deg,transparent,rgba(139,109,69,0.3),transparent)",margin:"0 auto 14px"}}/>
+                    <div style={{background:"rgba(139,109,69,0.04)",border:"1px solid rgba(139,109,69,0.1)",borderRadius:10,overflow:"hidden",flex:1,minHeight:160}}>
+                      <textarea value={bookText} onChange={e=>setBookText(e.target.value)} placeholder="Write freely... no prompts, no rules." style={{width:"100%",height:"100%",minHeight:160,background:"transparent",border:"none",padding:"14px 16px",fontFamily:SERIF,fontSize:"0.88rem",color:"#4A3826",lineHeight:1.8,boxSizing:"border-box",resize:"none"}}/>
+                    </div>
+                    {bookText.trim()&&<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 12px",marginTop:8,background:"rgba(139,109,69,0.08)",borderRadius:8,border:"1px solid rgba(139,109,69,0.15)"}}>
+                      <span style={{fontSize:"0.7rem",color:"rgba(107,85,58,0.5)",fontFamily:SANS}}>{bookSaveMsg||`${wc(bookText)} words`}</span>
+                      <button onClick={()=>{const e={id:Date.now().toString(),date:todayStr(),roomId:"blank",roomLabel:"Blank Journal",roomEmoji:"📝",day:0,prompt:"Free write",text:bookText.trim(),words:wc(bookText)};persistEntries([e,...entries]);addCandles(3,"Reflection saved +3");setBookSaveMsg("Saved!");setTimeout(()=>setBookSaveMsg(""),2500);}} style={{background:"linear-gradient(135deg,#5C4A2E,#3D2B18)",border:"none",color:"#F5E6C8",padding:"6px 18px",borderRadius:6,cursor:"pointer",fontSize:"0.76rem",fontFamily:SANS,fontWeight:600}}>Save</button>
+                    </div>}
+                  </div>
+                </>}
+
+                {/* ── SECTION: REFLECTION ROOMS ── */}
+                {journalSection==="rooms"&&bookPage>=2&&<>
+                  {/* Back to contents link */}
+                  {(()=>{
+                    const roomIdx=bookPage-2; // 0-6 = rooms, 7=jesus, 8=locked, 9=daily, 10=entries
+                    return<div style={{flex:1,display:"flex",flexDirection:"column",animation:"pageContentReveal .5s .1s ease both"}}>
+                      <div style={{display:"flex",alignItems:"center",marginBottom:10}}>
+                        <button onClick={()=>{setJournalSection(null);setBookPage(1);setFlipDir("bwd");}} style={{background:"transparent",border:"none",cursor:"pointer",fontFamily:SERIF,fontSize:"0.74rem",color:"rgba(107,85,58,0.5)",padding:0}}>&#8249; Contents</button>
+                      </div>
+                      {/* Reflection Rooms (pages 2-8, roomIdx 0-6) */}
+                      {roomIdx>=0&&roomIdx<REFLECTION_ROOMS.length&&(()=>{
+                        const room=REFLECTION_ROOMS[roomIdx],prog=roomProg(room),done=prog>=room.days.length,currentDay=Math.min(prog,room.days.length-1),dayData=room.days[currentDay];
+                        return<>
+                          <div style={{textAlign:"center",marginBottom:14}}>
+                            <div style={{fontSize:"1.8rem",marginBottom:6}}>{room.emoji}</div>
+                            <h2 style={{fontFamily:DISPLAY,fontSize:"clamp(1.15rem,4.5vw,1.35rem)",fontWeight:700,color:"#3D2B18",margin:"0 0 4px"}}>{room.label}</h2>
+                            <div style={{fontFamily:SANS,fontSize:"0.6rem",color:"rgba(107,85,58,0.5)",letterSpacing:"0.1em",textTransform:"uppercase",marginTop:3}}>{done?"Complete":`Day ${prog+1} of ${room.days.length}`}</div>
+                          </div>
+                          <div style={{width:40,height:1,background:"linear-gradient(90deg,transparent,rgba(139,109,69,0.3),transparent)",margin:"0 auto 16px"}}/>
+                          <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.85rem,3vw,0.95rem)",color:"#5C4A2E",lineHeight:1.7,textAlign:"center",margin:"0 6px 8px"}}>"{room.question}"</p>
+                          {!done&&<div style={{background:"rgba(139,109,69,0.06)",borderRadius:8,padding:"14px 16px",margin:"12px 0",border:"1px solid rgba(139,109,69,0.1)"}}>
+                            <div style={{fontFamily:SANS,fontSize:"0.56rem",color:"rgba(107,85,58,0.45)",letterSpacing:"0.12em",textTransform:"uppercase",marginBottom:6}}>Today's Prompt</div>
+                            <p style={{fontFamily:SERIF,fontSize:"clamp(0.8rem,2.8vw,0.88rem)",color:"#4A3826",lineHeight:1.6,margin:0}}>{dayData.q}</p>
+                            <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.72rem",color:"rgba(107,85,58,0.38)",margin:"6px 0 0"}}>{dayData.hint}</p>
+                          </div>}
+                          {done&&<div style={{background:"rgba(139,109,69,0.05)",borderRadius:8,padding:"12px 16px",margin:"12px 0",border:"1px dashed rgba(139,109,69,0.12)",textAlign:"center"}}>
+                            <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.82rem",color:"rgba(107,85,58,0.45)",margin:0}}>You've completed all {room.days.length} days in this room.</p>
+                          </div>}
+                          <div style={{flex:1,minHeight:16}}/>
+                          <button className="book-room" onClick={()=>{setBookOpen(false);enterRoom(room,"cabin");}} style={{alignSelf:"center",background:"linear-gradient(135deg,rgba(93,74,46,0.1),rgba(93,74,46,0.04))",border:"1px solid rgba(93,74,46,0.22)",color:"#5C4A2E",padding:"11px 32px",borderRadius:8,fontFamily:SERIF,fontStyle:"italic",fontSize:"0.84rem",cursor:"pointer",transition:"all .2s",letterSpacing:"0.02em"}}>{done?"Revisit this room":"Begin reflecting"}</button>
+                        </>;
+                      })()}
+                      {/* Jesus Questions (roomIdx 7) */}
+                      {roomIdx===REFLECTION_ROOMS.length&&<>
+                        <div style={{textAlign:"center",marginBottom:14}}>
+                          <div style={{fontSize:"1.8rem",marginBottom:8}}>&#10013;&#65039;</div>
+                          <h2 style={{fontFamily:DISPLAY,fontSize:"clamp(1.1rem,4.5vw,1.3rem)",fontWeight:700,color:"#3D2B18",margin:"0 0 4px",textAlign:"center"}}>Questions Jesus Asked</h2>
+                        </div>
+                        <div style={{width:40,height:1,background:"linear-gradient(90deg,transparent,rgba(139,109,69,0.3),transparent)",margin:"0 auto 16px"}}/>
+                        <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.88rem,3vw,1rem)",color:"#5C4A2E",lineHeight:1.7,textAlign:"center",margin:"0 4px"}}>"{JESUS_QUESTIONS[jesusIdx].q}"</p>
+                        <p style={{fontFamily:SANS,fontSize:"0.66rem",color:"rgba(107,85,58,0.4)",margin:"8px 0 0",textAlign:"center"}}>{JESUS_QUESTIONS[jesusIdx].ref}</p>
+                        <div style={{background:"rgba(139,109,69,0.06)",borderRadius:8,padding:"12px 16px",margin:"18px 0",border:"1px solid rgba(139,109,69,0.1)"}}>
+                          <p style={{fontFamily:SERIF,fontSize:"0.82rem",color:"#4A3826",lineHeight:1.55,margin:0,textAlign:"center"}}>{JESUS_QUESTIONS[jesusIdx].app}</p>
+                        </div>
+                        <div style={{flex:1}}/>
+                        <button className="book-room" onClick={()=>{setBookOpen(false);setScreen("jesus");}} style={{alignSelf:"center",background:"linear-gradient(135deg,rgba(93,74,46,0.1),rgba(93,74,46,0.04))",border:"1px solid rgba(93,74,46,0.22)",color:"#5C4A2E",padding:"11px 32px",borderRadius:8,fontFamily:SERIF,fontStyle:"italic",fontSize:"0.84rem",cursor:"pointer",transition:"all .2s"}}>Open Scripture questions</button>
+                      </>}
+                      {/* Locked Room (roomIdx 8) */}
+                      {roomIdx===REFLECTION_ROOMS.length+1&&(()=>{
+                        const unlocked=streak>=7;
+                        return<div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center"}}>
+                          <div style={{fontSize:"2rem",marginBottom:12}}>{unlocked?"🗝️":"🔒"}</div>
+                          <h2 style={{fontFamily:DISPLAY,fontSize:"clamp(1.1rem,4.5vw,1.3rem)",fontWeight:700,color:unlocked?"#3D2B18":"rgba(61,43,24,0.4)",margin:"0 0 4px"}}>The Locked Room</h2>
+                          <div style={{width:40,height:1,background:`linear-gradient(90deg,transparent,rgba(139,109,69,${unlocked?0.3:0.12}),transparent)`,margin:"12px auto 18px"}}/>
+                          {unlocked?<>
+                            <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.92rem",color:"#5C4A2E",lineHeight:1.7,margin:"0 8px 24px"}}>The deepest questions await.</p>
+                            <button className="book-room" onClick={()=>{setBookOpen(false);enterRoom(LOCKED_ROOM,"cabin");}} style={{background:"linear-gradient(135deg,rgba(93,74,46,0.1),rgba(93,74,46,0.04))",border:"1px solid rgba(93,74,46,0.22)",color:"#5C4A2E",padding:"11px 32px",borderRadius:8,fontFamily:SERIF,fontStyle:"italic",fontSize:"0.84rem",cursor:"pointer"}}>Enter the locked room</button>
+                          </>:<>
+                            <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.88rem",color:"rgba(107,85,58,0.4)",lineHeight:1.7,margin:"0 8px"}}>Some rooms only open with consistency.</p>
+                            <div style={{width:"60%",maxWidth:180,height:4,background:"rgba(139,109,69,0.1)",borderRadius:99,margin:"22px auto 8px",overflow:"hidden"}}><div style={{width:`${(streak/7)*100}%`,height:"100%",background:"linear-gradient(90deg,#8B6D45,#C9A96E)",borderRadius:99}}/></div>
+                            <p style={{fontFamily:SANS,fontSize:"0.66rem",color:"rgba(107,85,58,0.35)"}}>{7-streak} more day{7-streak===1?"":"s"} to unlock</p>
+                          </>}
+                        </div>;
+                      })()}
+                      {/* Daily Question (roomIdx 9) */}
+                      {roomIdx===REFLECTION_ROOMS.length+2&&(()=>{
+                        const dailyQ=VIRAL_QS[new Date().getDate()%VIRAL_QS.length];
+                        return<>
+                          <div style={{textAlign:"center",marginBottom:14}}>
+                            <h2 style={{fontFamily:DISPLAY,fontSize:"clamp(1.05rem,4vw,1.2rem)",fontWeight:700,color:"#3D2B18",margin:"0 0 4px"}}>Question to Carry Today</h2>
+                          </div>
+                          <div style={{width:40,height:1,background:"linear-gradient(90deg,transparent,rgba(139,109,69,0.3),transparent)",margin:"0 auto 16px"}}/>
+                          <div style={{background:"rgba(139,109,69,0.06)",borderRadius:8,padding:"18px 16px",border:"1px solid rgba(139,109,69,0.1)",marginBottom:14}}>
+                            <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.88rem,3vw,0.98rem)",color:"#5C4A2E",lineHeight:1.7,margin:0,textAlign:"center"}}>{dailyQ}</p>
+                          </div>
+                          <button className="book-room" onClick={()=>{setBookOpen(false);setCardQ(dailyQ);setIsCustomCard(false);setScreen("cards");}} style={{alignSelf:"center",background:"transparent",border:"1px solid rgba(101,83,55,0.2)",color:"#5C4A2E",padding:"9px 22px",borderRadius:8,fontFamily:SERIF,fontStyle:"italic",fontSize:"0.78rem",cursor:"pointer"}}>Make a card</button>
+                        </>;
+                      })()}
+                      {/* Past Entries (roomIdx 10) */}
+                      {roomIdx===REFLECTION_ROOMS.length+3&&<>
+                        <div style={{textAlign:"center",marginBottom:14}}>
+                          <h2 style={{fontFamily:DISPLAY,fontSize:"clamp(1.05rem,4vw,1.2rem)",fontWeight:700,color:"#3D2B18",margin:"0 0 4px"}}>Past Entries</h2>
+                          <div style={{fontFamily:SANS,fontSize:"0.6rem",color:"rgba(107,85,58,0.5)",letterSpacing:"0.1em",textTransform:"uppercase",marginTop:3}}>{entries.length} reflection{entries.length===1?"":"s"}</div>
+                        </div>
+                        <div style={{width:40,height:1,background:"linear-gradient(90deg,transparent,rgba(139,109,69,0.3),transparent)",margin:"0 auto 14px"}}/>
+                        {entries.length===0?<div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",textAlign:"center",padding:"0 12px"}}>
+                          <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.88rem",color:"rgba(107,85,58,0.4)",lineHeight:1.7}}>Your reflections will appear here as you journal.</p>
+                        </div>:(
+                          <div style={{flex:1,overflowY:"auto",display:"flex",flexDirection:"column",gap:10}}>
+                            {entries.slice(0,8).map(e=>{
+                              const allR=[...REFLECTION_ROOMS,...COMMUNITY_ROOMS,LOCKED_ROOM,{id:"jesus",label:"Jesus Questions",emoji:"✝️"}];
+                              const room=allR.find(r=>r.id===e.roomId)||{emoji:e.roomEmoji||"📝",label:e.roomLabel||"Reflection"};
+                              return(<div key={e.id} style={{background:"rgba(139,109,69,0.05)",border:"1px solid rgba(139,109,69,0.1)",borderRadius:8,padding:"10px 12px"}}>
+                                <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4}}>
+                                  <span style={{fontSize:"0.7rem"}}>{room.emoji}</span>
+                                  <span style={{fontSize:"0.62rem",fontWeight:600,color:"rgba(107,85,58,0.5)",fontFamily:SANS}}>{room.label}</span>
+                                  <span style={{marginLeft:"auto",fontSize:"0.58rem",color:"rgba(107,85,58,0.3)"}}>{e.date}</span>
+                                </div>
+                                <p style={{fontFamily:SERIF,fontSize:"0.78rem",color:"#4A3826",lineHeight:1.6,margin:0}}>{e.text.length>120?e.text.slice(0,120)+"...":e.text}</p>
+                              </div>);
+                            })}
+                            {entries.length>8&&<p style={{textAlign:"center",fontFamily:SERIF,fontStyle:"italic",fontSize:"0.72rem",color:"rgba(107,85,58,0.35)",margin:"8px 0 0"}}>+ {entries.length-8} more entries</p>}
+                          </div>
+                        )}
+                      </>}
+                      <div style={{textAlign:"center",fontFamily:SANS,fontSize:"0.6rem",color:"rgba(107,85,58,0.3)",letterSpacing:"0.1em",textTransform:"uppercase",marginTop:10}}>{bookPage+1} of {TOTAL_BOOK_PAGES}</div>
+                    </div>;
+                  })()}
+                </>}
+
+                {/* ── SECTION: DREAM JOURNAL ── */}
+                {journalSection==="dreams"&&bookPage>=2&&(()=>{
+                  const dreamPages=BOOK_CONTENT.dreams?.pages||[];
+                  const pgIdx=bookPage-2;
+                  const pg=dreamPages[pgIdx];
+                  if(!pg) return null;
+                  return<div style={{flex:1,display:"flex",flexDirection:"column",animation:"pageContentReveal .5s .1s ease both"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
+                      <button onClick={()=>{setJournalSection(null);setBookPage(1);setFlipDir("bwd");}} style={{background:"transparent",border:"none",cursor:"pointer",fontFamily:SERIF,fontSize:"0.74rem",color:"rgba(107,85,58,0.5)",padding:0}}>&#8249; Contents</button>
+                      <div style={{flex:1}}/>
+                      <span style={{fontFamily:SANS,fontSize:"0.58rem",color:"rgba(107,85,58,0.35)",letterSpacing:"0.1em",textTransform:"uppercase"}}>Dream {pgIdx+1} of {dreamPages.length}</span>
+                    </div>
+                    <h2 style={{fontFamily:DISPLAY,fontSize:"clamp(1.15rem,4.5vw,1.35rem)",fontWeight:700,color:"#3D2B18",margin:"0 0 4px",textAlign:"center"}}>{pg.title}</h2>
+                    <div style={{width:40,height:1,background:"linear-gradient(90deg,transparent,rgba(139,109,69,0.3),transparent)",margin:"8px auto 16px"}}/>
+                    <div style={{background:"rgba(139,109,69,0.06)",borderRadius:8,padding:"16px 18px",margin:"0 0 10px",border:"1px solid rgba(139,109,69,0.1)"}}>
+                      <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.88rem,3vw,0.98rem)",color:"#5C4A2E",lineHeight:1.7,margin:0,textAlign:"center"}}>{pg.prompt}</p>
+                    </div>
+                    <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.74rem",color:"rgba(107,85,58,0.4)",textAlign:"center",margin:"0 0 14px",lineHeight:1.6}}>{pg.hint}</p>
+                    <div style={{background:"rgba(139,109,69,0.04)",border:"1px solid rgba(139,109,69,0.1)",borderRadius:10,overflow:"hidden",flex:1,minHeight:120}}>
+                      <textarea value={bookText} onChange={e=>setBookText(e.target.value)} placeholder="Write your thoughts here..." style={{width:"100%",height:"100%",minHeight:120,background:"transparent",border:"none",padding:"14px 16px",fontFamily:SERIF,fontSize:"0.88rem",color:"#4A3826",lineHeight:1.8,boxSizing:"border-box",resize:"none"}}/>
+                    </div>
+                    {bookText.trim()&&<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 12px",marginTop:8,background:"rgba(139,109,69,0.08)",borderRadius:8,border:"1px solid rgba(139,109,69,0.15)"}}>
+                      <span style={{fontSize:"0.7rem",color:"rgba(107,85,58,0.5)",fontFamily:SANS}}>{bookSaveMsg||`${wc(bookText)} words`}</span>
+                      <button onClick={()=>{const e={id:Date.now().toString(),date:todayStr(),roomId:"dreams",roomLabel:"Dream Journal",roomEmoji:"🌙",day:pgIdx,prompt:pg.prompt,text:bookText.trim(),words:wc(bookText)};persistEntries([e,...entries]);addCandles(3,"Dream saved +3");setBookSaveMsg("Saved!");setTimeout(()=>setBookSaveMsg(""),2500);}} style={{background:"linear-gradient(135deg,#5C4A2E,#3D2B18)",border:"none",color:"#F5E6C8",padding:"6px 18px",borderRadius:6,cursor:"pointer",fontSize:"0.76rem",fontFamily:SANS,fontWeight:600}}>Save</button>
+                    </div>}
+                  </div>;
+                })()}
+
+                {/* ── SECTION: PRAYER JOURNAL ── */}
+                {journalSection==="prayers"&&bookPage>=2&&<>
+                  <div style={{flex:1,display:"flex",flexDirection:"column",animation:"pageContentReveal .5s .1s ease both"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
+                      <button onClick={()=>{setJournalSection(null);setBookPage(1);setFlipDir("bwd");}} style={{background:"transparent",border:"none",cursor:"pointer",fontFamily:SERIF,fontSize:"0.74rem",color:"rgba(107,85,58,0.5)",padding:0}}>&#8249; Contents</button>
+                    </div>
+                    {/* Page 2: Write a prayer */}
+                    {bookPage===2&&<>
+                      <h2 style={{fontFamily:DISPLAY,fontSize:"clamp(1.1rem,4vw,1.3rem)",fontWeight:700,color:"#3D2B18",margin:"0 0 4px",textAlign:"center"}}>Write a Prayer</h2>
+                      <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.78rem",color:"rgba(107,85,58,0.45)",textAlign:"center",margin:"4px 0 14px"}}>Each prayer waters a plant in your garden</p>
+                      <div style={{width:40,height:1,background:"linear-gradient(90deg,transparent,rgba(139,109,69,0.3),transparent)",margin:"0 auto 14px"}}/>
+                      <div style={{background:"rgba(139,109,69,0.04)",border:"1px solid rgba(139,109,69,0.1)",borderRadius:10,overflow:"hidden",flex:1,minHeight:160}}>
+                        <textarea value={bookText} onChange={e=>setBookText(e.target.value)} placeholder="Pour out your heart... He is listening." style={{width:"100%",height:"100%",minHeight:160,background:"transparent",border:"none",padding:"14px 16px",fontFamily:SERIF,fontSize:"0.88rem",color:"#4A3826",lineHeight:1.8,boxSizing:"border-box",resize:"none"}}/>
+                      </div>
+                      {bookText.trim()&&<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 12px",marginTop:8,background:"rgba(139,109,69,0.08)",borderRadius:8,border:"1px solid rgba(139,109,69,0.15)"}}>
+                        <span style={{fontSize:"0.7rem",color:"rgba(107,85,58,0.5)",fontFamily:SANS}}>{bookSaveMsg||`${wc(bookText)} words`}</span>
+                        <button onClick={savePrayerJournalEntry} style={{background:"linear-gradient(135deg,#3D6B3D,#2E5A2E)",border:"none",color:"#E8F5E8",padding:"6px 18px",borderRadius:6,cursor:"pointer",fontSize:"0.76rem",fontFamily:SANS,fontWeight:600}}>Save & Water Garden</button>
+                      </div>}
+                    </>}
+                    {/* Page 3: Prayer list with garden status */}
+                    {bookPage===3&&<>
+                      <h2 style={{fontFamily:DISPLAY,fontSize:"clamp(1.05rem,4vw,1.2rem)",fontWeight:700,color:"#3D2B18",margin:"0 0 4px",textAlign:"center"}}>Your Prayers</h2>
+                      <div style={{fontFamily:SANS,fontSize:"0.6rem",color:"rgba(107,85,58,0.5)",letterSpacing:"0.1em",textTransform:"uppercase",marginTop:3,textAlign:"center"}}>{prayerPosts.length} prayer{prayerPosts.length===1?"":"s"}</div>
+                      <div style={{width:40,height:1,background:"linear-gradient(90deg,transparent,rgba(139,109,69,0.3),transparent)",margin:"10px auto 14px"}}/>
+                      {prayerPosts.length===0?<div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",textAlign:"center"}}>
+                        <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.88rem",color:"rgba(107,85,58,0.4)",lineHeight:1.7}}>Your prayers will appear here. Turn back to write one.</p>
+                      </div>:(
+                        <div style={{flex:1,overflowY:"auto",display:"flex",flexDirection:"column",gap:10}}>
+                          {prayerPosts.slice(0,10).map(p=>{
+                            const plot=gardenPlots.find(g=>g.prayerId===p.id&&g.stage!=="empty");
+                            const stage=plot?getComputedStage(plot):null;
+                            return(<div key={p.id} style={{background:"rgba(139,109,69,0.05)",border:"1px solid rgba(139,109,69,0.1)",borderRadius:8,padding:"10px 12px"}}>
+                              <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4}}>
+                                <span style={{fontSize:"0.7rem",fontFamily:SERIF,color:"rgba(107,85,58,0.4)"}}>{plot?getPlantEmoji(plot):"~"}</span>
+                                <span style={{fontSize:"0.62rem",fontWeight:600,color:p.status==="answered"?"#4A8B4A":"rgba(107,85,58,0.5)",fontFamily:SANS}}>{p.status==="answered"?"Answered":stage||"Not yet planted"}</span>
+                                <span style={{marginLeft:"auto",fontSize:"0.58rem",color:"rgba(107,85,58,0.3)"}}>{p.date}</span>
+                              </div>
+                              <p style={{fontFamily:SERIF,fontSize:"0.78rem",color:"#4A3826",lineHeight:1.6,margin:0}}>{p.text.length>100?p.text.slice(0,100)+"...":p.text}</p>
+                            </div>);
+                          })}
+                          {prayerPosts.length>10&&<p style={{textAlign:"center",fontFamily:SERIF,fontStyle:"italic",fontSize:"0.72rem",color:"rgba(107,85,58,0.35)",margin:"8px 0 0"}}>+ {prayerPosts.length-10} more prayers</p>}
+                        </div>
+                      )}
+                    </>}
+                  </div>
                 </>}
               </>}
 
@@ -4236,7 +4365,7 @@ export default function App(){
           {bookPage>0&&<button className="book-nav" onClick={()=>flipPage("bwd")} style={{position:"absolute",left:-20,top:"50%",transform:"translateY(-50%)",width:38,height:38,borderRadius:"50%",background:"rgba(245,230,200,0.92)",border:"1px solid rgba(101,83,55,0.15)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1rem",color:"#5C4A2E",zIndex:10,boxShadow:"0 2px 12px rgba(0,0,0,0.25)"}}>‹</button>}
           {bookPage<TOTAL_BOOK_PAGES-1&&<button className="book-nav" onClick={()=>flipPage("fwd")} style={{position:"absolute",right:-20,top:"50%",transform:"translateY(-50%)",width:38,height:38,borderRadius:"50%",background:"rgba(245,230,200,0.92)",border:"1px solid rgba(101,83,55,0.15)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1rem",color:"#5C4A2E",zIndex:10,boxShadow:"0 2px 12px rgba(0,0,0,0.25)"}}>›</button>}
           {/* Close */}
-          <button onClick={()=>setBookOpen(false)} style={{position:"absolute",top:-16,right:-16,width:34,height:34,borderRadius:"50%",background:"rgba(26,22,18,0.88)",border:"1px solid rgba(201,169,110,0.2)",color:"rgba(255,248,232,0.6)",fontSize:"0.8rem",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",zIndex:10,transition:"all .2s",boxShadow:"0 2px 12px rgba(0,0,0,0.35)"}} onMouseEnter={e=>{e.currentTarget.style.background="rgba(201,169,110,0.25)";e.currentTarget.style.color="#FFF8E8";}} onMouseLeave={e=>{e.currentTarget.style.background="rgba(26,22,18,0.88)";e.currentTarget.style.color="rgba(255,248,232,0.6)";}}>✕</button>
+          <button onClick={()=>{setBookOpen(false);setJournalSection(null);}} style={{position:"absolute",top:-16,right:-16,width:34,height:34,borderRadius:"50%",background:"rgba(26,22,18,0.88)",border:"1px solid rgba(201,169,110,0.2)",color:"rgba(255,248,232,0.6)",fontSize:"0.8rem",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",zIndex:10,transition:"all .2s",boxShadow:"0 2px 12px rgba(0,0,0,0.35)"}} onMouseEnter={e=>{e.currentTarget.style.background="rgba(201,169,110,0.25)";e.currentTarget.style.color="#FFF8E8";}} onMouseLeave={e=>{e.currentTarget.style.background="rgba(26,22,18,0.88)";e.currentTarget.style.color="rgba(255,248,232,0.6)";}}>✕</button>
         </div>
       </div>}
 
