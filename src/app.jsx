@@ -469,6 +469,90 @@ const CRAFTING_STATIONS=[
   ]},
 ];
 
+/* ═══════════════════════════════════════════════════
+   ECONOMY — ITEM CATALOG
+═══════════════════════════════════════════════════ */
+const ITEM_CATALOG = {
+  // === Seeds ===
+  herb_seed:    { name:"Herb Seeds",    emoji:"🌿", cat:"seeds",   buyPrice:2,  sellPrice:1  },
+  carrot_seed:  { name:"Carrot Seeds",  emoji:"🥕", cat:"seeds",   buyPrice:3,  sellPrice:1  },
+  onion_seed:   { name:"Onion Seeds",   emoji:"🧅", cat:"seeds",   buyPrice:3,  sellPrice:1  },
+  potato_seed:  { name:"Potato Seeds",  emoji:"🥔", cat:"seeds",   buyPrice:4,  sellPrice:2  },
+  tomato_seed:  { name:"Tomato Seeds",  emoji:"🍅", cat:"seeds",   buyPrice:5,  sellPrice:2  },
+  wheat_seed:   { name:"Wheat Seeds",   emoji:"🌾", cat:"seeds",   buyPrice:4,  sellPrice:2  },
+  // === Garden Crops ===
+  herbs:    { name:"Herbs",    emoji:"🌿", cat:"crops", sellPrice:3  },
+  carrot:   { name:"Carrot",   emoji:"🥕", cat:"crops", sellPrice:5  },
+  onion:    { name:"Onion",    emoji:"🧅", cat:"crops", sellPrice:5  },
+  potato:   { name:"Potato",   emoji:"🥔", cat:"crops", sellPrice:6  },
+  tomato:   { name:"Tomato",   emoji:"🍅", cat:"crops", sellPrice:7  },
+  wheat:    { name:"Wheat",    emoji:"🌾", cat:"crops", sellPrice:4  },
+  barley:   { name:"Barley",   emoji:"🌾", cat:"crops", sellPrice:4  },
+  grapes:   { name:"Grapes",   emoji:"🍇", cat:"crops", sellPrice:6  },
+  figs:     { name:"Figs",     emoji:"🫐", cat:"crops", sellPrice:7  },
+  olives:   { name:"Olives",   emoji:"🫒", cat:"crops", sellPrice:8  },
+  pomegranates:{ name:"Pomegranates", emoji:"🍎", cat:"crops", sellPrice:9 },
+  dates:    { name:"Dates",    emoji:"🌴", cat:"crops", sellPrice:10 },
+  // === Foraged / Ingredients ===
+  mushrooms:{ name:"Mushrooms", emoji:"🍄", cat:"ingredients", buyPrice:4,  sellPrice:3  },
+  berries:  { name:"Berries",   emoji:"🫐", cat:"ingredients", buyPrice:3,  sellPrice:2  },
+  // === Animal Products ===
+  eggs:  { name:"Eggs",  emoji:"🥚", cat:"ingredients", buyPrice:5,  sellPrice:4  },
+  milk:  { name:"Milk",  emoji:"🥛", cat:"ingredients", buyPrice:5,  sellPrice:4  },
+  honey: { name:"Honey", emoji:"🍯", cat:"ingredients", buyPrice:8,  sellPrice:6  },
+  // === Crafted Intermediates ===
+  olive_oil:    { name:"Olive Oil",    emoji:"🫗", cat:"ingredients", sellPrice:12 },
+  lamp_oil:     { name:"Lamp Oil",     emoji:"🪔", cat:"ingredients", sellPrice:10 },
+  flour:        { name:"Flour",        emoji:"🌾", cat:"ingredients", sellPrice:6  },
+  barley_flour: { name:"Barley Flour", emoji:"🌾", cat:"ingredients", sellPrice:6  },
+  dried_figs:   { name:"Dried Figs",   emoji:"🫘", cat:"ingredients", sellPrice:10 },
+  dried_dates:  { name:"Dried Dates",  emoji:"🫘", cat:"ingredients", sellPrice:10 },
+  raisins:      { name:"Raisins",      emoji:"🫐", cat:"ingredients", sellPrice:8  },
+  flatbread:    { name:"Flatbread",    emoji:"🫓", cat:"cooked",      sellPrice:12 },
+  // === Cooked Foods ===
+  vegetable_soup:     { name:"Vegetable Soup",     emoji:"🍲", cat:"cooked", sellPrice:15 },
+  bread:              { name:"Bread",              emoji:"🍞", cat:"cooked", sellPrice:12 },
+  roasted_vegetables: { name:"Roasted Vegetables", emoji:"🥘", cat:"cooked", sellPrice:14 },
+  stew:               { name:"Stew",               emoji:"🥘", cat:"cooked", sellPrice:22 },
+  honey_cake:         { name:"Honey Cake",         emoji:"🍰", cat:"cooked", sellPrice:20 },
+  fruit_salad:        { name:"Fruit Salad",        emoji:"🥗", cat:"cooked", sellPrice:16 },
+};
+
+/* ═══════════════════════════════════════════════════
+   ECONOMY — KITCHEN RECIPES
+═══════════════════════════════════════════════════ */
+const KITCHEN_RECIPES = [
+  { id:"vegetable_soup",     name:"Vegetable Soup",     emoji:"🍲", inputs:{carrot:1, onion:1, herbs:1},           output:"vegetable_soup",     qty:1 },
+  { id:"bread",              name:"Bread",              emoji:"🍞", inputs:{flour:2},                              output:"bread",              qty:1 },
+  { id:"roasted_vegetables", name:"Roasted Vegetables", emoji:"🥘", inputs:{potato:1, tomato:1, herbs:1},          output:"roasted_vegetables", qty:1 },
+  { id:"stew",               name:"Stew",               emoji:"🥘", inputs:{carrot:1, potato:1, onion:1, tomato:1},output:"stew",               qty:1 },
+  { id:"honey_cake",         name:"Honey Cake",         emoji:"🍰", inputs:{flour:1, honey:1, eggs:1},             output:"honey_cake",         qty:1 },
+  { id:"fruit_salad",        name:"Fruit Salad",        emoji:"🥗", inputs:{berries:1, figs:1, honey:1},           output:"fruit_salad",        qty:1 },
+];
+
+/* ═══════════════════════════════════════════════════
+   ECONOMY — NPC BARTER TRADES
+═══════════════════════════════════════════════════ */
+const NPC_TRADES = [
+  { id:"t1", npc:"Old Farmer",  offer:{eggs:2},                      want:{wheat:3},      emoji:"👨‍🌾" },
+  { id:"t2", npc:"Beekeeper",   offer:{honey:1},                     want:{berries:3},    emoji:"🧑‍🌾" },
+  { id:"t3", npc:"Shepherd",    offer:{milk:2},                      want:{herbs:2},      emoji:"🧑" },
+  { id:"t4", npc:"Forager",     offer:{mushrooms:3},                 want:{bread:1},      emoji:"🧙" },
+  { id:"t5", npc:"Traveler",    offer:{tomato_seed:2,carrot_seed:2}, want:{olive_oil:1},  emoji:"🧳" },
+];
+
+/* ═══════════════════════════════════════════════════
+   ECONOMY — FARM CROPS (seed-based, no prayer link)
+═══════════════════════════════════════════════════ */
+const FARM_PLANTS = [
+  { id:"herb",   name:"Herbs",   emoji:"🌿", stageEmojis:["🌱","🌿","🌿","🌿","🌿"], harvestItem:"herbs",  seedItem:"herb_seed",   growthBase:[2,3,3,2],   plantCost:0 },
+  { id:"carrot", name:"Carrot",  emoji:"🥕", stageEmojis:["🌱","🌿","🥕","🥕","🥕"], harvestItem:"carrot", seedItem:"carrot_seed", growthBase:[4,6,6,4],   plantCost:0 },
+  { id:"onion",  name:"Onion",   emoji:"🧅", stageEmojis:["🌱","🌿","🧅","🧅","🧅"], harvestItem:"onion",  seedItem:"onion_seed",  growthBase:[4,6,6,4],   plantCost:0 },
+  { id:"potato", name:"Potato",  emoji:"🥔", stageEmojis:["🌱","🌿","🥔","🥔","🥔"], harvestItem:"potato", seedItem:"potato_seed", growthBase:[5,7,8,5],   plantCost:0 },
+  { id:"tomato", name:"Tomato",  emoji:"🍅", stageEmojis:["🌱","🌿","🍅","🍅","🍅"], harvestItem:"tomato", seedItem:"tomato_seed", growthBase:[6,8,9,7],   plantCost:0 },
+  { id:"wheat_farm", name:"Wheat", emoji:"🌾", stageEmojis:["🌱","🌿","🌾","🌾","🌾"], harvestItem:"wheat", seedItem:"wheat_seed", growthBase:[10,12,13,10], plantCost:0 },
+];
+
 async function dbLoad(k){
   try{
     if(window.storage){const r=await window.storage.get(k);return r?.value?JSON.parse(r.value):null;}
@@ -481,7 +565,7 @@ async function dbSave(k,v){
     localStorage.setItem(k,JSON.stringify(v));
     // Dual-write to Firestore when signed in
     if(auth?.currentUser){
-      const fieldMap={"irj-entries":"entries","irj-prayer":"prayerPosts","irj-saved-cards":"savedCards","irj-onboarded":"isOnboarded","irj-candles":"candles","irj-prayed":"prayedFor","irj-owned-items":"ownedItems","irj-garden":"gardenPlots","irj-inventory":"inventory","irj-saved-verses":"savedVerses"};
+      const fieldMap={"irj-entries":"entries","irj-prayer":"prayerPosts","irj-saved-cards":"savedCards","irj-onboarded":"isOnboarded","irj-candles":"candles","irj-prayed":"prayedFor","irj-owned-items":"ownedItems","irj-garden":"gardenPlots","irj-inventory":"inventory","irj-saved-verses":"savedVerses","irj-bank":"bank","irj-sell-basket":"sellBasket","irj-farm-plots":"farmPlots"};
       const field=fieldMap[k];
       if(field){
         const userRef=doc(db,"users",auth.currentUser.uid);
@@ -2334,6 +2418,13 @@ export default function App(){
   const bibleDataRef = useRef(null);
   // ── Market stalls ──
   const [marketStall, setMarketStall] = useState(null); // null|"harvest"
+  // ── Economy state ──
+  const [bank,         setBank]         = useState({coins:0, diamonds:0});
+  const [sellBasket,   setSellBasket]   = useState([]);   // [{itemId, qty, listedAt}]
+  const [shopStall,    setShopStall]    = useState(null);  // "general"|"barter"
+  const [inventoryTab, setInventoryTab] = useState("all"); // category filter
+  const [farmPlots,    setFarmPlots]    = useState([]); // economy garden plots
+  const [gardenMode,   setGardenMode]   = useState("farm"); // "farm"|"prayers"
   // ── Verse selection, saving, sharing ──
   const [selectedVerses,    setSelectedVerses]    = useState(new Set());
   const [savedVerses,       setSavedVerses]       = useState([]);
@@ -2483,6 +2574,9 @@ export default function App(){
       const gp   = await dbLoad("irj-garden") || Array.from({length:12},(_,i)=>({id:i+1,prayerId:null,plantType:null,stage:"empty",plantedAt:null,prayerCount:0}));
       const inv  = await dbLoad("irj-inventory") || {};
       const sv   = await dbLoad("irj-saved-verses") || [];
+      const bnk  = await dbLoad("irj-bank") || {coins:0, diamonds:0};
+      const sb   = await dbLoad("irj-sell-basket") || [];
+      const fp   = await dbLoad("irj-farm-plots") || Array.from({length:12},(_,i)=>({id:i+1,plantType:null,stage:"empty",plantedAt:null}));
       // Migrate prayers: add status/answeredDate/category if missing
       let migrated=false;
       const mpp=pp.map(p=>{
@@ -2492,6 +2586,7 @@ export default function App(){
       if(migrated) dbSave("irj-prayer",mpp);
       setEntries(ens); setPrayerPosts(mpp); setSavedCards(sc);
       setCandles(cn); setPrayedFor(pf); setOwnedItems(oi); setGardenPlots(gp); setInventory(inv); setSavedVerses(sv);
+      setBank(bnk); setSellBasket(sb); setFarmPlots(fp);
       let s=0,d=new Date(),map={};
       ens.forEach(e=>{map[e.date]=true;});
       while(map[isoDate(d)]){s++;d.setDate(d.getDate()-1);} setStreak(s);
@@ -2513,6 +2608,35 @@ export default function App(){
       if(u) await syncWithCloud(u.uid);
     });
     return ()=>unsub();
+  },[]);
+
+  // ── SELL BASKET AUTO-SELL TIMER ──
+  useEffect(()=>{
+    const timer=setInterval(()=>{
+      setSellBasket(prev=>{
+        if(!prev.length) return prev;
+        const now=Date.now();
+        const ready=prev.filter(b=>now-b.listedAt>=30*60*1000);
+        if(!ready.length) return prev;
+        const remaining=prev.filter(b=>now-b.listedAt<30*60*1000);
+        let earned=0;
+        ready.forEach(b=>{
+          const cat=ITEM_CATALOG[b.itemId];
+          if(cat) earned+=cat.sellPrice*b.qty;
+        });
+        if(earned>0){
+          setBank(bk=>{
+            const nb={...bk,coins:(bk.coins||0)+earned};
+            dbSave("irj-bank",nb);
+            return nb;
+          });
+          setToast({msg:`Market sold your goods! +${earned} coins`,emoji:"..."});
+        }
+        dbSave("irj-sell-basket",remaining);
+        return remaining;
+      });
+    },60000);
+    return ()=>clearInterval(timer);
   },[]);
 
   // ── CLOUD SYNC ──
@@ -2543,6 +2667,9 @@ export default function App(){
       const localGarden=await dbLoad("irj-garden")||[];
       const localInv=await dbLoad("irj-inventory")||{};
       const localVerses=await dbLoad("irj-saved-verses")||[];
+      const localBank=await dbLoad("irj-bank")||{coins:0,diamonds:0};
+      const localSellBasket=await dbLoad("irj-sell-basket")||[];
+      const localFarmPlots=await dbLoad("irj-farm-plots")||[];
 
       const mergedEntries=mergeById(localEntries,cloud.entries||[]);
       const mergedPrayers=mergeById(localPrayers,cloud.prayerPosts||[]);
@@ -2565,6 +2692,19 @@ export default function App(){
       const mergedInv={...cloudInv};
       Object.keys(localInv).forEach(k=>{mergedInv[k]=Math.max(localInv[k]||0,mergedInv[k]||0);});
       const mergedVerses=mergeById(localVerses,cloud.savedVerses||[]);
+      // Bank: max per currency
+      const cloudBank=cloud.bank||{coins:0,diamonds:0};
+      const mergedBank={coins:Math.max(localBank.coins||0,cloudBank.coins||0),diamonds:Math.max(localBank.diamonds||0,cloudBank.diamonds||0)};
+      // Sell basket: keep local (transient)
+      const mergedSellBasket=localSellBasket.length?localSellBasket:(cloud.sellBasket||[]);
+      // Farm plots: merge like garden plots
+      const cloudFarmPlots=cloud.farmPlots||[];
+      const mergedFarmPlots=localFarmPlots.length?localFarmPlots.map(lp=>{
+        const cp=cloudFarmPlots.find(c=>c.id===lp.id);
+        if(!cp) return lp;
+        if(lp.stage==="empty"&&cp.stage!=="empty") return cp;
+        return lp;
+      }):cloudFarmPlots.length?cloudFarmPlots:Array.from({length:12},(_,i)=>({id:i+1,plantType:null,stage:"empty",plantedAt:null}));
 
       localStorage.setItem("irj-entries",JSON.stringify(mergedEntries));
       localStorage.setItem("irj-prayer",JSON.stringify(mergedPrayers));
@@ -2576,6 +2716,9 @@ export default function App(){
       localStorage.setItem("irj-garden",JSON.stringify(mergedGarden));
       localStorage.setItem("irj-inventory",JSON.stringify(mergedInv));
       localStorage.setItem("irj-saved-verses",JSON.stringify(mergedVerses));
+      localStorage.setItem("irj-bank",JSON.stringify(mergedBank));
+      localStorage.setItem("irj-sell-basket",JSON.stringify(mergedSellBasket));
+      localStorage.setItem("irj-farm-plots",JSON.stringify(mergedFarmPlots));
 
       await setDoc(userRef,{
         entries:mergedEntries,
@@ -2588,6 +2731,9 @@ export default function App(){
         gardenPlots:mergedGarden,
         inventory:mergedInv,
         savedVerses:mergedVerses,
+        bank:mergedBank,
+        sellBasket:mergedSellBasket,
+        farmPlots:mergedFarmPlots,
         lastSyncedAt:new Date().toISOString(),
       });
 
@@ -2601,6 +2747,9 @@ export default function App(){
       setGardenPlots(mergedGarden);
       setInventory(mergedInv);
       setSavedVerses(mergedVerses);
+      setBank(mergedBank);
+      setSellBasket(mergedSellBasket);
+      setFarmPlots(mergedFarmPlots);
 
       let s=0,d=new Date(),map={};
       mergedEntries.forEach(e=>{map[e.date]=true;});
@@ -2791,6 +2940,97 @@ export default function App(){
     if(candles<item.cost||ownedItems.includes(item.id)) return;
     spendCandles(item.cost);
     setOwnedItems(prev=>{const next=[...prev,item.id];dbSave("irj-owned-items",next);return next;});
+  }
+
+  // ── COIN ECONOMY ──
+  async function persistBank(b){ setBank(b); await dbSave("irj-bank",b); }
+  async function persistSellBasket(b){ setSellBasket(b); await dbSave("irj-sell-basket",b); }
+  async function persistInventory(inv){ setInventory(inv); await dbSave("irj-inventory",inv); }
+  async function persistFarmPlots(fp){ setFarmPlots(fp); await dbSave("irj-farm-plots",fp); }
+
+  function addToInventory(itemId, qty=1){
+    setInventory(prev=>{
+      const next={...prev, [itemId]:(prev[itemId]||0)+qty};
+      dbSave("irj-inventory",next);
+      return next;
+    });
+  }
+  function removeFromInventory(itemId, qty=1){
+    if((inventory[itemId]||0)<qty) return false;
+    setInventory(prev=>{
+      const next={...prev, [itemId]:(prev[itemId]||0)-qty};
+      if(next[itemId]<=0) delete next[itemId];
+      dbSave("irj-inventory",next);
+      return next;
+    });
+    return true;
+  }
+  function hasIngredients(inputsObj){
+    return Object.entries(inputsObj).every(([item,qty])=>(inventory[item]||0)>=qty);
+  }
+  function addCoins(amount, message){
+    setBank(prev=>{
+      const next={...prev, coins:prev.coins+amount};
+      dbSave("irj-bank",next);
+      return next;
+    });
+    setCandleReward({amount, message: message||`+${amount} coins`});
+    setTimeout(()=>setCandleReward(null),2500);
+  }
+  function spendCoins(amount){
+    if(bank.coins<amount) return false;
+    setBank(prev=>{
+      const next={...prev, coins:prev.coins-amount};
+      dbSave("irj-bank",next);
+      return next;
+    });
+    return true;
+  }
+
+  // ── FARM GARDEN (economy crops) ──
+  function getFarmComputedStage(plot){
+    if(plot.stage==="empty"||!plot.plantedAt) return "empty";
+    const plant=FARM_PLANTS.find(p=>p.id===plot.plantType);
+    if(!plant) return plot.stage;
+    const elapsed=(Date.now()-plot.plantedAt)/60000;
+    let accumulated=0;
+    for(let i=0;i<plant.growthBase.length;i++){
+      accumulated+=plant.growthBase[i];
+      if(elapsed<accumulated) return GROWTH_STAGES[i];
+    }
+    return "harvestable";
+  }
+  function getFarmPlantEmoji(plot){
+    if(plot.stage==="empty") return "";
+    const plant=FARM_PLANTS.find(p=>p.id===plot.plantType);
+    if(!plant) return "🌱";
+    const stage=getFarmComputedStage(plot);
+    const idx=GROWTH_STAGES.indexOf(stage);
+    return plant.stageEmojis[Math.max(0,idx)]||plant.emoji;
+  }
+  function plantFarmSeed(plotId, plantTypeId){
+    const plant=FARM_PLANTS.find(p=>p.id===plantTypeId);
+    if(!plant||!plant.seedItem) return;
+    if(!removeFromInventory(plant.seedItem,1)) return;
+    setFarmPlots(prev=>{
+      const next=prev.map(p=>p.id===plotId?{...p,plantType:plantTypeId,stage:"seed",plantedAt:Date.now()}:p);
+      dbSave("irj-farm-plots",next);
+      return next;
+    });
+  }
+  function harvestFarmPlot(plotId){
+    const plot=farmPlots.find(p=>p.id===plotId);
+    if(!plot||getFarmComputedStage(plot)!=="harvestable") return;
+    const plant=FARM_PLANTS.find(p=>p.id===plot.plantType);
+    if(!plant) return;
+    addToInventory(plant.harvestItem,1);
+    setFarmPlots(prev=>{
+      const next=prev.map(p=>p.id===plotId?{...p,plantType:null,stage:"empty",plantedAt:null}:p);
+      dbSave("irj-farm-plots",next);
+      return next;
+    });
+    setCandleReward({amount:1, message:`Harvested ${plant.name}!`});
+    setTimeout(()=>setCandleReward(null),2500);
   }
 
   // ── PRAYER GARDEN ──
@@ -3536,10 +3776,17 @@ export default function App(){
         );
       })}
 
-      {/* CANDLE BALANCE — persistent display (triple-tap = toggle debug hotspots) — always visible */}
-      <div onClick={debugTripleTap} style={{position:"absolute",left:"3%",top:"4%",zIndex:12,background:"rgba(26,22,18,0.7)",backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",border:"1px solid rgba(212,180,100,0.15)",borderRadius:10,padding:"5px 12px",display:"flex",alignItems:"center",gap:6,animation:"fadeUp 1s 2s ease both",cursor:"default"}}>
-        <span style={{fontSize:"0.8rem"}}>🕯️</span>
-        <span style={{fontFamily:DISPLAY,fontSize:"0.82rem",fontWeight:700,color:B.goldL}}>{candles}</span>
+      {/* CURRENCY BALANCE — candles + coins (triple-tap = toggle debug hotspots) — always visible */}
+      <div onClick={debugTripleTap} style={{position:"absolute",left:"3%",top:"4%",zIndex:12,background:"rgba(26,22,18,0.7)",backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",border:"1px solid rgba(212,180,100,0.15)",borderRadius:10,padding:"5px 12px",display:"flex",alignItems:"center",gap:10,animation:"fadeUp 1s 2s ease both",cursor:"default"}}>
+        <div style={{display:"flex",alignItems:"center",gap:4}}>
+          <span style={{fontSize:"0.8rem"}}>🕯️</span>
+          <span style={{fontFamily:DISPLAY,fontSize:"0.82rem",fontWeight:700,color:B.goldL}}>{candles}</span>
+        </div>
+        <div style={{width:1,height:14,background:"rgba(212,180,100,0.2)"}}/>
+        <div style={{display:"flex",alignItems:"center",gap:4}}>
+          <span style={{fontSize:"0.75rem",color:"rgba(255,210,120,0.7)"}}>o</span>
+          <span style={{fontFamily:DISPLAY,fontSize:"0.82rem",fontWeight:700,color:"rgba(255,210,120,0.85)"}}>{bank.coins}</span>
+        </div>
       </div>
 
       {/* Back to village — top-right navigation */}
@@ -4638,8 +4885,20 @@ export default function App(){
     const availablePrayers=getAvailablePrayers();
     const invItems=Object.entries(inventory).filter(([,v])=>v>0);
     const totalInv=invItems.reduce((s,[,v])=>s+v,0);
+    const isFarmMode=gardenMode==="farm";
+    const activePlots=isFarmMode?farmPlots:gardenPlots;
     const getGrowthPercent=(plot)=>{
       if(plot.stage==="empty"||!plot.plantedAt) return 0;
+      if(isFarmMode){
+        const cs=getFarmComputedStage(plot);
+        if(cs==="harvestable") return 100;
+        const plant=FARM_PLANTS.find(p=>p.id===plot.plantType);
+        if(!plant) return 0;
+        const elapsed=(Date.now()-plot.plantedAt)/60000;
+        let total=0;
+        for(let i=0;i<plant.growthBase.length;i++) total+=plant.growthBase[i];
+        return Math.min(100,Math.round((elapsed/total)*100));
+      }
       const cs=getComputedStage(plot);
       if(cs==="harvestable") return 100;
       const plant=GARDEN_PLANTS.find(p=>p.id===plot.plantType);
@@ -4650,8 +4909,10 @@ export default function App(){
       for(let i=0;i<plant.growthBase.length;i++) total+=Math.max(0.5,plant.growthBase[i]-bonus);
       return Math.min(100,Math.round((elapsed/total)*100));
     };
-    const growingCount=gardenPlots.filter(p=>p.stage!=="empty"&&getComputedStage(p)!=="harvestable").length;
-    const readyCount=gardenPlots.filter(p=>p.stage!=="empty"&&getComputedStage(p)==="harvestable").length;
+    const getActiveStage=(plot)=>isFarmMode?getFarmComputedStage(plot):getComputedStage(plot);
+    const getActiveEmoji=(plot)=>isFarmMode?getFarmPlantEmoji(plot):getPlantEmoji(plot);
+    const growingCount=activePlots.filter(p=>p.stage!=="empty"&&getActiveStage(p)!=="harvestable").length;
+    const readyCount=activePlots.filter(p=>p.stage!=="empty"&&getActiveStage(p)==="harvestable").length;
 
     return(
       <div style={{position:"fixed",inset:0,overflow:"hidden",fontFamily:SANS}}>
@@ -4661,20 +4922,26 @@ export default function App(){
         <ImmersiveGarden/>
 
         {/* ═══ GARDEN PLOT HOTSPOTS — mapped to circular dirt patches ═══ */}
-        {gardenPlots.map((plot,idx)=>{
+        {activePlots.map((plot,idx)=>{
           const pos=GARDEN_PLOT_POSITIONS[idx];
           if(!pos) return null;
-          const cs=getComputedStage(plot);
+          const cs=getActiveStage(plot);
           const isHarvestable=cs==="harvestable";
           const isEmpty=cs==="empty";
-          const prayer=plot.prayerId?prayerPosts.find(p=>p.id===plot.prayerId):null;
+          const prayer=(!isFarmMode&&plot.prayerId)?prayerPosts.find(p=>p.id===plot.prayerId):null;
           const isAnswered=prayer&&prayer.status==="answered";
           const pct=getGrowthPercent(plot);
           return(
             <button key={plot.id} className="garden-plot-hotspot" onClick={()=>{
-              if(isEmpty) openPlantModal(plot.id);
-              else if(isHarvestable) harvestPlot(plot.id);
-              else setSelectedPlot(selectedPlot===plot.id?null:plot.id);
+              if(isFarmMode){
+                if(isEmpty) setPlantModal(plot.id);
+                else if(isHarvestable) harvestFarmPlot(plot.id);
+                else setSelectedPlot(selectedPlot===plot.id?null:plot.id);
+              } else {
+                if(isEmpty) openPlantModal(plot.id);
+                else if(isHarvestable) harvestPlot(plot.id);
+                else setSelectedPlot(selectedPlot===plot.id?null:plot.id);
+              }
             }} style={{
               position:"absolute",left:pos.left,top:pos.top,
               width:`min(${pos.size},${pos.maxSize})`,height:`min(${pos.size},${pos.maxSize})`,
@@ -4690,7 +4957,7 @@ export default function App(){
                 <span style={{fontSize:"clamp(0.7rem,2vw,1.1rem)",color:"rgba(220,200,160,0.45)",animation:"emptyPlotPulse 3.5s ease-in-out infinite",lineHeight:1}}>+</span>
               ):(
                 <>
-                  <span style={{fontSize:"clamp(0.9rem,2.5vw,1.5rem)",lineHeight:1,animation:isHarvestable?"harvestGlow 2s ease-in-out infinite":isAnswered?"bloomPulse 2s ease-in-out infinite":"gardenSway 4s ease-in-out infinite",transformOrigin:"bottom center",filter:"drop-shadow(0 2px 4px rgba(0,0,0,0.4))"}}>{getPlantEmoji(plot)}</span>
+                  <span style={{fontSize:"clamp(0.9rem,2.5vw,1.5rem)",lineHeight:1,animation:isHarvestable?"harvestGlow 2s ease-in-out infinite":isAnswered?"bloomPulse 2s ease-in-out infinite":"gardenSway 4s ease-in-out infinite",transformOrigin:"bottom center",filter:"drop-shadow(0 2px 4px rgba(0,0,0,0.4))"}}>{getActiveEmoji(plot)}</span>
                   {isAnswered&&!isHarvestable&&<span style={{position:"absolute",top:"-4px",right:"-2px",fontSize:"0.45rem"}}>🌸</span>}
                   {isHarvestable&&<span style={{fontSize:"clamp(0.35rem,0.9vw,0.5rem)",fontFamily:SANS,fontWeight:700,color:"#FFE880",textShadow:"0 1px 4px rgba(0,0,0,0.7)",lineHeight:1,animation:"harvestBounce 1.5s ease-in-out infinite"}}>Harvest</span>}
                   {!isHarvestable&&!isEmpty&&(
@@ -4711,12 +4978,26 @@ export default function App(){
           </div>
         </button>
 
-        {/* ═══ TOP HUD — candle balance + garden status ═══ */}
+        {/* ═══ TOP HUD — mode toggle + currency + garden status ═══ */}
+        {/* Farm / Prayers tab toggle */}
+        <div style={{position:"absolute",top:"3%",left:"50%",transform:"translateX(-50%)",zIndex:22,display:"flex",background:"rgba(10,8,6,0.7)",backdropFilter:"blur(10px)",WebkitBackdropFilter:"blur(10px)",border:"1px solid rgba(190,211,196,0.12)",borderRadius:12,overflow:"hidden",animation:"fadeUp .5s ease both"}}>
+          {[{id:"farm",label:"Farm"},{id:"prayers",label:"Prayers"}].map(tab=>(
+            <button key={tab.id} onClick={()=>{setGardenMode(tab.id);setSelectedPlot(null);setPlantModal(null);}} style={{background:gardenMode===tab.id?"rgba(90,138,106,0.25)":"transparent",border:"none",padding:"6px 16px",cursor:"pointer",fontFamily:SERIF,fontStyle:"italic",fontSize:"0.72rem",fontWeight:gardenMode===tab.id?600:400,color:gardenMode===tab.id?"#BED3C4":"rgba(190,211,196,0.4)",transition:"all .15s"}}>{tab.label}</button>
+          ))}
+        </div>
+
         <div style={{position:"absolute",left:"3%",top:"3%",zIndex:20,display:"flex",alignItems:"center",gap:8,animation:"fadeUp .6s ease both"}}>
-          <div style={{background:"rgba(10,8,6,0.65)",backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",border:"1px solid rgba(212,180,100,0.15)",borderRadius:10,padding:"5px 12px",display:"flex",alignItems:"center",gap:6}}>
-            <span style={{fontSize:"0.8rem"}}>🕯️</span>
-            <span style={{fontFamily:DISPLAY,fontSize:"0.82rem",fontWeight:700,color:B.goldL}}>{candles}</span>
-          </div>
+          {isFarmMode ? (
+            <div style={{background:"rgba(10,8,6,0.65)",backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",border:"1px solid rgba(212,180,100,0.15)",borderRadius:10,padding:"5px 12px",display:"flex",alignItems:"center",gap:6}}>
+              <span style={{fontSize:"0.75rem"}}>🪙</span>
+              <span style={{fontFamily:DISPLAY,fontSize:"0.82rem",fontWeight:700,color:B.goldL}}>{bank.coins}</span>
+            </div>
+          ) : (
+            <div style={{background:"rgba(10,8,6,0.65)",backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",border:"1px solid rgba(212,180,100,0.15)",borderRadius:10,padding:"5px 12px",display:"flex",alignItems:"center",gap:6}}>
+              <span style={{fontSize:"0.8rem"}}>🕯️</span>
+              <span style={{fontFamily:DISPLAY,fontSize:"0.82rem",fontWeight:700,color:B.goldL}}>{candles}</span>
+            </div>
+          )}
           {readyCount>0&&<div style={{background:"rgba(10,8,6,0.65)",backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",border:"1px solid rgba(255,200,60,0.2)",borderRadius:10,padding:"5px 10px",display:"flex",alignItems:"center",gap:4}}>
             <span style={{fontSize:"0.65rem"}}>✨</span>
             <span style={{fontFamily:SANS,fontSize:"0.68rem",fontWeight:600,color:"#FFE880"}}>{readyCount} ready</span>
@@ -4742,25 +5023,24 @@ export default function App(){
 
         {/* ═══ SELECTED PLOT DETAIL — floating card ═══ */}
         {selectedPlot&&(()=>{
-          const plot=gardenPlots.find(p=>p.id===selectedPlot);
+          const plot=activePlots.find(p=>p.id===selectedPlot);
           if(!plot||plot.stage==="empty") return null;
-          const plant=GARDEN_PLANTS.find(p=>p.id===plot.plantType);
-          const prayer=prayerPosts.find(p=>p.id===plot.prayerId);
-          const cs=getComputedStage(plot);
+          const plant=isFarmMode?FARM_PLANTS.find(p=>p.id===plot.plantType):GARDEN_PLANTS.find(p=>p.id===plot.plantType);
+          const prayer=(!isFarmMode&&plot.prayerId)?prayerPosts.find(p=>p.id===plot.prayerId):null;
+          const cs=getActiveStage(plot);
           const pct=getGrowthPercent(plot);
           return(
             <div onClick={()=>setSelectedPlot(null)} style={{position:"fixed",inset:0,zIndex:50}}>
               <div style={{position:"absolute",inset:0,background:"rgba(6,8,4,0.4)"}}/>
               <div onClick={e=>e.stopPropagation()} style={{position:"absolute",bottom:"14%",left:"50%",transform:"translateX(-50%)",width:"min(88vw,340px)",background:"rgba(18,22,14,0.94)",backdropFilter:"blur(16px)",WebkitBackdropFilter:"blur(16px)",border:"1px solid rgba(90,138,106,0.25)",borderRadius:18,padding:"20px 18px",animation:"fadeUp .3s ease both",boxShadow:"0 8px 32px rgba(0,0,0,0.5)"}}>
                 <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
-                  <span style={{fontSize:"1.6rem"}}>{getPlantEmoji(plot)}</span>
+                  <span style={{fontSize:"1.6rem"}}>{getActiveEmoji(plot)}</span>
                   <div style={{flex:1}}>
                     <div style={{fontFamily:DISPLAY,fontSize:"0.95rem",fontWeight:700,color:"#BED3C4"}}>{plant?.name||"Plant"}</div>
                     <div style={{fontFamily:SANS,fontSize:"0.68rem",color:"rgba(190,211,196,0.5)"}}>Stage: {cs} · {pct}% grown</div>
                   </div>
                   <button onClick={()=>setSelectedPlot(null)} style={{background:"none",border:"none",color:"rgba(190,211,196,0.3)",fontSize:"1rem",cursor:"pointer",padding:4}}>✕</button>
                 </div>
-                {/* Growth bar */}
                 <div style={{width:"100%",height:4,background:"rgba(190,211,196,0.1)",borderRadius:2,overflow:"hidden",marginBottom:10}}>
                   <div style={{width:`${pct}%`,height:"100%",background:"linear-gradient(90deg,#5A8A6A,#9AB8A4)",borderRadius:2,transition:"width 0.5s"}}/>
                 </div>
@@ -4768,45 +5048,59 @@ export default function App(){
                   🙏 {prayer.text.slice(0,120)}{prayer.text.length>120?"…":""}
                 </div>}
                 {prayer?.status==="answered"&&<div style={{marginTop:8,fontFamily:SANS,fontSize:"0.72rem",fontWeight:600,color:"#9AB8A4"}}>✦ Prayer answered — in full bloom</div>}
-                <div style={{marginTop:8,fontFamily:SANS,fontSize:"0.65rem",color:"rgba(190,211,196,0.3)"}}>Prayers offered: {plot.prayerCount}</div>
+                {!isFarmMode&&<div style={{marginTop:8,fontFamily:SANS,fontSize:"0.65rem",color:"rgba(190,211,196,0.3)"}}>Prayers offered: {plot.prayerCount}</div>}
+                {isFarmMode&&plant&&<div style={{marginTop:8,fontFamily:SANS,fontSize:"0.65rem",color:"rgba(190,211,196,0.3)"}}>Sells for {ITEM_CATALOG[plant.harvestItem]?.sellPrice||0} coins</div>}
               </div>
             </div>
           );
         })()}
 
         {/* ═══ INVENTORY PANEL (slides up from bottom) ═══ */}
-        {gardenTab==="inventory"&&<div style={{position:"fixed",inset:0,zIndex:40}} onClick={()=>setGardenTab("garden")}>
-          <div style={{position:"absolute",inset:0,background:"rgba(6,8,4,0.35)"}}/>
-          <div onClick={e=>e.stopPropagation()} style={{position:"absolute",bottom:0,left:0,right:0,maxHeight:"55vh",background:"rgba(18,22,14,0.96)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",border:"1px solid rgba(90,138,106,0.2)",borderRadius:"20px 20px 0 0",padding:"20px 18px 30px",animation:"panelSlideUp .35s cubic-bezier(.22,1,.36,1) both",overflowY:"auto"}}>
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
-              <div style={{fontFamily:DISPLAY,fontSize:"1rem",fontWeight:700,color:"#BED3C4"}}>🧺 Inventory</div>
-              <button onClick={()=>setGardenTab("garden")} style={{background:"none",border:"none",color:"rgba(190,211,196,0.3)",fontSize:"0.9rem",cursor:"pointer"}}>✕</button>
+        {gardenTab==="inventory"&&(()=>{
+          const cats=[{id:"all",label:"All"},{id:"seeds",label:"Seeds"},{id:"crops",label:"Crops"},{id:"ingredients",label:"Ingredients"},{id:"cooked",label:"Cooked"}];
+          const filtered=invItems.filter(([item])=>{
+            if(inventoryTab==="all") return true;
+            const cat=ITEM_CATALOG[item]?.cat;
+            return cat===inventoryTab;
+          });
+          return <div style={{position:"fixed",inset:0,zIndex:40}} onClick={()=>setGardenTab("garden")}>
+            <div style={{position:"absolute",inset:0,background:"rgba(6,8,4,0.35)"}}/>
+            <div onClick={e=>e.stopPropagation()} style={{position:"absolute",bottom:0,left:0,right:0,maxHeight:"60vh",background:"rgba(18,22,14,0.96)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",border:"1px solid rgba(90,138,106,0.2)",borderRadius:"20px 20px 0 0",padding:"20px 18px 30px",animation:"panelSlideUp .35s cubic-bezier(.22,1,.36,1) both",overflowY:"auto"}}>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+                <div style={{fontFamily:DISPLAY,fontSize:"1rem",fontWeight:700,color:"#BED3C4"}}>Inventory</div>
+                <button onClick={()=>setGardenTab("garden")} style={{background:"none",border:"none",color:"rgba(190,211,196,0.3)",fontSize:"0.9rem",cursor:"pointer"}}>✕</button>
+              </div>
+              {/* Category tabs */}
+              <div style={{display:"flex",gap:6,marginBottom:14,flexWrap:"wrap"}}>
+                {cats.map(c=><button key={c.id} onClick={()=>setInventoryTab(c.id)} style={{background:inventoryTab===c.id?"rgba(90,138,106,0.2)":"transparent",border:`1px solid ${inventoryTab===c.id?"rgba(90,138,106,0.35)":"rgba(190,211,196,0.08)"}`,color:inventoryTab===c.id?"#BED3C4":"rgba(190,211,196,0.35)",padding:"4px 12px",borderRadius:8,cursor:"pointer",fontSize:"0.68rem",fontFamily:SANS,fontWeight:inventoryTab===c.id?600:400,transition:"all 0.15s"}}>{c.label}</button>)}
+              </div>
+              {filtered.length===0?(
+                <div style={{textAlign:"center",padding:"20px 0"}}>
+                  <p style={{fontFamily:SERIF,fontStyle:"italic",color:"rgba(190,211,196,0.35)",fontSize:"0.85rem"}}>
+                    {invItems.length===0?"Your harvest will appear here.":"No items in this category."}
+                  </p>
+                </div>
+              ):(
+                <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10}}>
+                  {filtered.map(([item,qty])=>{
+                    const catItem=ITEM_CATALOG[item];
+                    const emoji=catItem?.emoji||"📦";
+                    const displayName=catItem?.name||item.replace(/_/g," ").replace(/\b\w/g,c=>c.toUpperCase());
+                    const sellPrice=catItem?.sellPrice;
+                    return(
+                      <div key={item} style={{background:"rgba(90,138,106,0.06)",border:"1px solid rgba(90,138,106,0.15)",borderRadius:12,padding:"12px 8px",display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
+                        <span style={{fontSize:"1.3rem"}}>{emoji}</span>
+                        <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.62rem",color:"rgba(190,211,196,0.6)",textAlign:"center",lineHeight:1.2}}>{displayName}</span>
+                        <span style={{fontFamily:DISPLAY,fontSize:"0.9rem",fontWeight:700,color:"#BED3C4"}}>x{qty}</span>
+                        {sellPrice&&<span style={{fontFamily:SANS,fontSize:"0.55rem",color:"rgba(212,180,100,0.5)"}}>🪙 {sellPrice}</span>}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
-            {invItems.length===0?(
-              <div style={{textAlign:"center",padding:"20px 0"}}>
-                <p style={{fontFamily:SERIF,fontStyle:"italic",color:"rgba(190,211,196,0.35)",fontSize:"0.85rem"}}>Your harvest will appear here.</p>
-                <p style={{fontFamily:SANS,fontSize:"0.7rem",color:"rgba(190,211,196,0.2)",marginTop:6}}>Grow and harvest plants in the garden.</p>
-              </div>
-            ):(
-              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10}}>
-                {invItems.map(([item,qty])=>{
-                  const plantMatch=GARDEN_PLANTS.find(p=>p.harvestItem===item);
-                  const craftMatch=CRAFTING_STATIONS.flatMap(s=>s.recipes).find(r=>r.output===item);
-                  const emoji=plantMatch?.harvestEmoji||craftMatch?.outputEmoji||"📦";
-                  const name=plantMatch?.harvestItem||craftMatch?.outputName||item;
-                  const displayName=name.replace(/_/g," ").replace(/\b\w/g,c=>c.toUpperCase());
-                  return(
-                    <div key={item} style={{background:"rgba(90,138,106,0.06)",border:"1px solid rgba(90,138,106,0.15)",borderRadius:12,padding:"12px 8px",display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
-                      <span style={{fontSize:"1.3rem"}}>{emoji}</span>
-                      <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.65rem",color:"rgba(190,211,196,0.6)",textAlign:"center",lineHeight:1.2}}>{displayName}</span>
-                      <span style={{fontFamily:DISPLAY,fontSize:"0.9rem",fontWeight:700,color:"#BED3C4"}}>×{qty}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </div>}
+          </div>;
+        })()}
 
         {/* ═══ CRAFTING PANEL (slides up from bottom) ═══ */}
         {gardenTab==="crafting"&&<div style={{position:"fixed",inset:0,zIndex:40}} onClick={()=>{setGardenTab("garden");setCraftingStation(null);}}>
@@ -4870,7 +5164,25 @@ export default function App(){
         {plantModal&&<div style={{position:"fixed",inset:0,zIndex:300}}>
           <div onClick={()=>{setPlantModal(null);setPlantStep(1);setPlantPrayerId(null);}} style={{position:"absolute",inset:0,background:"rgba(6,8,4,0.7)",backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",animation:"spaceFadeIn .2s ease"}}/>
           <div style={{position:"absolute",bottom:0,left:0,right:0,maxHeight:"75vh",background:"rgba(18,22,14,0.97)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",border:"1px solid rgba(90,138,106,0.2)",borderRadius:"20px 20px 0 0",padding:"24px 20px 32px",animation:"panelSlideUp .35s cubic-bezier(.22,1,.36,1) both",overflowY:"auto"}}>
-            {plantStep===1?(
+            {isFarmMode?(
+              <>
+                <div style={{fontFamily:DISPLAY,fontSize:"1rem",fontWeight:700,color:"#BED3C4",marginBottom:4}}>Plant a Crop</div>
+                <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.75rem",color:"rgba(190,211,196,0.4)",marginBottom:16}}>Use seeds from your inventory to plant crops.</p>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10}}>
+                  {FARM_PLANTS.map(plant=>{
+                    const seedCount=inventory[plant.seedItem]||0;
+                    const hasSeed=seedCount>0;
+                    return(
+                      <button key={plant.id} onClick={()=>{if(hasSeed){plantFarmSeed(plantModal,plant.id);setPlantModal(null);}}} style={{background:hasSeed?"rgba(90,138,106,0.06)":"rgba(255,255,255,0.02)",border:`1px solid ${hasSeed?"rgba(90,138,106,0.2)":"rgba(190,211,196,0.06)"}`,borderRadius:14,padding:"14px 10px",cursor:hasSeed?"pointer":"default",display:"flex",flexDirection:"column",alignItems:"center",gap:6,transition:"all .15s",opacity:hasSeed?1:0.4}}>
+                        <span style={{fontSize:"1.4rem"}}>{plant.emoji}</span>
+                        <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.78rem",color:"rgba(190,211,196,0.8)"}}>{plant.name}</span>
+                        <span style={{fontFamily:SANS,fontSize:"0.68rem",fontWeight:600,color:hasSeed?"#BED3C4":"rgba(190,211,196,0.25)"}}>{hasSeed?`${seedCount} seed${seedCount>1?"s":""}`:"No seeds"}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            ):plantStep===1?(
               <>
                 <div style={{fontFamily:DISPLAY,fontSize:"1rem",fontWeight:700,color:"#BED3C4",marginBottom:4}}>Choose a Prayer</div>
                 <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.75rem",color:"rgba(190,211,196,0.4)",marginBottom:16}}>Select an active prayer to plant in your garden.</p>
@@ -5136,17 +5448,57 @@ export default function App(){
         <style>{GFONTS}{CSS}</style>
         <ImmersiveStove/>
         {/* UI layer */}
-        <div style={{position:"relative",zIndex:10,height:"100%",pointerEvents:"none"}}>
-          {/* Back to kitchen button */}
-          <button onClick={()=>{setSpaceTransit(true);setTransitDir("toKitchen");setTimeout(()=>{setScreen("kitchen");setSpaceTransit(false);setTransitDir(null);},700);}} style={{position:"absolute",top:28,left:22,pointerEvents:"auto",background:"rgba(10,6,4,0.45)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",border:"1px solid rgba(201,169,110,0.12)",borderRadius:999,padding:"8px 20px",cursor:"pointer",color:"rgba(255,248,232,0.55)",fontFamily:SANS,fontSize:"0.78rem",transition:"all 0.3s",display:"inline-flex",alignItems:"center",gap:6,zIndex:15}}>
-            Back to kitchen
-          </button>
-          {/* Cooking area — centered text hint */}
-          <div style={{position:"absolute",bottom:"10%",left:"50%",transform:"translateX(-50%)",pointerEvents:"none",textAlign:"center",animation:"fadeUp .8s ease both .3s",opacity:0}}>
-            <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"1rem",color:"rgba(255,240,210,0.35)",textShadow:"0 2px 8px rgba(0,0,0,0.8)",margin:0}}>The fire crackles softly...</p>
+        <div style={{position:"relative",zIndex:10,height:"100%",display:"flex",flexDirection:"column"}}>
+          {/* Header */}
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"20px 18px 10px"}}>
+            <button onClick={()=>{setSpaceTransit(true);setTransitDir("toKitchen");setTimeout(()=>{setScreen("kitchen");setSpaceTransit(false);setTransitDir(null);},700);}} style={{background:"rgba(10,6,4,0.45)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",border:"1px solid rgba(201,169,110,0.12)",borderRadius:999,padding:"8px 20px",cursor:"pointer",color:"rgba(255,248,232,0.55)",fontFamily:SANS,fontSize:"0.78rem",display:"inline-flex",alignItems:"center",gap:6}}>
+              ← Kitchen
+            </button>
+            <div style={{fontFamily:DISPLAY,fontSize:"0.95rem",fontWeight:700,color:"rgba(255,240,210,0.65)",textShadow:"0 2px 8px rgba(0,0,0,0.6)"}}>Cooking Fire</div>
+            <div style={{width:80}}/>
+          </div>
+          {/* Recipe grid */}
+          <div style={{flex:1,overflowY:"auto",padding:"10px 18px 80px",display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:12,alignContent:"start"}}>
+            {KITCHEN_RECIPES.map(recipe=>{
+              const canCook=hasIngredients(recipe.inputs);
+              return(
+                <div key={recipe.id} style={{background:"rgba(18,14,8,0.85)",backdropFilter:"blur(10px)",WebkitBackdropFilter:"blur(10px)",border:`1px solid ${canCook?"rgba(212,180,100,0.2)":"rgba(201,169,110,0.08)"}`,borderRadius:14,padding:"14px 12px",display:"flex",flexDirection:"column",gap:8,animation:"fadeUp .5s ease both"}}>
+                  <div style={{display:"flex",alignItems:"center",gap:8}}>
+                    <span style={{fontSize:"1.4rem"}}>{recipe.emoji}</span>
+                    <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.82rem",color:"rgba(255,240,210,0.8)",flex:1}}>{recipe.name}</span>
+                  </div>
+                  <div style={{display:"flex",flexDirection:"column",gap:3}}>
+                    {Object.entries(recipe.inputs).map(([ing,qty])=>{
+                      const owned=inventory[ing]||0;
+                      const enough=owned>=qty;
+                      const catItem=ITEM_CATALOG[ing];
+                      return(
+                        <div key={ing} style={{display:"flex",alignItems:"center",gap:4,fontSize:"0.65rem",fontFamily:SANS}}>
+                          <span>{catItem?.emoji||"📦"}</span>
+                          <span style={{color:enough?"rgba(190,211,196,0.6)":"rgba(255,120,100,0.6)"}}>{catItem?.name||ing}: {owned}/{qty}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <button onClick={()=>{
+                    if(!canCook) return;
+                    Object.entries(recipe.inputs).forEach(([ing,qty])=>removeFromInventory(ing,qty));
+                    addToInventory(recipe.output,recipe.qty);
+                    setCandleReward({amount:1,message:`Cooked ${recipe.name}!`});
+                    setTimeout(()=>setCandleReward(null),2500);
+                  }} disabled={!canCook} style={{background:canCook?"rgba(212,180,100,0.15)":"rgba(255,255,255,0.03)",border:`1px solid ${canCook?"rgba(212,180,100,0.3)":"rgba(201,169,110,0.08)"}`,borderRadius:10,padding:"8px 0",cursor:canCook?"pointer":"default",fontFamily:SANS,fontSize:"0.75rem",fontWeight:600,color:canCook?B.goldL:"rgba(201,169,110,0.2)",transition:"all .15s",opacity:canCook?1:0.5}}>
+                    Cook
+                  </button>
+                </div>
+              );
+            })}
           </div>
         </div>
         {spaceTransit&&<div style={{position:"fixed",inset:0,zIndex:9999,background:"#0A0806",animation:"spaceFadeIn .6s ease both",pointerEvents:"all"}}/>}
+        {candleReward&&<div style={{position:"fixed",top:"50%",left:"50%",transform:"translate(-50%,-50%)",zIndex:200,background:"rgba(18,14,8,0.95)",backdropFilter:"blur(16px)",WebkitBackdropFilter:"blur(16px)",border:"1px solid rgba(212,180,100,0.3)",borderRadius:18,padding:"24px 32px",textAlign:"center",animation:"fadeUp .3s ease both",boxShadow:"0 8px 32px rgba(0,0,0,0.6)"}}>
+          <div style={{fontSize:"1.8rem",marginBottom:8}}>🍳</div>
+          <div style={{fontFamily:DISPLAY,fontSize:"1rem",fontWeight:700,color:B.goldL}}>{candleReward.message}</div>
+        </div>}
       </div>
     );
   }
@@ -5194,7 +5546,7 @@ export default function App(){
         <ImmersiveMarket/>
 
         {/* ── Back to village ── */}
-        <button onClick={()=>{setMarketStall(null);setScreen("map");}} style={{position:"absolute",top:20,left:16,zIndex:14,background:"rgba(10,8,16,0.55)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",border:"1px solid rgba(201,169,110,0.15)",borderRadius:999,padding:"8px 20px",cursor:"pointer",color:"rgba(255,248,232,0.6)",fontFamily:SANS,fontSize:"0.78rem",transition:"all 0.2s",display:"inline-flex",alignItems:"center",gap:6,animation:"fadeUp .6s ease both"}}>
+        <button onClick={()=>{setMarketStall(null);setShopStall(null);setScreen("map");}} style={{position:"absolute",top:20,left:16,zIndex:14,background:"rgba(10,8,16,0.55)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",border:"1px solid rgba(201,169,110,0.15)",borderRadius:999,padding:"8px 20px",cursor:"pointer",color:"rgba(255,248,232,0.6)",fontFamily:SANS,fontSize:"0.78rem",transition:"all 0.2s",display:"inline-flex",alignItems:"center",gap:6,animation:"fadeUp .6s ease both"}}>
           Back to village
         </button>
 
@@ -5206,60 +5558,220 @@ export default function App(){
         </button>
 
         {/* General Shop — center stall */}
-        <button style={{position:"absolute",left:"33%",top:"18%",width:"34%",height:"38%",zIndex:11,background:"transparent",border:"none",padding:0,cursor:"pointer",outline:"none",WebkitTapHighlightColor:"transparent"}}>
+        <button onClick={()=>setShopStall("general")} style={{position:"absolute",left:"33%",top:"18%",width:"34%",height:"38%",zIndex:11,background:"transparent",border:"none",padding:0,cursor:"pointer",outline:"none",WebkitTapHighlightColor:"transparent"}}>
           <div style={{position:"absolute",left:"22%",top:"18%",width:"56%",height:"48%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,215,130,0.28) 0%,rgba(255,190,90,0.10) 40%,transparent 72%)",pointerEvents:"none",animation:"hotspotPulse 2.8s ease-in-out infinite",animationDelay:"0.4s"}}/>
           <div style={{position:"absolute",left:"30%",top:"25%",width:"40%",height:"36%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,245,180,0.18) 0%,transparent 55%)",pointerEvents:"none",animation:"hotspotPulse 3.3s ease-in-out infinite",animationDelay:"1s"}}/>
         </button>
 
         {/* Barter Post — right stall */}
-        <button style={{position:"absolute",right:"2%",top:"20%",width:"30%",height:"35%",zIndex:11,background:"transparent",border:"none",padding:0,cursor:"pointer",outline:"none",WebkitTapHighlightColor:"transparent"}}>
+        <button onClick={()=>setShopStall("barter")} style={{position:"absolute",right:"2%",top:"20%",width:"30%",height:"35%",zIndex:11,background:"transparent",border:"none",padding:0,cursor:"pointer",outline:"none",WebkitTapHighlightColor:"transparent"}}>
           <div style={{position:"absolute",left:"20%",top:"15%",width:"55%",height:"50%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,210,120,0.28) 0%,rgba(255,180,80,0.10) 40%,transparent 72%)",pointerEvents:"none",animation:"hotspotPulse 3.2s ease-in-out infinite",animationDelay:"0.8s"}}/>
           <div style={{position:"absolute",left:"28%",top:"22%",width:"40%",height:"38%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,240,170,0.18) 0%,transparent 55%)",pointerEvents:"none",animation:"hotspotPulse 3.6s ease-in-out infinite",animationDelay:"1.4s"}}/>
         </button>
 
         {/* ── Coming soon overlay — bottom of path ── */}
-        {!marketStall&&(
+        {!marketStall&&!shopStall&&(
           <div style={{position:"absolute",bottom:24,left:"50%",transform:"translateX(-50%)",zIndex:14,background:"rgba(10,8,16,0.55)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",border:"1px solid rgba(201,169,110,0.15)",borderRadius:14,padding:"12px 28px",textAlign:"center",animation:"fadeUp .8s .4s ease both"}}>
             <p style={{fontFamily:SERIF,fontStyle:"italic",color:"rgba(255,248,232,0.4)",fontSize:"0.85rem",margin:0}}>Tap a stall to browse...</p>
           </div>
         )}
 
         {/* ── HARVEST MARKET CLOSE-UP ── */}
-        {marketStall==="harvest"&&(
+        {marketStall==="harvest"&&(()=>{
+          const sellableItems=Object.entries(inventory).filter(([k,v])=>v>0&&ITEM_CATALOG[k]&&ITEM_CATALOG[k].sellPrice).map(([k,v])=>({id:k,...ITEM_CATALOG[k],owned:v}));
+          const basketTotal=sellBasket.reduce((s,b)=>(ITEM_CATALOG[b.itemId]?s+ITEM_CATALOG[b.itemId].sellPrice*b.qty:s),0);
+          const oldestListing=sellBasket.length?Math.min(...sellBasket.map(b=>b.listedAt)):null;
+          const msLeft=oldestListing?(oldestListing+30*60*1000-Date.now()):null;
+          const minsLeft=msLeft!==null?Math.max(0,Math.ceil(msLeft/60000)):null;
+          return(
           <div style={{position:"fixed",inset:0,zIndex:100,background:"#0A0810",animation:"overlayFadeIn .35s ease both",display:"flex",flexDirection:"column"}}>
-            {/* Header */}
             <header style={{position:"relative",zIndex:10,background:"rgba(10,8,16,0.75)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",padding:"0 16px",height:54,display:"flex",alignItems:"center",gap:10,borderBottom:"1px solid rgba(201,169,110,0.12)",flexShrink:0}}>
-              <button onClick={()=>setMarketStall(null)} style={{background:"transparent",border:"none",cursor:"pointer",color:"rgba(255,240,200,0.55)",fontSize:"0.8rem",fontFamily:SANS,padding:"4px 0",transition:"color 0.15s"}}>{"< Market"}</button>
+              <button onClick={()=>setMarketStall(null)} style={{background:"transparent",border:"none",cursor:"pointer",color:"rgba(255,240,200,0.55)",fontSize:"0.8rem",fontFamily:SANS,padding:"4px 0"}}>{"< Market"}</button>
               <div style={{height:14,width:1,background:"rgba(201,169,110,0.18)"}}/>
               <span style={{fontFamily:SERIF,fontStyle:"italic",color:"rgba(255,240,200,0.75)",fontSize:"0.92rem"}}>Harvest Market</span>
+              <div style={{marginLeft:"auto",fontFamily:SANS,fontSize:"0.75rem",color:"rgba(255,210,120,0.7)"}}>{bank.coins} coins</div>
             </header>
-            {/* Full-bleed image + scroll content */}
             <div style={{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch"}}>
-              {/* Close-up image */}
-              <div style={{position:"relative",width:"100%",maxHeight:"65vh",overflow:"hidden"}}>
+              <div style={{position:"relative",width:"100%",maxHeight:"40vh",overflow:"hidden"}}>
                 <img src="/harvest-market.png" alt="Harvest Market stall" style={{width:"100%",height:"100%",objectFit:"cover",objectPosition:"center 30%",display:"block"}}/>
-                {/* Warm glow overlay on the image */}
                 <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse at 50% 40%, rgba(255,190,80,0.08) 0%, transparent 60%)",mixBlendMode:"screen",pointerEvents:"none"}}/>
-                {/* Bottom fade into content */}
                 <div style={{position:"absolute",bottom:0,left:0,right:0,height:"40%",background:"linear-gradient(to top, #0A0810 0%, rgba(10,8,16,0.6) 50%, transparent 100%)",pointerEvents:"none"}}/>
               </div>
-              {/* Stall info */}
-              <div style={{maxWidth:600,margin:"-40px auto 0",padding:"0 22px 80px",position:"relative",zIndex:2}}>
-                <h2 style={{fontFamily:DISPLAY,fontSize:"1.6rem",fontWeight:700,color:"rgba(255,240,200,0.85)",margin:"0 0 8px",textShadow:"0 2px 12px rgba(0,0,0,0.5)"}}>Harvest Market</h2>
-                <div style={{width:50,height:2,background:"rgba(201,169,110,0.35)",borderRadius:1,marginBottom:16}}/>
-                <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.95rem",color:"rgba(255,240,200,0.45)",lineHeight:1.7,margin:"0 0 28px"}}>Fresh produce, flowers, and goods from the village harvest. The scent of wildflowers and ripe fruit fills the air.</p>
-                {/* Placeholder stall items */}
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-                  {[{name:"Wildflowers",desc:"A bundle of hand-picked blooms",icon:"*"},{name:"Fresh Fruit",desc:"Sun-ripened from the orchard",icon:"*"},{name:"Honey Jar",desc:"Golden and sweet from village bees",icon:"*"},{name:"Herb Bundle",desc:"Fragrant herbs for cooking or tea",icon:"*"}].map((item,i)=>(
-                    <div key={i} style={{background:"rgba(255,240,200,0.04)",border:"1px solid rgba(201,169,110,0.12)",borderRadius:14,padding:"18px 16px",animation:`fadeUp .5s ${0.2+i*0.1}s ease both`,opacity:0}}>
-                      <p style={{fontFamily:SERIF,fontSize:"0.9rem",color:"rgba(255,240,200,0.65)",margin:"0 0 4px",fontWeight:500}}>{item.name}</p>
-                      <p style={{fontFamily:SANS,fontSize:"0.72rem",color:"rgba(255,240,200,0.3)",margin:0,lineHeight:1.5}}>{item.desc}</p>
+              <div style={{maxWidth:600,margin:"-30px auto 0",padding:"0 22px 80px",position:"relative",zIndex:2}}>
+                <h2 style={{fontFamily:DISPLAY,fontSize:"1.4rem",fontWeight:700,color:"rgba(255,240,200,0.85)",margin:"0 0 6px"}}>Harvest Market</h2>
+                <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.82rem",color:"rgba(255,240,200,0.4)",margin:"0 0 18px"}}>List your goods for sale. Items sell automatically after 30 minutes.</p>
+
+                {/* Sell Basket */}
+                {sellBasket.length>0&&(
+                  <div style={{background:"rgba(255,240,200,0.04)",border:"1px solid rgba(201,169,110,0.15)",borderRadius:14,padding:"14px 16px",marginBottom:16}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                      <span style={{fontFamily:SANS,fontSize:"0.78rem",color:"rgba(255,240,200,0.6)",fontWeight:600}}>Listed for Sale</span>
+                      {minsLeft!==null&&<span style={{fontFamily:SANS,fontSize:"0.72rem",color:"rgba(255,210,120,0.6)"}}>Sells in ~{minsLeft} min</span>}
+                    </div>
+                    {sellBasket.map((b,i)=>{
+                      const cat=ITEM_CATALOG[b.itemId];
+                      return(
+                        <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"6px 0",borderTop:i?"1px solid rgba(201,169,110,0.08)":"none"}}>
+                          <span style={{fontSize:"1.1rem"}}>{cat?cat.emoji:"?"}</span>
+                          <span style={{fontFamily:SANS,fontSize:"0.82rem",color:"rgba(255,240,200,0.65)",flex:1}}>{cat?cat.name:b.itemId} x{b.qty}</span>
+                          <span style={{fontFamily:SANS,fontSize:"0.75rem",color:"rgba(255,210,120,0.6)"}}>{cat?cat.sellPrice*b.qty:0}c</span>
+                          <button onClick={()=>{
+                            addToInventory(b.itemId,b.qty);
+                            const nb=[...sellBasket];nb.splice(i,1);persistSellBasket(nb);
+                          }} style={{background:"rgba(255,100,100,0.15)",border:"1px solid rgba(255,100,100,0.2)",borderRadius:8,padding:"3px 8px",cursor:"pointer",color:"rgba(255,160,160,0.8)",fontFamily:SANS,fontSize:"0.68rem"}}>Remove</button>
+                        </div>
+                      );
+                    })}
+                    <div style={{display:"flex",justifyContent:"space-between",marginTop:10,paddingTop:8,borderTop:"1px solid rgba(201,169,110,0.12)"}}>
+                      <span style={{fontFamily:SANS,fontSize:"0.78rem",color:"rgba(255,240,200,0.5)"}}>Total when sold:</span>
+                      <span style={{fontFamily:SANS,fontSize:"0.85rem",color:"rgba(255,210,120,0.85)",fontWeight:600}}>{basketTotal} coins</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Add items to sell */}
+                <h3 style={{fontFamily:SANS,fontSize:"0.82rem",color:"rgba(255,240,200,0.55)",margin:"0 0 10px",fontWeight:600}}>Your Goods</h3>
+                {sellableItems.length===0&&(
+                  <p style={{fontFamily:SERIF,fontStyle:"italic",color:"rgba(255,240,200,0.25)",fontSize:"0.82rem"}}>No sellable items in inventory. Grow crops and cook food to sell here.</p>
+                )}
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                  {sellableItems.map((item,i)=>(
+                    <div key={item.id} style={{background:"rgba(255,240,200,0.04)",border:"1px solid rgba(201,169,110,0.12)",borderRadius:12,padding:"12px",animation:`fadeUp .4s ${0.1+i*0.05}s ease both`,opacity:0}}>
+                      <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}>
+                        <span style={{fontSize:"1.2rem"}}>{item.emoji}</span>
+                        <div>
+                          <p style={{fontFamily:SANS,fontSize:"0.78rem",color:"rgba(255,240,200,0.65)",margin:0,fontWeight:500}}>{item.name}</p>
+                          <p style={{fontFamily:SANS,fontSize:"0.68rem",color:"rgba(255,210,120,0.5)",margin:0}}>{item.sellPrice}c each | Own: {item.owned}</p>
+                        </div>
+                      </div>
+                      <button onClick={()=>{
+                        if(removeFromInventory(item.id,1)){
+                          const existing=sellBasket.find(b=>b.itemId===item.id);
+                          if(existing){
+                            const nb=sellBasket.map(b=>b.itemId===item.id?{...b,qty:b.qty+1}:b);
+                            persistSellBasket(nb);
+                          }else{
+                            persistSellBasket([...sellBasket,{itemId:item.id,qty:1,listedAt:Date.now()}]);
+                          }
+                        }
+                      }} style={{width:"100%",padding:"6px 0",background:"rgba(201,169,110,0.12)",border:"1px solid rgba(201,169,110,0.2)",borderRadius:8,cursor:"pointer",color:"rgba(255,240,200,0.7)",fontFamily:SANS,fontSize:"0.72rem",transition:"all 0.15s"}}>
+                        List 1 for Sale
+                      </button>
                     </div>
                   ))}
                 </div>
-                <div style={{textAlign:"center",marginTop:28}}>
-                  <p style={{fontFamily:SERIF,fontStyle:"italic",color:"rgba(255,240,200,0.25)",fontSize:"0.82rem"}}>More goods arriving soon...</p>
+              </div>
+            </div>
+          </div>
+          );
+        })()}
+
+        {/* ── GENERAL SHOP OVERLAY ── */}
+        {shopStall==="general"&&(()=>{
+          const shopItems=Object.entries(ITEM_CATALOG).filter(([k,v])=>v.buyPrice).map(([k,v])=>({id:k,...v}));
+          const shopCats=[...new Set(shopItems.map(i=>i.cat))];
+          const filteredShop=inventoryTab==="all"?shopItems:shopItems.filter(i=>i.cat===inventoryTab);
+          return(
+          <div style={{position:"fixed",inset:0,zIndex:100,background:"#0A0810",animation:"overlayFadeIn .35s ease both",display:"flex",flexDirection:"column"}}>
+            <header style={{position:"relative",zIndex:10,background:"rgba(10,8,16,0.75)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",padding:"0 16px",height:54,display:"flex",alignItems:"center",gap:10,borderBottom:"1px solid rgba(201,169,110,0.12)",flexShrink:0}}>
+              <button onClick={()=>setShopStall(null)} style={{background:"transparent",border:"none",cursor:"pointer",color:"rgba(255,240,200,0.55)",fontSize:"0.8rem",fontFamily:SANS,padding:"4px 0"}}>{"< Market"}</button>
+              <div style={{height:14,width:1,background:"rgba(201,169,110,0.18)"}}/>
+              <span style={{fontFamily:SERIF,fontStyle:"italic",color:"rgba(255,240,200,0.75)",fontSize:"0.92rem"}}>General Shop</span>
+              <div style={{marginLeft:"auto",fontFamily:SANS,fontSize:"0.75rem",color:"rgba(255,210,120,0.7)"}}>{bank.coins} coins</div>
+            </header>
+            <div style={{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch"}}>
+              <div style={{maxWidth:600,margin:"0 auto",padding:"18px 22px 80px"}}>
+                <h2 style={{fontFamily:DISPLAY,fontSize:"1.4rem",fontWeight:700,color:"rgba(255,240,200,0.85)",margin:"0 0 6px"}}>General Shop</h2>
+                <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.82rem",color:"rgba(255,240,200,0.4)",margin:"0 0 14px"}}>Buy seeds, ingredients, and supplies with coins.</p>
+
+                {/* Category tabs */}
+                <div style={{display:"flex",gap:6,marginBottom:16,flexWrap:"wrap"}}>
+                  {["all",...shopCats].map(c=>(
+                    <button key={c} onClick={()=>setInventoryTab(c)} style={{padding:"5px 12px",borderRadius:20,border:"1px solid "+(inventoryTab===c?"rgba(201,169,110,0.4)":"rgba(201,169,110,0.12)"),background:inventoryTab===c?"rgba(201,169,110,0.15)":"transparent",color:inventoryTab===c?"rgba(255,240,200,0.8)":"rgba(255,240,200,0.4)",fontFamily:SANS,fontSize:"0.72rem",cursor:"pointer",textTransform:"capitalize"}}>{c}</button>
+                  ))}
                 </div>
+
+                {/* Item grid */}
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                  {filteredShop.map((item,i)=>(
+                    <div key={item.id} style={{background:"rgba(255,240,200,0.04)",border:"1px solid rgba(201,169,110,0.12)",borderRadius:12,padding:"12px",animation:`fadeUp .4s ${0.1+i*0.05}s ease both`,opacity:0}}>
+                      <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}>
+                        <span style={{fontSize:"1.2rem"}}>{item.emoji}</span>
+                        <div>
+                          <p style={{fontFamily:SANS,fontSize:"0.78rem",color:"rgba(255,240,200,0.65)",margin:0,fontWeight:500}}>{item.name}</p>
+                          <p style={{fontFamily:SANS,fontSize:"0.68rem",color:"rgba(255,210,120,0.5)",margin:0}}>{item.buyPrice}c | Own: {inventory[item.id]||0}</p>
+                        </div>
+                      </div>
+                      <button onClick={()=>{
+                        if(spendCoins(item.buyPrice)){
+                          addToInventory(item.id,1);
+                          setToast({msg:`Bought ${item.name}!`,emoji:item.emoji});
+                        }else{
+                          setToast({msg:"Not enough coins!",emoji:"..."});
+                        }
+                      }} disabled={bank.coins<item.buyPrice} style={{width:"100%",padding:"6px 0",background:bank.coins>=item.buyPrice?"rgba(201,169,110,0.12)":"rgba(255,240,200,0.03)",border:"1px solid "+(bank.coins>=item.buyPrice?"rgba(201,169,110,0.2)":"rgba(201,169,110,0.08)"),borderRadius:8,cursor:bank.coins>=item.buyPrice?"pointer":"default",color:bank.coins>=item.buyPrice?"rgba(255,240,200,0.7)":"rgba(255,240,200,0.25)",fontFamily:SANS,fontSize:"0.72rem",transition:"all 0.15s",opacity:bank.coins>=item.buyPrice?1:0.5}}>
+                        Buy for {item.buyPrice}c
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+          );
+        })()}
+
+        {/* ── BARTER POST OVERLAY ── */}
+        {shopStall==="barter"&&(
+          <div style={{position:"fixed",inset:0,zIndex:100,background:"#0A0810",animation:"overlayFadeIn .35s ease both",display:"flex",flexDirection:"column"}}>
+            <header style={{position:"relative",zIndex:10,background:"rgba(10,8,16,0.75)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",padding:"0 16px",height:54,display:"flex",alignItems:"center",gap:10,borderBottom:"1px solid rgba(201,169,110,0.12)",flexShrink:0}}>
+              <button onClick={()=>setShopStall(null)} style={{background:"transparent",border:"none",cursor:"pointer",color:"rgba(255,240,200,0.55)",fontSize:"0.8rem",fontFamily:SANS,padding:"4px 0"}}>{"< Market"}</button>
+              <div style={{height:14,width:1,background:"rgba(201,169,110,0.18)"}}/>
+              <span style={{fontFamily:SERIF,fontStyle:"italic",color:"rgba(255,240,200,0.75)",fontSize:"0.92rem"}}>Barter Post</span>
+            </header>
+            <div style={{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch"}}>
+              <div style={{maxWidth:600,margin:"0 auto",padding:"18px 22px 80px"}}>
+                <h2 style={{fontFamily:DISPLAY,fontSize:"1.4rem",fontWeight:700,color:"rgba(255,240,200,0.85)",margin:"0 0 6px"}}>Barter Post</h2>
+                <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.82rem",color:"rgba(255,240,200,0.4)",margin:"0 0 18px"}}>Trade goods with traveling merchants. No coins needed.</p>
+
+                {NPC_TRADES.map((trade,i)=>{
+                  const canTrade=Object.entries(trade.want).every(([k,v])=>(inventory[k]||0)>=v);
+                  return(
+                    <div key={trade.id} style={{background:"rgba(255,240,200,0.04)",border:"1px solid rgba(201,169,110,0.12)",borderRadius:14,padding:"16px",marginBottom:10,animation:`fadeUp .4s ${0.1+i*0.08}s ease both`,opacity:0}}>
+                      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
+                        <span style={{fontSize:"1.6rem"}}>{trade.emoji}</span>
+                        <span style={{fontFamily:SERIF,fontSize:"0.95rem",color:"rgba(255,240,200,0.75)",fontWeight:500}}>{trade.npc}</span>
+                      </div>
+                      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10,flexWrap:"wrap"}}>
+                        <div style={{flex:1}}>
+                          <p style={{fontFamily:SANS,fontSize:"0.68rem",color:"rgba(255,240,200,0.35)",margin:"0 0 4px",textTransform:"uppercase",letterSpacing:"0.5px"}}>They want</p>
+                          {Object.entries(trade.want).map(([k,v])=>{
+                            const cat=ITEM_CATALOG[k];
+                            const owned=inventory[k]||0;
+                            return <p key={k} style={{fontFamily:SANS,fontSize:"0.78rem",color:owned>=v?"rgba(180,220,160,0.8)":"rgba(255,160,160,0.7)",margin:"2px 0"}}>{cat?cat.emoji:""} {cat?cat.name:k} x{v} <span style={{fontSize:"0.68rem",color:"rgba(255,240,200,0.3)"}}>(own {owned})</span></p>;
+                          })}
+                        </div>
+                        <div style={{fontSize:"1.2rem",color:"rgba(255,240,200,0.25)"}}>→</div>
+                        <div style={{flex:1}}>
+                          <p style={{fontFamily:SANS,fontSize:"0.68rem",color:"rgba(255,240,200,0.35)",margin:"0 0 4px",textTransform:"uppercase",letterSpacing:"0.5px"}}>You get</p>
+                          {Object.entries(trade.offer).map(([k,v])=>{
+                            const cat=ITEM_CATALOG[k];
+                            return <p key={k} style={{fontFamily:SANS,fontSize:"0.78rem",color:"rgba(255,240,200,0.65)",margin:"2px 0"}}>{cat?cat.emoji:""} {cat?cat.name:k} x{v}</p>;
+                          })}
+                        </div>
+                      </div>
+                      <button onClick={()=>{
+                        if(!canTrade)return;
+                        Object.entries(trade.want).forEach(([k,v])=>removeFromInventory(k,v));
+                        Object.entries(trade.offer).forEach(([k,v])=>addToInventory(k,v));
+                        const firstOffer=Object.keys(trade.offer)[0];
+                        setToast({msg:`Traded with ${trade.npc}!`,emoji:ITEM_CATALOG[firstOffer]?ITEM_CATALOG[firstOffer].emoji:"..."});
+                      }} disabled={!canTrade} style={{width:"100%",padding:"8px 0",background:canTrade?"rgba(201,169,110,0.12)":"rgba(255,240,200,0.03)",border:"1px solid "+(canTrade?"rgba(201,169,110,0.2)":"rgba(201,169,110,0.08)"),borderRadius:10,cursor:canTrade?"pointer":"default",color:canTrade?"rgba(255,240,200,0.7)":"rgba(255,240,200,0.25)",fontFamily:SANS,fontSize:"0.78rem",fontWeight:500,transition:"all 0.15s",opacity:canTrade?1:0.5}}>
+                        {canTrade?"Trade":"Need more items"}
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
