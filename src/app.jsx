@@ -2732,22 +2732,22 @@ export default function App(){
     <div style={{minHeight:"100vh",width:"100%",position:"relative",overflow:"hidden",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-end"}}>
       <style>{GFONTS}{CSS}</style>
       {/* Cabin background image — zooms on door open */}
-      <div style={{position:"absolute",inset:0,backgroundImage:"url('/outdoor.png')",backgroundSize:"cover",backgroundPosition:"center 30%",backgroundRepeat:"no-repeat",zIndex:0,minWidth:"100vw",minHeight:"100vh",animation:doorOpening?"doorZoomBg 1.6s ease-in forwards":"none"}}/>
+      <div style={{position:"absolute",inset:0,backgroundImage:"url('/outdoor.png')",backgroundSize:"cover",backgroundPosition:"center 30%",backgroundRepeat:"no-repeat",zIndex:0,minWidth:"100vw",minHeight:"100vh",filter:"brightness(1.25)",animation:doorOpening?"doorZoomBg 1.6s ease-in forwards":"none"}}/>
 
       {/* ── Chimney smoke ── */}
       <div style={{position:"absolute",left:"52%",top:"8%",width:"6%",height:"4%",borderRadius:"50%",background:"radial-gradient(circle,rgba(180,175,165,0.30) 0%,rgba(160,155,148,0.10) 50%,transparent 75%)",zIndex:1,pointerEvents:"none",animation:"chimneySmoke 4s ease-out infinite"}}/>
       <div style={{position:"absolute",left:"53.5%",top:"9%",width:"5%",height:"3.5%",borderRadius:"50%",background:"radial-gradient(circle,rgba(175,170,162,0.25) 0%,rgba(155,150,145,0.08) 50%,transparent 75%)",zIndex:1,pointerEvents:"none",animation:"chimneySmokeB 5s ease-out infinite",animationDelay:"1.5s"}}/>
       <div style={{position:"absolute",left:"51%",top:"7.5%",width:"7%",height:"4.5%",borderRadius:"50%",background:"radial-gradient(circle,rgba(185,180,172,0.20) 0%,transparent 60%)",zIndex:1,pointerEvents:"none",animation:"chimneySmoke 6s ease-out infinite",animationDelay:"3s"}}/>
 
-      {/* ── Bridge lanterns — 4 lanterns on the wooden bridge railing ── */}
-      <div style={{position:"absolute",left:"27%",top:"68%",width:"7%",height:"6%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,190,60,0.80) 0%,rgba(255,150,30,0.30) 40%,transparent 72%)",zIndex:1,pointerEvents:"none",mixBlendMode:"screen",animation:"lanternFlicker 2.2s ease-in-out infinite"}}/>
-      <div style={{position:"absolute",left:"35%",top:"66%",width:"7%",height:"6%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,190,60,0.80) 0%,rgba(255,150,30,0.30) 40%,transparent 72%)",zIndex:1,pointerEvents:"none",mixBlendMode:"screen",animation:"lanternFlicker 2.5s ease-in-out infinite",animationDelay:"0.4s"}}/>
-      <div style={{position:"absolute",left:"55%",top:"66%",width:"7%",height:"6%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,190,60,0.80) 0%,rgba(255,150,30,0.30) 40%,transparent 72%)",zIndex:1,pointerEvents:"none",mixBlendMode:"screen",animation:"lanternFlicker 2.3s ease-in-out infinite",animationDelay:"0.8s"}}/>
-      <div style={{position:"absolute",left:"63%",top:"68%",width:"7%",height:"6%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,190,60,0.80) 0%,rgba(255,150,30,0.30) 40%,transparent 72%)",zIndex:1,pointerEvents:"none",mixBlendMode:"screen",animation:"lanternFlicker 2.6s ease-in-out infinite",animationDelay:"1.2s"}}/>
+      {/* ── Bridge lanterns — 4 lanterns on the wooden bridge railing posts ── */}
+      <div style={{position:"absolute",left:"22%",top:"80%",width:"6%",height:"5%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,190,60,0.85) 0%,rgba(255,150,30,0.35) 40%,transparent 72%)",zIndex:1,pointerEvents:"none",mixBlendMode:"screen",animation:"lanternFlicker 2.2s ease-in-out infinite"}}/>
+      <div style={{position:"absolute",left:"33%",top:"78%",width:"6%",height:"5%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,190,60,0.85) 0%,rgba(255,150,30,0.35) 40%,transparent 72%)",zIndex:1,pointerEvents:"none",mixBlendMode:"screen",animation:"lanternFlicker 2.5s ease-in-out infinite",animationDelay:"0.4s"}}/>
+      <div style={{position:"absolute",left:"57%",top:"78%",width:"6%",height:"5%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,190,60,0.85) 0%,rgba(255,150,30,0.35) 40%,transparent 72%)",zIndex:1,pointerEvents:"none",mixBlendMode:"screen",animation:"lanternFlicker 2.3s ease-in-out infinite",animationDelay:"0.8s"}}/>
+      <div style={{position:"absolute",left:"68%",top:"80%",width:"6%",height:"5%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,190,60,0.85) 0%,rgba(255,150,30,0.35) 40%,transparent 72%)",zIndex:1,pointerEvents:"none",mixBlendMode:"screen",animation:"lanternFlicker 2.6s ease-in-out infinite",animationDelay:"1.2s"}}/>
 
       {/* ── Porch lanterns — flanking the cabin door ── */}
-      <div style={{position:"absolute",left:"32%",top:"34%",width:"8%",height:"7%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,200,70,0.85) 0%,rgba(255,160,40,0.35) 40%,transparent 72%)",zIndex:1,pointerEvents:"none",mixBlendMode:"screen",animation:"lanternFlicker 2.0s ease-in-out infinite",animationDelay:"0.3s"}}/>
-      <div style={{position:"absolute",left:"57%",top:"34%",width:"8%",height:"7%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,200,70,0.85) 0%,rgba(255,160,40,0.35) 40%,transparent 72%)",zIndex:1,pointerEvents:"none",mixBlendMode:"screen",animation:"lanternFlicker 2.4s ease-in-out infinite",animationDelay:"0.7s"}}/>
+      <div style={{position:"absolute",left:"28%",top:"54%",width:"7%",height:"5%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,200,70,0.90) 0%,rgba(255,160,40,0.38) 40%,transparent 72%)",zIndex:1,pointerEvents:"none",mixBlendMode:"screen",animation:"lanternFlicker 2.0s ease-in-out infinite",animationDelay:"0.3s"}}/>
+      <div style={{position:"absolute",left:"61%",top:"54%",width:"7%",height:"5%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,200,70,0.90) 0%,rgba(255,160,40,0.38) 40%,transparent 72%)",zIndex:1,pointerEvents:"none",mixBlendMode:"screen",animation:"lanternFlicker 2.4s ease-in-out infinite",animationDelay:"0.7s"}}/>
 
       {/* ── Cabin windows — warm interior glow flickering ── */}
       {/* Upper floor windows */}
@@ -2762,8 +2762,8 @@ export default function App(){
       {/* ── Water reflection shimmer ── */}
       <div style={{position:"absolute",left:"20%",top:"82%",width:"55%",height:"10%",borderRadius:"40%",background:"radial-gradient(ellipse at 50% 40%,rgba(255,190,80,0.14) 0%,transparent 65%)",zIndex:1,pointerEvents:"none",mixBlendMode:"screen",animation:"lanternFlicker 3s ease-in-out infinite",animationDelay:"0.5s"}}/>
 
-      {/* Dark overlay for readability — lighter overall, still heavier at bottom for text */}
-      <div style={{position:"absolute",inset:0,background:"linear-gradient(to bottom, rgba(10,8,6,0.0) 0%, rgba(10,8,6,0.05) 30%, rgba(10,8,6,0.18) 55%, rgba(10,8,6,0.55) 78%, rgba(10,8,6,0.82) 100%)",zIndex:1}}/>
+      {/* Minimal overlay — only at the very bottom for text readability */}
+      <div style={{position:"absolute",inset:0,background:"linear-gradient(to bottom, transparent 0%, transparent 50%, rgba(10,8,6,0.10) 65%, rgba(10,8,6,0.50) 80%, rgba(10,8,6,0.80) 100%)",zIndex:1}}/>
       {/* Stars in the sky */}
       <div style={{position:"absolute",inset:0,zIndex:2}}><Stars/></div>
       {/* Fireflies */}
