@@ -659,6 +659,279 @@ function RoomGlow({id}){
    See docs/CABIN_VISUAL_BUILD_BRIEF.md for full spec.
 ═══════════════════════════════════════════════════ */
 
+/* ═══════════════════════════════════════════════════
+   IMMERSIVE KITCHEN — Cozy downstairs hearth
+   Rustic kitchen with stone fireplace/stove LEFT, French doors
+   CENTER opening to waterfall view, prep table CENTER,
+   stairs going UP on RIGHT, baskets of produce, copper pans.
+═══════════════════════════════════════════════════ */
+const KITCHEN_BG_IMAGE="/kitchen.png";
+const STOVE_BG_IMAGE="/stove.png";
+
+function ImmersiveKitchen(){
+  const containerRef=useRef(null);
+  const canvasRef=useRef(null);
+  const offsetX=useRef(0);
+  const offsetY=useRef(0);
+  const targetX=useRef(0);
+  const targetY=useRef(0);
+  const dragStart=useRef(null);
+  const animFrame=useRef(null);
+  const kitchenParticles=useRef([]);
+  const kitchenFireflies=useRef([]);
+  const time=useRef(0);
+  const imgRef=useRef(null);
+
+  const PARALLAX=22;
+  const SENSITIVITY=0.4;
+
+  useEffect(()=>{
+    // Warm embers / cooking steam particles
+    const pts=[];
+    for(let i=0;i<20;i++){
+      pts.push({
+        x:Math.random(),y:Math.random(),
+        size:Math.random()*1.8+0.5,
+        speed:Math.random()*0.0003+0.00012,
+        drift:Math.random()*0.0003-0.00015,
+        opacity:Math.random()*0.3+0.06,
+        phase:Math.random()*Math.PI*2,
+        warmth:Math.random(),
+      });
+    }
+    kitchenParticles.current=pts;
+    // Warm fireflies + ember sparks
+    const ffs=[];
+    for(let i=0;i<16;i++){
+      ffs.push({
+        x:0.06+Math.random()*0.88,
+        y:0.10+Math.random()*0.80,
+        size:Math.random()*1.6+1.0,
+        sx:(Math.random()-0.5)*0.0002,
+        sy:(Math.random()-0.5)*0.00015,
+        phase:Math.random()*Math.PI*2,
+        blink:Math.random()*0.003+0.001,
+        isEmber:Math.random()>0.55,
+      });
+    }
+    kitchenFireflies.current=ffs;
+  },[]);
+
+  useEffect(()=>{
+    let active=true;
+    const handle=(e)=>{if(!active)return;targetX.current=Math.max(-1,Math.min(1,(e.gamma||0)/30))*PARALLAX;targetY.current=Math.max(-1,Math.min(1,((e.beta||0)-45)/30))*PARALLAX;};
+    if(typeof DeviceOrientationEvent!=="undefined"&&typeof DeviceOrientationEvent.requestPermission==="function"){
+      const req=()=>{DeviceOrientationEvent.requestPermission().then(r=>{if(r==="granted")window.addEventListener("deviceorientation",handle);}).catch(()=>{});window.removeEventListener("touchstart",req);};
+      window.addEventListener("touchstart",req,{once:true});
+    } else { window.addEventListener("deviceorientation",handle); }
+    return()=>{active=false;window.removeEventListener("deviceorientation",handle);};
+  },[]);
+
+  useEffect(()=>{
+    const el=containerRef.current; if(!el) return;
+    const start=(x,y)=>{dragStart.current={x,y,ox:targetX.current,oy:targetY.current};};
+    const move=(x,y)=>{if(!dragStart.current)return;targetX.current=Math.max(-PARALLAX,Math.min(PARALLAX,dragStart.current.ox+(x-dragStart.current.x)*SENSITIVITY));targetY.current=Math.max(-PARALLAX,Math.min(PARALLAX,dragStart.current.oy+(y-dragStart.current.y)*SENSITIVITY));};
+    const end=()=>{dragStart.current=null;};
+    const ts=e=>{const t=e.touches[0];start(t.clientX,t.clientY);};
+    const tm=e=>{const t=e.touches[0];move(t.clientX,t.clientY);};
+    el.addEventListener("touchstart",ts,{passive:true});el.addEventListener("touchmove",tm,{passive:true});el.addEventListener("touchend",end);
+    el.addEventListener("mousedown",e=>start(e.clientX,e.clientY));
+    const mm=e=>move(e.clientX,e.clientY);
+    window.addEventListener("mousemove",mm);window.addEventListener("mouseup",end);
+    return()=>{el.removeEventListener("touchstart",ts);el.removeEventListener("touchmove",tm);el.removeEventListener("touchend",end);window.removeEventListener("mousemove",mm);window.removeEventListener("mouseup",end);};
+  },[]);
+
+  useEffect(()=>{
+    const loop=()=>{
+      time.current+=16;
+      offsetX.current+=(targetX.current-offsetX.current)*0.08;
+      offsetY.current+=(targetY.current-offsetY.current)*0.08;
+      const bx=Math.sin(time.current*0.0004)*1.5;
+      const by=Math.cos(time.current*0.0003)*1.2;
+      if(imgRef.current) imgRef.current.style.transform=`translate(${-PARALLAX+offsetX.current+bx}px,${-PARALLAX+offsetY.current+by}px)`;
+      const cvs=canvasRef.current;
+      if(cvs){
+        const ctx=cvs.getContext("2d"),w=cvs.width,h=cvs.height;
+        ctx.clearRect(0,0,w,h);
+        kitchenParticles.current.forEach(p=>{
+          p.y-=p.speed; p.x+=p.drift+Math.sin(time.current*0.001+p.phase)*0.00008;
+          if(p.y<-0.05){p.y=1.05;p.x=Math.random();}
+          const fl=0.7+0.3*Math.sin(time.current*0.002+p.phase);
+          const a=p.opacity*fl;
+          const r=255,g=Math.round(190+p.warmth*40),b=Math.round(100+p.warmth*50);
+          const px=p.x*w,py=p.y*h;
+          ctx.beginPath();ctx.arc(px,py,p.size,0,Math.PI*2);
+          ctx.fillStyle=`rgba(${r},${g},${b},${a})`;ctx.fill();
+          if(p.size>1){ctx.beginPath();ctx.arc(px,py,p.size*2.5,0,Math.PI*2);ctx.fillStyle=`rgba(${r},${g},${b},${a*0.1})`;ctx.fill();}
+        });
+        kitchenFireflies.current.forEach(ff=>{
+          ff.x+=ff.sx+Math.sin(time.current*0.0005+ff.phase)*0.00006;
+          ff.y+=ff.sy+Math.cos(time.current*0.0006+ff.phase)*0.00005;
+          if(ff.x<0.04||ff.x>0.96)ff.sx*=-1;
+          if(ff.y<0.06||ff.y>0.90)ff.sy*=-1;
+          ff.x=Math.max(0.04,Math.min(0.96,ff.x));
+          ff.y=Math.max(0.06,Math.min(0.90,ff.y));
+          const blink=Math.sin(time.current*ff.blink+ff.phase);
+          const a=Math.max(0,blink*0.7+0.3)*0.5;
+          const px=ff.x*w,py=ff.y*h;
+          if(ff.isEmber){
+            ctx.beginPath();ctx.arc(px,py,ff.size*5,0,Math.PI*2);ctx.fillStyle=`rgba(255,140,40,${a*0.06})`;ctx.fill();
+            ctx.beginPath();ctx.arc(px,py,ff.size*2.5,0,Math.PI*2);ctx.fillStyle=`rgba(255,160,60,${a*0.15})`;ctx.fill();
+            ctx.beginPath();ctx.arc(px,py,ff.size*0.8,0,Math.PI*2);ctx.fillStyle=`rgba(255,180,80,${a})`;ctx.fill();
+          } else {
+            ctx.beginPath();ctx.arc(px,py,ff.size*5,0,Math.PI*2);ctx.fillStyle=`rgba(255,210,100,${a*0.05})`;ctx.fill();
+            ctx.beginPath();ctx.arc(px,py,ff.size*2.5,0,Math.PI*2);ctx.fillStyle=`rgba(255,220,120,${a*0.12})`;ctx.fill();
+            ctx.beginPath();ctx.arc(px,py,ff.size,0,Math.PI*2);ctx.fillStyle=`rgba(255,230,150,${a*0.8})`;ctx.fill();
+          }
+        });
+      }
+      animFrame.current=requestAnimationFrame(loop);
+    };
+    animFrame.current=requestAnimationFrame(loop);
+    return()=>{if(animFrame.current)cancelAnimationFrame(animFrame.current);};
+  },[]);
+
+  useEffect(()=>{
+    const resize=()=>{const c=canvasRef.current;if(c){c.width=window.innerWidth;c.height=window.innerHeight;}};
+    resize();window.addEventListener("resize",resize);
+    return()=>window.removeEventListener("resize",resize);
+  },[]);
+
+  return(
+    <div ref={containerRef} style={{position:"absolute",inset:0,zIndex:0,overflow:"hidden",background:"#0A0604",cursor:"grab"}} onMouseDown={()=>{if(containerRef.current)containerRef.current.style.cursor="grabbing";}} onMouseUp={()=>{if(containerRef.current)containerRef.current.style.cursor="grab";}}>
+      <img ref={imgRef} src={KITCHEN_BG_IMAGE} alt="Kitchen" style={{position:"absolute",top:0,left:0,width:`calc(100% + ${PARALLAX*2}px)`,height:`calc(100% + ${PARALLAX*2}px)`,objectFit:"cover",transform:`translate(${-PARALLAX}px,${-PARALLAX}px)`,willChange:"transform",userSelect:"none",WebkitUserDrag:"none",pointerEvents:"none"}} draggable={false}/>
+      {/* Stove fire glow — warm radial on upper-left fireplace */}
+      <div style={{position:"absolute",left:"2%",top:"8%",width:"38%",height:"35%",pointerEvents:"none",zIndex:1,borderRadius:"40%",background:"radial-gradient(ellipse at 50% 65%,rgba(255,140,40,0.12) 0%,rgba(255,100,20,0.04) 45%,transparent 75%)",mixBlendMode:"screen",animation:"kitchenFireGlow 3s ease-in-out infinite"}}/>
+      {/* Candle glow — scattered warm lights on stairs */}
+      <div style={{position:"absolute",right:"3%",top:"15%",width:"18%",height:"60%",pointerEvents:"none",zIndex:1,background:"radial-gradient(ellipse at 50% 30%,rgba(255,180,60,0.06) 0%,transparent 70%)",mixBlendMode:"screen"}}/>
+      {/* Sunset glow through open doors */}
+      <div style={{position:"absolute",left:"28%",top:"5%",width:"44%",height:"55%",pointerEvents:"none",zIndex:1,background:"radial-gradient(ellipse at 50% 45%,rgba(255,200,140,0.06) 0%,transparent 65%)",mixBlendMode:"screen"}}/>
+      {/* Warm floor glow */}
+      <div style={{position:"absolute",left:"20%",top:"70%",width:"60%",height:"30%",pointerEvents:"none",zIndex:1,background:"radial-gradient(ellipse at 50% 30%,rgba(255,180,90,0.04) 0%,transparent 60%)",mixBlendMode:"screen"}}/>
+      <canvas ref={canvasRef} style={{position:"absolute",inset:0,pointerEvents:"none",zIndex:2}}/>
+      {/* Cinematic vignette */}
+      <div style={{position:"absolute",inset:0,pointerEvents:"none",zIndex:3,background:"radial-gradient(ellipse at center 55%, transparent 25%, rgba(8,6,4,0.55) 100%)"}}/>
+      <div style={{position:"absolute",top:0,left:0,right:0,height:"18%",pointerEvents:"none",zIndex:3,background:"linear-gradient(to bottom, rgba(8,6,4,0.3), transparent)"}}/>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════
+   IMMERSIVE STOVE — Closeup cooking view
+   Stone hearth with roaring fire, cast iron kettle,
+   pot, spices, herbs. Where users cook ingredients.
+═══════════════════════════════════════════════════ */
+function ImmersiveStove(){
+  const containerRef=useRef(null);
+  const canvasRef=useRef(null);
+  const offsetX=useRef(0);
+  const offsetY=useRef(0);
+  const targetX=useRef(0);
+  const targetY=useRef(0);
+  const dragStart=useRef(null);
+  const animFrame=useRef(null);
+  const embers=useRef([]);
+  const time=useRef(0);
+  const imgRef=useRef(null);
+
+  const PARALLAX=18;
+  const SENSITIVITY=0.35;
+
+  useEffect(()=>{
+    const pts=[];
+    for(let i=0;i<30;i++){
+      pts.push({
+        x:0.15+Math.random()*0.7,
+        y:0.3+Math.random()*0.5,
+        size:Math.random()*1.5+0.4,
+        speed:Math.random()*0.0005+0.0002,
+        drift:Math.random()*0.0004-0.0002,
+        opacity:Math.random()*0.4+0.1,
+        phase:Math.random()*Math.PI*2,
+        isEmber:Math.random()>0.4,
+      });
+    }
+    embers.current=pts;
+  },[]);
+
+  useEffect(()=>{
+    let active=true;
+    const handle=(e)=>{if(!active)return;targetX.current=Math.max(-1,Math.min(1,(e.gamma||0)/30))*PARALLAX;targetY.current=Math.max(-1,Math.min(1,((e.beta||0)-45)/30))*PARALLAX;};
+    if(typeof DeviceOrientationEvent!=="undefined"&&typeof DeviceOrientationEvent.requestPermission==="function"){
+      const req=()=>{DeviceOrientationEvent.requestPermission().then(r=>{if(r==="granted")window.addEventListener("deviceorientation",handle);}).catch(()=>{});window.removeEventListener("touchstart",req);};
+      window.addEventListener("touchstart",req,{once:true});
+    } else { window.addEventListener("deviceorientation",handle); }
+    return()=>{active=false;window.removeEventListener("deviceorientation",handle);};
+  },[]);
+
+  useEffect(()=>{
+    const el=containerRef.current; if(!el) return;
+    const start=(x,y)=>{dragStart.current={x,y,ox:targetX.current,oy:targetY.current};};
+    const move=(x,y)=>{if(!dragStart.current)return;targetX.current=Math.max(-PARALLAX,Math.min(PARALLAX,dragStart.current.ox+(x-dragStart.current.x)*SENSITIVITY));targetY.current=Math.max(-PARALLAX,Math.min(PARALLAX,dragStart.current.oy+(y-dragStart.current.y)*SENSITIVITY));};
+    const end=()=>{dragStart.current=null;};
+    const ts=e=>{const t=e.touches[0];start(t.clientX,t.clientY);};
+    const tm=e=>{const t=e.touches[0];move(t.clientX,t.clientY);};
+    el.addEventListener("touchstart",ts,{passive:true});el.addEventListener("touchmove",tm,{passive:true});el.addEventListener("touchend",end);
+    el.addEventListener("mousedown",e=>start(e.clientX,e.clientY));
+    const mm=e=>move(e.clientX,e.clientY);
+    window.addEventListener("mousemove",mm);window.addEventListener("mouseup",end);
+    return()=>{el.removeEventListener("touchstart",ts);el.removeEventListener("touchmove",tm);el.removeEventListener("touchend",end);window.removeEventListener("mousemove",mm);window.removeEventListener("mouseup",end);};
+  },[]);
+
+  useEffect(()=>{
+    const loop=()=>{
+      time.current+=16;
+      offsetX.current+=(targetX.current-offsetX.current)*0.08;
+      offsetY.current+=(targetY.current-offsetY.current)*0.08;
+      const bx=Math.sin(time.current*0.0005)*1.2;
+      const by=Math.cos(time.current*0.0004)*0.8;
+      if(imgRef.current) imgRef.current.style.transform=`translate(${-PARALLAX+offsetX.current+bx}px,${-PARALLAX+offsetY.current+by}px)`;
+      const cvs=canvasRef.current;
+      if(cvs){
+        const ctx=cvs.getContext("2d"),w=cvs.width,h=cvs.height;
+        ctx.clearRect(0,0,w,h);
+        embers.current.forEach(p=>{
+          p.y-=p.speed; p.x+=p.drift+Math.sin(time.current*0.0012+p.phase)*0.00012;
+          if(p.y<-0.05){p.y=0.85+Math.random()*0.15;p.x=0.15+Math.random()*0.7;}
+          const fl=0.6+0.4*Math.sin(time.current*0.003+p.phase);
+          const a=p.opacity*fl;
+          const px=p.x*w,py=p.y*h;
+          if(p.isEmber){
+            ctx.beginPath();ctx.arc(px,py,p.size*4,0,Math.PI*2);ctx.fillStyle=`rgba(255,120,30,${a*0.08})`;ctx.fill();
+            ctx.beginPath();ctx.arc(px,py,p.size*1.5,0,Math.PI*2);ctx.fillStyle=`rgba(255,160,50,${a*0.25})`;ctx.fill();
+            ctx.beginPath();ctx.arc(px,py,p.size*0.6,0,Math.PI*2);ctx.fillStyle=`rgba(255,200,80,${a})`;ctx.fill();
+          } else {
+            ctx.beginPath();ctx.arc(px,py,p.size*3,0,Math.PI*2);ctx.fillStyle=`rgba(255,200,120,${a*0.05})`;ctx.fill();
+            ctx.beginPath();ctx.arc(px,py,p.size,0,Math.PI*2);ctx.fillStyle=`rgba(255,220,160,${a*0.4})`;ctx.fill();
+          }
+        });
+      }
+      animFrame.current=requestAnimationFrame(loop);
+    };
+    animFrame.current=requestAnimationFrame(loop);
+    return()=>{if(animFrame.current)cancelAnimationFrame(animFrame.current);};
+  },[]);
+
+  useEffect(()=>{
+    const resize=()=>{const c=canvasRef.current;if(c){c.width=window.innerWidth;c.height=window.innerHeight;}};
+    resize();window.addEventListener("resize",resize);
+    return()=>window.removeEventListener("resize",resize);
+  },[]);
+
+  return(
+    <div ref={containerRef} style={{position:"absolute",inset:0,zIndex:0,overflow:"hidden",background:"#080402",cursor:"grab"}} onMouseDown={()=>{if(containerRef.current)containerRef.current.style.cursor="grabbing";}} onMouseUp={()=>{if(containerRef.current)containerRef.current.style.cursor="grab";}}>
+      <img ref={imgRef} src={STOVE_BG_IMAGE} alt="Stove" style={{position:"absolute",top:0,left:0,width:`calc(100% + ${PARALLAX*2}px)`,height:`calc(100% + ${PARALLAX*2}px)`,objectFit:"cover",transform:`translate(${-PARALLAX}px,${-PARALLAX}px)`,willChange:"transform",userSelect:"none",WebkitUserDrag:"none",pointerEvents:"none"}} draggable={false}/>
+      {/* Fire glow — intense hearth center */}
+      <div style={{position:"absolute",left:"10%",top:"5%",width:"80%",height:"50%",pointerEvents:"none",zIndex:1,background:"radial-gradient(ellipse at 50% 60%,rgba(255,130,30,0.15) 0%,rgba(255,90,10,0.05) 40%,transparent 70%)",mixBlendMode:"screen",animation:"stoveFireGlow 2.5s ease-in-out infinite"}}/>
+      {/* Kettle steam glow */}
+      <div style={{position:"absolute",left:"28%",top:"20%",width:"20%",height:"15%",pointerEvents:"none",zIndex:1,background:"radial-gradient(circle,rgba(255,240,220,0.06) 0%,transparent 60%)",mixBlendMode:"screen",animation:"kitchenSteam 4s ease-in-out infinite"}}/>
+      <canvas ref={canvasRef} style={{position:"absolute",inset:0,pointerEvents:"none",zIndex:2}}/>
+      {/* Warm vignette */}
+      <div style={{position:"absolute",inset:0,pointerEvents:"none",zIndex:3,background:"radial-gradient(ellipse at center 50%, transparent 20%, rgba(8,4,2,0.55) 100%)"}}/>
+    </div>
+  );
+}
+
 // Sunken cabin great room — stone fireplace with roaring fire LEFT, large picture window CENTER
 // with pine forest & starry sky, cathedral skylight TOP, string lights across ceiling beams,
 // wooden stairs going DOWN on RIGHT, desk with open book & lamp UPPER-RIGHT, sectional sofa CENTER,
@@ -1300,6 +1573,7 @@ export default function App(){
   const [prevScreen,    setPrevScreen]    = useState("cabin");
   const [spaceTransit,  setSpaceTransit]  = useState(false);
   const [transitDir,    setTransitDir]    = useState(null);
+  const [stoveZoom,     setStoveZoom]     = useState(false);
   const [bookPage,      setBookPage]      = useState(0);
   const [flipDir,       setFlipDir]       = useState(null);
   const touchRef = useRef({startX:0,startY:0});
@@ -1740,6 +2014,10 @@ export default function App(){
     setSpaceTransit(true); setTransitDir("toKitchen");
     setTimeout(()=>{setScreen("kitchen");setSpaceTransit(false);setTransitDir(null);},700);
   }
+  function transitionToStove(){
+    setStoveZoom(true);
+    setTimeout(()=>{setScreen("stove");setStoveZoom(false);},1200);
+  }
 
   // ── SCENE NAVIGATION ──
   const SCENES = [
@@ -2010,6 +2288,13 @@ export default function App(){
     .magic-hotspot{cursor:pointer;transition:all .3s ease}
     .magic-hotspot:hover{box-shadow:0 0 30px rgba(255,210,120,0.35),0 0 60px rgba(255,200,100,0.15)!important}
     .magic-hotspot:active{transform:scale(0.97)!important;box-shadow:0 0 15px rgba(255,210,120,0.2)!important}
+    @keyframes kitchenFireGlow{0%,100%{opacity:0.7;transform:scale(1)}50%{opacity:1;transform:scale(1.04)}}
+    @keyframes stoveFireGlow{0%,100%{opacity:0.7;transform:scale(1)}35%{opacity:1;transform:scale(1.06)}65%{opacity:0.85;transform:scale(1.02)}100%{opacity:0.7;transform:scale(1)}}
+    @keyframes kitchenSteam{0%,100%{opacity:0.3;transform:translateY(0) scale(1)}50%{opacity:0.7;transform:translateY(-6px) scale(1.08)}}
+    @keyframes stoveGlowPulse{0%,100%{box-shadow:0 0 20px rgba(255,120,30,0.15),0 0 50px rgba(255,100,10,0.08),inset 0 0 10px rgba(255,140,40,0.05)}50%{box-shadow:0 0 35px rgba(255,120,30,0.35),0 0 80px rgba(255,100,10,0.18),inset 0 0 18px rgba(255,140,40,0.10)}}
+    @keyframes stoveGlowOuter{0%,100%{opacity:0.25;transform:scale(1)}50%{opacity:0.6;transform:scale(1.06)}}
+    @keyframes walkToStoveZoom{0%{transform:scale(1) translate(0,0);filter:brightness(1)}30%{transform:scale(1.4) translate(-5%,-8%);filter:brightness(1.05)}70%{transform:scale(2.2) translate(-12%,-18%);filter:brightness(0.8)}100%{transform:scale(3) translate(-18%,-25%);filter:brightness(0)}}
+    @keyframes walkToStoveVignette{0%{opacity:0}60%{opacity:0}100%{opacity:1}}
     @keyframes shelfBookHover{0%,100%{transform:translateX(0)}50%{transform:translateX(-4px)}}
     @keyframes windowPanelSlide{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
     @keyframes windowPanelSlideLeft{from{transform:translateX(-100%);opacity:0}to{transform:translateX(0);opacity:1}}
@@ -3789,25 +4074,54 @@ export default function App(){
   }
 
   /* ══ MARKET — Placeholder ═══════════════════════ */
-  /* ══ KITCHEN — Placeholder (downstairs from cabin) ══════════════════ */
+  /* ══ KITCHEN — Immersive downstairs kitchen with stove ══════════════ */
   if(screen==="kitchen"){
     return(
-      <div style={{position:"fixed",inset:0,overflow:"hidden",fontFamily:SANS,background:"linear-gradient(160deg,#1A1408,#221A0E)"}}>
+      <div style={{position:"fixed",inset:0,overflow:"hidden",fontFamily:SANS,background:"#0A0604"}}>
         <style>{GFONTS}{CSS}</style>
-        <div style={{position:"relative",zIndex:10,height:"100%",overflowY:"auto",WebkitOverflowScrolling:"touch"}}>
-          <div style={{maxWidth:720,margin:"0 auto",padding:"28px 22px 80px"}}>
-            <button onClick={()=>setScreen("cabin")} style={{background:"rgba(26,22,18,0.5)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",border:"1px solid rgba(201,169,110,0.15)",borderRadius:999,padding:"8px 20px",cursor:"pointer",color:"rgba(255,248,232,0.6)",fontFamily:SANS,fontSize:"0.78rem",marginBottom:28,transition:"all 0.2s",display:"inline-flex",alignItems:"center",gap:6}}>
-              Back upstairs
-            </button>
-            <div style={{textAlign:"center",marginBottom:32,animation:"fadeUp .6s ease both"}}>
-              <h1 style={{fontFamily:DISPLAY,fontSize:"2rem",fontWeight:700,color:B.goldL,margin:"0 0 8px",textShadow:"0 2px 12px rgba(0,0,0,0.5)"}}>The Kitchen</h1>
-              <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"1rem",color:"rgba(255,248,232,0.45)",margin:"0 0 14px"}}>A warm hearth for nourishment and fellowship.</p>
-              <div style={{width:60,height:1,background:"rgba(201,169,110,0.3)",margin:"0 auto"}}/>
+        <ImmersiveKitchen/>
+        {/* UI layer on top of immersive background */}
+        <div style={{position:"relative",zIndex:10,height:"100%",pointerEvents:"none"}}>
+          {/* Back upstairs button */}
+          <button onClick={()=>{setSpaceTransit(true);setTransitDir("toCabin");setTimeout(()=>{setScreen("cabin");setSpaceTransit(false);setTransitDir(null);},700);}} style={{position:"absolute",top:28,left:22,pointerEvents:"auto",background:"rgba(10,6,4,0.45)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",border:"1px solid rgba(201,169,110,0.12)",borderRadius:999,padding:"8px 20px",cursor:"pointer",color:"rgba(255,248,232,0.55)",fontFamily:SANS,fontSize:"0.78rem",transition:"all 0.3s",display:"inline-flex",alignItems:"center",gap:6,zIndex:15}}>
+            Back upstairs
+          </button>
+          {/* Stove hotspot — glowing fire area, upper-left of kitchen */}
+          <button className="magic-hotspot" onClick={()=>transitionToStove()} style={{position:"absolute",left:"4%",top:"12%",width:"35%",height:"32%",pointerEvents:"auto",zIndex:11,background:"transparent",border:"none",borderRadius:"12px",animation:"stoveGlowPulse 3.5s ease-in-out infinite"}}>
+            <div style={{position:"absolute",inset:"-20%",borderRadius:"40%",background:"radial-gradient(ellipse at 50% 65%,rgba(255,120,30,0.12),rgba(255,90,10,0.04) 50%,transparent 80%)",pointerEvents:"none",animation:"stoveGlowOuter 3.5s ease-in-out infinite"}}/>
+          </button>
+        </div>
+        {/* Walk-to-stove zoom animation overlay */}
+        {stoveZoom&&(
+          <div style={{position:"fixed",inset:0,zIndex:9998,overflow:"hidden",pointerEvents:"all"}}>
+            <div style={{position:"absolute",inset:0,animation:"walkToStoveZoom 1.2s cubic-bezier(0.4,0,0.2,1) forwards"}}>
+              <img src={KITCHEN_BG_IMAGE} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}} draggable={false}/>
+              {/* Fire glow intensifies during zoom */}
+              <div style={{position:"absolute",left:"2%",top:"8%",width:"38%",height:"35%",borderRadius:"40%",background:"radial-gradient(ellipse at 50% 65%,rgba(255,140,40,0.25) 0%,rgba(255,100,20,0.08) 45%,transparent 75%)",mixBlendMode:"screen"}}/>
             </div>
-            <div style={{background:"rgba(30,24,14,0.6)",border:"1px solid rgba(201,169,110,0.15)",borderRadius:16,padding:"40px 24px",textAlign:"center"}}>
-              <p style={{fontFamily:SERIF,fontStyle:"italic",color:"rgba(255,248,232,0.3)",fontSize:"0.9rem"}}>The kettle is warming on the stove...</p>
-              <p style={{fontFamily:SANS,fontSize:"0.72rem",color:"rgba(255,248,232,0.2)",marginTop:8}}>Coming soon</p>
-            </div>
+            <div style={{position:"fixed",inset:0,background:"#080402",animation:"walkToStoveVignette 1.2s cubic-bezier(0.4,0,0.2,1) forwards"}}/>
+          </div>
+        )}
+        {spaceTransit&&<div style={{position:"fixed",inset:0,zIndex:9999,background:"#0A0806",animation:"spaceFadeIn .6s ease both",pointerEvents:"all"}}/>}
+      </div>
+    );
+  }
+
+  /* ══ STOVE — Immersive cooking closeup ══════════════════════════════ */
+  if(screen==="stove"){
+    return(
+      <div style={{position:"fixed",inset:0,overflow:"hidden",fontFamily:SANS,background:"#080402"}}>
+        <style>{GFONTS}{CSS}</style>
+        <ImmersiveStove/>
+        {/* UI layer */}
+        <div style={{position:"relative",zIndex:10,height:"100%",pointerEvents:"none"}}>
+          {/* Back to kitchen button */}
+          <button onClick={()=>{setSpaceTransit(true);setTransitDir("toKitchen");setTimeout(()=>{setScreen("kitchen");setSpaceTransit(false);setTransitDir(null);},700);}} style={{position:"absolute",top:28,left:22,pointerEvents:"auto",background:"rgba(10,6,4,0.45)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",border:"1px solid rgba(201,169,110,0.12)",borderRadius:999,padding:"8px 20px",cursor:"pointer",color:"rgba(255,248,232,0.55)",fontFamily:SANS,fontSize:"0.78rem",transition:"all 0.3s",display:"inline-flex",alignItems:"center",gap:6,zIndex:15}}>
+            Back to kitchen
+          </button>
+          {/* Cooking area — centered text hint */}
+          <div style={{position:"absolute",bottom:"10%",left:"50%",transform:"translateX(-50%)",pointerEvents:"none",textAlign:"center",animation:"fadeUp .8s ease both .3s",opacity:0}}>
+            <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"1rem",color:"rgba(255,240,210,0.35)",textShadow:"0 2px 8px rgba(0,0,0,0.8)",margin:0}}>The fire crackles softly...</p>
           </div>
         </div>
         {spaceTransit&&<div style={{position:"fixed",inset:0,zIndex:9999,background:"#0A0806",animation:"spaceFadeIn .6s ease both",pointerEvents:"all"}}/>}
