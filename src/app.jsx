@@ -3542,7 +3542,10 @@ export default function App(){
         <span style={{fontFamily:DISPLAY,fontSize:"0.82rem",fontWeight:700,color:B.goldL}}>{candles}</span>
       </div>
 
-      {/* Action bar removed — all features accessible via hotspots + floating buttons */}
+      {/* Back to village — top-right navigation */}
+      <button onClick={()=>transitionToMap()} style={{position:"absolute",right:"3%",top:"4%",zIndex:12,background:"rgba(26,22,18,0.6)",backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",border:"1px solid rgba(201,169,110,0.15)",borderRadius:999,padding:"6px 16px",cursor:"pointer",color:"rgba(255,248,232,0.55)",fontFamily:SANS,fontSize:"0.7rem",transition:"all 0.2s",display:"inline-flex",alignItems:"center",gap:5,animation:"fadeUp 1s 2s ease both",boxShadow:"0 2px 12px rgba(0,0,0,0.25)"}}>
+        <span style={{fontSize:"0.65rem"}}>&#8592;</span> Back to village
+      </button>
 
       {/* ═══ HOTSPOT DEBUG OVERLAY (2D only) ═══ */}
       {debugHotspots&&<>
