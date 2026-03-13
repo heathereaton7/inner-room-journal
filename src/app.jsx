@@ -661,8 +661,8 @@ function RoomGlow({id}){
 
 // Sunken cabin great room — stone fireplace with roaring fire LEFT, large picture window CENTER
 // with pine forest & starry sky, cathedral skylight TOP, string lights across ceiling beams,
-// wooden stairs going up on RIGHT, desk with lamp UPPER-RIGHT, sectional sofa CENTER-LOWER,
-// 6 colorful books on curved wooden ledge BOTTOM, bookshelf FAR-LEFT, candles on mantel & surfaces.
+// wooden stairs going DOWN on RIGHT, desk with open book & lamp UPPER-RIGHT, sectional sofa CENTER,
+// rolled paper map with magnifying glass on wooden shelf BOTTOM-CENTER, bookshelf FAR-LEFT, candles on mantel.
 const CABIN_FALLBACK_IMAGE="/cabin-interior.png";
 
 function ImmersiveCabin(){
@@ -1736,6 +1736,10 @@ export default function App(){
     setSpaceTransit(true); setTransitDir("toMap");
     setTimeout(()=>{setScreen("map");setSpaceTransit(false);setTransitDir(null);},700);
   }
+  function transitionToKitchen(){
+    setSpaceTransit(true); setTransitDir("toKitchen");
+    setTimeout(()=>{setScreen("kitchen");setSpaceTransit(false);setTransitDir(null);},700);
+  }
 
   // ── SCENE NAVIGATION ──
   const SCENES = [
@@ -2001,6 +2005,11 @@ export default function App(){
     @keyframes bookArcFromBottom{0%{opacity:1;transform:translate(0,0) scale(1)}30%{opacity:1;transform:translate(0,-60px) scale(1.25)}60%{opacity:0.9;transform:translate(-20px,-120px) scale(1.1)}100%{opacity:0;transform:translate(-30px,-160px) scale(0.75)}}
     @keyframes hotspotPulse{0%,100%{box-shadow:0 0 15px rgba(255,200,80,0.15),0 0 40px rgba(255,200,80,0.05)}50%{box-shadow:0 0 25px rgba(255,200,80,0.3),0 0 60px rgba(255,200,80,0.1)}}
     @keyframes doorLabelFade{0%,100%{opacity:0.5}50%{opacity:1}}
+    @keyframes magicGlow{0%,100%{box-shadow:0 0 12px rgba(255,210,120,0.12),0 0 30px rgba(255,200,100,0.06),inset 0 0 8px rgba(255,210,120,0.04)}50%{box-shadow:0 0 22px rgba(255,210,120,0.28),0 0 50px rgba(255,200,100,0.12),inset 0 0 14px rgba(255,210,120,0.08)}}
+    @keyframes magicGlowOuter{0%,100%{opacity:0.3;transform:scale(1)}50%{opacity:0.7;transform:scale(1.04)}}
+    .magic-hotspot{cursor:pointer;transition:all .3s ease}
+    .magic-hotspot:hover{box-shadow:0 0 30px rgba(255,210,120,0.35),0 0 60px rgba(255,200,100,0.15)!important}
+    .magic-hotspot:active{transform:scale(0.97)!important;box-shadow:0 0 15px rgba(255,210,120,0.2)!important}
     @keyframes shelfBookHover{0%,100%{transform:translateX(0)}50%{transform:translateX(-4px)}}
     @keyframes windowPanelSlide{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
     @keyframes windowPanelSlideLeft{from{transform:translateX(-100%);opacity:0}to{transform:translateX(0);opacity:1}}
@@ -2211,63 +2220,45 @@ export default function App(){
 
       {/* ═══ INTERACTIVE HOTSPOTS ═══ */}
       {/* Positions mapped to cabin-interior.png: sunken great room — fireplace LEFT, window CENTER,
-          stairs RIGHT, desk UPPER-RIGHT, sofa CENTER, 6 books on curved ledge BOTTOM */}
+          stairs RIGHT, desk with open book UPPER-RIGHT, sectional sofa CENTER, rolled map on shelf BOTTOM-CENTER */}
+      {/* ─── HOW TO EDIT HOTSPOTS ───
+          Each hotspot is a <button> with absolute positioning (left/right/top/bottom as %).
+          To reposition: change the left/top/width/height percentages.
+          To change navigation: change the onClick function.
+          Glow class: "magic-hotspot" + animation:"magicGlow ..." for the enchanted look.
+          The outer <div> with magicGlowOuter adds the soft radial aura around each hotspot. ─── */}
 
-      {/* 1. BIBLE / JOURNAL — over the sofa / center cushion area */}
-      <button onClick={()=>{setBookOpen(true);setBookPage(0);setFlipDir(null);}} style={{position:"absolute",left:"22%",right:"22%",top:"54%",bottom:"14%",zIndex:10,background:"transparent",border:"none",cursor:"pointer",borderRadius:"12px",animation:"hotspotPulse 3s ease-in-out infinite"}}>
-        <div style={{position:"absolute",inset:"-10%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,200,80,0.08),transparent 70%)",pointerEvents:"none"}}/>
+      {/* 1. MAP ON SHELF — rolled paper map on the wooden shelf behind the sectional → world map */}
+      <button className="magic-hotspot" onClick={()=>transitionToMap()} style={{position:"absolute",left:"28%",top:"82%",width:"44%",height:"14%",zIndex:11,background:"transparent",border:"none",borderRadius:"10px",animation:"magicGlow 4s ease-in-out infinite"}}>
+        {/* Warm enchanted aura around the map */}
+        <div style={{position:"absolute",inset:"-18%",borderRadius:"50%",background:"radial-gradient(ellipse at center,rgba(255,210,120,0.10),rgba(255,200,100,0.03) 55%,transparent 80%)",pointerEvents:"none",animation:"magicGlowOuter 4s ease-in-out infinite"}}/>
       </button>
 
-      {/* 2. BOOKSHELF — 6 individual books on the curved wooden ledge at BOTTOM of image */}
-      {SHELF_BOOKS.map((book,i)=>{
-        const cv=BOOK_COVERS[book.id]||BOOK_COVERS.journal;
-        const isActive=deskBook===book.id;
-        // Positions for each book on the bottom curved ledge (left to right)
-        const bookPositions=[
-          {left:"15%",width:"11%"},  // book 1 — green
-          {left:"26.5%",width:"11%"},// book 2 — red/burgundy
-          {left:"38%",width:"10%"},  // book 3 — cream/olive
-          {left:"48.5%",width:"10%"},// book 4 — teal
-          {left:"59%",width:"11%"},  // book 5 — cream/white
-          {left:"70%",width:"11%"},  // book 6 — dark maroon
-        ];
-        const pos=bookPositions[i]||bookPositions[0];
-        return(
-          <button key={book.id} className="shelf-hotspot" onClick={()=>selectShelfBook(book.id)}
-            style={{position:"absolute",left:pos.left,width:pos.width,bottom:"1%",height:"13%",zIndex:11,background:"transparent",border:"none",cursor:"pointer",borderRadius:"4px",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-end",padding:"0 0 2px",animation:isActive?"none":"shelfGlow 4s ease-in-out infinite",animationDelay:`${i*0.3}s`}}>
-            {/* Warm glow on active */}
-            {isActive&&<div style={{position:"absolute",inset:"-15%",borderRadius:"50%",background:`radial-gradient(circle,${cv.accent}25,transparent 65%)`,pointerEvents:"none"}}/>}
-            {/* Label at bottom */}
-            <div style={{background:"rgba(10,8,6,0.65)",backdropFilter:"blur(4px)",WebkitBackdropFilter:"blur(4px)",borderRadius:6,padding:"2px 5px",maxWidth:"100%",overflow:"hidden"}}>
-              <div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.38rem,0.95vw,0.52rem)",color:isActive?cv.accent:"rgba(245,230,200,0.65)",textAlign:"center",lineHeight:1.15,letterSpacing:"0.01em",textShadow:"0 1px 3px rgba(0,0,0,0.7)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{book.label}</div>
-            </div>
-          </button>
-        );
-      })}
+      {/* 2. STAIRS — wooden stairs on the RIGHT → downstairs kitchen */}
+      <button className="magic-hotspot" onClick={()=>transitionToKitchen()} style={{position:"absolute",right:"0%",top:"42%",width:"20%",height:"42%",zIndex:12,background:"transparent",border:"none",borderRadius:"8px",animation:"magicGlow 4.5s ease-in-out infinite",animationDelay:"0.6s"}}>
+        {/* Warm enchanted aura on the stairs */}
+        <div style={{position:"absolute",inset:"-12%",borderRadius:"12px",background:"radial-gradient(ellipse at center 65%,rgba(255,210,120,0.08),rgba(255,200,100,0.02) 60%,transparent 85%)",pointerEvents:"none",animation:"magicGlowOuter 4.5s ease-in-out infinite",animationDelay:"0.6s"}}/>
+      </button>
 
-      {/* 3. DOOR — over the wooden stairs on the RIGHT (step outside → world map) */}
-      <button onClick={()=>transitionToMap()} style={{position:"absolute",right:"1%",top:"32%",width:"22%",height:"38%",zIndex:12,background:"transparent",border:"none",cursor:"pointer",borderRadius:"8px",animation:"hotspotPulse 3.5s ease-in-out infinite"}}>
-        {/* Warm stair glow */}
-        <div style={{position:"absolute",inset:"-6%",borderRadius:"8px",background:"radial-gradient(ellipse at center 60%,rgba(255,190,100,0.06),transparent 65%)",pointerEvents:"none"}}/>
-        {/* Subtle door label */}
-        <div style={{position:"absolute",bottom:"10%",left:"50%",transform:"translateX(-50%)",display:"flex",alignItems:"center",gap:4,background:"rgba(10,8,6,0.55)",backdropFilter:"blur(6px)",WebkitBackdropFilter:"blur(6px)",borderRadius:12,padding:"5px 10px",animation:"doorLabelFade 5s ease-in-out infinite",pointerEvents:"none",whiteSpace:"nowrap"}}>
-          <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.55rem",color:"rgba(255,248,232,0.55)",letterSpacing:"0.02em"}}>Step outside</span>
-        </div>
+      {/* 3. OPEN BOOK ON DESK — upper-right corner on the desk near lamp → journal */}
+      <button className="magic-hotspot" onClick={()=>{setBookOpen(true);setBookPage(0);setFlipDir(null);}} style={{position:"absolute",right:"6%",top:"20%",width:"18%",height:"16%",zIndex:11,background:"transparent",border:"none",borderRadius:"8px",animation:"magicGlow 3.8s ease-in-out infinite",animationDelay:"1.2s"}}>
+        {/* Warm enchanted aura on the open book */}
+        <div style={{position:"absolute",inset:"-20%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,210,120,0.10),rgba(255,200,100,0.03) 55%,transparent 80%)",pointerEvents:"none",animation:"magicGlowOuter 3.8s ease-in-out infinite",animationDelay:"1.2s"}}/>
       </button>
 
       {/* 4. LEFT WINDOW — left half of the large picture window (forest + starry sky) */}
-      <button className="window-hotspot" onClick={()=>setWindowPanel("left")} style={{position:"absolute",left:"18%",top:"12%",width:"25%",height:"36%",zIndex:10,background:"transparent",border:"none",cursor:"pointer",borderRadius:"8px"}}/>
+      <button className="window-hotspot" onClick={()=>setWindowPanel("left")} style={{position:"absolute",left:"18%",top:"6%",width:"25%",height:"32%",zIndex:10,background:"transparent",border:"none",cursor:"pointer",borderRadius:"8px"}}/>
 
       {/* 5. RIGHT WINDOW — right half of the large picture window */}
-      <button className="window-hotspot" onClick={()=>setWindowPanel("right")} style={{position:"absolute",left:"44%",top:"12%",width:"25%",height:"36%",zIndex:10,background:"transparent",border:"none",cursor:"pointer",borderRadius:"8px"}}/>
+      <button className="window-hotspot" onClick={()=>setWindowPanel("right")} style={{position:"absolute",left:"44%",top:"6%",width:"25%",height:"32%",zIndex:10,background:"transparent",border:"none",cursor:"pointer",borderRadius:"8px"}}/>
 
       {/* 6. CANDLE / STREAK — over the fireplace mantel candles (LEFT side) */}
-      <button onClick={tapCandle} style={{position:"absolute",left:"4%",top:"26%",width:"14%",height:"16%",zIndex:10,background:"transparent",border:"none",cursor:"pointer",borderRadius:"50%",animation:"candlePulse 3s ease-in-out infinite"}}>
+      <button onClick={tapCandle} style={{position:"absolute",left:"2%",top:"20%",width:"16%",height:"20%",zIndex:10,background:"transparent",border:"none",cursor:"pointer",borderRadius:"50%",animation:"candlePulse 3s ease-in-out infinite"}}>
         <div style={{position:"absolute",inset:"-20%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,200,80,0.06),transparent 65%)",pointerEvents:"none"}}/>
       </button>
 
       {/* 7. INSIGHTS — center area on the fluffy rug/carpet */}
-      <button onClick={()=>setShowInsights(true)} style={{position:"absolute",left:"35%",right:"35%",top:"66%",height:"10%",zIndex:10,background:"transparent",border:"none",cursor:"pointer",borderRadius:"8px"}}>
+      <button onClick={()=>setShowInsights(true)} style={{position:"absolute",left:"30%",right:"30%",top:"58%",height:"14%",zIndex:10,background:"transparent",border:"none",cursor:"pointer",borderRadius:"8px"}}>
         <div style={{position:"absolute",inset:"-10%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,200,80,0.04),transparent 60%)",pointerEvents:"none"}}/>
       </button>
 
@@ -2297,11 +2288,26 @@ export default function App(){
         <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.68rem",color:"rgba(255,248,232,0.5)",letterSpacing:"0.02em"}}>History</span>
       </button>
 
-      {/* 10. SHOP HOTSPOT — desk area upper-right (near lamp) */}
-      <button onClick={()=>setScreen("shop")} style={{position:"absolute",right:"3%",top:"18%",width:"14%",height:"12%",zIndex:10,background:"transparent",border:"none",cursor:"pointer",borderRadius:"8px",animation:"hotspotPulse 3.2s ease-in-out infinite"}}>
-        <div style={{position:"absolute",inset:"-10%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,200,80,0.06),transparent 60%)",pointerEvents:"none"}}/>
-        <span style={{fontSize:"clamp(0.9rem,2.5vw,1.3rem)",filter:"drop-shadow(0 2px 6px rgba(0,0,0,0.5))"}}>🪵</span>
-      </button>
+      {/* 10. BOOKSHELF — far left behind fireplace → shelf books */}
+      {SHELF_BOOKS.map((book,i)=>{
+        const cv=BOOK_COVERS[book.id]||BOOK_COVERS.journal;
+        const isActive=deskBook===book.id;
+        const bookPositions=[
+          {left:"0%",bottom:"42%",width:"6%",height:"8%"},  // book 1
+          {left:"1%",bottom:"50%",width:"6%",height:"8%"},  // book 2
+          {left:"0%",bottom:"58%",width:"7%",height:"7%"},  // book 3
+          {left:"1%",bottom:"34%",width:"6%",height:"8%"},  // book 4
+          {left:"0%",bottom:"66%",width:"7%",height:"7%"},  // book 5
+          {left:"1%",bottom:"26%",width:"6%",height:"8%"},  // book 6
+        ];
+        const pos=bookPositions[i]||bookPositions[0];
+        return(
+          <button key={book.id} className="shelf-hotspot" onClick={()=>selectShelfBook(book.id)}
+            style={{position:"absolute",left:pos.left,bottom:pos.bottom,width:pos.width,height:pos.height,zIndex:11,background:"transparent",border:"none",cursor:"pointer",borderRadius:"4px",animation:isActive?"none":"shelfGlow 4s ease-in-out infinite",animationDelay:`${i*0.3}s`}}>
+            {isActive&&<div style={{position:"absolute",inset:"-15%",borderRadius:"50%",background:`radial-gradient(circle,${cv.accent}25,transparent 65%)`,pointerEvents:"none"}}/>}
+          </button>
+        );
+      })}
 
       {/* CANDLE BALANCE — persistent display (triple-tap = toggle debug hotspots) — always visible */}
       <div onClick={debugTripleTap} style={{position:"absolute",left:"3%",top:"4%",zIndex:12,background:"rgba(26,22,18,0.7)",backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",border:"1px solid rgba(212,180,100,0.15)",borderRadius:10,padding:"5px 12px",display:"flex",alignItems:"center",gap:6,animation:"fadeUp 1s 2s ease both",cursor:"default"}}>
@@ -2313,24 +2319,21 @@ export default function App(){
 
       {/* ═══ HOTSPOT DEBUG OVERLAY (2D only) ═══ */}
       {debugHotspots&&<>
-        {/* Toggle badge */}
-        <div style={{position:"fixed",top:8,left:"50%",transform:"translateX(-50%)",zIndex:999,background:"rgba(255,60,60,0.85)",color:"#fff",fontFamily:SANS,fontSize:"0.65rem",fontWeight:700,padding:"4px 14px",borderRadius:20,letterSpacing:"0.04em",pointerEvents:"none",backdropFilter:"blur(6px)",WebkitBackdropFilter:"blur(6px)",whiteSpace:"nowrap"}}>DEBUG HOTSPOTS ON — Ctrl+Shift+. or 3×tap 🕯️</div>
-        {/* 1. Bible / Journal (sofa center) */}
-        <div style={{position:"absolute",left:"22%",right:"22%",top:"54%",bottom:"14%",zIndex:900,background:"rgba(255,100,100,0.25)",border:"2px solid rgba(255,100,100,0.7)",borderRadius:12,pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.6rem",fontWeight:700,color:"#fff",background:"rgba(255,60,60,0.75)",padding:"2px 8px",borderRadius:8}}>BIBLE</span></div>
-        {/* 2. Books on ledge (bottom) */}
-        <div style={{position:"absolute",left:"15%",right:"19%",bottom:"1%",height:"13%",zIndex:900,background:"rgba(100,100,255,0.25)",border:"2px solid rgba(100,100,255,0.7)",borderRadius:4,pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.5rem",fontWeight:700,color:"#fff",background:"rgba(60,60,255,0.75)",padding:"2px 6px",borderRadius:8}}>BOOKS</span></div>
-        {/* 3. Door / Stairs (right side) */}
-        <div style={{position:"absolute",right:"1%",top:"32%",width:"22%",height:"38%",zIndex:900,background:"rgba(100,255,100,0.25)",border:"2px solid rgba(100,255,100,0.7)",borderRadius:8,pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.6rem",fontWeight:700,color:"#fff",background:"rgba(60,180,60,0.85)",padding:"2px 8px",borderRadius:8}}>STAIRS (z:12)</span></div>
+        <div style={{position:"fixed",top:8,left:"50%",transform:"translateX(-50%)",zIndex:999,background:"rgba(255,60,60,0.85)",color:"#fff",fontFamily:SANS,fontSize:"0.65rem",fontWeight:700,padding:"4px 14px",borderRadius:20,letterSpacing:"0.04em",pointerEvents:"none",backdropFilter:"blur(6px)",WebkitBackdropFilter:"blur(6px)",whiteSpace:"nowrap"}}>DEBUG HOTSPOTS ON</div>
+        {/* 1. Map on shelf */}
+        <div style={{position:"absolute",left:"28%",top:"82%",width:"44%",height:"14%",zIndex:900,background:"rgba(255,100,100,0.25)",border:"2px solid rgba(255,100,100,0.7)",borderRadius:10,pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.5rem",fontWeight:700,color:"#fff",background:"rgba(255,60,60,0.75)",padding:"2px 6px",borderRadius:8}}>MAP → World Map</span></div>
+        {/* 2. Stairs */}
+        <div style={{position:"absolute",right:"0%",top:"42%",width:"20%",height:"42%",zIndex:900,background:"rgba(100,255,100,0.25)",border:"2px solid rgba(100,255,100,0.7)",borderRadius:8,pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.5rem",fontWeight:700,color:"#fff",background:"rgba(60,180,60,0.85)",padding:"2px 6px",borderRadius:8}}>STAIRS → Kitchen</span></div>
+        {/* 3. Open book on desk */}
+        <div style={{position:"absolute",right:"6%",top:"20%",width:"18%",height:"16%",zIndex:900,background:"rgba(100,100,255,0.25)",border:"2px solid rgba(100,100,255,0.7)",borderRadius:8,pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.5rem",fontWeight:700,color:"#fff",background:"rgba(60,60,255,0.75)",padding:"2px 6px",borderRadius:8}}>BOOK → Journal</span></div>
         {/* 4. Left Window */}
-        <div style={{position:"absolute",left:"18%",top:"12%",width:"25%",height:"36%",zIndex:900,background:"rgba(255,255,100,0.2)",border:"2px solid rgba(255,255,100,0.7)",borderRadius:8,pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.5rem",fontWeight:700,color:"#fff",background:"rgba(180,180,0,0.85)",padding:"2px 6px",borderRadius:8}}>L-WIN</span></div>
+        <div style={{position:"absolute",left:"18%",top:"6%",width:"25%",height:"32%",zIndex:900,background:"rgba(255,255,100,0.2)",border:"2px solid rgba(255,255,100,0.7)",borderRadius:8,pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.5rem",fontWeight:700,color:"#fff",background:"rgba(180,180,0,0.85)",padding:"2px 6px",borderRadius:8}}>L-WIN</span></div>
         {/* 5. Right Window */}
-        <div style={{position:"absolute",left:"44%",top:"12%",width:"25%",height:"36%",zIndex:900,background:"rgba(255,165,0,0.2)",border:"2px solid rgba(255,165,0,0.7)",borderRadius:8,pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.5rem",fontWeight:700,color:"#fff",background:"rgba(200,120,0,0.85)",padding:"2px 6px",borderRadius:8}}>R-WIN</span></div>
-        {/* 6. Candle (fireplace mantel) */}
-        <div style={{position:"absolute",left:"4%",top:"26%",width:"14%",height:"16%",zIndex:900,background:"rgba(255,100,255,0.25)",border:"2px solid rgba(255,100,255,0.7)",borderRadius:"50%",pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.5rem",fontWeight:700,color:"#fff",background:"rgba(200,60,200,0.85)",padding:"2px 6px",borderRadius:8}}>CANDLE</span></div>
-        {/* 7. Insights (rug center) */}
-        <div style={{position:"absolute",left:"35%",right:"35%",top:"66%",height:"10%",zIndex:900,background:"rgba(0,200,200,0.2)",border:"2px solid rgba(0,200,200,0.7)",borderRadius:8,pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.5rem",fontWeight:700,color:"#fff",background:"rgba(0,150,150,0.85)",padding:"2px 6px",borderRadius:8}}>INSIGHTS</span></div>
-        {/* 10. Shop (desk upper-right) */}
-        <div style={{position:"absolute",right:"3%",top:"18%",width:"14%",height:"12%",zIndex:900,background:"rgba(200,150,50,0.25)",border:"2px solid rgba(200,150,50,0.7)",borderRadius:8,pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.5rem",fontWeight:700,color:"#fff",background:"rgba(170,120,30,0.85)",padding:"2px 6px",borderRadius:8}}>SHOP</span></div>
+        <div style={{position:"absolute",left:"44%",top:"6%",width:"25%",height:"32%",zIndex:900,background:"rgba(255,165,0,0.2)",border:"2px solid rgba(255,165,0,0.7)",borderRadius:8,pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.5rem",fontWeight:700,color:"#fff",background:"rgba(200,120,0,0.85)",padding:"2px 6px",borderRadius:8}}>R-WIN</span></div>
+        {/* 6. Candle (fireplace) */}
+        <div style={{position:"absolute",left:"2%",top:"20%",width:"16%",height:"20%",zIndex:900,background:"rgba(255,100,255,0.25)",border:"2px solid rgba(255,100,255,0.7)",borderRadius:"50%",pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.5rem",fontWeight:700,color:"#fff",background:"rgba(200,60,200,0.85)",padding:"2px 6px",borderRadius:8}}>CANDLE</span></div>
+        {/* 7. Insights (rug) */}
+        <div style={{position:"absolute",left:"30%",right:"30%",top:"58%",height:"14%",zIndex:900,background:"rgba(0,200,200,0.2)",border:"2px solid rgba(0,200,200,0.7)",borderRadius:8,pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.5rem",fontWeight:700,color:"#fff",background:"rgba(0,150,150,0.85)",padding:"2px 6px",borderRadius:8}}>INSIGHTS</span></div>
       </>}
 
       {/* ═══ STREAK FLOATING INDICATOR ═══ */}
@@ -3786,6 +3789,32 @@ export default function App(){
   }
 
   /* ══ MARKET — Placeholder ═══════════════════════ */
+  /* ══ KITCHEN — Placeholder (downstairs from cabin) ══════════════════ */
+  if(screen==="kitchen"){
+    return(
+      <div style={{position:"fixed",inset:0,overflow:"hidden",fontFamily:SANS,background:"linear-gradient(160deg,#1A1408,#221A0E)"}}>
+        <style>{GFONTS}{CSS}</style>
+        <div style={{position:"relative",zIndex:10,height:"100%",overflowY:"auto",WebkitOverflowScrolling:"touch"}}>
+          <div style={{maxWidth:720,margin:"0 auto",padding:"28px 22px 80px"}}>
+            <button onClick={()=>setScreen("cabin")} style={{background:"rgba(26,22,18,0.5)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",border:"1px solid rgba(201,169,110,0.15)",borderRadius:999,padding:"8px 20px",cursor:"pointer",color:"rgba(255,248,232,0.6)",fontFamily:SANS,fontSize:"0.78rem",marginBottom:28,transition:"all 0.2s",display:"inline-flex",alignItems:"center",gap:6}}>
+              Back upstairs
+            </button>
+            <div style={{textAlign:"center",marginBottom:32,animation:"fadeUp .6s ease both"}}>
+              <h1 style={{fontFamily:DISPLAY,fontSize:"2rem",fontWeight:700,color:B.goldL,margin:"0 0 8px",textShadow:"0 2px 12px rgba(0,0,0,0.5)"}}>The Kitchen</h1>
+              <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"1rem",color:"rgba(255,248,232,0.45)",margin:"0 0 14px"}}>A warm hearth for nourishment and fellowship.</p>
+              <div style={{width:60,height:1,background:"rgba(201,169,110,0.3)",margin:"0 auto"}}/>
+            </div>
+            <div style={{background:"rgba(30,24,14,0.6)",border:"1px solid rgba(201,169,110,0.15)",borderRadius:16,padding:"40px 24px",textAlign:"center"}}>
+              <p style={{fontFamily:SERIF,fontStyle:"italic",color:"rgba(255,248,232,0.3)",fontSize:"0.9rem"}}>The kettle is warming on the stove...</p>
+              <p style={{fontFamily:SANS,fontSize:"0.72rem",color:"rgba(255,248,232,0.2)",marginTop:8}}>Coming soon</p>
+            </div>
+          </div>
+        </div>
+        {spaceTransit&&<div style={{position:"fixed",inset:0,zIndex:9999,background:"#0A0806",animation:"spaceFadeIn .6s ease both",pointerEvents:"all"}}/>}
+      </div>
+    );
+  }
+
   if(screen==="market"){
     return(
       <div style={{position:"fixed",inset:0,overflow:"hidden",fontFamily:SANS,background:"linear-gradient(160deg,#1A1408,#241E12)"}}>
