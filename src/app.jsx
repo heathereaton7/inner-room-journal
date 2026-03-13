@@ -2293,7 +2293,7 @@ export default function App(){
     @keyframes kitchenSteam{0%,100%{opacity:0.3;transform:translateY(0) scale(1)}50%{opacity:0.7;transform:translateY(-6px) scale(1.08)}}
     @keyframes stoveGlowPulse{0%,100%{box-shadow:0 0 20px rgba(255,120,30,0.15),0 0 50px rgba(255,100,10,0.08),inset 0 0 10px rgba(255,140,40,0.05)}50%{box-shadow:0 0 35px rgba(255,120,30,0.35),0 0 80px rgba(255,100,10,0.18),inset 0 0 18px rgba(255,140,40,0.10)}}
     @keyframes stoveGlowOuter{0%,100%{opacity:0.25;transform:scale(1)}50%{opacity:0.6;transform:scale(1.06)}}
-    @keyframes walkToStoveZoom{0%{transform:scale(1) translate(0,0);filter:brightness(1)}30%{transform:scale(1.4) translate(-5%,-8%);filter:brightness(1.05)}70%{transform:scale(2.2) translate(-12%,-18%);filter:brightness(0.8)}100%{transform:scale(3) translate(-18%,-25%);filter:brightness(0)}}
+    @keyframes walkToStoveZoom{0%{transform:scale(1);filter:brightness(1)}40%{transform:scale(1.8);filter:brightness(1.1)}75%{transform:scale(3);filter:brightness(0.5)}100%{transform:scale(4.5);filter:brightness(0)}}
     @keyframes walkToStoveVignette{0%{opacity:0}60%{opacity:0}100%{opacity:1}}
     @keyframes shelfBookHover{0%,100%{transform:translateX(0)}50%{transform:translateX(-4px)}}
     @keyframes windowPanelSlide{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
@@ -4082,22 +4082,29 @@ export default function App(){
         <ImmersiveKitchen/>
         {/* UI layer on top of immersive background */}
         <div style={{position:"relative",zIndex:10,height:"100%",pointerEvents:"none"}}>
-          {/* Back upstairs button */}
-          <button onClick={()=>{setSpaceTransit(true);setTransitDir("toCabin");setTimeout(()=>{setScreen("cabin");setSpaceTransit(false);setTransitDir(null);},700);}} style={{position:"absolute",top:28,left:22,pointerEvents:"auto",background:"rgba(10,6,4,0.45)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",border:"1px solid rgba(201,169,110,0.12)",borderRadius:999,padding:"8px 20px",cursor:"pointer",color:"rgba(255,248,232,0.55)",fontFamily:SANS,fontSize:"0.78rem",transition:"all 0.3s",display:"inline-flex",alignItems:"center",gap:6,zIndex:15}}>
-            Back upstairs
+
+          {/* ── STOVE HOTSPOT — black cast iron stove, FAR LEFT ── */}
+          <button onClick={()=>transitionToStove()} style={{position:"absolute",left:"0%",top:"46%",width:"15%",height:"28%",pointerEvents:"auto",zIndex:11,background:"transparent",border:"none",padding:0,cursor:"pointer",outline:"none",WebkitTapHighlightColor:"transparent"}}>
+            {/* Warm fire glow emanating from stove — natural, not a box */}
+            <div style={{position:"absolute",inset:"-30% -40% -20% -30%",borderRadius:"50%",background:"radial-gradient(ellipse at 55% 60%, rgba(255,120,30,0.14) 0%, rgba(255,90,10,0.06) 40%, transparent 72%)",pointerEvents:"none",animation:"kitchenFireGlow 3s ease-in-out infinite"}}/>
+            <div style={{position:"absolute",inset:"-15%",borderRadius:"50%",background:"radial-gradient(ellipse at 50% 70%, rgba(255,160,50,0.08) 0%, transparent 60%)",pointerEvents:"none",animation:"kitchenFireGlow 4s ease-in-out infinite",animationDelay:"0.8s"}}/>
           </button>
-          {/* Stove hotspot — glowing fire area, upper-left of kitchen */}
-          <button className="magic-hotspot" onClick={()=>transitionToStove()} style={{position:"absolute",left:"4%",top:"12%",width:"35%",height:"32%",pointerEvents:"auto",zIndex:11,background:"transparent",border:"none",borderRadius:"12px",animation:"stoveGlowPulse 3.5s ease-in-out infinite"}}>
-            <div style={{position:"absolute",inset:"-20%",borderRadius:"40%",background:"radial-gradient(ellipse at 50% 65%,rgba(255,120,30,0.12),rgba(255,90,10,0.04) 50%,transparent 80%)",pointerEvents:"none",animation:"stoveGlowOuter 3.5s ease-in-out infinite"}}/>
+
+          {/* ── STAIRS HOTSPOT — wooden stairs, FAR RIGHT → back upstairs ── */}
+          <button onClick={()=>{setSpaceTransit(true);setTransitDir("toCabin");setTimeout(()=>{setScreen("cabin");setSpaceTransit(false);setTransitDir(null);},700);}} style={{position:"absolute",right:"0%",top:"18%",width:"14%",height:"55%",pointerEvents:"auto",zIndex:11,background:"transparent",border:"none",padding:0,cursor:"pointer",outline:"none",WebkitTapHighlightColor:"transparent"}}>
+            {/* Candlelight glow along the stairs — natural warm light */}
+            <div style={{position:"absolute",inset:"-15% -25% -10% -20%",borderRadius:"40%",background:"radial-gradient(ellipse at 40% 45%, rgba(255,190,80,0.08) 0%, rgba(255,160,60,0.03) 45%, transparent 70%)",pointerEvents:"none",animation:"kitchenFireGlow 5s ease-in-out infinite",animationDelay:"1.5s"}}/>
+            <div style={{position:"absolute",left:"-10%",top:"10%",width:"80%",height:"80%",borderRadius:"30%",background:"linear-gradient(to top, rgba(255,180,70,0.04) 0%, rgba(255,200,100,0.07) 40%, rgba(255,180,70,0.03) 70%, transparent 100%)",pointerEvents:"none",animation:"kitchenFireGlow 4s ease-in-out infinite",animationDelay:"0.5s"}}/>
           </button>
+
         </div>
-        {/* Walk-to-stove zoom animation overlay */}
+        {/* Walk-to-stove zoom animation — zooms toward left-center stove area */}
         {stoveZoom&&(
           <div style={{position:"fixed",inset:0,zIndex:9998,overflow:"hidden",pointerEvents:"all"}}>
-            <div style={{position:"absolute",inset:0,animation:"walkToStoveZoom 1.2s cubic-bezier(0.4,0,0.2,1) forwards"}}>
+            <div style={{position:"absolute",inset:0,transformOrigin:"8% 58%",animation:"walkToStoveZoom 1.2s cubic-bezier(0.4,0,0.2,1) forwards"}}>
               <img src={KITCHEN_BG_IMAGE} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}} draggable={false}/>
               {/* Fire glow intensifies during zoom */}
-              <div style={{position:"absolute",left:"2%",top:"8%",width:"38%",height:"35%",borderRadius:"40%",background:"radial-gradient(ellipse at 50% 65%,rgba(255,140,40,0.25) 0%,rgba(255,100,20,0.08) 45%,transparent 75%)",mixBlendMode:"screen"}}/>
+              <div style={{position:"absolute",left:"0%",top:"46%",width:"16%",height:"28%",borderRadius:"50%",background:"radial-gradient(ellipse at 55% 60%,rgba(255,140,40,0.30) 0%,rgba(255,100,20,0.10) 40%,transparent 70%)",mixBlendMode:"screen"}}/>
             </div>
             <div style={{position:"fixed",inset:0,background:"#080402",animation:"walkToStoveVignette 1.2s cubic-bezier(0.4,0,0.2,1) forwards"}}/>
           </div>
