@@ -2294,20 +2294,6 @@ export default function App(){
     };
   },[screen]);
 
-  // ── Bible preload when entering Upper Room ──
-  useEffect(()=>{
-    if(screen==="upper-room"&&!bibleDataRef.current) loadBible();
-  },[screen,loadBible]);
-
-  // ── Bible font size persistence ──
-  useEffect(()=>{localStorage.setItem("irj-bible-fontsize",String(bibleFontSize));},[bibleFontSize]);
-
-  // ── Bible scroll-to-top on chapter/book change ──
-  useEffect(()=>{
-    const el=document.querySelector("[data-bible-scroll]");
-    if(el) el.scrollTop=0;
-  },[bibleChapter,bibleBook]);
-
   function toggleAmbientMute(){
     if(ambientMuted){
       setAmbientMuted(false);
@@ -2349,6 +2335,20 @@ export default function App(){
     localStorage.setItem("irj-daily-verse",JSON.stringify(v));
     return v;
   },[]);
+
+  // ── Bible preload when entering Upper Room ──
+  useEffect(()=>{
+    if(screen==="upper-room"&&!bibleDataRef.current) loadBible();
+  },[screen,loadBible]);
+
+  // ── Bible font size persistence ──
+  useEffect(()=>{localStorage.setItem("irj-bible-fontsize",String(bibleFontSize));},[bibleFontSize]);
+
+  // ── Bible scroll-to-top on chapter/book change ──
+  useEffect(()=>{
+    const el=document.querySelector("[data-bible-scroll]");
+    if(el) el.scrollTop=0;
+  },[bibleChapter,bibleBook]);
 
   // ── HOTSPOT DEBUG MODE ──
   // Toggle: ?debug=1 in URL  |  Ctrl+Shift+. on desktop  |  triple-tap "🕯️ 0" candle badge on mobile
