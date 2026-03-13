@@ -3461,6 +3461,7 @@ export default function App(){
     @keyframes verseReveal{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
     @keyframes actionBarSlideUp{from{opacity:0;transform:translateY(40px)}to{opacity:1;transform:translateY(0)}}
     @keyframes overlayFadeIn{from{opacity:0}to{opacity:1}}
+    @keyframes mapBtnGlow{0%,100%{box-shadow:0 0 8px rgba(255,210,120,0.15),0 2px 12px rgba(0,0,0,0.3)}50%{box-shadow:0 0 18px rgba(255,210,120,0.35),0 2px 12px rgba(0,0,0,0.3)}}
     @keyframes panelSlideUp{from{opacity:0;transform:translateY(100%)}to{opacity:1;transform:translateY(0)}}
     .verse-tap:active{transform:scale(0.98);}
     .bible-book{transition:all .2s ease;cursor:pointer}.bible-book:hover{background:rgba(180,160,210,0.12)!important;transform:translateX(4px)}.bible-book:active{transform:translateX(2px) scale(0.98)}
@@ -3475,6 +3476,14 @@ export default function App(){
       <span style={{fontFamily:SERIF,fontStyle:"italic",color:B.goldL,fontSize:"0.92rem",flex:1}}>{title}</span>
       {extra}
     </header>
+  );
+
+  /* ══ MAP HUD BUTTON — persistent nav across all scenes ══ */
+  const MapHudButton=()=>(
+    <button onClick={()=>{setScreen("map");setMarketStall(null);setShopStall(null);}} style={{position:"fixed",bottom:20,left:"50%",transform:"translateX(-50%)",zIndex:50,background:"rgba(26,22,18,0.75)",backdropFilter:"blur(10px)",WebkitBackdropFilter:"blur(10px)",border:"1px solid rgba(201,169,110,0.25)",borderRadius:14,padding:"8px 22px",cursor:"pointer",display:"flex",alignItems:"center",gap:7,animation:"fadeUp .8s 1s ease both, mapBtnGlow 4s 2s ease-in-out infinite",transition:"all 0.2s",boxShadow:"0 2px 12px rgba(0,0,0,0.3)"}}>
+      <span style={{fontSize:"0.85rem"}}>🗺️</span>
+      <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.75rem",color:"rgba(255,240,200,0.55)",letterSpacing:"0.02em"}}>Map</span>
+    </button>
   );
 
   /* ══ LOADING ══════════════════════════════════════ */
@@ -4254,6 +4263,7 @@ export default function App(){
           <div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"1.05rem",color:"rgba(255,248,232,0.5)",letterSpacing:"0.04em"}}>{transitDir==="toHall"?"Stepping into The Upper Room...":transitDir==="toGarden"?"Walking to the garden...":"Returning to the cabin..."}</div>
         </div>
       </div>}
+      <MapHudButton/>
     </div>
   );
 
@@ -4347,6 +4357,7 @@ export default function App(){
             </div>
           </div>
         )}
+        <MapHudButton/>
       </div>
     );
   }
@@ -4389,6 +4400,7 @@ export default function App(){
             )}
           </div>
         </main>
+        <MapHudButton/>
       </div>
     );
   }
@@ -4497,6 +4509,7 @@ export default function App(){
           </div>
         )}
       </main>
+      <MapHudButton/>
     </div>
   );
 
@@ -4611,6 +4624,7 @@ export default function App(){
           <div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"1.05rem",color:"rgba(255,248,232,0.5)",letterSpacing:"0.04em"}}>{transitDir==="toCabin"?"Returning to the cabin...":"Stepping into The Upper Room..."}</div>
         </div>
       </div>}
+      <MapHudButton/>
     </div>
   );
 
@@ -4830,6 +4844,7 @@ export default function App(){
           </JCard>}
         </>}
       </main>
+      <MapHudButton/>
     </div>
   );}
 
@@ -5220,6 +5235,7 @@ export default function App(){
             )}
           </div>
         </div>}
+        <MapHudButton/>
       </div>
     );
   }
@@ -5265,6 +5281,7 @@ export default function App(){
           </div>
           {filteredItems.length===0&&<p style={{fontFamily:SERIF,fontStyle:"italic",color:"rgba(255,248,232,0.3)",textAlign:"center",marginTop:40}}>No items in this category yet.</p>}
         </main>
+        <MapHudButton/>
       </div>
     );
   }
@@ -5379,6 +5396,7 @@ export default function App(){
           </div>}
 
         </main>
+        <MapHudButton/>
       </div>
     );
   }
@@ -5437,6 +5455,7 @@ export default function App(){
           </div>
         )}
         {spaceTransit&&<div style={{position:"fixed",inset:0,zIndex:9999,background:"#0A0806",animation:"spaceFadeIn .6s ease both",pointerEvents:"all"}}/>}
+        <MapHudButton/>
       </div>
     );
   }
@@ -5499,6 +5518,7 @@ export default function App(){
           <div style={{fontSize:"1.8rem",marginBottom:8}}>🍳</div>
           <div style={{fontFamily:DISPLAY,fontSize:"1rem",fontWeight:700,color:B.goldL}}>{candleReward.message}</div>
         </div>}
+        <MapHudButton/>
       </div>
     );
   }
@@ -5535,6 +5555,7 @@ export default function App(){
           </div>
         </div>
         {spaceTransit&&<div style={{position:"fixed",inset:0,zIndex:9999,background:"#0A0806",animation:"spaceFadeIn .6s ease both",pointerEvents:"all"}}/>}
+        <MapHudButton/>
       </div>
     );
   }
@@ -5776,6 +5797,7 @@ export default function App(){
             </div>
           </div>
         )}
+        <MapHudButton/>
       </div>
     );
   }
@@ -6031,6 +6053,7 @@ export default function App(){
         )}
 
         {spaceTransit&&<div style={{position:"fixed",inset:0,zIndex:9999,background:"#0A0806",animation:"spaceFadeIn .6s ease both",pointerEvents:"all"}}/>}
+        <MapHudButton/>
       </div>
     );
   }
