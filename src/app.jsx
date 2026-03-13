@@ -1938,6 +1938,7 @@ export default function App(){
   const [transitDir,    setTransitDir]    = useState(null);
   const [stoveZoom,     setStoveZoom]     = useState(false);
   const [windowZoom,    setWindowZoom]    = useState(false);
+  const [journalZoom,   setJournalZoom]   = useState(false);
   const [bookPage,      setBookPage]      = useState(0);
   const [flipDir,       setFlipDir]       = useState(null);
   const touchRef = useRef({startX:0,startY:0});
@@ -2409,6 +2410,10 @@ export default function App(){
     setWindowZoom(true);
     setTimeout(()=>{setScreen("kitchen-window");setWindowZoom(false);},1200);
   }
+  function transitionToJournal(){
+    setJournalZoom(true);
+    setTimeout(()=>{setJournalZoom(false);setBookOpen(true);setBookPage(0);setFlipDir(null);},1400);
+  }
 
   // ── SCENE NAVIGATION ──
   const SCENES = [
@@ -2689,6 +2694,9 @@ export default function App(){
     @keyframes walkToStoveVignette{0%{opacity:0}60%{opacity:0}100%{opacity:1}}
     @keyframes walkToWindowZoom{0%{transform:scale(1);filter:brightness(1)}40%{transform:scale(1.6);filter:brightness(1.15)}75%{transform:scale(2.8);filter:brightness(0.45)}100%{transform:scale(4);filter:brightness(0)}}
     @keyframes walkToWindowVignette{0%{opacity:0}60%{opacity:0}100%{opacity:1}}
+    @keyframes walkToJournalZoom{0%{transform:scale(1);filter:brightness(1)}35%{transform:scale(1.6);filter:brightness(1.15)}70%{transform:scale(3.2);filter:brightness(0.4)}100%{transform:scale(5);filter:brightness(0)}}
+    @keyframes walkToJournalVignette{0%{opacity:0}55%{opacity:0}100%{opacity:1}}
+    @keyframes journalDeskReveal{0%{opacity:0;transform:scale(1.08)}40%{opacity:1;transform:scale(1.02)}100%{opacity:1;transform:scale(1)}}
     @keyframes waterShimmer{0%,100%{opacity:0.12;transform:scaleY(1)}50%{opacity:0.25;transform:scaleY(1.02)}}
     @keyframes mistDrift{0%{transform:translateX(-5%) translateY(2%);opacity:0.15}50%{transform:translateX(3%) translateY(-1%);opacity:0.25}100%{transform:translateX(-5%) translateY(2%);opacity:0.15}}
     @keyframes lanternFlicker{0%{opacity:0.7;transform:scale(1)}12%{opacity:1;transform:scale(1.08)}28%{opacity:0.75;transform:scale(0.97)}42%{opacity:1;transform:scale(1.10)}58%{opacity:0.65;transform:scale(0.96)}70%{opacity:1;transform:scale(1.06)}85%{opacity:0.7;transform:scale(1.01)}100%{opacity:0.7;transform:scale(1)}}
@@ -2978,7 +2986,7 @@ export default function App(){
       </button>
 
       {/* 3. OPEN BOOK ON DESK — upper-right corner on the desk near lamp → journal */}
-      <button onClick={()=>{setBookOpen(true);setBookPage(0);setFlipDir(null);}} style={{position:"absolute",right:"6%",top:"30%",width:"18%",height:"16%",zIndex:11,background:"transparent",border:"none",padding:0,cursor:"pointer",borderRadius:"8px",outline:"none",WebkitTapHighlightColor:"transparent"}}>
+      <button onClick={()=>transitionToJournal()} style={{position:"absolute",right:"6%",top:"30%",width:"18%",height:"16%",zIndex:11,background:"transparent",border:"none",padding:0,cursor:"pointer",borderRadius:"8px",outline:"none",WebkitTapHighlightColor:"transparent"}}>
         {/* Pulse glow on open book */}
         <div style={{position:"absolute",left:"10%",top:"10%",width:"80%",height:"85%",borderRadius:"45%",background:"radial-gradient(ellipse at 50% 55%,rgba(255,215,130,0.30) 0%,rgba(255,190,90,0.10) 45%,transparent 72%)",pointerEvents:"none",animation:"hotspotPulse 2.8s ease-in-out infinite",animationDelay:"0.3s"}}/>
         <div style={{position:"absolute",left:"22%",top:"18%",width:"56%",height:"65%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,245,180,0.20) 0%,transparent 55%)",pointerEvents:"none",animation:"hotspotPulse 3.3s ease-in-out infinite",animationDelay:"1s"}}/>
@@ -3295,14 +3303,19 @@ export default function App(){
               {deskBook==="journal"&&<>
                 {/* PAGE 0: Welcome */}
                 {bookPage===0&&<>
-                  <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center",animation:"pageContentReveal .5s .15s ease both"}}>
-                    <div style={{fontSize:"2.2rem",marginBottom:14,filter:"drop-shadow(0 2px 4px rgba(139,109,69,0.2))"}}>📖</div>
-                    <h2 style={{fontFamily:DISPLAY,fontSize:"clamp(1.3rem,5vw,1.6rem)",fontWeight:700,color:"#3D2B18",margin:"0 0 6px",letterSpacing:"0.02em"}}>Your Journal</h2>
-                    <div style={{width:50,height:1,background:"linear-gradient(90deg,transparent,#8B6D45,transparent)",margin:"4px auto 18px"}}/>
-                    <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.88rem,3vw,1rem)",color:"#6B553A",lineHeight:1.75,maxWidth:280,margin:"0 auto"}}>A quiet place to sit with the questions that shape your soul.</p>
-                    <p style={{fontFamily:SERIF,fontSize:"0.78rem",color:"rgba(107,85,58,0.4)",marginTop:28,letterSpacing:"0.02em"}}>Turn the page to begin →</p>
+                  <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center",position:"relative",animation:"pageContentReveal .5s .15s ease both",margin:"-28px -22px -16px -30px",overflow:"hidden",borderRadius:"3px 10px 10px 3px"}}>
+                    {/* Journal desk image as cover */}
+                    <img src="/journalondesk.png" alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",objectPosition:"center 45%",borderRadius:"inherit"}} draggable={false}/>
+                    {/* Warm vignette overlay */}
+                    <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse at 50% 40%,transparent 30%,rgba(30,18,8,0.35) 100%)",pointerEvents:"none",borderRadius:"inherit"}}/>
+                    {/* Title overlay at bottom */}
+                    <div style={{position:"absolute",bottom:0,left:0,right:0,padding:"48px 20px 22px",background:"linear-gradient(transparent,rgba(30,18,8,0.7) 60%,rgba(30,18,8,0.85))",textAlign:"center"}}>
+                      <h2 style={{fontFamily:DISPLAY,fontSize:"clamp(1.2rem,5vw,1.5rem)",fontWeight:700,color:"#FFF8E8",margin:"0 0 4px",letterSpacing:"0.03em",textShadow:"0 2px 8px rgba(0,0,0,0.5)"}}>Your Journal</h2>
+                      <div style={{width:40,height:1,background:"linear-gradient(90deg,transparent,rgba(201,169,110,0.5),transparent)",margin:"6px auto 10px"}}/>
+                      <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.78rem,2.5vw,0.88rem)",color:"rgba(255,248,232,0.6)",lineHeight:1.6,maxWidth:260,margin:"0 auto"}}>A quiet place to sit with the questions that shape your soul.</p>
+                      <p style={{fontFamily:SERIF,fontSize:"0.72rem",color:"rgba(255,248,232,0.35)",marginTop:14,letterSpacing:"0.02em"}}>Turn the page to begin</p>
+                    </div>
                   </div>
-                  <div style={{textAlign:"center",fontFamily:SANS,fontSize:"0.6rem",color:"rgba(107,85,58,0.3)",letterSpacing:"0.1em",textTransform:"uppercase"}}>— 1 of {TOTAL_BOOK_PAGES} —</div>
                 </>}
 
                 {/* PAGES 1–7: Reflection Rooms */}
@@ -3483,6 +3496,26 @@ export default function App(){
           <button onClick={()=>setBookOpen(false)} style={{position:"absolute",top:-16,right:-16,width:34,height:34,borderRadius:"50%",background:"rgba(26,22,18,0.88)",border:"1px solid rgba(201,169,110,0.2)",color:"rgba(255,248,232,0.6)",fontSize:"0.8rem",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",zIndex:10,transition:"all .2s",boxShadow:"0 2px 12px rgba(0,0,0,0.35)"}} onMouseEnter={e=>{e.currentTarget.style.background="rgba(201,169,110,0.25)";e.currentTarget.style.color="#FFF8E8";}} onMouseLeave={e=>{e.currentTarget.style.background="rgba(26,22,18,0.88)";e.currentTarget.style.color="rgba(255,248,232,0.6)";}}>✕</button>
         </div>
       </div>}
+
+      {/* ═══ WALK-TO-JOURNAL ZOOM ANIMATION ═══ */}
+      {journalZoom&&(
+        <div style={{position:"fixed",inset:0,zIndex:9998,overflow:"hidden",pointerEvents:"all"}}>
+          {/* Cabin zooms toward the desk/book area (upper-right) */}
+          <div style={{position:"absolute",inset:0,transformOrigin:"85% 36%",animation:"walkToJournalZoom 1.4s cubic-bezier(0.4,0,0.2,1) forwards"}}>
+            <img src={CABIN_FALLBACK_IMAGE} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}} draggable={false}/>
+            {/* Warm lamp glow intensifies on the desk during zoom */}
+            <div style={{position:"absolute",right:"6%",top:"26%",width:"22%",height:"20%",borderRadius:"45%",background:"radial-gradient(ellipse at 50% 50%,rgba(255,215,130,0.35) 0%,rgba(255,190,90,0.12) 45%,transparent 72%)",mixBlendMode:"screen"}}/>
+          </div>
+          {/* Journal desk image cross-fades in as cabin darkens */}
+          <div style={{position:"fixed",inset:0,animation:"journalDeskReveal 0.6s 0.8s ease both"}}>
+            <img src="/journalondesk.png" alt="" style={{width:"100%",height:"100%",objectFit:"cover",objectPosition:"center 40%"}} draggable={false}/>
+            {/* Warm candlelight glow overlay */}
+            <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse at 50% 45%,rgba(255,200,100,0.08) 0%,transparent 60%)",mixBlendMode:"screen",pointerEvents:"none"}}/>
+          </div>
+          {/* Dark vignette during transition */}
+          <div style={{position:"fixed",inset:0,background:"#0A0806",animation:"walkToJournalVignette 1.4s cubic-bezier(0.4,0,0.2,1) forwards"}}/>
+        </div>
+      )}
 
       {/* ═══ SPACE TRANSITION OVERLAY ═══ */}
       {spaceTransit&&<div style={{position:"fixed",inset:0,zIndex:9999,background:"#0A0806",display:"flex",alignItems:"center",justifyContent:"center",animation:"spaceFadeIn .5s ease"}}>
