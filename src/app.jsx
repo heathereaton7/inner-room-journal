@@ -671,6 +671,78 @@ const MARKET_BG_IMAGE="/market.png";
 const KITCHEN_WINDOW_BG_IMAGE="/kitchen-window.png";
 
 /* ═══════════════════════════════════════════════════
+   AMBIENT SOUND MANAGER — Global singleton
+   Only one ambient track plays at a time across all rooms.
+   Handles fade-in / fade-out, looping, and mute state.
+═══════════════════════════════════════════════════ */
+const _amb = { el: null, timer: null, id: null, target: 0 };
+
+function ambientPlay(src, { volume = 0.35, fadeMs = 2000, id = src } = {}) {
+  // Already playing this exact track — do nothing
+  if (_amb.id === id && _amb.el && !_amb.el.paused) return;
+  // Stop any existing track instantly before starting new one
+  ambientStop(0);
+  try {
+    const a = new Audio(src);
+    a.loop = true;
+    a.volume = 0;
+    a.preload = "auto";
+    _amb.el = a;
+    _amb.id = id;
+    _amb.target = volume;
+    const promise = a.play();
+    if (promise) promise.catch(() => {});
+    // Fade in
+    clearInterval(_amb.timer);
+    if (fadeMs <= 0) { a.volume = volume; return; }
+    const step = volume / (fadeMs / 50);
+    let v = 0;
+    _amb.timer = setInterval(() => {
+      v = Math.min(volume, v + step);
+      if (_amb.el === a) a.volume = v;
+      if (v >= volume) clearInterval(_amb.timer);
+    }, 50);
+  } catch (e) { /* audio not supported */ }
+}
+
+function ambientStop(fadeMs = 2000) {
+  const a = _amb.el;
+  if (!a) return;
+  clearInterval(_amb.timer);
+  if (fadeMs <= 0) {
+    a.pause(); try { a.src = ""; } catch (e) {}
+    _amb.el = null; _amb.id = null; return;
+  }
+  const startVol = a.volume || _amb.target;
+  const step = startVol / (fadeMs / 50);
+  let v = startVol;
+  _amb.timer = setInterval(() => {
+    v = Math.max(0, v - step);
+    a.volume = v;
+    if (v <= 0) {
+      clearInterval(_amb.timer);
+      a.pause(); try { a.src = ""; } catch (e) {}
+      if (_amb.el === a) { _amb.el = null; _amb.id = null; }
+    }
+  }, 50);
+}
+
+function ambientMute() {
+  if (_amb.el) { _amb.el.volume = 0; }
+}
+function ambientUnmute() {
+  if (_amb.el) { _amb.el.volume = _amb.target; }
+}
+function ambientIsPlaying(id) {
+  return _amb.id === id && _amb.el && !_amb.el.paused;
+}
+
+/* Room-specific ambient tracks */
+const AMBIENT_TRACKS = {
+  "kitchen-window": { src: "/slrathna-sleep-water-calm-317558.mp3", volume: 0.35, id: "water-calm" },
+};
+
+/* ═══════════════════════════════════════════════════
    ImmersiveMarket — Parallax village market with lantern glow, fireflies, string light shimmer
 ═══════════════════════════════════════════════════ */
 function ImmersiveMarket(){
@@ -1931,7 +2003,6 @@ export default function App(){
   const [sceneIdx,      setSceneIdx]      = useState(0);
   const [sceneTransit,  setSceneTransit]  = useState(false);
   const [scenePrev,     setScenePrev]     = useState(-1);
-  const ambientRef = useRef(null);
   const [bookOpen,      setBookOpen]      = useState(false);
   const [prevScreen,    setPrevScreen]    = useState("cabin");
   const [spaceTransit,  setSpaceTransit]  = useState(false);
@@ -2016,6 +2087,9 @@ export default function App(){
   const [plantStep,      setPlantStep]     = useState(1);
   const [plantPrayerId,  setPlantPrayerId] = useState(null);
   const [gardenTick,     setGardenTick]   = useState(0); // forces re-render for growth updates
+  // ambient sound
+  const [ambientMuted,   setAmbientMuted]  = useState(false);
+  const ambientMutedRef = useRef(false); // ref mirror for use inside effects
 
   // ── OUTDOOR IMAGE RECT — keeps glow overlays aligned to actual image features ──
   // The outdoor.png is displayed with object-fit:cover + object-position:center 30%
@@ -2046,6 +2120,38 @@ export default function App(){
     const id=setInterval(()=>setGardenTick(t=>t+1),30000);
     return ()=>clearInterval(id);
   },[screen]);
+
+  // ── AMBIENT SOUND — auto-play / stop per screen ──
+  useEffect(()=>{
+    ambientMutedRef.current = ambientMuted;
+  },[ambientMuted]);
+
+  useEffect(()=>{
+    const track = AMBIENT_TRACKS[screen];
+    if(track){
+      if(!ambientMutedRef.current){
+        ambientPlay(track.src, { volume: track.volume, fadeMs: 2000, id: track.id });
+      }
+    } else {
+      // Leaving a room with ambient — fade out
+      if(_amb.el) ambientStop(2000);
+    }
+    return ()=>{
+      // Cleanup on screen change — if new screen has no track, stop is handled above
+    };
+  },[screen]);
+
+  function toggleAmbientMute(){
+    if(ambientMuted){
+      setAmbientMuted(false);
+      // Resume: play the current screen's track
+      const track = AMBIENT_TRACKS[screen];
+      if(track) ambientPlay(track.src, { volume: track.volume, fadeMs: 800, id: track.id });
+    } else {
+      setAmbientMuted(true);
+      ambientMute();
+    }
+  }
 
   // ── HOTSPOT DEBUG MODE ──
   // Toggle: ?debug=1 in URL  |  Ctrl+Shift+. on desktop  |  triple-tap "🕯️ 0" candle badge on mobile
@@ -2423,22 +2529,10 @@ export default function App(){
   ];
 
   function startAmbient(){
-    try{
-      const a=new Audio("/ambient-forest.mp3");
-      a.loop=true; a.volume=0.3;
-      ambientRef.current=a;
-      a.play().catch(()=>{});
-    }catch(e){}
+    ambientPlay("/ambient-forest.mp3",{ volume:0.3, fadeMs:0, id:"onboard-forest" });
   }
   function fadeOutAmbient(){
-    const a=ambientRef.current;
-    if(!a) return;
-    let v=a.volume;
-    const fade=setInterval(()=>{
-      v=Math.max(0,v-0.02);
-      a.volume=v;
-      if(v<=0){clearInterval(fade);a.pause();ambientRef.current=null;}
-    },50);
+    ambientStop(1500);
   }
   function advanceScene(){
     if(sceneTransit) return;
@@ -4650,6 +4744,19 @@ export default function App(){
           {/* Back to kitchen button */}
           <button onClick={()=>{setSpaceTransit(true);setTransitDir("toKitchen");setTimeout(()=>{setScreen("kitchen");setSpaceTransit(false);setTransitDir(null);},700);}} style={{position:"absolute",top:28,left:22,pointerEvents:"auto",background:"rgba(10,8,6,0.50)",backdropFilter:"blur(14px)",WebkitBackdropFilter:"blur(14px)",border:"1px solid rgba(180,200,220,0.10)",borderRadius:999,padding:"8px 20px",cursor:"pointer",color:"rgba(220,230,240,0.55)",fontFamily:SANS,fontSize:"0.78rem",transition:"all 0.3s",display:"inline-flex",alignItems:"center",gap:6,zIndex:15}}>
             Back to kitchen
+          </button>
+          {/* Sound toggle — top right */}
+          <button onClick={toggleAmbientMute} style={{position:"absolute",top:28,right:22,pointerEvents:"auto",width:40,height:40,borderRadius:"50%",background:"rgba(10,8,6,0.45)",backdropFilter:"blur(14px)",WebkitBackdropFilter:"blur(14px)",border:"1px solid rgba(180,200,220,0.10)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",zIndex:15,transition:"all 0.3s",animation:"fadeUp .6s .8s ease both",opacity:0}}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(220,230,240,0.55)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+              {ambientMuted?<>
+                <line x1="23" y1="9" x2="17" y2="15"/>
+                <line x1="17" y1="9" x2="23" y2="15"/>
+              </>:<>
+                <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+                <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+              </>}
+            </svg>
           </button>
           {/* Prayer spot — centered atmospheric text */}
           <div style={{position:"absolute",bottom:"12%",left:"50%",transform:"translateX(-50%)",pointerEvents:"none",textAlign:"center",animation:"fadeUp 1s ease both .5s",opacity:0,width:"80%",maxWidth:360}}>
