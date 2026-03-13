@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback, Component } from "react";
 import { auth, db, googleProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged, doc, getDoc, setDoc } from "./firebase.js";
 /* R3F imports removed — ImmersiveCabin uses pure DOM/Canvas2D for performance */
 
@@ -248,10 +248,10 @@ const BOOK_CONTENT = {
 function getBookPageCount(bookType, section){
   if(bookType==="journal"){
     if(!section) return 2; // cover + TOC
-    if(section==="blank") return 4; // cover + TOC + write + history
-    if(section==="rooms") return REFLECTION_ROOMS.length+6; // cover + TOC + 7 rooms + jesus + locked + daily + entries
-    if(section==="dreams") return 3+(BOOK_CONTENT.dreams?.pages.length||4); // cover + TOC + prompts + history
-    if(section==="prayers") return 4; // cover + TOC + write + history
+    if(section==="blank") return 4; // cover + TOC + history + write
+    if(section==="rooms") return REFLECTION_ROOMS.length+6; // cover + TOC + entries + 7 rooms + jesus + locked + daily
+    if(section==="dreams") return 3+(BOOK_CONTENT.dreams?.pages.length||4); // cover + TOC + history + prompts
+    if(section==="prayers") return 4; // cover + TOC + history + write
   }
   const bc=BOOK_CONTENT[bookType];
   return bc? bc.pages.length+1 : 12;
@@ -2323,9 +2323,31 @@ function ImmersiveUpperRoom(){
 }
 
 /* ═══════════════════════════════════════════════════
+   ERROR BOUNDARY — prevents white screen crashes
+═══════════════════════════════════════════════════ */
+class ErrorBoundary extends Component{
+  constructor(p){super(p);this.state={hasError:false,error:null};}
+  static getDerivedStateFromError(e){return{hasError:true,error:e};}
+  componentDidCatch(e,info){console.error("Inner Room caught error:",e,info);}
+  render(){
+    if(this.state.hasError) return(
+      <div style={{minHeight:"100vh",background:"#1A1612",display:"flex",alignItems:"center",justifyContent:"center",padding:32}}>
+        <div style={{textAlign:"center",maxWidth:340}}>
+          <div style={{fontSize:"2rem",marginBottom:16}}>🕯️</div>
+          <h2 style={{fontFamily:"Georgia,serif",color:"#E8D4A0",fontSize:"1.2rem",margin:"0 0 12px"}}>Something went wrong</h2>
+          <p style={{fontFamily:"Georgia,serif",fontStyle:"italic",color:"rgba(232,212,160,0.5)",fontSize:"0.85rem",lineHeight:1.6,margin:"0 0 24px"}}>Your entries are safe. Try refreshing the page.</p>
+          <button onClick={()=>{this.setState({hasError:false,error:null});window.location.reload();}} style={{background:"rgba(201,169,110,0.15)",border:"1px solid rgba(201,169,110,0.3)",color:"#E8D4A0",padding:"10px 28px",borderRadius:8,cursor:"pointer",fontFamily:"Georgia,serif",fontSize:"0.88rem"}}>Refresh</button>
+        </div>
+      </div>
+    );
+    return this.props.children;
+  }
+}
+
+/* ═══════════════════════════════════════════════════
    MAIN APP
 ═══════════════════════════════════════════════════ */
-export default function App(){
+function AppInner(){
   // ── STATE ──
   const [screen,        setScreen]        = useState("loading");
   const [obStep,        setObStep]        = useState(0);
@@ -2439,6 +2461,7 @@ export default function App(){
   const [inventoryTab, setInventoryTab] = useState("all"); // category filter
   const [farmPlots,    setFarmPlots]    = useState([]); // economy garden plots
   const [gardenMode,   setGardenMode]   = useState("farm"); // "farm"|"prayers"
+  const [toast,        setToast]        = useState(null); // {msg,emoji} — ephemeral notification
   // ── Verse selection, saving, sharing ──
   const [selectedVerses,    setSelectedVerses]    = useState(new Set());
   const [savedVerses,       setSavedVerses]       = useState([]);
@@ -2623,6 +2646,9 @@ export default function App(){
     });
     return ()=>unsub();
   },[]);
+
+  // ── AUTO-CLEAR TOAST ──
+  useEffect(()=>{if(toast){const t=setTimeout(()=>setToast(null),2800);return()=>clearTimeout(t);}},[toast]);
 
   // ── SELL BASKET AUTO-SELL TIMER ──
   useEffect(()=>{
@@ -3357,7 +3383,7 @@ export default function App(){
   function renderSectionHistory(sectionEntries, label, onNewEntry, isPrayer){
     const MN=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
     const DN=["S","M","T","W","T","F","S"];
-    const sorted=[...sectionEntries].sort((a,b)=>parseInt(b.id)-parseInt(a.id));
+    const sorted=[...sectionEntries].sort((a,b)=>{const ai=parseInt(a.id)||0,bi=parseInt(b.id)||0;return bi-ai;});
     const firstDow=new Date(calYear,calMonth,1).getDay();
     const dim=new Date(calYear,calMonth+1,0).getDate();
     const isCurMonth=calMonth===new Date().getMonth()&&calYear===new Date().getFullYear();
@@ -3991,6 +4017,14 @@ export default function App(){
         </div>
       </div>}
 
+      {/* ═══ TOAST NOTIFICATION ═══ */}
+      {toast&&<div style={{position:"fixed",bottom:"12%",left:"50%",transform:"translateX(-50%)",zIndex:70,animation:"candleFloat 2.8s ease both",pointerEvents:"none"}}>
+        <div style={{background:"rgba(26,22,18,0.92)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",border:"1px solid rgba(201,169,110,0.25)",borderRadius:14,padding:"10px 20px",display:"flex",alignItems:"center",gap:8,boxShadow:"0 6px 24px rgba(0,0,0,0.4)",whiteSpace:"nowrap"}}>
+          {toast.emoji&&<span style={{fontSize:"1.1rem"}}>{toast.emoji}</span>}
+          <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.82rem",color:"rgba(255,248,232,0.75)"}}>{toast.msg}</span>
+        </div>
+      </div>}
+
       {/* ═══ INSIGHTS OVERLAY ═══ */}
       {showInsights&&<div style={{position:"fixed",inset:0,zIndex:80}}>
         <div onClick={()=>setShowInsights(false)} style={{position:"absolute",inset:0,background:"rgba(10,8,6,0.6)",animation:"spaceFadeIn .25s ease"}}/>
@@ -4222,8 +4256,24 @@ export default function App(){
                   </div>
                 </>}
 
-                {/* ── SECTION: BLANK JOURNAL (free write) ── */}
+                {/* ── SECTION: BLANK JOURNAL HISTORY (page 2) ── */}
                 {journalSection==="blank"&&bookPage===2&&<>
+                  <div style={{flex:1,display:"flex",flexDirection:"column",animation:"pageContentReveal .5s .1s ease both"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+                      <button onClick={()=>{setJournalSection(null);setBookPage(1);setFlipDir("bwd");}} style={{background:"transparent",border:"none",cursor:"pointer",fontFamily:SERIF,fontSize:"0.74rem",color:"rgba(107,85,58,0.5)",padding:0}}>&#8249; Contents</button>
+                    </div>
+                    <h2 style={{fontFamily:DISPLAY,fontSize:"clamp(1.05rem,4vw,1.2rem)",fontWeight:700,color:"#3D2B18",margin:"0 0 10px",textAlign:"center"}}>Past Entries</h2>
+                    <div style={{width:40,height:1,background:"linear-gradient(90deg,transparent,rgba(139,109,69,0.3),transparent)",margin:"0 auto 12px"}}/>
+                    {renderSectionHistory(
+                      entries.filter(e=>e.roomId==="blank"),
+                      "entry",
+                      ()=>{setBookPage(3);setFlipDir("fwd");setBookText("");setHistoryMode("list");}
+                    )}
+                  </div>
+                </>}
+
+                {/* ── SECTION: BLANK JOURNAL (free write, page 3) ── */}
+                {journalSection==="blank"&&bookPage===3&&<>
                   <div style={{flex:1,display:"flex",flexDirection:"column",animation:"pageContentReveal .5s .1s ease both"}}>
                     <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
                       <button onClick={()=>{setJournalSection(null);setBookPage(1);setFlipDir("bwd");}} style={{background:"transparent",border:"none",cursor:"pointer",fontFamily:SERIF,fontSize:"0.74rem",color:"rgba(107,85,58,0.5)",padding:0}}>&#8249; Contents</button>
@@ -4242,34 +4292,27 @@ export default function App(){
                   </div>
                 </>}
 
-                {/* ── SECTION: BLANK JOURNAL HISTORY (page 3) ── */}
-                {journalSection==="blank"&&bookPage===3&&<>
-                  <div style={{flex:1,display:"flex",flexDirection:"column",animation:"pageContentReveal .5s .1s ease both"}}>
-                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
-                      <button onClick={()=>{setJournalSection(null);setBookPage(1);setFlipDir("bwd");}} style={{background:"transparent",border:"none",cursor:"pointer",fontFamily:SERIF,fontSize:"0.74rem",color:"rgba(107,85,58,0.5)",padding:0}}>&#8249; Contents</button>
-                    </div>
-                    <h2 style={{fontFamily:DISPLAY,fontSize:"clamp(1.05rem,4vw,1.2rem)",fontWeight:700,color:"#3D2B18",margin:"0 0 10px",textAlign:"center"}}>Past Entries</h2>
-                    <div style={{width:40,height:1,background:"linear-gradient(90deg,transparent,rgba(139,109,69,0.3),transparent)",margin:"0 auto 12px"}}/>
-                    {renderSectionHistory(
-                      entries.filter(e=>e.roomId==="blank"),
-                      "entry",
-                      ()=>{setBookPage(2);setFlipDir("bwd");setBookText("");setHistoryMode("list");}
-                    )}
-                  </div>
-                </>}
-
                 {/* ── SECTION: REFLECTION ROOMS ── */}
                 {journalSection==="rooms"&&bookPage>=2&&<>
-                  {/* Back to contents link */}
                   {(()=>{
-                    const roomIdx=bookPage-2; // 0-6 = rooms, 7=jesus, 8=locked, 9=daily, 10=entries
+                    const roomIdx=bookPage-2; // 0=entries, 1-7=rooms, 8=jesus, 9=locked, 10=daily
                     return<div style={{flex:1,display:"flex",flexDirection:"column",animation:"pageContentReveal .5s .1s ease both"}}>
                       <div style={{display:"flex",alignItems:"center",marginBottom:10}}>
                         <button onClick={()=>{setJournalSection(null);setBookPage(1);setFlipDir("bwd");}} style={{background:"transparent",border:"none",cursor:"pointer",fontFamily:SERIF,fontSize:"0.74rem",color:"rgba(107,85,58,0.5)",padding:0}}>&#8249; Contents</button>
                       </div>
-                      {/* Reflection Rooms (pages 2-8, roomIdx 0-6) */}
-                      {roomIdx>=0&&roomIdx<REFLECTION_ROOMS.length&&(()=>{
-                        const room=REFLECTION_ROOMS[roomIdx],prog=roomProg(room),done=prog>=room.days.length,currentDay=Math.min(prog,room.days.length-1),dayData=room.days[currentDay];
+                      {/* Past Reflections (roomIdx 0, page 2) */}
+                      {roomIdx===0&&<>
+                        <h2 style={{fontFamily:DISPLAY,fontSize:"clamp(1.05rem,4vw,1.2rem)",fontWeight:700,color:"#3D2B18",margin:"0 0 10px",textAlign:"center"}}>Past Reflections</h2>
+                        <div style={{width:40,height:1,background:"linear-gradient(90deg,transparent,rgba(139,109,69,0.3),transparent)",margin:"0 auto 12px"}}/>
+                        {renderSectionHistory(
+                          entries.filter(e=>REFLECTION_ROOMS.some(r=>r.id===e.roomId)||e.roomId==="jesus"),
+                          "reflection",
+                          ()=>{setBookPage(3);setFlipDir("fwd");setHistoryMode("list");}
+                        )}
+                      </>}
+                      {/* Reflection Rooms (pages 3-9, roomIdx 1-7) */}
+                      {roomIdx>=1&&roomIdx<=REFLECTION_ROOMS.length&&(()=>{
+                        const room=REFLECTION_ROOMS[roomIdx-1],prog=roomProg(room),done=prog>=room.days.length,currentDay=Math.min(prog,room.days.length-1),dayData=room.days[currentDay];
                         return<>
                           <div style={{textAlign:"center",marginBottom:14}}>
                             <div style={{fontSize:"1.8rem",marginBottom:6}}>{room.emoji}</div>
@@ -4290,8 +4333,8 @@ export default function App(){
                           <button className="book-room" onClick={()=>{setBookOpen(false);enterRoom(room,"cabin");}} style={{alignSelf:"center",background:"linear-gradient(135deg,rgba(93,74,46,0.1),rgba(93,74,46,0.04))",border:"1px solid rgba(93,74,46,0.22)",color:"#5C4A2E",padding:"11px 32px",borderRadius:8,fontFamily:SERIF,fontStyle:"italic",fontSize:"0.84rem",cursor:"pointer",transition:"all .2s",letterSpacing:"0.02em"}}>{done?"Revisit this room":"Begin reflecting"}</button>
                         </>;
                       })()}
-                      {/* Jesus Questions (roomIdx 7) */}
-                      {roomIdx===REFLECTION_ROOMS.length&&(()=>{
+                      {/* Jesus Questions (roomIdx 8) */}
+                      {roomIdx===REFLECTION_ROOMS.length+1&&(()=>{
                         const jq=JESUS_QUESTIONS[Math.min(jesusIdx,JESUS_QUESTIONS.length-1)];
                         if(!jq) return null;
                         return<>
@@ -4308,8 +4351,8 @@ export default function App(){
                         <div style={{flex:1}}/>
                         <button className="book-room" onClick={()=>{setBookOpen(false);setScreen("jesus");}} style={{alignSelf:"center",background:"linear-gradient(135deg,rgba(93,74,46,0.1),rgba(93,74,46,0.04))",border:"1px solid rgba(93,74,46,0.22)",color:"#5C4A2E",padding:"11px 32px",borderRadius:8,fontFamily:SERIF,fontStyle:"italic",fontSize:"0.84rem",cursor:"pointer",transition:"all .2s"}}>Open Scripture questions</button>
                       </>;})()}
-                      {/* Locked Room (roomIdx 8) */}
-                      {roomIdx===REFLECTION_ROOMS.length+1&&(()=>{
+                      {/* Locked Room (roomIdx 9) */}
+                      {roomIdx===REFLECTION_ROOMS.length+2&&(()=>{
                         const unlocked=streak>=7;
                         return<div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center"}}>
                           <div style={{fontSize:"2rem",marginBottom:12}}>{unlocked?"🗝️":"🔒"}</div>
@@ -4325,8 +4368,8 @@ export default function App(){
                           </>}
                         </div>;
                       })()}
-                      {/* Daily Question (roomIdx 9) */}
-                      {roomIdx===REFLECTION_ROOMS.length+2&&(()=>{
+                      {/* Daily Question (roomIdx 10) */}
+                      {roomIdx===REFLECTION_ROOMS.length+3&&(()=>{
                         const dailyQ=VIRAL_QS[new Date().getDate()%VIRAL_QS.length];
                         return<>
                           <div style={{textAlign:"center",marginBottom:14}}>
@@ -4339,16 +4382,6 @@ export default function App(){
                           <button className="book-room" onClick={()=>{setBookOpen(false);setCardQ(dailyQ);setIsCustomCard(false);setScreen("cards");}} style={{alignSelf:"center",background:"transparent",border:"1px solid rgba(101,83,55,0.2)",color:"#5C4A2E",padding:"9px 22px",borderRadius:8,fontFamily:SERIF,fontStyle:"italic",fontSize:"0.78rem",cursor:"pointer"}}>Make a card</button>
                         </>;
                       })()}
-                      {/* Past Entries (roomIdx 10) */}
-                      {roomIdx===REFLECTION_ROOMS.length+3&&<>
-                        <h2 style={{fontFamily:DISPLAY,fontSize:"clamp(1.05rem,4vw,1.2rem)",fontWeight:700,color:"#3D2B18",margin:"0 0 10px",textAlign:"center"}}>Past Reflections</h2>
-                        <div style={{width:40,height:1,background:"linear-gradient(90deg,transparent,rgba(139,109,69,0.3),transparent)",margin:"0 auto 12px"}}/>
-                        {renderSectionHistory(
-                          entries.filter(e=>REFLECTION_ROOMS.some(r=>r.id===e.roomId)||e.roomId==="jesus"),
-                          "reflection",
-                          ()=>{setBookPage(2);setFlipDir("bwd");setHistoryMode("list");}
-                        )}
-                      </>}
                       <div style={{textAlign:"center",fontFamily:SANS,fontSize:"0.6rem",color:"rgba(107,85,58,0.3)",letterSpacing:"0.1em",textTransform:"uppercase",marginTop:10}}>{bookPage+1} of {TOTAL_BOOK_PAGES}</div>
                     </div>;
                   })()}
@@ -4357,9 +4390,8 @@ export default function App(){
                 {/* ── SECTION: DREAM JOURNAL ── */}
                 {journalSection==="dreams"&&bookPage>=2&&(()=>{
                   const dreamPages=BOOK_CONTENT.dreams?.pages||[];
-                  const pgIdx=bookPage-2;
-                  const pg=dreamPages[pgIdx];
-                  if(!pg) return<div style={{flex:1,display:"flex",flexDirection:"column",animation:"pageContentReveal .5s .1s ease both"}}>
+                  /* Page 2: Dream History */
+                  if(bookPage===2) return<div style={{flex:1,display:"flex",flexDirection:"column",animation:"pageContentReveal .5s .1s ease both"}}>
                     <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
                       <button onClick={()=>{setJournalSection(null);setBookPage(1);setFlipDir("bwd");}} style={{background:"transparent",border:"none",cursor:"pointer",fontFamily:SERIF,fontSize:"0.74rem",color:"rgba(107,85,58,0.5)",padding:0}}>&#8249; Contents</button>
                     </div>
@@ -4368,9 +4400,13 @@ export default function App(){
                     {renderSectionHistory(
                       entries.filter(e=>e.roomId==="dreams"),
                       "dream",
-                      ()=>{setBookPage(2);setFlipDir("bwd");setBookText("");setHistoryMode("list");}
+                      ()=>{setBookPage(3);setFlipDir("fwd");setBookText("");setHistoryMode("list");}
                     )}
                   </div>;
+                  /* Pages 3+: Dream prompts */
+                  const pgIdx=bookPage-3;
+                  const pg=dreamPages[pgIdx];
+                  if(!pg) return null;
                   return<div style={{flex:1,display:"flex",flexDirection:"column",animation:"pageContentReveal .5s .1s ease both"}}>
                     <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
                       <button onClick={()=>{setJournalSection(null);setBookPage(1);setFlipDir("bwd");}} style={{background:"transparent",border:"none",cursor:"pointer",fontFamily:SERIF,fontSize:"0.74rem",color:"rgba(107,85,58,0.5)",padding:0}}>&#8249; Contents</button>
@@ -4399,8 +4435,19 @@ export default function App(){
                     <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
                       <button onClick={()=>{setJournalSection(null);setBookPage(1);setFlipDir("bwd");}} style={{background:"transparent",border:"none",cursor:"pointer",fontFamily:SERIF,fontSize:"0.74rem",color:"rgba(107,85,58,0.5)",padding:0}}>&#8249; Contents</button>
                     </div>
-                    {/* Page 2: Write a prayer */}
+                    {/* Page 2: Prayer history with garden status */}
                     {bookPage===2&&<>
+                      <h2 style={{fontFamily:DISPLAY,fontSize:"clamp(1.05rem,4vw,1.2rem)",fontWeight:700,color:"#3D2B18",margin:"0 0 10px",textAlign:"center"}}>Your Prayers</h2>
+                      <div style={{width:40,height:1,background:"linear-gradient(90deg,transparent,rgba(139,109,69,0.3),transparent)",margin:"0 auto 12px"}}/>
+                      {renderSectionHistory(
+                        prayerPosts.map(p=>({...p,words:wc(p.text||""),roomId:"prayers",prompt:p.tag||""})),
+                        "prayer",
+                        ()=>{setBookPage(3);setFlipDir("fwd");setBookText("");setHistoryMode("list");},
+                        true
+                      )}
+                    </>}
+                    {/* Page 3: Write a prayer */}
+                    {bookPage===3&&<>
                       <h2 style={{fontFamily:DISPLAY,fontSize:"clamp(1.1rem,4vw,1.3rem)",fontWeight:700,color:"#3D2B18",margin:"0 0 4px",textAlign:"center"}}>Write a Prayer</h2>
                       <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.78rem",color:"rgba(107,85,58,0.45)",textAlign:"center",margin:"4px 0 14px"}}>Each prayer waters a plant in your garden</p>
                       <div style={{width:40,height:1,background:"linear-gradient(90deg,transparent,rgba(139,109,69,0.3),transparent)",margin:"0 auto 14px"}}/>
@@ -4411,17 +4458,6 @@ export default function App(){
                         <span style={{fontSize:"0.7rem",color:"rgba(107,85,58,0.5)",fontFamily:SANS}}>{bookSaveMsg||`${wc(bookText)} words`}</span>
                         <button onClick={savePrayerJournalEntry} style={{background:"linear-gradient(135deg,#3D6B3D,#2E5A2E)",border:"none",color:"#E8F5E8",padding:"6px 18px",borderRadius:6,cursor:"pointer",fontSize:"0.76rem",fontFamily:SANS,fontWeight:600}}>Save & Water Garden</button>
                       </div>}
-                    </>}
-                    {/* Page 3: Prayer history with garden status */}
-                    {bookPage===3&&<>
-                      <h2 style={{fontFamily:DISPLAY,fontSize:"clamp(1.05rem,4vw,1.2rem)",fontWeight:700,color:"#3D2B18",margin:"0 0 10px",textAlign:"center"}}>Your Prayers</h2>
-                      <div style={{width:40,height:1,background:"linear-gradient(90deg,transparent,rgba(139,109,69,0.3),transparent)",margin:"0 auto 12px"}}/>
-                      {renderSectionHistory(
-                        prayerPosts.map(p=>({...p,words:wc(p.text||""),roomId:"prayers",prompt:p.tag||""})),
-                        "prayer",
-                        ()=>{setBookPage(2);setFlipDir("bwd");setBookText("");setHistoryMode("list");},
-                        true
-                      )}
                     </>}
                   </div>
                 </>}
@@ -6302,3 +6338,5 @@ export default function App(){
 
   return null;
 }
+
+export default function App(){return<ErrorBoundary><AppInner/></ErrorBoundary>;}
