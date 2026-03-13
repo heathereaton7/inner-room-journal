@@ -2924,7 +2924,7 @@ export default function App(){
       </button>
 
       {/* 2. STAIRS — wooden stairs on the RIGHT → downstairs kitchen */}
-      <button onClick={()=>transitionToKitchen()} style={{position:"absolute",right:"0%",top:"42%",width:"20%",height:"42%",zIndex:12,background:"transparent",border:"none",padding:0,cursor:"pointer",borderRadius:"8px",outline:"none",WebkitTapHighlightColor:"transparent"}}>
+      <button onClick={()=>transitionToKitchen()} style={{position:"absolute",right:"0%",top:"52%",width:"20%",height:"34%",zIndex:12,background:"transparent",border:"none",padding:0,cursor:"pointer",borderRadius:"8px",outline:"none",WebkitTapHighlightColor:"transparent"}}>
         {/* Pulse glow on staircase */}
         <div style={{position:"absolute",left:"15%",top:"20%",width:"70%",height:"50%",borderRadius:"45%",background:"radial-gradient(ellipse at 55% 50%,rgba(255,210,120,0.30) 0%,rgba(255,180,80,0.10) 45%,transparent 72%)",pointerEvents:"none",animation:"hotspotPulse 3s ease-in-out infinite"}}/>
         <div style={{position:"absolute",left:"25%",top:"28%",width:"50%",height:"38%",borderRadius:"50%",background:"radial-gradient(ellipse at 50% 50%,rgba(255,240,170,0.18) 0%,transparent 55%)",pointerEvents:"none",animation:"hotspotPulse 3.5s ease-in-out infinite",animationDelay:"0.7s"}}/>
