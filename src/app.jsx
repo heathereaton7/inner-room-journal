@@ -667,6 +667,163 @@ function RoomGlow({id}){
 ═══════════════════════════════════════════════════ */
 const KITCHEN_BG_IMAGE="/kitchen.png";
 const STOVE_BG_IMAGE="/stove.png";
+const MARKET_BG_IMAGE="/market.png";
+
+/* ═══════════════════════════════════════════════════
+   ImmersiveMarket — Parallax village market with lantern glow, fireflies, string light shimmer
+═══════════════════════════════════════════════════ */
+function ImmersiveMarket(){
+  const containerRef=useRef(null);
+  const canvasRef=useRef(null);
+  const offsetX=useRef(0);
+  const offsetY=useRef(0);
+  const targetX=useRef(0);
+  const targetY=useRef(0);
+  const dragStart=useRef(null);
+  const animFrame=useRef(null);
+  const particles=useRef([]);
+  const fireflies=useRef([]);
+  const time=useRef(0);
+  const imgRef=useRef(null);
+
+  const PARALLAX=20;
+  const SENSITIVITY=0.35;
+
+  // Initialize particles — warm dust motes + fireflies along the path edges
+  useEffect(()=>{
+    const pts=[];
+    for(let i=0;i<30;i++){
+      pts.push({
+        x:Math.random(),
+        y:Math.random(),
+        size:Math.random()*2+0.6,
+        speed:Math.random()*0.0002+0.0001,
+        drift:Math.random()*0.0003-0.00015,
+        opacity:Math.random()*0.3+0.08,
+        phase:Math.random()*Math.PI*2,
+        warmth:Math.random(),
+      });
+    }
+    particles.current=pts;
+    // Fireflies — along flower beds and ground edges
+    const ffs=[];
+    for(let i=0;i<22;i++){
+      const side=Math.random()>0.5;
+      ffs.push({
+        x:side?(0.02+Math.random()*0.22):(0.76+Math.random()*0.22),
+        y:0.55+Math.random()*0.42,
+        size:Math.random()*2+1.2,
+        sx:(Math.random()-0.5)*0.0003,
+        sy:(Math.random()-0.5)*0.0002,
+        phase:Math.random()*Math.PI*2,
+        blink:Math.random()*0.003+0.001,
+      });
+    }
+    fireflies.current=ffs;
+  },[]);
+
+  // Gyroscope
+  useEffect(()=>{
+    let active=true;
+    const handle=(e)=>{if(!active)return;targetX.current=Math.max(-1,Math.min(1,(e.gamma||0)/30))*PARALLAX;targetY.current=Math.max(-1,Math.min(1,((e.beta||0)-45)/30))*PARALLAX;};
+    if(typeof DeviceOrientationEvent!=="undefined"&&typeof DeviceOrientationEvent.requestPermission==="function"){
+      const req=()=>{DeviceOrientationEvent.requestPermission().then(r=>{if(r==="granted")window.addEventListener("deviceorientation",handle);}).catch(()=>{});window.removeEventListener("touchstart",req);};
+      window.addEventListener("touchstart",req,{once:true});
+    } else { window.addEventListener("deviceorientation",handle); }
+    return()=>{active=false;window.removeEventListener("deviceorientation",handle);};
+  },[]);
+
+  // Touch/mouse drag
+  useEffect(()=>{
+    const el=containerRef.current; if(!el) return;
+    const start=(x,y)=>{dragStart.current={x,y,ox:targetX.current,oy:targetY.current};};
+    const move=(x,y)=>{if(!dragStart.current)return;targetX.current=Math.max(-PARALLAX,Math.min(PARALLAX,dragStart.current.ox+(x-dragStart.current.x)*SENSITIVITY));targetY.current=Math.max(-PARALLAX,Math.min(PARALLAX,dragStart.current.oy+(y-dragStart.current.y)*SENSITIVITY));};
+    const end=()=>{dragStart.current=null;};
+    const ts=e=>{const t=e.touches[0];start(t.clientX,t.clientY);};
+    const tm=e=>{const t=e.touches[0];move(t.clientX,t.clientY);};
+    el.addEventListener("touchstart",ts,{passive:true});el.addEventListener("touchmove",tm,{passive:true});el.addEventListener("touchend",end);
+    el.addEventListener("mousedown",e=>start(e.clientX,e.clientY));
+    const mm=e=>move(e.clientX,e.clientY);
+    window.addEventListener("mousemove",mm);window.addEventListener("mouseup",end);
+    return()=>{el.removeEventListener("touchstart",ts);el.removeEventListener("touchmove",tm);el.removeEventListener("touchend",end);window.removeEventListener("mousemove",mm);window.removeEventListener("mouseup",end);};
+  },[]);
+
+  // Animation loop
+  useEffect(()=>{
+    const loop=()=>{
+      time.current+=16;
+      offsetX.current+=(targetX.current-offsetX.current)*0.08;
+      offsetY.current+=(targetY.current-offsetY.current)*0.08;
+      const bx=Math.sin(time.current*0.0004)*2.5;
+      const by=Math.cos(time.current*0.0003)*1.8;
+      if(imgRef.current) imgRef.current.style.transform=`translate(${-PARALLAX+offsetX.current+bx}px,${-PARALLAX+offsetY.current+by}px)`;
+      const cvs=canvasRef.current;
+      if(cvs){
+        const ctx=cvs.getContext("2d"),w=cvs.width,h=cvs.height;
+        ctx.clearRect(0,0,w,h);
+        // Warm floating dust motes
+        particles.current.forEach(p=>{
+          p.y-=p.speed;p.x+=p.drift+Math.sin(time.current*0.001+p.phase)*0.0001;
+          if(p.y<-0.05){p.y=1.05;p.x=Math.random();}
+          if(p.x<-0.05||p.x>1.05)p.x=Math.random();
+          const fl=0.7+0.3*Math.sin(time.current*0.002+p.phase);
+          const a=p.opacity*fl;
+          const px=p.x*w,py=p.y*h;
+          const r=255,g=Math.round(190+p.warmth*40),b=Math.round(80+p.warmth*60);
+          ctx.beginPath();ctx.arc(px,py,p.size,0,Math.PI*2);ctx.fillStyle=`rgba(${r},${g},${b},${a})`;ctx.fill();
+          if(p.size>1.5){ctx.beginPath();ctx.arc(px,py,p.size*3,0,Math.PI*2);ctx.fillStyle=`rgba(${r},${g},${b},${a*0.12})`;ctx.fill();}
+        });
+        // Fireflies along flower beds
+        fireflies.current.forEach(ff=>{
+          ff.x+=ff.sx+Math.sin(time.current*0.0005+ff.phase)*0.00012;
+          ff.y+=ff.sy+Math.cos(time.current*0.0007+ff.phase)*0.00008;
+          if(ff.x<0.01||ff.x>0.99)ff.sx*=-1;
+          if(ff.y<0.50||ff.y>0.98)ff.sy*=-1;
+          ff.x=Math.max(0.01,Math.min(0.99,ff.x));
+          ff.y=Math.max(0.50,Math.min(0.98,ff.y));
+          const blink=Math.sin(time.current*ff.blink+ff.phase);
+          const a=Math.max(0,blink*0.7+0.3)*0.55;
+          const px=ff.x*w,py=ff.y*h;
+          ctx.beginPath();ctx.arc(px,py,ff.size*7,0,Math.PI*2);ctx.fillStyle=`rgba(160,255,90,${a*0.08})`;ctx.fill();
+          ctx.beginPath();ctx.arc(px,py,ff.size*3.5,0,Math.PI*2);ctx.fillStyle=`rgba(180,255,100,${a*0.18})`;ctx.fill();
+          ctx.beginPath();ctx.arc(px,py,ff.size,0,Math.PI*2);ctx.fillStyle=`rgba(210,255,140,${a})`;ctx.fill();
+        });
+      }
+      animFrame.current=requestAnimationFrame(loop);
+    };
+    animFrame.current=requestAnimationFrame(loop);
+    return()=>{if(animFrame.current)cancelAnimationFrame(animFrame.current);};
+  },[]);
+
+  // Resize
+  useEffect(()=>{
+    const resize=()=>{const c=canvasRef.current;if(c){c.width=window.innerWidth;c.height=window.innerHeight;}};
+    resize();window.addEventListener("resize",resize);
+    return()=>window.removeEventListener("resize",resize);
+  },[]);
+
+  return(
+    <div ref={containerRef} style={{position:"absolute",inset:0,zIndex:0,overflow:"hidden",background:"#0A0810",cursor:"grab"}} onMouseDown={()=>{if(containerRef.current)containerRef.current.style.cursor="grabbing";}} onMouseUp={()=>{if(containerRef.current)containerRef.current.style.cursor="grab";}}>
+      <img ref={imgRef} src={MARKET_BG_IMAGE} alt="Market" style={{position:"absolute",top:0,left:0,width:`calc(100% + ${PARALLAX*2}px)`,height:`calc(100% + ${PARALLAX*2}px)`,objectFit:"cover",transform:`translate(${-PARALLAX}px,${-PARALLAX}px)`,willChange:"transform",userSelect:"none",WebkitUserDrag:"none",pointerEvents:"none"}} draggable={false}/>
+      {/* Warm lantern glow — left stalls */}
+      <div style={{position:"absolute",left:"2%",top:"25%",width:"22%",height:"30%",pointerEvents:"none",zIndex:1,borderRadius:"50%",background:"radial-gradient(circle,rgba(255,180,60,0.12) 0%,transparent 65%)",mixBlendMode:"screen",animation:"stoveFireGlow 3.5s ease-in-out infinite"}}/>
+      {/* Warm lantern glow — center stall */}
+      <div style={{position:"absolute",left:"34%",top:"22%",width:"32%",height:"28%",pointerEvents:"none",zIndex:1,borderRadius:"50%",background:"radial-gradient(ellipse at 50% 55%,rgba(255,190,70,0.10) 0%,transparent 60%)",mixBlendMode:"screen",animation:"stoveFireGlow 4s ease-in-out infinite",animationDelay:"0.8s"}}/>
+      {/* Warm lantern glow — right stalls */}
+      <div style={{position:"absolute",right:"2%",top:"25%",width:"22%",height:"30%",pointerEvents:"none",zIndex:1,borderRadius:"50%",background:"radial-gradient(circle,rgba(255,180,60,0.12) 0%,transparent 65%)",mixBlendMode:"screen",animation:"stoveFireGlow 3.8s ease-in-out infinite",animationDelay:"1.5s"}}/>
+      {/* String light shimmer across stalls */}
+      <div style={{position:"absolute",left:"5%",right:"5%",top:"18%",height:"8%",pointerEvents:"none",zIndex:1,background:"linear-gradient(90deg, transparent 0%, rgba(255,220,120,0.04) 15%, rgba(255,210,100,0.06) 30%, rgba(255,220,120,0.03) 45%, rgba(255,210,100,0.06) 60%, rgba(255,220,120,0.04) 75%, transparent 100%)",mixBlendMode:"screen",animation:"kitchenSteam 5s ease-in-out infinite"}}/>
+      {/* Path glow — warm light on cobblestones */}
+      <div style={{position:"absolute",left:"25%",top:"50%",width:"50%",height:"45%",pointerEvents:"none",zIndex:1,background:"radial-gradient(ellipse at 50% 30%,rgba(255,190,100,0.06) 0%,transparent 65%)",mixBlendMode:"screen"}}/>
+      {/* Particle canvas */}
+      <canvas ref={canvasRef} style={{position:"absolute",inset:0,pointerEvents:"none",zIndex:2}}/>
+      {/* Cinematic vignette */}
+      <div style={{position:"absolute",inset:0,pointerEvents:"none",zIndex:3,background:"radial-gradient(ellipse at center 45%, transparent 30%, rgba(10,8,16,0.60) 100%)"}}/>
+      {/* Top sky fade */}
+      <div style={{position:"absolute",top:0,left:0,right:0,height:"20%",pointerEvents:"none",zIndex:3,background:"linear-gradient(to bottom, rgba(10,8,16,0.25), transparent)"}}/>
+    </div>
+  );
+}
 
 function ImmersiveKitchen(){
   const containerRef=useRef(null);
@@ -4193,23 +4350,37 @@ export default function App(){
 
   if(screen==="market"){
     return(
-      <div style={{position:"fixed",inset:0,overflow:"hidden",fontFamily:SANS,background:"linear-gradient(160deg,#1A1408,#241E12)"}}>
+      <div style={{position:"fixed",inset:0,overflow:"hidden",fontFamily:SANS}}>
         <style>{GFONTS}{CSS}</style>
-        <div style={{position:"relative",zIndex:10,height:"100%",overflowY:"auto",WebkitOverflowScrolling:"touch"}}>
-          <div style={{maxWidth:720,margin:"0 auto",padding:"28px 22px 80px"}}>
-            <button onClick={()=>setScreen("map")} style={{background:"rgba(26,22,18,0.5)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",border:"1px solid rgba(201,169,110,0.15)",borderRadius:999,padding:"8px 20px",cursor:"pointer",color:"rgba(255,248,232,0.6)",fontFamily:SANS,fontSize:"0.78rem",marginBottom:28,transition:"all 0.2s",display:"inline-flex",alignItems:"center",gap:6}}>
-              Back to village
-            </button>
-            <div style={{textAlign:"center",marginBottom:32,animation:"fadeUp .6s ease both"}}>
-              <h1 style={{fontFamily:DISPLAY,fontSize:"2rem",fontWeight:700,color:B.goldL,margin:"0 0 8px",textShadow:"0 2px 12px rgba(0,0,0,0.5)"}}>The Market</h1>
-              <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"1rem",color:"rgba(255,248,232,0.45)",margin:"0 0 14px"}}>Trade, barter, and provision for your journey.</p>
-              <div style={{width:60,height:1,background:"rgba(201,169,110,0.3)",margin:"0 auto"}}/>
-            </div>
-            <div style={{background:"rgba(30,24,14,0.6)",border:"1px solid rgba(201,169,110,0.15)",borderRadius:16,padding:"40px 24px",textAlign:"center"}}>
-              <p style={{fontFamily:SERIF,fontStyle:"italic",color:"rgba(255,248,232,0.3)",fontSize:"0.9rem"}}>The merchants are preparing their stalls…</p>
-              <p style={{fontFamily:SANS,fontSize:"0.72rem",color:"rgba(255,248,232,0.2)",marginTop:8}}>Coming soon</p>
-            </div>
-          </div>
+        <ImmersiveMarket/>
+
+        {/* ── Back to village ── */}
+        <button onClick={()=>setScreen("map")} style={{position:"absolute",top:20,left:16,zIndex:14,background:"rgba(10,8,16,0.55)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",border:"1px solid rgba(201,169,110,0.15)",borderRadius:999,padding:"8px 20px",cursor:"pointer",color:"rgba(255,248,232,0.6)",fontFamily:SANS,fontSize:"0.78rem",transition:"all 0.2s",display:"inline-flex",alignItems:"center",gap:6,animation:"fadeUp .6s ease both"}}>
+          Back to village
+        </button>
+
+        {/* ── Market stall hotspots ── */}
+        {/* Harvest Market — left stall */}
+        <button style={{position:"absolute",left:"2%",top:"20%",width:"30%",height:"35%",zIndex:11,background:"transparent",border:"none",padding:0,cursor:"pointer",outline:"none",WebkitTapHighlightColor:"transparent"}}>
+          <div style={{position:"absolute",left:"25%",top:"15%",width:"55%",height:"50%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,210,120,0.28) 0%,rgba(255,180,80,0.10) 40%,transparent 72%)",pointerEvents:"none",animation:"hotspotPulse 3s ease-in-out infinite"}}/>
+          <div style={{position:"absolute",left:"32%",top:"22%",width:"40%",height:"38%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,240,170,0.18) 0%,transparent 55%)",pointerEvents:"none",animation:"hotspotPulse 3.5s ease-in-out infinite",animationDelay:"0.6s"}}/>
+        </button>
+
+        {/* General Shop — center stall */}
+        <button style={{position:"absolute",left:"33%",top:"18%",width:"34%",height:"38%",zIndex:11,background:"transparent",border:"none",padding:0,cursor:"pointer",outline:"none",WebkitTapHighlightColor:"transparent"}}>
+          <div style={{position:"absolute",left:"22%",top:"18%",width:"56%",height:"48%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,215,130,0.28) 0%,rgba(255,190,90,0.10) 40%,transparent 72%)",pointerEvents:"none",animation:"hotspotPulse 2.8s ease-in-out infinite",animationDelay:"0.4s"}}/>
+          <div style={{position:"absolute",left:"30%",top:"25%",width:"40%",height:"36%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,245,180,0.18) 0%,transparent 55%)",pointerEvents:"none",animation:"hotspotPulse 3.3s ease-in-out infinite",animationDelay:"1s"}}/>
+        </button>
+
+        {/* Barter Post — right stall */}
+        <button style={{position:"absolute",right:"2%",top:"20%",width:"30%",height:"35%",zIndex:11,background:"transparent",border:"none",padding:0,cursor:"pointer",outline:"none",WebkitTapHighlightColor:"transparent"}}>
+          <div style={{position:"absolute",left:"20%",top:"15%",width:"55%",height:"50%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,210,120,0.28) 0%,rgba(255,180,80,0.10) 40%,transparent 72%)",pointerEvents:"none",animation:"hotspotPulse 3.2s ease-in-out infinite",animationDelay:"0.8s"}}/>
+          <div style={{position:"absolute",left:"28%",top:"22%",width:"40%",height:"38%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,240,170,0.18) 0%,transparent 55%)",pointerEvents:"none",animation:"hotspotPulse 3.6s ease-in-out infinite",animationDelay:"1.4s"}}/>
+        </button>
+
+        {/* ── Coming soon overlay — bottom of path ── */}
+        <div style={{position:"absolute",bottom:24,left:"50%",transform:"translateX(-50%)",zIndex:14,background:"rgba(10,8,16,0.55)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",border:"1px solid rgba(201,169,110,0.15)",borderRadius:14,padding:"12px 28px",textAlign:"center",animation:"fadeUp .8s .4s ease both"}}>
+          <p style={{fontFamily:SERIF,fontStyle:"italic",color:"rgba(255,248,232,0.4)",fontSize:"0.85rem",margin:0}}>The merchants are preparing their stalls...</p>
         </div>
       </div>
     );
