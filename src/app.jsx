@@ -668,6 +668,7 @@ function RoomGlow({id}){
 const KITCHEN_BG_IMAGE="/kitchen.png";
 const STOVE_BG_IMAGE="/stove.png";
 const MARKET_BG_IMAGE="/market.png";
+const KITCHEN_WINDOW_BG_IMAGE="/kitchen-window.png";
 
 /* ═══════════════════════════════════════════════════
    ImmersiveMarket — Parallax village market with lantern glow, fireflies, string light shimmer
@@ -1137,6 +1138,159 @@ function ImmersiveStove(){
       <canvas ref={canvasRef} style={{position:"absolute",inset:0,pointerEvents:"none",zIndex:2}}/>
       {/* Warm vignette */}
       <div style={{position:"absolute",inset:0,pointerEvents:"none",zIndex:3,background:"radial-gradient(ellipse at center 50%, transparent 20%, rgba(8,4,2,0.55) 100%)"}}/>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════
+   IMMERSIVE KITCHEN WINDOW — Calm waterfall prayer spot
+   Porch overlooking waterfall at twilight. Rocking chair,
+   lantern, coffee mug, cozy blanket. Guided prayer view.
+═══════════════════════════════════════════════════ */
+function ImmersiveKitchenWindow(){
+  const containerRef=useRef(null);
+  const canvasRef=useRef(null);
+  const offsetX=useRef(0);
+  const offsetY=useRef(0);
+  const targetX=useRef(0);
+  const targetY=useRef(0);
+  const dragStart=useRef(null);
+  const animFrame=useRef(null);
+  const particles=useRef([]);
+  const time=useRef(0);
+  const imgRef=useRef(null);
+
+  const PARALLAX=16;
+  const SENSITIVITY=0.35;
+
+  useEffect(()=>{
+    // Gentle mist particles from waterfall
+    const pts=[];
+    for(let i=0;i<25;i++){
+      pts.push({
+        x:0.20+Math.random()*0.60,
+        y:0.10+Math.random()*0.50,
+        size:Math.random()*2.0+0.8,
+        speed:Math.random()*0.00015+0.00005,
+        drift:Math.random()*0.0002-0.0001,
+        opacity:Math.random()*0.18+0.04,
+        phase:Math.random()*Math.PI*2,
+        isMist:Math.random()>0.4,
+      });
+    }
+    // Firefly-like warm lantern sparks near chair area
+    for(let i=0;i<12;i++){
+      pts.push({
+        x:0.05+Math.random()*0.45,
+        y:0.50+Math.random()*0.45,
+        size:Math.random()*1.4+0.6,
+        speed:(Math.random()-0.5)*0.00008,
+        drift:(Math.random()-0.5)*0.00012,
+        opacity:Math.random()*0.5+0.15,
+        phase:Math.random()*Math.PI*2,
+        isMist:false,
+        isFirefly:true,
+        sx:(Math.random()-0.5)*0.00015,
+        sy:(Math.random()-0.5)*0.0001,
+        blink:Math.random()*0.003+0.001,
+      });
+    }
+    particles.current=pts;
+  },[]);
+
+  useEffect(()=>{
+    let active=true;
+    const handle=(e)=>{if(!active)return;targetX.current=Math.max(-1,Math.min(1,(e.gamma||0)/30))*PARALLAX;targetY.current=Math.max(-1,Math.min(1,((e.beta||0)-45)/30))*PARALLAX;};
+    if(typeof DeviceOrientationEvent!=="undefined"&&typeof DeviceOrientationEvent.requestPermission==="function"){
+      const req=()=>{DeviceOrientationEvent.requestPermission().then(r=>{if(r==="granted")window.addEventListener("deviceorientation",handle);}).catch(()=>{});window.removeEventListener("touchstart",req);};
+      window.addEventListener("touchstart",req,{once:true});
+    } else { window.addEventListener("deviceorientation",handle); }
+    return()=>{active=false;window.removeEventListener("deviceorientation",handle);};
+  },[]);
+
+  useEffect(()=>{
+    const el=containerRef.current; if(!el) return;
+    const start=(x,y)=>{dragStart.current={x,y,ox:targetX.current,oy:targetY.current};};
+    const move=(x,y)=>{if(!dragStart.current)return;targetX.current=Math.max(-PARALLAX,Math.min(PARALLAX,dragStart.current.ox+(x-dragStart.current.x)*SENSITIVITY));targetY.current=Math.max(-PARALLAX,Math.min(PARALLAX,dragStart.current.oy+(y-dragStart.current.y)*SENSITIVITY));};
+    const end=()=>{dragStart.current=null;};
+    const ts=e=>{const t=e.touches[0];start(t.clientX,t.clientY);};
+    const tm=e=>{const t=e.touches[0];move(t.clientX,t.clientY);};
+    el.addEventListener("touchstart",ts,{passive:true});el.addEventListener("touchmove",tm,{passive:true});el.addEventListener("touchend",end);
+    el.addEventListener("mousedown",e=>start(e.clientX,e.clientY));
+    const mm=e=>move(e.clientX,e.clientY);
+    window.addEventListener("mousemove",mm);window.addEventListener("mouseup",end);
+    return()=>{el.removeEventListener("touchstart",ts);el.removeEventListener("touchmove",tm);el.removeEventListener("touchend",end);window.removeEventListener("mousemove",mm);window.removeEventListener("mouseup",end);};
+  },[]);
+
+  useEffect(()=>{
+    const loop=()=>{
+      time.current+=16;
+      offsetX.current+=(targetX.current-offsetX.current)*0.06;
+      offsetY.current+=(targetY.current-offsetY.current)*0.06;
+      const bx=Math.sin(time.current*0.0003)*1.2;
+      const by=Math.cos(time.current*0.00025)*0.8;
+      if(imgRef.current) imgRef.current.style.transform=`translate(${-PARALLAX+offsetX.current+bx}px,${-PARALLAX+offsetY.current+by}px)`;
+      const cvs=canvasRef.current;
+      if(cvs){
+        const ctx=cvs.getContext("2d"),w=cvs.width,h=cvs.height;
+        ctx.clearRect(0,0,w,h);
+        particles.current.forEach(p=>{
+          if(p.isFirefly){
+            p.x+=p.sx+Math.sin(time.current*0.0004+p.phase)*0.00005;
+            p.y+=p.sy+Math.cos(time.current*0.0005+p.phase)*0.00004;
+            if(p.x<0.03||p.x>0.50)p.sx*=-1;
+            if(p.y<0.45||p.y>0.95)p.sy*=-1;
+            p.x=Math.max(0.03,Math.min(0.50,p.x));
+            p.y=Math.max(0.45,Math.min(0.95,p.y));
+            const blink=Math.sin(time.current*p.blink+p.phase);
+            const a=Math.max(0,blink*0.6+0.4)*p.opacity;
+            const px=p.x*w,py=p.y*h;
+            ctx.beginPath();ctx.arc(px,py,p.size*4,0,Math.PI*2);ctx.fillStyle=`rgba(255,200,100,${a*0.06})`;ctx.fill();
+            ctx.beginPath();ctx.arc(px,py,p.size*2,0,Math.PI*2);ctx.fillStyle=`rgba(255,210,120,${a*0.15})`;ctx.fill();
+            ctx.beginPath();ctx.arc(px,py,p.size*0.7,0,Math.PI*2);ctx.fillStyle=`rgba(255,230,160,${a*0.8})`;ctx.fill();
+          } else {
+            // Mist particles drifting from waterfall
+            p.y-=p.speed; p.x+=p.drift+Math.sin(time.current*0.0007+p.phase)*0.00006;
+            if(p.y<-0.05){p.y=0.55+Math.random()*0.1;p.x=0.25+Math.random()*0.50;}
+            const fl=0.6+0.4*Math.sin(time.current*0.0015+p.phase);
+            const a=p.opacity*fl;
+            const px=p.x*w,py=p.y*h;
+            ctx.beginPath();ctx.arc(px,py,p.size,0,Math.PI*2);
+            ctx.fillStyle=`rgba(200,220,240,${a})`;ctx.fill();
+            if(p.size>1.2){ctx.beginPath();ctx.arc(px,py,p.size*3,0,Math.PI*2);ctx.fillStyle=`rgba(200,220,240,${a*0.08})`;ctx.fill();}
+          }
+        });
+      }
+      animFrame.current=requestAnimationFrame(loop);
+    };
+    animFrame.current=requestAnimationFrame(loop);
+    return()=>{if(animFrame.current)cancelAnimationFrame(animFrame.current);};
+  },[]);
+
+  useEffect(()=>{
+    const resize=()=>{const c=canvasRef.current;if(c){c.width=window.innerWidth;c.height=window.innerHeight;}};
+    resize();window.addEventListener("resize",resize);
+    return()=>window.removeEventListener("resize",resize);
+  },[]);
+
+  return(
+    <div ref={containerRef} style={{position:"absolute",inset:0,zIndex:0,overflow:"hidden",background:"#0E0A08",cursor:"grab"}} onMouseDown={()=>{if(containerRef.current)containerRef.current.style.cursor="grabbing";}} onMouseUp={()=>{if(containerRef.current)containerRef.current.style.cursor="grab";}}>
+      <img ref={imgRef} src={KITCHEN_WINDOW_BG_IMAGE} alt="Kitchen Window" style={{position:"absolute",top:0,left:0,width:`calc(100% + ${PARALLAX*2}px)`,height:`calc(100% + ${PARALLAX*2}px)`,objectFit:"cover",transform:`translate(${-PARALLAX}px,${-PARALLAX}px)`,willChange:"transform",userSelect:"none",WebkitUserDrag:"none",pointerEvents:"none"}} draggable={false}/>
+      {/* Waterfall mist glow — soft blue-white shimmer in center */}
+      <div style={{position:"absolute",left:"25%",top:"8%",width:"50%",height:"45%",pointerEvents:"none",zIndex:1,borderRadius:"40%",background:"radial-gradient(ellipse at 50% 55%,rgba(200,220,240,0.08) 0%,rgba(180,200,230,0.03) 50%,transparent 75%)",mixBlendMode:"screen",animation:"waterShimmer 4s ease-in-out infinite"}}/>
+      {/* Warm lantern glow on the left side table */}
+      <div style={{position:"absolute",left:"5%",top:"45%",width:"25%",height:"30%",pointerEvents:"none",zIndex:1,borderRadius:"50%",background:"radial-gradient(ellipse at 55% 40%,rgba(255,170,60,0.12) 0%,rgba(255,140,40,0.04) 50%,transparent 72%)",mixBlendMode:"screen",animation:"kitchenFireGlow 3.5s ease-in-out infinite"}}/>
+      {/* Candle flame glow — tall candle on table */}
+      <div style={{position:"absolute",left:"15%",top:"30%",width:"10%",height:"15%",pointerEvents:"none",zIndex:1,borderRadius:"50%",background:"radial-gradient(circle,rgba(255,200,80,0.15) 0%,rgba(255,160,40,0.05) 50%,transparent 70%)",mixBlendMode:"screen",animation:"kitchenFireGlow 2.5s ease-in-out infinite",animationDelay:"0.5s"}}/>
+      {/* Sunset sky warmth */}
+      <div style={{position:"absolute",left:"15%",top:"0%",width:"70%",height:"20%",pointerEvents:"none",zIndex:1,background:"radial-gradient(ellipse at 50% 80%,rgba(255,180,120,0.06) 0%,transparent 70%)",mixBlendMode:"screen"}}/>
+      {/* Soft mist layer across waterfall */}
+      <div style={{position:"absolute",left:"20%",top:"20%",width:"55%",height:"35%",pointerEvents:"none",zIndex:1,borderRadius:"50%",background:"radial-gradient(ellipse at 50% 60%,rgba(220,230,240,0.05) 0%,transparent 65%)",mixBlendMode:"screen",animation:"mistDrift 8s ease-in-out infinite"}}/>
+      <canvas ref={canvasRef} style={{position:"absolute",inset:0,pointerEvents:"none",zIndex:2}}/>
+      {/* Cinematic vignette — darker/moodier for prayer space */}
+      <div style={{position:"absolute",inset:0,pointerEvents:"none",zIndex:3,background:"radial-gradient(ellipse at center 45%, transparent 20%, rgba(10,8,6,0.60) 100%)"}}/>
+      <div style={{position:"absolute",top:0,left:0,right:0,height:"12%",pointerEvents:"none",zIndex:3,background:"linear-gradient(to bottom, rgba(10,8,6,0.25), transparent)"}}/>
+      <div style={{position:"absolute",bottom:0,left:0,right:0,height:"15%",pointerEvents:"none",zIndex:3,background:"linear-gradient(to top, rgba(10,8,6,0.30), transparent)"}}/>
     </div>
   );
 }
@@ -1783,6 +1937,7 @@ export default function App(){
   const [spaceTransit,  setSpaceTransit]  = useState(false);
   const [transitDir,    setTransitDir]    = useState(null);
   const [stoveZoom,     setStoveZoom]     = useState(false);
+  const [windowZoom,    setWindowZoom]    = useState(false);
   const [bookPage,      setBookPage]      = useState(0);
   const [flipDir,       setFlipDir]       = useState(null);
   const touchRef = useRef({startX:0,startY:0});
@@ -2227,6 +2382,10 @@ export default function App(){
     setStoveZoom(true);
     setTimeout(()=>{setScreen("stove");setStoveZoom(false);},1200);
   }
+  function transitionToWindow(){
+    setWindowZoom(true);
+    setTimeout(()=>{setScreen("kitchen-window");setWindowZoom(false);},1200);
+  }
 
   // ── SCENE NAVIGATION ──
   const SCENES = [
@@ -2505,6 +2664,10 @@ export default function App(){
     @keyframes stoveGlowOuter{0%,100%{opacity:0.25;transform:scale(1)}50%{opacity:0.6;transform:scale(1.06)}}
     @keyframes walkToStoveZoom{0%{transform:scale(1);filter:brightness(1)}40%{transform:scale(1.8);filter:brightness(1.1)}75%{transform:scale(3);filter:brightness(0.5)}100%{transform:scale(4.5);filter:brightness(0)}}
     @keyframes walkToStoveVignette{0%{opacity:0}60%{opacity:0}100%{opacity:1}}
+    @keyframes walkToWindowZoom{0%{transform:scale(1);filter:brightness(1)}40%{transform:scale(1.6);filter:brightness(1.15)}75%{transform:scale(2.8);filter:brightness(0.45)}100%{transform:scale(4);filter:brightness(0)}}
+    @keyframes walkToWindowVignette{0%{opacity:0}60%{opacity:0}100%{opacity:1}}
+    @keyframes waterShimmer{0%,100%{opacity:0.12;transform:scaleY(1)}50%{opacity:0.25;transform:scaleY(1.02)}}
+    @keyframes mistDrift{0%{transform:translateX(-5%) translateY(2%);opacity:0.15}50%{transform:translateX(3%) translateY(-1%);opacity:0.25}100%{transform:translateX(-5%) translateY(2%);opacity:0.15}}
     @keyframes shelfBookHover{0%,100%{transform:translateX(0)}50%{transform:translateX(-4px)}}
     @keyframes windowPanelSlide{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
     @keyframes windowPanelSlideLeft{from{transform:translateX(-100%);opacity:0}to{transform:translateX(0);opacity:1}}
@@ -4309,6 +4472,12 @@ export default function App(){
             <div style={{position:"absolute",left:"-10%",top:"10%",width:"80%",height:"80%",borderRadius:"30%",background:"linear-gradient(to top, rgba(255,180,70,0.04) 0%, rgba(255,200,100,0.07) 40%, rgba(255,180,70,0.03) 70%, transparent 100%)",pointerEvents:"none",animation:"kitchenFireGlow 4s ease-in-out infinite",animationDelay:"0.5s"}}/>
           </button>
 
+          {/* ── WINDOW HOTSPOT — waterfall window, BACK CENTER → prayer spot ── */}
+          <button onClick={()=>transitionToWindow()} style={{position:"absolute",left:"34%",top:"8%",width:"32%",height:"32%",pointerEvents:"auto",zIndex:11,background:"transparent",border:"none",padding:0,cursor:"pointer",outline:"none",WebkitTapHighlightColor:"transparent"}}>
+            <div style={{position:"absolute",left:"30%",top:"20%",width:"40%",height:"70%",borderRadius:"50%",background:"radial-gradient(circle,rgba(180,220,255,0.30) 0%,rgba(160,200,240,0.12) 40%,transparent 72%)",pointerEvents:"none",animation:"hotspotPulse 2.6s ease-in-out infinite"}}/>
+            <div style={{position:"absolute",left:"35%",top:"30%",width:"30%",height:"50%",borderRadius:"50%",background:"radial-gradient(circle,rgba(200,235,255,0.22) 0%,transparent 55%)",pointerEvents:"none",animation:"hotspotPulse 3.1s ease-in-out infinite",animationDelay:"0.5s"}}/>
+          </button>
+
         </div>
         {/* Walk-to-stove zoom animation — zooms toward left-center stove area */}
         {stoveZoom&&(
@@ -4319,6 +4488,17 @@ export default function App(){
               <div style={{position:"absolute",left:"0%",top:"46%",width:"16%",height:"28%",borderRadius:"50%",background:"radial-gradient(ellipse at 55% 60%,rgba(255,140,40,0.30) 0%,rgba(255,100,20,0.10) 40%,transparent 70%)",mixBlendMode:"screen"}}/>
             </div>
             <div style={{position:"fixed",inset:0,background:"#080402",animation:"walkToStoveVignette 1.2s cubic-bezier(0.4,0,0.2,1) forwards"}}/>
+          </div>
+        )}
+        {/* Walk-to-window zoom animation — zooms toward back-center window */}
+        {windowZoom&&(
+          <div style={{position:"fixed",inset:0,zIndex:9998,overflow:"hidden",pointerEvents:"all"}}>
+            <div style={{position:"absolute",inset:0,transformOrigin:"50% 22%",animation:"walkToWindowZoom 1.2s cubic-bezier(0.4,0,0.2,1) forwards"}}>
+              <img src={KITCHEN_BG_IMAGE} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}} draggable={false}/>
+              {/* Window light intensifies during zoom */}
+              <div style={{position:"absolute",left:"34%",top:"8%",width:"32%",height:"32%",borderRadius:"30%",background:"radial-gradient(ellipse at 50% 50%,rgba(180,220,255,0.25) 0%,rgba(140,190,240,0.08) 45%,transparent 70%)",mixBlendMode:"screen"}}/>
+            </div>
+            <div style={{position:"fixed",inset:0,background:"#080604",animation:"walkToWindowVignette 1.2s cubic-bezier(0.4,0,0.2,1) forwards"}}/>
           </div>
         )}
         {spaceTransit&&<div style={{position:"fixed",inset:0,zIndex:9999,background:"#0A0806",animation:"spaceFadeIn .6s ease both",pointerEvents:"all"}}/>}
@@ -4341,6 +4521,29 @@ export default function App(){
           {/* Cooking area — centered text hint */}
           <div style={{position:"absolute",bottom:"10%",left:"50%",transform:"translateX(-50%)",pointerEvents:"none",textAlign:"center",animation:"fadeUp .8s ease both .3s",opacity:0}}>
             <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"1rem",color:"rgba(255,240,210,0.35)",textShadow:"0 2px 8px rgba(0,0,0,0.8)",margin:0}}>The fire crackles softly...</p>
+          </div>
+        </div>
+        {spaceTransit&&<div style={{position:"fixed",inset:0,zIndex:9999,background:"#0A0806",animation:"spaceFadeIn .6s ease both",pointerEvents:"all"}}/>}
+      </div>
+    );
+  }
+
+  /* ══ KITCHEN WINDOW — Calm waterfall prayer spot ══════════════════════ */
+  if(screen==="kitchen-window"){
+    return(
+      <div style={{position:"fixed",inset:0,overflow:"hidden",fontFamily:SANS,background:"#0E0A08"}}>
+        <style>{GFONTS}{CSS}</style>
+        <ImmersiveKitchenWindow/>
+        {/* UI layer */}
+        <div style={{position:"relative",zIndex:10,height:"100%",pointerEvents:"none"}}>
+          {/* Back to kitchen button */}
+          <button onClick={()=>{setSpaceTransit(true);setTransitDir("toKitchen");setTimeout(()=>{setScreen("kitchen");setSpaceTransit(false);setTransitDir(null);},700);}} style={{position:"absolute",top:28,left:22,pointerEvents:"auto",background:"rgba(10,8,6,0.50)",backdropFilter:"blur(14px)",WebkitBackdropFilter:"blur(14px)",border:"1px solid rgba(180,200,220,0.10)",borderRadius:999,padding:"8px 20px",cursor:"pointer",color:"rgba(220,230,240,0.55)",fontFamily:SANS,fontSize:"0.78rem",transition:"all 0.3s",display:"inline-flex",alignItems:"center",gap:6,zIndex:15}}>
+            Back to kitchen
+          </button>
+          {/* Prayer spot — centered atmospheric text */}
+          <div style={{position:"absolute",bottom:"12%",left:"50%",transform:"translateX(-50%)",pointerEvents:"none",textAlign:"center",animation:"fadeUp 1s ease both .5s",opacity:0,width:"80%",maxWidth:360}}>
+            <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"1.1rem",color:"rgba(220,230,240,0.35)",textShadow:"0 2px 12px rgba(0,0,0,0.9)",margin:0,lineHeight:1.6}}>Be still, and know...</p>
+            <p style={{fontFamily:SANS,fontSize:"0.72rem",color:"rgba(200,210,220,0.22)",marginTop:10,letterSpacing:"0.04em"}}>guided prayer coming soon</p>
           </div>
         </div>
         {spaceTransit&&<div style={{position:"fixed",inset:0,zIndex:9999,background:"#0A0806",animation:"spaceFadeIn .6s ease both",pointerEvents:"all"}}/>}
