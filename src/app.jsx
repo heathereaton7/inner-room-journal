@@ -1996,13 +1996,13 @@ function ImmersiveGarden(){
 ═══════════════════════════════════════════════════ */
 const MAP_BG_IMAGE="/newmap.png";
 
-// Hotspot positions mapped to label locations in newmap.png
-// Positions are % based for responsive layout
+// Hotspot positions mapped to BUILDING locations in newmap.png
+// Each hotspot covers the actual building footprint, not just the text label
 const MAP_LOCATIONS=[
-  {id:"cabin",   label:"Cabin",          left:"33%", top:"82%", desc:"Your quiet place"},
-  {id:"garden",  label:"Prayer Garden",  left:"22%", top:"33%", desc:"Grow your prayers"},
-  {id:"market",  label:"Market",         left:"58%", top:"50%", desc:"Trade & provision"},
-  {id:"upper-room",label:"Upper Room",   left:"65%", top:"13%", desc:"Worship & encounter"},
+  {id:"cabin",   label:"Cabin",         left:"28%", top:"78%", w:"42%", h:"22%", desc:"Your quiet place"},
+  {id:"garden",  label:"Prayer Garden", left:"16%", top:"36%", w:"26%", h:"16%", desc:"Grow your prayers"},
+  {id:"market",  label:"Market",        left:"55%", top:"46%", w:"38%", h:"16%", desc:"Trade & provision"},
+  {id:"upper-room",label:"Upper Room",  left:"66%", top:"12%", w:"30%", h:"16%", desc:"Worship & encounter"},
 ];
 
 function ImmersiveMap(){
@@ -2146,11 +2146,15 @@ function ImmersiveMap(){
   return(
     <div ref={containerRef} style={{position:"absolute",inset:0,zIndex:0,overflow:"hidden",background:"#06080A",cursor:"grab"}} onMouseDown={()=>{if(containerRef.current)containerRef.current.style.cursor="grabbing";}} onMouseUp={()=>{if(containerRef.current)containerRef.current.style.cursor="grab";}}>
       <img ref={imgRef} src={MAP_BG_IMAGE} alt="World Map" style={{position:"absolute",top:0,left:0,width:`calc(100% + ${PARALLAX*2}px)`,height:`calc(100% + ${PARALLAX*2}px)`,objectFit:"cover",transform:`translate(${-PARALLAX}px,${-PARALLAX}px)`,willChange:"transform",userSelect:"none",WebkitUserDrag:"none",pointerEvents:"none"}} draggable={false}/>
-      {/* Warm lantern glows scattered across the village */}
-      <div style={{position:"absolute",left:"26%",top:"76%",width:"18%",height:"14%",pointerEvents:"none",zIndex:1,borderRadius:"50%",background:"radial-gradient(circle,rgba(255,170,50,0.10) 0%, transparent 70%)",mixBlendMode:"screen",animation:"candleGlowPulse 4.2s ease-in-out infinite"}}/>
-      <div style={{position:"absolute",left:"50%",top:"44%",width:"22%",height:"16%",pointerEvents:"none",zIndex:1,borderRadius:"50%",background:"radial-gradient(circle,rgba(255,180,60,0.12) 0%, transparent 65%)",mixBlendMode:"screen",animation:"candleGlowPulse 3.8s ease-in-out infinite 1.2s"}}/>
-      <div style={{position:"absolute",left:"58%",top:"8%",width:"16%",height:"12%",pointerEvents:"none",zIndex:1,borderRadius:"50%",background:"radial-gradient(circle,rgba(255,200,100,0.08) 0%, transparent 70%)",mixBlendMode:"screen",animation:"candleGlowPulse 5s ease-in-out infinite 0.6s"}}/>
-      <div style={{position:"absolute",left:"14%",top:"28%",width:"16%",height:"14%",pointerEvents:"none",zIndex:1,borderRadius:"50%",background:"radial-gradient(circle,rgba(200,255,200,0.06) 0%, transparent 70%)",mixBlendMode:"screen",animation:"candleGlowPulse 4.6s ease-in-out infinite 0.8s"}}/>
+      {/* Warm lantern glows centered on each building */}
+      {/* Cabin glow */}
+      <div style={{position:"absolute",left:"18%",top:"70%",width:"24%",height:"18%",pointerEvents:"none",zIndex:1,borderRadius:"50%",background:"radial-gradient(circle,rgba(255,170,50,0.10) 0%, transparent 70%)",mixBlendMode:"screen",animation:"candleGlowPulse 4.2s ease-in-out infinite"}}/>
+      {/* Market glow */}
+      <div style={{position:"absolute",left:"44%",top:"40%",width:"26%",height:"18%",pointerEvents:"none",zIndex:1,borderRadius:"50%",background:"radial-gradient(circle,rgba(255,180,60,0.12) 0%, transparent 65%)",mixBlendMode:"screen",animation:"candleGlowPulse 3.8s ease-in-out infinite 1.2s"}}/>
+      {/* Upper Room glow */}
+      <div style={{position:"absolute",left:"56%",top:"5%",width:"22%",height:"16%",pointerEvents:"none",zIndex:1,borderRadius:"50%",background:"radial-gradient(circle,rgba(255,200,100,0.08) 0%, transparent 70%)",mixBlendMode:"screen",animation:"candleGlowPulse 5s ease-in-out infinite 0.6s"}}/>
+      {/* Prayer Garden glow */}
+      <div style={{position:"absolute",left:"8%",top:"28%",width:"20%",height:"16%",pointerEvents:"none",zIndex:1,borderRadius:"50%",background:"radial-gradient(circle,rgba(200,255,200,0.06) 0%, transparent 70%)",mixBlendMode:"screen",animation:"candleGlowPulse 4.6s ease-in-out infinite 0.8s"}}/>
       {/* Path glow — warm light along the winding paths */}
       <div style={{position:"absolute",left:"25%",top:"35%",width:"50%",height:"45%",pointerEvents:"none",zIndex:1,background:"radial-gradient(ellipse at 50% 55%,rgba(255,190,90,0.03) 0%, transparent 55%)",mixBlendMode:"screen"}}/>
       {/* Starry sky shimmer at top */}
@@ -4876,15 +4880,15 @@ export default function App(){
           <button key={loc.id} className="map-hotspot" onClick={()=>mapGoTo(loc.id)} style={{
             position:"absolute",left:loc.left,top:loc.top,
             transform:"translate(-50%,-50%)",
-            width:"min(28vw,130px)",height:"min(28vw,130px)",
-            borderRadius:"50%",border:"none",zIndex:10,
+            width:loc.w,height:loc.h,
+            borderRadius:16,border:"none",zIndex:10,
             background:"rgba(255,210,120,0.03)",cursor:"pointer",
             animation:`mapHotspotFadeIn .5s ${idx*0.12}s ease both, mapHotspotPulse ${3+idx*0.4}s ${idx*0.5}s ease-in-out infinite`,
             display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,
             padding:0,overflow:"visible",
           }}>
-            {/* Lantern glow ring */}
-            <div style={{position:"absolute",inset:"-20%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,210,120,0.10) 0%, transparent 60%)",pointerEvents:"none"}}/>
+            {/* Lantern glow overlay */}
+            <div style={{position:"absolute",inset:"-10%",borderRadius:20,background:"radial-gradient(ellipse at 50% 50%,rgba(255,210,120,0.08) 0%, transparent 65%)",pointerEvents:"none"}}/>
           </button>
         ))}
 
