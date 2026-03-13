@@ -2728,7 +2728,7 @@ export default function App(){
     <div style={{minHeight:"100vh",width:"100%",position:"relative",overflow:"hidden",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-end"}}>
       <style>{GFONTS}{CSS}</style>
       {/* Cabin background image — zooms on door open */}
-      <div style={{position:"absolute",inset:0,backgroundImage:"url('/cabin-bg.png')",backgroundSize:"cover",backgroundPosition:"center 30%",backgroundRepeat:"no-repeat",zIndex:0,minWidth:"100vw",minHeight:"100vh",animation:doorOpening?"doorZoomBg 1.6s ease-in forwards":"none"}}/>
+      <div style={{position:"absolute",inset:0,backgroundImage:"url('/outdoor.png')",backgroundSize:"cover",backgroundPosition:"center 30%",backgroundRepeat:"no-repeat",zIndex:0,minWidth:"100vw",minHeight:"100vh",animation:doorOpening?"doorZoomBg 1.6s ease-in forwards":"none"}}/>
       {/* Dark overlay for readability — heavier at bottom */}
       <div style={{position:"absolute",inset:0,background:"linear-gradient(to bottom, rgba(10,8,6,0.1) 0%, rgba(10,8,6,0.18) 25%, rgba(10,8,6,0.45) 55%, rgba(10,8,6,0.82) 78%, rgba(10,8,6,0.94) 100%)",zIndex:1}}/>
       {/* Stars in the sky */}
