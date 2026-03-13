@@ -669,6 +669,7 @@ const KITCHEN_BG_IMAGE="/kitchen.png";
 const STOVE_BG_IMAGE="/stove.png";
 const MARKET_BG_IMAGE="/market.png";
 const KITCHEN_WINDOW_BG_IMAGE="/kitchen-window.png";
+const UPPER_ROOM_BG_IMAGE="/upper-room-hall.png";
 
 /* ═══════════════════════════════════════════════════
    AMBIENT SOUND MANAGER — Global singleton
@@ -1994,6 +1995,149 @@ function ImmersiveMap(){
 }
 
 /* ═══════════════════════════════════════════════════
+   IMMERSIVE UPPER ROOM — parallax + candle particles
+═══════════════════════════════════════════════════ */
+function ImmersiveUpperRoom(){
+  const containerRef=useRef(null);
+  const canvasRef=useRef(null);
+  const offsetX=useRef(0);
+  const offsetY=useRef(0);
+  const targetX=useRef(0);
+  const targetY=useRef(0);
+  const dragStart=useRef(null);
+  const animFrame=useRef(null);
+  const particles=useRef([]);
+  const time=useRef(0);
+  const imgRef=useRef(null);
+
+  const PARALLAX=18;
+  const SENSITIVITY=0.35;
+
+  useEffect(()=>{
+    const pts=[];
+    // Warm dust motes drifting through candlelight
+    for(let i=0;i<20;i++){
+      pts.push({
+        x:0.10+Math.random()*0.80,
+        y:0.10+Math.random()*0.80,
+        size:Math.random()*1.6+0.5,
+        speed:Math.random()*0.00008+0.00003,
+        drift:(Math.random()-0.5)*0.00012,
+        opacity:Math.random()*0.22+0.04,
+        phase:Math.random()*Math.PI*2,
+        isMote:true,
+      });
+    }
+    // Candle-flame fireflies near the lower half
+    for(let i=0;i<10;i++){
+      pts.push({
+        x:0.15+Math.random()*0.70,
+        y:0.40+Math.random()*0.50,
+        size:Math.random()*1.2+0.5,
+        sx:(Math.random()-0.5)*0.00012,
+        sy:(Math.random()-0.5)*0.00008,
+        opacity:Math.random()*0.5+0.2,
+        phase:Math.random()*Math.PI*2,
+        blink:Math.random()*0.003+0.001,
+        isFirefly:true,
+      });
+    }
+    particles.current=pts;
+  },[]);
+
+  useEffect(()=>{
+    let active=true;
+    const handle=(e)=>{if(!active)return;targetX.current=Math.max(-1,Math.min(1,(e.gamma||0)/30))*PARALLAX;targetY.current=Math.max(-1,Math.min(1,((e.beta||0)-45)/30))*PARALLAX;};
+    if(typeof DeviceOrientationEvent!=="undefined"&&typeof DeviceOrientationEvent.requestPermission==="function"){
+      const req=()=>{DeviceOrientationEvent.requestPermission().then(r=>{if(r==="granted")window.addEventListener("deviceorientation",handle);}).catch(()=>{});window.removeEventListener("touchstart",req);};
+      window.addEventListener("touchstart",req,{once:true});
+    } else { window.addEventListener("deviceorientation",handle); }
+    return()=>{active=false;window.removeEventListener("deviceorientation",handle);};
+  },[]);
+
+  useEffect(()=>{
+    const el=containerRef.current; if(!el) return;
+    const start=(x,y)=>{dragStart.current={x,y,ox:targetX.current,oy:targetY.current};};
+    const move=(x,y)=>{if(!dragStart.current)return;targetX.current=Math.max(-PARALLAX,Math.min(PARALLAX,dragStart.current.ox+(x-dragStart.current.x)*SENSITIVITY));targetY.current=Math.max(-PARALLAX,Math.min(PARALLAX,dragStart.current.oy+(y-dragStart.current.y)*SENSITIVITY));};
+    const end=()=>{dragStart.current=null;};
+    const ts=e=>{const t=e.touches[0];start(t.clientX,t.clientY);};
+    const tm=e=>{const t=e.touches[0];move(t.clientX,t.clientY);};
+    el.addEventListener("touchstart",ts,{passive:true});el.addEventListener("touchmove",tm,{passive:true});el.addEventListener("touchend",end);
+    el.addEventListener("mousedown",e=>start(e.clientX,e.clientY));
+    const mm=e=>move(e.clientX,e.clientY);
+    window.addEventListener("mousemove",mm);window.addEventListener("mouseup",end);
+    return()=>{el.removeEventListener("touchstart",ts);el.removeEventListener("touchmove",tm);el.removeEventListener("touchend",end);window.removeEventListener("mousemove",mm);window.removeEventListener("mouseup",end);};
+  },[]);
+
+  useEffect(()=>{
+    const loop=()=>{
+      time.current+=16;
+      offsetX.current+=(targetX.current-offsetX.current)*0.06;
+      offsetY.current+=(targetY.current-offsetY.current)*0.06;
+      const bx=Math.sin(time.current*0.0003)*1.0;
+      const by=Math.cos(time.current*0.00025)*0.6;
+      if(imgRef.current) imgRef.current.style.transform=`translate(${-PARALLAX+offsetX.current+bx}px,${-PARALLAX+offsetY.current+by}px)`;
+      const cvs=canvasRef.current;
+      if(cvs){
+        const ctx=cvs.getContext("2d"),w=cvs.width,h=cvs.height;
+        ctx.clearRect(0,0,w,h);
+        particles.current.forEach(p=>{
+          if(p.isFirefly){
+            p.x+=p.sx+Math.sin(time.current*0.0004+p.phase)*0.00004;
+            p.y+=p.sy+Math.cos(time.current*0.0005+p.phase)*0.00003;
+            if(p.x<0.10||p.x>0.90)p.sx*=-1;
+            if(p.y<0.35||p.y>0.95)p.sy*=-1;
+            p.x=Math.max(0.10,Math.min(0.90,p.x));
+            p.y=Math.max(0.35,Math.min(0.95,p.y));
+            const blink=Math.sin(time.current*p.blink+p.phase);
+            const a=Math.max(0,blink*0.6+0.4)*p.opacity;
+            const px=p.x*w,py=p.y*h;
+            ctx.beginPath();ctx.arc(px,py,p.size*4,0,Math.PI*2);ctx.fillStyle=`rgba(255,190,80,${a*0.05})`;ctx.fill();
+            ctx.beginPath();ctx.arc(px,py,p.size*1.8,0,Math.PI*2);ctx.fillStyle=`rgba(255,200,100,${a*0.12})`;ctx.fill();
+            ctx.beginPath();ctx.arc(px,py,p.size*0.6,0,Math.PI*2);ctx.fillStyle=`rgba(255,220,150,${a*0.7})`;ctx.fill();
+          } else if(p.isMote){
+            p.y-=p.speed;
+            p.x+=p.drift+Math.sin(time.current*0.0006+p.phase)*0.00005;
+            if(p.y<-0.02){p.y=1.02;p.x=0.10+Math.random()*0.80;}
+            const fl=0.5+0.5*Math.sin(time.current*0.0012+p.phase);
+            const a=p.opacity*fl;
+            const px=p.x*w,py=p.y*h;
+            ctx.beginPath();ctx.arc(px,py,p.size,0,Math.PI*2);
+            ctx.fillStyle=`rgba(255,220,160,${a})`;ctx.fill();
+          }
+        });
+      }
+      animFrame.current=requestAnimationFrame(loop);
+    };
+    animFrame.current=requestAnimationFrame(loop);
+    return()=>{if(animFrame.current)cancelAnimationFrame(animFrame.current);};
+  },[]);
+
+  useEffect(()=>{
+    const resize=()=>{const c=canvasRef.current;if(c){c.width=window.innerWidth;c.height=window.innerHeight;}};
+    resize();window.addEventListener("resize",resize);
+    return()=>window.removeEventListener("resize",resize);
+  },[]);
+
+  return(
+    <div ref={containerRef} style={{position:"absolute",inset:0,zIndex:0,overflow:"hidden",background:"#12101A",cursor:"grab"}} onMouseDown={()=>{if(containerRef.current)containerRef.current.style.cursor="grabbing";}} onMouseUp={()=>{if(containerRef.current)containerRef.current.style.cursor="grab";}}>
+      <img ref={imgRef} src={UPPER_ROOM_BG_IMAGE} alt="Upper Room" style={{position:"absolute",top:0,left:0,width:`calc(100% + ${PARALLAX*2}px)`,height:`calc(100% + ${PARALLAX*2}px)`,objectFit:"cover",transform:`translate(${-PARALLAX}px,${-PARALLAX}px)`,willChange:"transform",userSelect:"none",WebkitUserDrag:"none",pointerEvents:"none"}} draggable={false}/>
+      {/* Warm candle glow — center area */}
+      <div style={{position:"absolute",left:"25%",top:"35%",width:"50%",height:"40%",pointerEvents:"none",zIndex:1,borderRadius:"50%",background:"radial-gradient(ellipse at 50% 55%,rgba(255,180,60,0.10) 0%,rgba(255,140,40,0.04) 50%,transparent 75%)",mixBlendMode:"screen",animation:"kitchenFireGlow 3.5s ease-in-out infinite"}}/>
+      {/* Soft purple ambient light from above */}
+      <div style={{position:"absolute",left:"15%",top:"0%",width:"70%",height:"30%",pointerEvents:"none",zIndex:1,background:"radial-gradient(ellipse at 50% 100%,rgba(180,160,210,0.06) 0%,transparent 70%)",mixBlendMode:"screen"}}/>
+      {/* Candle pillar glow — left */}
+      <div style={{position:"absolute",left:"10%",top:"50%",width:"18%",height:"25%",pointerEvents:"none",zIndex:1,borderRadius:"50%",background:"radial-gradient(circle,rgba(255,200,80,0.12) 0%,rgba(255,160,40,0.04) 50%,transparent 70%)",mixBlendMode:"screen",animation:"kitchenFireGlow 2.8s ease-in-out infinite",animationDelay:"0.4s"}}/>
+      {/* Candle pillar glow — right */}
+      <div style={{position:"absolute",right:"10%",top:"50%",width:"18%",height:"25%",pointerEvents:"none",zIndex:1,borderRadius:"50%",background:"radial-gradient(circle,rgba(255,200,80,0.12) 0%,rgba(255,160,40,0.04) 50%,transparent 70%)",mixBlendMode:"screen",animation:"kitchenFireGlow 3.2s ease-in-out infinite",animationDelay:"0.8s"}}/>
+      <canvas ref={canvasRef} style={{position:"absolute",inset:0,zIndex:2,pointerEvents:"none"}}/>
+      {/* Cinematic vignette */}
+      <div style={{position:"absolute",inset:0,zIndex:3,pointerEvents:"none",background:"radial-gradient(ellipse at 50% 50%,transparent 55%,rgba(12,10,20,0.5) 100%)"}}/>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════
    MAIN APP
 ═══════════════════════════════════════════════════ */
 export default function App(){
@@ -2091,6 +2235,15 @@ export default function App(){
   const [ambientMuted,   setAmbientMuted]  = useState(false);
   const ambientMutedRef = useRef(false); // ref mirror for use inside effects
 
+  // ── Bible reader (Upper Room) ──
+  const [bibleView,     setBibleView]     = useState(null);   // null|"books"|"chapters"|"reading"
+  const [bibleBook,     setBibleBook]     = useState(0);
+  const [bibleChapter,  setBibleChapter]  = useState(0);
+  const [bibleFontSize, setBibleFontSize] = useState(()=>{try{return parseInt(localStorage.getItem("irj-bible-fontsize"))||18;}catch{return 18;}});
+  const [bibleLoading,  setBibleLoading]  = useState(false);
+  const [bibleSearch,   setBibleSearch]   = useState("");
+  const bibleDataRef = useRef(null);
+
   // ── OUTDOOR IMAGE RECT — keeps glow overlays aligned to actual image features ──
   // The outdoor.png is displayed with object-fit:cover + object-position:center 30%
   // which crops differently on every screen size. This calculates the actual rendered
@@ -2141,6 +2294,20 @@ export default function App(){
     };
   },[screen]);
 
+  // ── Bible preload when entering Upper Room ──
+  useEffect(()=>{
+    if(screen==="upper-room"&&!bibleDataRef.current) loadBible();
+  },[screen,loadBible]);
+
+  // ── Bible font size persistence ──
+  useEffect(()=>{localStorage.setItem("irj-bible-fontsize",String(bibleFontSize));},[bibleFontSize]);
+
+  // ── Bible scroll-to-top on chapter/book change ──
+  useEffect(()=>{
+    const el=document.querySelector("[data-bible-scroll]");
+    if(el) el.scrollTop=0;
+  },[bibleChapter,bibleBook]);
+
   function toggleAmbientMute(){
     if(ambientMuted){
       setAmbientMuted(false);
@@ -2152,6 +2319,36 @@ export default function App(){
       ambientMute();
     }
   }
+
+  // ── Bible data loader (Upper Room) ──
+  const loadBible = useCallback(async()=>{
+    if(bibleDataRef.current) return bibleDataRef.current;
+    setBibleLoading(true);
+    try{
+      const cached=localStorage.getItem("irj-kjv-cache");
+      if(cached){const data=JSON.parse(cached);bibleDataRef.current=data;setBibleLoading(false);return data;}
+      const res=await fetch("/kjv.json");
+      const data=await res.json();
+      bibleDataRef.current=data;
+      try{localStorage.setItem("irj-kjv-cache",JSON.stringify(data));}catch(e){}
+      setBibleLoading(false);
+      return data;
+    }catch(e){console.error("Bible load:",e);setBibleLoading(false);return null;}
+  },[]);
+
+  const getDailyVerse = useCallback((bd)=>{
+    if(!bd||!bd.length) return null;
+    const today=new Date();
+    const ds=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")}`;
+    const cached=localStorage.getItem("irj-daily-verse");
+    if(cached){try{const cv=JSON.parse(cached);if(cv.date===ds)return cv;}catch(e){}}
+    let h=0;for(let i=0;i<ds.length;i++){h=((h<<5)-h)+ds.charCodeAt(i);h=h&h;}
+    h=Math.abs(h);
+    const bi=h%bd.length,book=bd[bi],ci=(h>>>3)%book.chapters.length,ch=book.chapters[ci],vi=(h>>>7)%ch.length;
+    const v={date:ds,text:ch[vi],ref:`${book.name} ${ci+1}:${vi+1}`,bookIdx:bi,chapIdx:ci,verseIdx:vi};
+    localStorage.setItem("irj-daily-verse",JSON.stringify(v));
+    return v;
+  },[]);
 
   // ── HOTSPOT DEBUG MODE ──
   // Toggle: ?debug=1 in URL  |  Ctrl+Shift+. on desktop  |  triple-tap "🕯️ 0" candle badge on mobile
@@ -2838,6 +3035,9 @@ export default function App(){
     .map-hotspot{transition:all .25s ease;cursor:pointer;animation:mapHotspotPulse 3.5s ease-in-out infinite}
     .map-hotspot:hover{box-shadow:0 0 35px rgba(255,210,120,0.45),0 0 70px rgba(255,210,120,0.15)!important;transform:translate(-50%,-50%) scale(1.08)!important}
     .map-hotspot:active{transform:translate(-50%,-50%) scale(0.94)!important}
+    @keyframes verseReveal{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+    .bible-book{transition:all .2s ease;cursor:pointer}.bible-book:hover{background:rgba(180,160,210,0.12)!important;transform:translateX(4px)}.bible-book:active{transform:translateX(2px) scale(0.98)}
+    .bible-chap{transition:all .2s ease;cursor:pointer}.bible-chap:hover{background:rgba(180,160,210,0.18)!important;transform:scale(1.08)}.bible-chap:active{transform:scale(0.94)}
   `;
 
   /* ── DARK HEADER (reusable) ── */
@@ -4807,27 +5007,171 @@ export default function App(){
     );
   }
 
-  /* ══ UPPER ROOM — Placeholder ══════════════════ */
+  /* ══ UPPER ROOM — KJV Bible Reader ════════════════ */
   if(screen==="upper-room"){
+    const bibleData=bibleDataRef.current;
+    const dailyVerse=bibleData?getDailyVerse(bibleData):null;
+
+    const bibleBack=()=>{
+      if(bibleView==="reading"){setBibleView("chapters");}
+      else if(bibleView==="chapters"){setBibleView("books");setBibleSearch("");}
+      else{setBibleView(null);setBibleSearch("");}
+    };
+    const openBible=async()=>{
+      const data=await loadBible();
+      if(data) setBibleView("books");
+    };
+
+    // Filtered book list
+    const filteredBooks=bibleData?(bibleSearch?bibleData.map((b,i)=>({...b,idx:i})).filter(b=>b.name.toLowerCase().includes(bibleSearch.toLowerCase())):bibleData.map((b,i)=>({...b,idx:i}))):[];
+    const otBooks=filteredBooks.filter(b=>b.idx<39);
+    const ntBooks=filteredBooks.filter(b=>b.idx>=39);
+
     return(
-      <div style={{position:"fixed",inset:0,overflow:"hidden",fontFamily:SANS,background:"linear-gradient(160deg,#12101A,#1A1428)"}}>
+      <div style={{position:"fixed",inset:0,overflow:"hidden",fontFamily:SANS}}>
         <style>{GFONTS}{CSS}</style>
-        <div style={{position:"relative",zIndex:10,height:"100%",overflowY:"auto",WebkitOverflowScrolling:"touch"}}>
-          <div style={{maxWidth:720,margin:"0 auto",padding:"28px 22px 80px"}}>
-            <button onClick={()=>setScreen("map")} style={{background:"rgba(26,22,30,0.5)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",border:"1px solid rgba(180,160,210,0.15)",borderRadius:999,padding:"8px 20px",cursor:"pointer",color:"rgba(230,220,248,0.6)",fontFamily:SANS,fontSize:"0.78rem",marginBottom:28,transition:"all 0.2s",display:"inline-flex",alignItems:"center",gap:6}}>
-              Back to village
-            </button>
-            <div style={{textAlign:"center",marginBottom:32,animation:"fadeUp .6s ease both"}}>
-              <h1 style={{fontFamily:DISPLAY,fontSize:"2rem",fontWeight:700,color:"#D8C8F0",margin:"0 0 8px",textShadow:"0 2px 12px rgba(0,0,0,0.5)"}}>The Upper Room</h1>
-              <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"1rem",color:"rgba(200,190,230,0.45)",margin:"0 0 14px"}}>A sacred space for worship and encounter.</p>
-              <div style={{width:60,height:1,background:"rgba(180,160,210,0.3)",margin:"0 auto"}}/>
-            </div>
-            <div style={{background:"rgba(20,18,32,0.6)",border:"1px solid rgba(180,160,210,0.15)",borderRadius:16,padding:"40px 24px",textAlign:"center"}}>
-              <p style={{fontFamily:SERIF,fontStyle:"italic",color:"rgba(200,190,230,0.3)",fontSize:"0.9rem"}}>The candles are being lit…</p>
-              <p style={{fontFamily:SANS,fontSize:"0.72rem",color:"rgba(200,190,230,0.2)",marginTop:8}}>Coming soon</p>
+        <ImmersiveUpperRoom/>
+
+        {/* ── LANDING VIEW ── */}
+        {!bibleView&&(
+          <div style={{position:"relative",zIndex:10,height:"100%",overflowY:"auto",WebkitOverflowScrolling:"touch"}}>
+            <div style={{maxWidth:720,margin:"0 auto",padding:"28px 22px 80px"}}>
+              {/* Back to village */}
+              <button onClick={()=>setScreen("map")} style={{background:"rgba(26,22,30,0.55)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",border:"1px solid rgba(180,160,210,0.15)",borderRadius:999,padding:"8px 20px",cursor:"pointer",color:"rgba(230,220,248,0.6)",fontFamily:SANS,fontSize:"0.78rem",marginBottom:28,transition:"all 0.2s",display:"inline-flex",alignItems:"center",gap:6,animation:"fadeUp .6s ease both"}}>
+                Back to village
+              </button>
+              {/* Title */}
+              <div style={{textAlign:"center",marginBottom:32,animation:"fadeUp .6s .1s ease both",opacity:0}}>
+                <h1 style={{fontFamily:DISPLAY,fontSize:"2rem",fontWeight:700,color:"#D8C8F0",margin:"0 0 8px",textShadow:"0 2px 12px rgba(0,0,0,0.5)"}}>The Upper Room</h1>
+                <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"1rem",color:"rgba(200,190,230,0.45)",margin:"0 0 14px"}}>A sacred space for worship and encounter.</p>
+                <div style={{width:60,height:1,background:"rgba(180,160,210,0.3)",margin:"0 auto"}}/>
+              </div>
+              {/* Daily Verse */}
+              {dailyVerse&&(
+                <div onClick={()=>{setBibleBook(dailyVerse.bookIdx);setBibleChapter(dailyVerse.chapIdx);setBibleView("reading");}} style={{background:"rgba(20,18,32,0.55)",backdropFilter:"blur(14px)",WebkitBackdropFilter:"blur(14px)",border:"1px solid rgba(180,160,210,0.15)",borderRadius:16,padding:"28px 24px",textAlign:"center",marginBottom:24,animation:"fadeUp .8s .25s ease both",opacity:0,cursor:"pointer",transition:"all 0.3s"}}>
+                  <p style={{fontFamily:SANS,fontSize:"0.65rem",letterSpacing:"0.08em",textTransform:"uppercase",color:"rgba(200,190,230,0.35)",margin:"0 0 14px"}}>Verse of the Day</p>
+                  <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"1.05rem",color:"rgba(230,220,248,0.65)",lineHeight:1.7,margin:"0 0 14px"}}>{dailyVerse.text}</p>
+                  <p style={{fontFamily:SANS,fontSize:"0.78rem",color:"rgba(180,160,210,0.45)",margin:0}}>-- {dailyVerse.ref}</p>
+                </div>
+              )}
+              {/* Open Bible */}
+              <div style={{textAlign:"center",animation:"fadeUp .8s .4s ease both",opacity:0}}>
+                <button onClick={openBible} disabled={bibleLoading} style={{background:"linear-gradient(135deg,rgba(180,160,210,0.20),rgba(180,160,210,0.06))",backdropFilter:"blur(10px)",WebkitBackdropFilter:"blur(10px)",border:"1px solid rgba(180,160,210,0.30)",color:"#E8E0F0",borderRadius:30,padding:"14px 36px",cursor:bibleLoading?"wait":"pointer",fontFamily:SERIF,fontStyle:"italic",fontSize:"1rem",transition:"all 0.3s",boxShadow:"0 4px 24px rgba(0,0,0,0.3)"}}>
+                  {bibleLoading?"Loading Scriptures...":"Open the Scriptures"}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        )}
+
+        {/* ── BIBLE READER ── */}
+        {bibleView&&bibleData&&(
+          <div style={{position:"absolute",inset:0,zIndex:20,background:"rgba(12,10,20,0.96)",display:"flex",flexDirection:"column"}}>
+            {/* Header */}
+            <header style={{background:"#0E0B14",padding:"0 16px",height:54,display:"flex",alignItems:"center",gap:10,boxShadow:"0 2px 16px rgba(0,0,0,0.3)",flexShrink:0,zIndex:200}}>
+              <button onClick={bibleBack} style={{background:"transparent",border:"none",cursor:"pointer",color:"rgba(200,190,230,0.55)",fontSize:"0.8rem",fontFamily:SANS,padding:"4px 0",transition:"color 0.15s",whiteSpace:"nowrap"}}>{bibleView==="books"?"< Upper Room":"< Back"}</button>
+              <div style={{height:14,width:1,background:"rgba(180,160,210,0.2)"}}/>
+              <span style={{fontFamily:SERIF,fontStyle:"italic",color:"#D8C8F0",fontSize:"0.92rem",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                {bibleView==="reading"?`${bibleData[bibleBook].name} ${bibleChapter+1}`:bibleView==="chapters"?bibleData[bibleBook].name:"Scripture"}
+              </span>
+              {/* Font size controls */}
+              {bibleView==="reading"&&(
+                <div style={{display:"flex",alignItems:"center",gap:6}}>
+                  <button onClick={()=>setBibleFontSize(s=>Math.max(14,s-2))} style={{background:"rgba(180,160,210,0.12)",border:"1px solid rgba(180,160,210,0.2)",borderRadius:6,width:30,height:30,cursor:"pointer",color:"#D8C8F0",fontFamily:SANS,fontSize:"0.75rem",display:"flex",alignItems:"center",justifyContent:"center"}}>A-</button>
+                  <button onClick={()=>setBibleFontSize(s=>Math.min(28,s+2))} style={{background:"rgba(180,160,210,0.12)",border:"1px solid rgba(180,160,210,0.2)",borderRadius:6,width:30,height:30,cursor:"pointer",color:"#D8C8F0",fontFamily:SANS,fontSize:"0.75rem",display:"flex",alignItems:"center",justifyContent:"center"}}>A+</button>
+                </div>
+              )}
+            </header>
+
+            {/* Scrollable content */}
+            <div data-bible-scroll="" style={{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch"}}>
+
+              {/* ── BOOK LIST ── */}
+              {bibleView==="books"&&(
+                <div style={{maxWidth:680,margin:"0 auto",padding:"16px 16px 80px"}}>
+                  {/* Search */}
+                  <div style={{position:"relative",marginBottom:16}}>
+                    <input value={bibleSearch} onChange={e=>setBibleSearch(e.target.value)} placeholder="Search books..." style={{width:"100%",boxSizing:"border-box",background:"rgba(180,160,210,0.08)",border:"1px solid rgba(180,160,210,0.15)",borderRadius:12,padding:"10px 16px 10px 38px",color:"#E8E0F0",fontFamily:SANS,fontSize:"0.85rem",outline:"none"}}/>
+                    <svg style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",opacity:0.3}} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D8C8F0" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                  </div>
+                  {/* Old Testament */}
+                  {otBooks.length>0&&(
+                    <>
+                      <p style={{fontFamily:SANS,fontSize:"0.68rem",letterSpacing:"0.08em",textTransform:"uppercase",color:"rgba(200,190,230,0.30)",margin:"16px 0 8px 4px"}}>Old Testament</p>
+                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+                        {otBooks.map(b=>(
+                          <button key={b.idx} className="bible-book" onClick={()=>{setBibleBook(b.idx);setBibleChapter(0);setBibleView("chapters");}} style={{background:"rgba(180,160,210,0.06)",border:"1px solid rgba(180,160,210,0.10)",borderRadius:10,padding:"10px 12px",textAlign:"left",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                            <span style={{fontFamily:SANS,fontSize:"0.82rem",color:"#D8C8F0"}}>{b.name}</span>
+                            <span style={{fontFamily:SANS,fontSize:"0.65rem",color:"rgba(180,160,210,0.35)"}}>{b.chapters.length}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                  {/* New Testament */}
+                  {ntBooks.length>0&&(
+                    <>
+                      <p style={{fontFamily:SANS,fontSize:"0.68rem",letterSpacing:"0.08em",textTransform:"uppercase",color:"rgba(200,190,230,0.30)",margin:"24px 0 8px 4px"}}>New Testament</p>
+                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+                        {ntBooks.map(b=>(
+                          <button key={b.idx} className="bible-book" onClick={()=>{setBibleBook(b.idx);setBibleChapter(0);setBibleView("chapters");}} style={{background:"rgba(180,160,210,0.06)",border:"1px solid rgba(180,160,210,0.10)",borderRadius:10,padding:"10px 12px",textAlign:"left",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                            <span style={{fontFamily:SANS,fontSize:"0.82rem",color:"#D8C8F0"}}>{b.name}</span>
+                            <span style={{fontFamily:SANS,fontSize:"0.65rem",color:"rgba(180,160,210,0.35)"}}>{b.chapters.length}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                  {filteredBooks.length===0&&(
+                    <p style={{textAlign:"center",fontFamily:SERIF,fontStyle:"italic",color:"rgba(200,190,230,0.3)",marginTop:40}}>No books match your search</p>
+                  )}
+                </div>
+              )}
+
+              {/* ── CHAPTER GRID ── */}
+              {bibleView==="chapters"&&(
+                <div style={{maxWidth:680,margin:"0 auto",padding:"24px 16px 80px"}}>
+                  <p style={{fontFamily:SANS,fontSize:"0.72rem",color:"rgba(200,190,230,0.35)",marginBottom:16,textAlign:"center"}}>Select a chapter</p>
+                  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(52px,1fr))",gap:8}}>
+                    {bibleData[bibleBook].chapters.map((_,ci)=>(
+                      <button key={ci} className="bible-chap" onClick={()=>{setBibleChapter(ci);setBibleView("reading");}} style={{background:"rgba(180,160,210,0.08)",border:"1px solid rgba(180,160,210,0.12)",borderRadius:10,padding:"12px 0",textAlign:"center",color:"#D8C8F0",fontFamily:SANS,fontSize:"0.9rem",fontWeight:500}}>
+                        {ci+1}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* ── READING VIEW ── */}
+              {bibleView==="reading"&&(
+                <div style={{maxWidth:680,margin:"0 auto",padding:"24px 20px 100px"}}>
+                  {bibleData[bibleBook].chapters[bibleChapter].map((verse,i)=>(
+                    <p key={i} style={{fontFamily:SERIF,fontSize:bibleFontSize,color:"#E8E0F0",lineHeight:1.85,margin:"0 0 6px",animation:`verseReveal .35s ${Math.min(i*0.015,1.2)}s ease both`,opacity:0}}>
+                      <span style={{fontFamily:SANS,fontSize:"0.68em",color:"rgba(180,160,210,0.38)",marginRight:8,userSelect:"none",fontWeight:600}}>{i+1}</span>
+                      {verse}
+                    </p>
+                  ))}
+                  {/* Chapter navigation */}
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:40,paddingTop:20,borderTop:"1px solid rgba(180,160,210,0.10)"}}>
+                    {bibleChapter>0?(
+                      <button onClick={()=>setBibleChapter(c=>c-1)} style={{background:"rgba(180,160,210,0.10)",border:"1px solid rgba(180,160,210,0.15)",borderRadius:20,padding:"8px 20px",cursor:"pointer",color:"rgba(230,220,248,0.6)",fontFamily:SANS,fontSize:"0.78rem",transition:"all 0.2s"}}>
+                        Previous
+                      </button>
+                    ):<div/>}
+                    <span style={{fontFamily:SANS,fontSize:"0.72rem",color:"rgba(200,190,230,0.3)"}}>{bibleChapter+1} / {bibleData[bibleBook].chapters.length}</span>
+                    {bibleChapter<bibleData[bibleBook].chapters.length-1?(
+                      <button onClick={()=>setBibleChapter(c=>c+1)} style={{background:"rgba(180,160,210,0.10)",border:"1px solid rgba(180,160,210,0.15)",borderRadius:20,padding:"8px 20px",cursor:"pointer",color:"rgba(230,220,248,0.6)",fontFamily:SANS,fontSize:"0.78rem",transition:"all 0.2s"}}>
+                        Next
+                      </button>
+                    ):<div/>}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {spaceTransit&&<div style={{position:"fixed",inset:0,zIndex:9999,background:"#0A0806",animation:"spaceFadeIn .6s ease both",pointerEvents:"all"}}/>}
       </div>
     );
   }
