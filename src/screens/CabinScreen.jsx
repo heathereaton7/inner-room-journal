@@ -20,7 +20,7 @@ export default function CabinScreen({
   jesusIdx, setScreen, setJourneyTab,
   setCardQ, setIsCustomCard, setCardCustom,
   menuOpen, setMenuOpen,
-  BottomMenuDrawer, goToHistory,
+  BottomMenuDrawer, MapHudButton, goToHistory,
 }){
   return(
     <div style={{position:"fixed",inset:0,overflow:"hidden",fontFamily:SANS}}>
@@ -704,6 +704,7 @@ export default function CabinScreen({
           <div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"1.05rem",color:"rgba(255,248,232,0.5)",letterSpacing:"0.04em"}}>{transitDir==="toHall"?"Stepping into The Upper Room...":transitDir==="toGarden"?"Walking to the garden...":"Returning to the cabin..."}</div>
         </div>
       </div>}
+      <MapHudButton/>
       <BottomMenuDrawer/>
     </div>
   );
