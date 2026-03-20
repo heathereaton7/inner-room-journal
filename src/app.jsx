@@ -1,579 +1,13 @@
 import { useState, useEffect, useMemo, useRef, useCallback, Component } from "react";
 import { auth, db, functions, googleProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged, doc, getDoc, setDoc, collection, getDocs, query, where, orderBy, limit, addDoc, deleteDoc, serverTimestamp, Timestamp, httpsCallable } from "./firebase.js";
+import { OverworldScreen } from './overworld/index.js';
 /* R3F imports removed — ImmersiveCabin uses pure DOM/Canvas2D for performance */
+import { GFONTS, B, SERIF, SANS, DISPLAY, RT, th, REFLECTION_ROOMS, COMMUNITY_ROOMS, LOCKED_ROOM, JESUS_QUESTIONS, QUESTION_SETS, ALL_CARD_QS, CARD_THEMES, CARD_RATIOS, VERSE_THEMES, VIRAL_QS, SAMPLE_PRAYERS, SHELF_BOOKS, BOOK_COVERS, BOOK_CONTENT, getBookPageCount, todayStr, nowTime, entryTime, isoDate, wc, shuffle, THEME_WORDS, aggregateThemes, EMOTION_WORDS, LIFE_THEMES, FAITH_WORDS, SCRIPTURE_PATTERN, IDENTITY_NEG, IDENTITY_POS, GROWTH_MARKERS, STOP_WORDS, EMOTION_COLORS, computeInsights, computeWeeklyDigest, computeSeasonalSummary, computeFutureYou, SHOP_ITEMS, GARDEN_PLANTS, GROWTH_STAGES, PRAYER_BONUS_MINS, CRAFTING_STATIONS, ITEM_CATALOG, KITCHEN_RECIPES, NPC_TRADES, FARM_PLANTS, ANIMAL_TYPES, MAX_ANIMALS, CABIN_FALLBACK_IMAGE } from './constants.js';
+import { CSS } from './styles.js';
+import ImmersiveCabin from './components/ImmersiveCabin.jsx';
+import BookSparkles from './components/BookSparkles.jsx';
+import CabinScreen from './screens/CabinScreen.jsx';
 
-/* ═══════════════════════════════════════════════════
-   FONTS
-═══════════════════════════════════════════════════ */
-const GFONTS = `@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;0,700;1,300;1,400;1,600&family=DM+Sans:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,700;1,400;1,700&display=swap');`;
-
-/* ═══════════════════════════════════════════════════
-   BRAND PALETTE
-═══════════════════════════════════════════════════ */
-const B = {
-  beige:"#F5F1EA", beigeD:"#EDE8DF", pink:"#F4E8E5", pinkD:"#E8C8C0",
-  sage:"#BED3C4", sageD:"#9AB8A4", sageDk:"#5A8A6A",
-  night:"#1A1612", nightM:"#241E18", gold:"#C9A96E", goldL:"#E8D4A0",
-  ink:"#2A2420", inkM:"#5A4A42", inkL:"#8A7A70", inkLL:"#B0A098",
-  white:"#FDFAF6",
-};
-const SERIF   = "'Cormorant Garamond','Georgia',serif";
-const SANS    = "'DM Sans','Helvetica Neue',sans-serif";
-const DISPLAY = "'Playfair Display','Georgia',serif";
-
-/* ═══════════════════════════════════════════════════
-   ROOM THEMES
-═══════════════════════════════════════════════════ */
-const RT = {
-  fear:      {bg:"#1A1612",card:"#241E18",border:"rgba(155,130,180,0.25)",accent:"#9A8AAA",text:"#E8E0F0",sub:"rgba(232,224,240,0.5)",glow:"rgba(155,130,180,0.1)"},
-  control:   {bg:"#12201A",card:"#182818",border:"rgba(90,138,106,0.25)",accent:B.sageDk,text:"#E0F0E8",sub:"rgba(224,240,232,0.5)",glow:"rgba(90,138,106,0.1)"},
-  beliefs:   {bg:"#1E1508",card:"#281E0A",border:"rgba(196,132,58,0.25)",accent:"#C4843A",text:"#F5EDD0",sub:"rgba(245,237,208,0.5)",glow:"rgba(196,132,58,0.1)"},
-  avoidance: {bg:"#101820",card:"#162030",border:"rgba(100,150,200,0.25)",accent:"#5A9AB8",text:"#D8EEFF",sub:"rgba(216,238,255,0.5)",glow:"rgba(100,150,200,0.1)"},
-  release:   {bg:"#101A10",card:"#182818",border:"rgba(100,170,100,0.25)",accent:"#6AAA6A",text:"#E0F5E0",sub:"rgba(224,245,224,0.5)",glow:"rgba(100,170,100,0.1)"},
-  desire:    {bg:"#1E1412",card:"#281E18",border:"rgba(200,164,106,0.25)",accent:"#C8A46A",text:"#F8EDD8",sub:"rgba(248,237,216,0.5)",glow:"rgba(200,164,106,0.1)"},
-  trust:     {bg:"#101A14",card:"#162018",border:"rgba(90,140,120,0.25)",accent:"#5A9478",text:"#DDF0E8",sub:"rgba(221,240,232,0.5)",glow:"rgba(90,140,120,0.1)"},
-  divorce:   {bg:"#2C1F3A",card:"rgba(44,31,58,0.97)",border:"rgba(190,160,210,0.3)",accent:"#C490D0",text:"#F0E4F8",sub:"rgba(240,228,248,0.5)",glow:"rgba(180,140,200,0.12)"},
-  singleness:{bg:"#0A1628",card:"rgba(14,26,48,0.97)",border:"rgba(100,160,220,0.3)",accent:"#64A0DC",text:"#D8EEFF",sub:"rgba(216,238,255,0.5)",glow:"rgba(100,160,220,0.12)"},
-  waiting:   {bg:"linear-gradient(160deg,#F5E8D0,#E8D0B8)",card:"rgba(255,248,235,0.95)",border:"rgba(200,164,106,0.3)",accent:"#B8843A",text:"#3A2810",sub:"rgba(58,40,16,0.5)",glow:"rgba(200,164,106,0.15)",light:true},
-  motherhood:{bg:"linear-gradient(160deg,#FAF0F5,#F0E0EE)",card:"rgba(255,248,252,0.96)",border:"rgba(220,170,190,0.3)",accent:"#C87090",text:"#3A1828",sub:"rgba(58,24,40,0.45)",glow:"rgba(220,170,190,0.15)",light:true},
-  depression:{bg:"#181C24",card:"rgba(28,32,44,0.97)",border:"rgba(120,150,200,0.25)",accent:"#7890C8",text:"#D8E4F8",sub:"rgba(216,228,248,0.5)",glow:"rgba(120,150,200,0.1)"},
-  men:       {bg:"linear-gradient(160deg,#1A1E14,#1E2418)",card:"rgba(28,34,22,0.97)",border:"rgba(120,160,90,0.3)",accent:"#88A850",text:"#E8F0D8",sub:"rgba(232,240,216,0.5)",glow:"rgba(120,160,90,0.12)"},
-  jesus:     {bg:"linear-gradient(160deg,#1A1208,#2A1E08)",card:"rgba(40,28,8,0.97)",border:"rgba(210,180,100,0.3)",accent:"#D4B464",text:"#FFF8E8",sub:"rgba(255,248,232,0.5)",glow:"rgba(210,180,100,0.15)"},
-  locked:    {bg:"#0A0808",card:"#160E08",border:"rgba(201,169,110,0.3)",accent:B.gold,text:"#FFF8E8",sub:"rgba(255,248,232,0.5)",glow:"rgba(201,169,110,0.12)"},
-  viral:     {bg:B.beige,card:B.white,border:B.beigeD,accent:B.sageDk,text:B.ink,sub:B.inkL,glow:"transparent"},
-};
-const th = id => RT[id] || RT.fear;
-
-/* ═══════════════════════════════════════════════════
-   ROOM DATA
-═══════════════════════════════════════════════════ */
-const REFLECTION_ROOMS = [
-  {id:"fear",      label:"Fear",      emoji:"🕯️",tag:"Reflection", question:"What are you afraid of right now?",
-   days:[{q:"What is worrying you most right now?",hint:"No wrong answer."},{q:"What are you afraid will happen if this doesn't resolve?",hint:"Go beneath the surface."},{q:"What belief about yourself or God might be underneath that fear?",hint:"This is the root."},{q:"What would trusting God with this fear look like today?",hint:"One small act of trust."}]},
-  {id:"control",   label:"Control",   emoji:"⚖️",tag:"Reflection", question:"What are you trying to control?",
-   days:[{q:"What situation are you trying to control right now?",hint:"Name it plainly."},{q:"What are you afraid will happen if you let go?",hint:"The fear behind the grip."},{q:"Where does this need to control come from in you?",hint:"A wound? A belief?"},{q:"What would surrendering this area with faith look like?",hint:"Surrender is the hardest trust."}]},
-  {id:"beliefs",   label:"Beliefs",   emoji:"🪞",tag:"Reflection", question:"What are you believing that might not be true?",
-   days:[{q:"What story are you telling yourself about your situation?",hint:"Just notice — don't defend."},{q:"Where did this belief come from?",hint:"Inherited beliefs aren't always true."},{q:"What would it mean if this belief were false?",hint:"We hold beliefs out of fear."},{q:"What truth could replace the lie?",hint:"Write it even if it doesn't feel real."}]},
-  {id:"avoidance", label:"Avoidance", emoji:"🚪",tag:"Reflection", question:"What are you avoiding?",
-   days:[{q:"What conversation or decision have you been putting off?",hint:"Just name it."},{q:"What are you afraid will happen if you stop avoiding it?",hint:"What is the avoidance protecting?"},{q:"What has this avoidance already cost you?",hint:"Avoidance always has a price."},{q:"What is one small step toward this today?",hint:"Move one inch closer."}]},
-  {id:"release",   label:"Release",   emoji:"🍃",tag:"Reflection", question:"What are you holding onto that needs releasing?",
-   days:[{q:"What are you holding onto — a grudge, grief, an expectation?",hint:"Name it specifically."},{q:"Why is it so hard to let this go?",hint:"What does holding it give you?"},{q:"What would your life look like if this were released?",hint:"Let yourself imagine it."},{q:"Are you ready to release it?",hint:"Readiness means choosing, not feeling."}]},
-  {id:"desire",    label:"Desire",    emoji:"✦", tag:"Reflection", question:"What does your heart actually want?",
-   days:[{q:"Remove all 'should' — what does your heart actually want?",hint:"Desire isn't dangerous."},{q:"Are you allowing yourself to want this? Why or why not?",hint:"Many have learned to suppress desire."},{q:"Is this desire pointing toward something true?",hint:"Some desires are invitations."},{q:"How might God be involved in this desire?",hint:"Desire and calling are often neighbors."}]},
-  {id:"trust",     label:"Trust",     emoji:"🌿",tag:"Reflection", question:"What is God inviting you to trust Him with?",
-   days:[{q:"In what area does trust feel hardest right now?",hint:"Trust is hardest where it matters most."},{q:"What has made trust difficult here?",hint:"Understanding the wound helps."},{q:"What would full trust look like — concretely?",hint:"Not a feeling. An actual posture."},{q:"What is one act of trust you could take today?",hint:"Small acts compound into deep faith."}]},
-];
-
-const COMMUNITY_ROOMS = [
-  {id:"divorce",    label:"Divorce & Separation",   emoji:"🌙",tag:"Community", question:"Finding peace when your world breaks apart.",
-   description:"A safe space for those walking through divorce. You are not alone.",
-   themes:["divorce","separation","grief","identity","starting over","healing"],
-   days:[{q:"What part of this season has been hardest to talk about?",hint:"This room is safe."},{q:"What has this loss taught you about yourself?",hint:"Loss can be a strange teacher."},{q:"What does healing actually look like for you — the real version?",hint:"Be specific."},{q:"What would you tell someone just entering this season?",hint:"Your story has wisdom."}]},
-  {id:"singleness", label:"Singleness & Waiting",   emoji:"⭐",tag:"Community", question:"Learning to be whole in the waiting.",
-   description:"For those navigating singleness — whether peaceful, painful, or both.",
-   themes:["singleness","contentment","loneliness","purpose","waiting"],
-   days:[{q:"What does your singleness reveal about what you're believing about yourself?",hint:"The season reveals what noise hides."},{q:"Where have you confused 'waiting' with 'on hold'?",hint:"They are not the same."},{q:"What would a deeply fulfilling single life look like for you?",hint:"Design it honestly."},{q:"What is God forming in you that could only happen here?",hint:"This is not wasted time."}]},
-  {id:"waiting",    label:"Preparing for a Spouse", emoji:"🌅",tag:"Community", question:"Becoming who you're asking God to send.",
-   description:"Not just waiting — preparing. Doing the inner work to be ready.",
-   themes:["preparation","healing","wholeness","prayer","readiness"],
-   days:[{q:"What wounds from your past need healing before your next relationship begins?",hint:"Unhealed wounds become future arguments."},{q:"What kind of person are you becoming — and would they attract what you're asking for?",hint:"Be honest."},{q:"What non-negotiables have you never spoken out loud?",hint:"They matter."},{q:"What does your prayer life look like around this area?",hint:"Where we pray reveals what we trust."}]},
-  {id:"motherhood", label:"Motherhood",              emoji:"🌸",tag:"Community", question:"The holy exhaustion of raising souls.",
-   description:"For mothers in every season — new, overwhelmed, empty-nested, or in between.",
-   themes:["motherhood","exhaustion","identity","grace","self-care"],
-   days:[{q:"What part of motherhood has surprised you most — and not in a good way?",hint:"Hard truths need air too."},{q:"Where do you most need grace for yourself right now?",hint:"You cannot pour from empty."},{q:"What does your child see when they look at you — and what do you wish they saw?",hint:"This is invitation, not shame."},{q:"What would you tell the version of yourself who first became a mother?",hint:"She needs your compassion."}]},
-  {id:"depression",  label:"Depression & Grief",     emoji:"🌊",tag:"Community", question:"You are not your darkness. You are not alone.",
-   description:"A gentle room for those carrying heaviness. Not a substitute for professional care.",
-   themes:["depression","grief","anxiety","hopelessness","healing","numbness"],
-   days:[{q:"If your depression had a voice, what would it tell you about yourself?",hint:"Name it so you can examine it."},{q:"What does the word 'hope' actually feel like right now?",hint:"Honesty is the beginning."},{q:"When was the last time you felt something close to peace?",hint:"Even small clues matter."},{q:"What do you need from God that you haven't been able to ask for?",hint:"He can handle the honest version."}]},
-  {id:"men",         label:"Men's Room",             emoji:"🪵",tag:"Community", question:"The questions men aren't supposed to ask.",
-   description:"A cabin space for men to reflect honestly. No performance required.",
-   themes:["masculinity","purpose","failure","identity","fatherhood","loneliness"],
-   days:[{q:"What are you carrying right now that you haven't told anyone?",hint:"This room doesn't judge."},{q:"Where have you confused strength with silence?",hint:"Carrying alone isn't strength."},{q:"What does it mean to you to be a man — and where did that come from?",hint:"Many definitions were given, not chosen."},{q:"What would it look like to lead from wholeness instead of wounds?",hint:"Worth sitting with."}]},
-];
-
-const LOCKED_ROOM = {
-  id:"locked",label:"The Locked Room",emoji:"🗝️",tag:"Hidden",question:"The question most people never face.",
-  description:"Unlocked after 7 days. These are the questions underneath every other question.",
-  days:[
-    {q:"If your life ended today, what would you most regret not saying, doing, or becoming?",hint:"Feel the weight of this."},
-    {q:"What is the one thing you know God is asking of you — that you haven't said yes to?",hint:"You already know what it is."},
-    {q:"What would your fully surrendered life look like? And what's stopping you?",hint:"The question underneath every other question."},
-  ]
-};
-
-const JESUS_QUESTIONS = [
-  {ref:"John 5:6",      q:"Do you want to get well?",                                                           app:"Are you actually willing to change — or have you become comfortable in your struggle?"},
-  {ref:"Matthew 16:15", q:"Who do you say I am?",                                                              app:"Not who culture says, not who your church says — who do *you* say Jesus is?"},
-  {ref:"Matthew 6:27",  q:"Can any one of you by worrying add a single hour to your life?",                    app:"What are you worrying about that is outside your control today?"},
-  {ref:"Luke 6:46",     q:"Why do you call me 'Lord, Lord,' and do not do what I say?",                        app:"Where is there a gap between what you believe and how you're actually living?"},
-  {ref:"Mark 10:36",    q:"What do you want me to do for you?",                                                app:"If Jesus asked you this today — what would your honest answer be?"},
-  {ref:"John 11:26",    q:"Do you believe this?",                                                              app:"The thing you say you believe — do you actually believe it in this moment?"},
-  {ref:"Matthew 16:26", q:"What good will it be for someone to gain the whole world, yet forfeit their soul?", app:"What are you trading your inner life for right now?"},
-  {ref:"John 21:17",    q:"Do you love me?",                                                                   app:"Beyond your words and habits — how would you describe your love for God right now?"},
-  {ref:"Matthew 5:46",  q:"If you love those who love you, what reward will you get?",                         app:"Who in your life is hardest to love — and what is God asking of you toward them?"},
-  {ref:"Matthew 26:40", q:"Couldn't you keep watch with me for one hour?",                                     app:"What does your prayer life reveal about your capacity to be present with God?"},
-  {ref:"John 18:34",    q:"Is that your own idea, or did others tell you that about me?",                      app:"What beliefs about God have you inherited but never examined for yourself?"},
-  {ref:"Luke 18:8",     q:"When the Son of Man comes, will he find faith on the earth?",                       app:"What does your faith actually look like in practice, not in theory?"},
-  {ref:"John 20:15",    q:"Why are you crying? Who is it you are looking for?",                                app:"What are you grieving, and who or what are you really searching for?"},
-  {ref:"Matthew 9:28",  q:"Do you believe that I am able to do this?",                                         app:"In this specific situation — do you actually believe God can move?"},
-  {ref:"Luke 9:25",     q:"What good is it to gain the whole world, and yet lose or forfeit your very self?",  app:"What version of 'success' might actually cost you your soul?"},
-];
-
-/* ═══════════════════════════════════════════════════
-   CARD ENGINE DATA
-═══════════════════════════════════════════════════ */
-const QUESTION_SETS = {
-  truth:    {label:"Truth",         emoji:"🪞",color:"#9A8AAA",questions:["What are you pretending not to know?","What truth about yourself are you avoiding?","What would change if you told the truth?","What are you afraid would happen if you were fully honest?","What story are you telling yourself that isn't true?","Where are you lying to yourself to stay comfortable?"]},
-  fear:     {label:"Fear",          emoji:"🕯️",color:"#7A9AB8",questions:["What fear is quietly shaping your decisions?","What would you attempt if you knew you couldn't fail?","If fear disappeared tomorrow, what would you do first?","What are you protecting yourself from — and at what cost?","What would you do if no one was watching?","What's the worst that could actually happen — and could you survive it?"]},
-  desire:   {label:"Desire",        emoji:"✦", color:"#C4A46A",questions:["What does your heart actually want?","What are you longing for that you haven't admitted yet?","What would a life you truly loved look like?","What are you settling for instead of what you want?","What dream have you quietly given up on?","What do you want that you feel you're not allowed to want?"]},
-  identity: {label:"Identity",      emoji:"🌿",color:"#6A9478",questions:["Who are you when no one is watching?","What are you trying to prove, and to whom?","What are you still waiting for permission to do?","Whose voice are you still listening to that you should have let go?","What version of yourself have you abandoned?","What chapter of your story needs to end?"]},
-  faith:    {label:"Faith",         emoji:"🌾",color:"#D4B464",questions:["What is God inviting you to trust Him with?","Where do you need to surrender control?","What are you believing about God that might not be true?","What would fully trusting God actually look like?","What is God asking of you that you keep saying no to?","What would you do if you truly believed God was for you?"]},
-  healing:  {label:"Healing",       emoji:"🍃",color:"#8AAA7A",questions:["What are you holding onto that is holding you back?","What would your life look like if this wound were healed?","What do you need to forgive yourself for?","What pain have you normalized that deserves attention?","What would you tell the younger version of yourself?","What are you ready to release?"]},
-  relations:{label:"Relationships", emoji:"🌸",color:"#C4848A",questions:["What conversation have you been avoiding?","Who deserves more of your honesty?","What pattern in your relationships keeps repeating?","Who are you performing for instead of being real with?","What boundary do you need to set that you keep putting off?","What relationship in your life needs the most attention right now?"]},
-};
-const ALL_CARD_QS = Object.values(QUESTION_SETS).flatMap(s => s.questions);
-
-const CARD_THEMES = [
-  {id:"midnight", label:"Midnight",    preview:"linear-gradient(135deg,#1A1612,#2A1E18)", bg:"linear-gradient(135deg,#1A1612 0%,#2A1E18 50%,#1A1612 100%)", text:"#E8D4A0",sub:"rgba(232,212,160,0.45)",brand:"rgba(201,169,110,0.7)",dot:B.gold,fontType:"serif"},
-  {id:"parchment",label:"Parchment",   preview:"linear-gradient(135deg,#F5F0E8,#EDE5D5)", bg:"linear-gradient(135deg,#F5F0E8 0%,#EDE5D5 50%,#F0EBE0 100%)", text:"#2A2018",sub:"rgba(42,32,24,0.45)",brand:"rgba(90,138,106,0.8)",dot:B.sageDk,fontType:"serif"},
-  {id:"sage",     label:"Sage",        preview:"linear-gradient(135deg,#2A3828,#3A4A38)", bg:"linear-gradient(135deg,#2A3828 0%,#3A4A38 50%,#2E3E2C 100%)", text:"#E8F2E4",sub:"rgba(232,242,228,0.45)",brand:"rgba(190,211,196,0.8)",dot:B.sage,fontType:"serif"},
-  {id:"blush",    label:"Blush",       preview:"linear-gradient(135deg,#3A1820,#4A2430)", bg:"linear-gradient(135deg,#3A1820 0%,#4A2430 50%,#3E1C28 100%)", text:"#F8E8EE",sub:"rgba(248,232,238,0.45)",brand:"rgba(232,200,192,0.8)",dot:B.pinkD,fontType:"serif"},
-  {id:"dawn",     label:"Golden Dawn", preview:"linear-gradient(160deg,#2A1E08,#4A3418)", bg:"linear-gradient(160deg,#2A1E08 0%,#3A2A10 40%,#4A3418 100%)", text:"#FFF4D8",sub:"rgba(255,244,216,0.45)",brand:"rgba(212,180,100,0.8)",dot:"#D4B464",fontType:"display"},
-  {id:"coastal",  label:"Coastal",     preview:"linear-gradient(160deg,#0A1828,#0E2030)", bg:"linear-gradient(160deg,#0A1828 0%,#122238 40%,#0E2030 100%)", text:"#D8EEFF",sub:"rgba(216,238,255,0.45)",brand:"rgba(100,160,220,0.8)",dot:"#64A0DC",fontType:"sans"},
-  {id:"cloud",    label:"Cloud",       preview:"linear-gradient(135deg,#F0F4F8,#EFF5FB)", bg:"linear-gradient(135deg,#F0F4F8 0%,#E8EFF6 50%,#EFF5FB 100%)", text:"#1E2A3A",sub:"rgba(30,42,58,0.4)",brand:"rgba(80,120,180,0.7)",dot:"#5078B4",fontType:"sans"},
-  {id:"forest",   label:"Forest",      preview:"linear-gradient(135deg,#0A1A0E,#122018)", bg:"linear-gradient(135deg,#0A1A0E 0%,#122018 50%,#0E1A12 100%)", text:"#D8F0E4",sub:"rgba(216,240,228,0.4)",brand:"rgba(140,200,160,0.7)",dot:"#8CC8A0",fontType:"serif"},
-];
-
-const CARD_RATIOS = [
-  {id:"square",label:"Square",  w:1080,h:1080,desc:"Instagram Post",  icon:"⬜"},
-  {id:"story", label:"Story",   w:1080,h:1920,desc:"Story / TikTok",  icon:"📱"},
-  {id:"wide",  label:"Wide",    w:1200,h:628, desc:"Twitter/LinkedIn",icon:"🖥️"},
-];
-
-const VERSE_THEMES = [
-  {id:"candlelight",label:"Candlelight",preview:"linear-gradient(135deg,#12101A,#1E1828)",bg:"linear-gradient(135deg,#12101A 0%,#1E1828 50%,#14111E 100%)",text:"#E8D4A0",sub:"rgba(200,190,230,0.40)",brand:"rgba(201,169,110,0.7)",dot:"#C9A96E",fontType:"serif"},
-  {id:"parchment",label:"Parchment",preview:"linear-gradient(135deg,#F5F0E8,#EDE5D5)",bg:"linear-gradient(135deg,#F5F0E8 0%,#EDE5D5 50%,#F0EBE0 100%)",text:"#2A2018",sub:"rgba(42,32,24,0.45)",brand:"rgba(90,138,106,0.8)",dot:"#5A8A6A",fontType:"serif"},
-  {id:"midnight",label:"Midnight",preview:"linear-gradient(135deg,#0A0818,#1A1232)",bg:"linear-gradient(135deg,#0A0818 0%,#1A1232 50%,#0E0B1E 100%)",text:"#D8C8F0",sub:"rgba(200,190,230,0.40)",brand:"rgba(180,160,210,0.7)",dot:"#B4A0D2",fontType:"display"},
-  {id:"dawn",label:"Golden Dawn",preview:"linear-gradient(160deg,#2A1E08,#4A3418)",bg:"linear-gradient(160deg,#2A1E08 0%,#3A2A10 40%,#4A3418 100%)",text:"#FFF4D8",sub:"rgba(255,244,216,0.45)",brand:"rgba(212,180,100,0.8)",dot:"#D4B464",fontType:"display"},
-  {id:"sage",label:"Sage",preview:"linear-gradient(135deg,#2A3828,#3A4A38)",bg:"linear-gradient(135deg,#2A3828 0%,#3A4A38 50%,#2E3E2C 100%)",text:"#E8F2E4",sub:"rgba(232,242,228,0.45)",brand:"rgba(190,211,196,0.8)",dot:"#BED3C4",fontType:"serif"},
-];
-
-const VIRAL_QS = [
-  "What are you pretending not to know?","What are you afraid would change if you were fully honest?",
-  "What are you trying to prove, and to whom?","What truth about yourself are you avoiding?",
-  "If fear disappeared tomorrow, what would you do?","Who would you be if no one was watching?",
-  "What are you still waiting for permission to do?","What chapter of your story needs to end?",
-];
-
-const SAMPLE_PRAYERS = [
-  {id:"p1",date:"2026-03-04",text:"Going through a divorce and feeling completely lost. Please pray that God reminds me who I am in Him.",tag:"Healing",prayers:14},
-  {id:"p2",date:"2026-03-04",text:"Single and struggling with loneliness. Please just pray that I feel seen today.",tag:"Singleness",prayers:22},
-  {id:"p3",date:"2026-03-03",text:"New mom and drowning. Praying for strength and the ability to extend grace to myself.",tag:"Motherhood",prayers:31},
-  {id:"p4",date:"2026-03-02",text:"Believing God for a spouse. Some days the wait feels impossible. Asking for peace in this season.",tag:"Waiting",prayers:18},
-];
-
-/* ═══════════════════════════════════════════════════
-   BOOKSHELF — SPIRITUAL BOOKS
-═══════════════════════════════════════════════════ */
-const SHELF_BOOKS = [
-  {id:"journal",  label:"Reflection Journal", emoji:"📖"},
-  {id:"bible",    label:"Scripture",          emoji:"✝️"},
-  {id:"prayers",  label:"Prayers",            emoji:"🙏"},
-  {id:"gratitude",label:"Gratitude",          emoji:"🌿"},
-  {id:"dreams",   label:"Dreams",             emoji:"✨"},
-  {id:"prophecy", label:"Prophecy & Words",   emoji:"🕊️"},
-];
-/* Book cover colors for the floating shelf books */
-const BOOK_COVERS = {
-  journal:  {bg:"linear-gradient(160deg,#5C3D2E,#3D2818)",accent:"#C9A96E"},
-  bible:    {bg:"linear-gradient(160deg,#2E1E3D,#1E1028)",accent:"#B8A0D0"},
-  prayers:  {bg:"linear-gradient(160deg,#1E3D2E,#122818)",accent:"#8AC8A0"},
-  gratitude:{bg:"linear-gradient(160deg,#3D3D1E,#282810)",accent:"#D4C87A"},
-  dreams:   {bg:"linear-gradient(160deg,#1E2E3D,#101828)",accent:"#7AB8D8"},
-  prophecy: {bg:"linear-gradient(160deg,#3D1E2E,#281018)",accent:"#D490C0"},
-};
-
-const BOOK_CONTENT = {
-  bible:{
-    cover:{title:"Scripture & Meditation",subtitle:"Sit with the questions Jesus asked."},
-    pages:[
-      {title:"John 5:6",prompt:"Do you want to get well?",hint:"Are you actually willing to change — or have you become comfortable in your struggle?"},
-      {title:"Matthew 16:15",prompt:"Who do you say I am?",hint:"Not who culture says, not who your church says — who do you say Jesus is?"},
-      {title:"Mark 10:36",prompt:"What do you want me to do for you?",hint:"If Jesus asked you this today — what would your honest answer be?"},
-      {title:"John 11:26",prompt:"Do you believe this?",hint:"The thing you say you believe — do you actually believe it in this moment?"},
-      {title:"Matthew 16:26",prompt:"What good will it be to gain the whole world, yet forfeit your soul?",hint:"What are you trading your inner life for right now?"},
-      {title:"John 21:17",prompt:"Do you love me?",hint:"Beyond your words and habits — how would you describe your love for God right now?"},
-      {title:"John 20:15",prompt:"Why are you crying? Who is it you are looking for?",hint:"What are you grieving, and who or what are you really searching for?"},
-    ],
-  },
-  prayers:{
-    cover:{title:"Prayer Journal",subtitle:"Pour your heart out. He is listening."},
-    pages:[
-      {title:"Gratitude Prayer",prompt:"What are you thankful for today?",hint:"Start with the smallest blessings."},
-      {title:"Intercession",prompt:"Who needs your prayers right now?",hint:"Name them. Hold them before God."},
-      {title:"Confession",prompt:"What do you need to lay down?",hint:"Grace meets honesty."},
-      {title:"Petition",prompt:"What are you asking God for?",hint:"Ask boldly."},
-      {title:"Listening",prompt:"What is God saying to you today?",hint:"Be still. Wait. Write what comes."},
-    ],
-  },
-  gratitude:{
-    cover:{title:"Gratitude Journal",subtitle:"Notice the gifts hidden in ordinary days."},
-    pages:[
-      {title:"Three Blessings",prompt:"Name three things you are grateful for today.",hint:"Big or small — everything counts."},
-      {title:"Unexpected Gift",prompt:"What surprised you with joy recently?",hint:"The best gifts are often unplanned."},
-      {title:"A Person",prompt:"Who are you thankful for — and why?",hint:"Let yourself feel the weight of their presence in your life."},
-      {title:"Simple Pleasures",prompt:"What simple moment brought you peace today?",hint:"Morning light. A warm cup. A deep breath."},
-    ],
-  },
-  dreams:{
-    cover:{title:"Dream Journal",subtitle:"God speaks in the night. Capture what you see."},
-    pages:[
-      {title:"The Dream",prompt:"What did you dream last night?",hint:"Write everything you remember — even fragments."},
-      {title:"Symbols & Themes",prompt:"What images, symbols, or themes stood out?",hint:"Colors, people, places, feelings."},
-      {title:"Interpretation",prompt:"What might God be saying through this dream?",hint:"Ask the Holy Spirit to reveal the meaning."},
-      {title:"Emotions",prompt:"What emotions did you feel during and after the dream?",hint:"Emotions are signposts."},
-    ],
-  },
-  prophecy:{
-    cover:{title:"Prophecy & Words",subtitle:"Record what the Spirit speaks. Hold fast to the good."},
-    pages:[
-      {title:"What I Am Hearing",prompt:"What words or impressions have you received from God?",hint:"Write it down before you forget."},
-      {title:"Scripture Confirmation",prompt:"What Scripture is confirming what you are hearing?",hint:"God's voice never contradicts His Word."},
-      {title:"Recurring Themes",prompt:"What themes keep coming up in your prayer life?",hint:"Patterns often reveal purpose."},
-      {title:"What God is Confirming",prompt:"What is God making clearer over time?",hint:"He confirms through multiple witnesses."},
-    ],
-  },
-};
-
-function getBookPageCount(bookType, section){
-  if(bookType==="journal"){
-    if(!section) return 2; // cover + TOC
-    if(section==="blank") return 4; // cover + TOC + history + write
-    if(section==="rooms") return REFLECTION_ROOMS.length+6; // cover + TOC + entries + 7 rooms + jesus + locked + daily
-    if(section==="dreams") return 3+(BOOK_CONTENT.dreams?.pages.length||4); // cover + TOC + history + prompts
-    if(section==="prayers") return 4; // cover + TOC + history + write
-  }
-  const bc=BOOK_CONTENT[bookType];
-  return bc? bc.pages.length+1 : 12;
-}
-
-/* ═══════════════════════════════════════════════════
-   HELPERS
-═══════════════════════════════════════════════════ */
-function todayStr(){ return new Date().toISOString().slice(0,10); }
-function nowTime(){ return new Date().toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}); }
-function entryTime(e){ if(e.time) return e.time; const ts=parseInt(e.id); if(!ts||isNaN(ts)) return ""; return new Date(ts).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}); }
-function isoDate(d){ return d.toISOString().slice(0,10); }
-function wc(t){ return t.trim().split(/\s+/).filter(Boolean).length; }
-function shuffle(a){ return [...a].sort(()=>Math.random()-.5); }
-
-const THEME_WORDS={fear:["fear","afraid","scared","anxious","worry"],control:["control","manage","grip","force","fix"],trust:["trust","faith","believe","rely","surrender"],identity:["worth","value","enough","belong","purpose"],release:["release","let go","forgive","grief","heal"],desire:["want","desire","long","dream","hope"],relationships:["relationship","family","love","connection","hurt"]};
-function aggregateThemes(entries){
-  const t={};
-  entries.forEach(e=>{Object.entries(THEME_WORDS).forEach(([k,ws])=>{const c=ws.filter(w=>e.text.toLowerCase().includes(w)).length;t[k]=(t[k]||0)+c;});});
-  const sum=Object.values(t).reduce((a,b)=>a+b,0)||1;
-  return Object.entries(t).map(([k,v])=>({theme:k,count:v,pct:Math.round(v/sum*100)})).sort((a,b)=>b.count-a.count);
-}
-
-/* ═══════════════════════════════════════════════════
-   GROWTH INSIGHTS — KEYWORD DICTIONARIES
-═══════════════════════════════════════════════════ */
-const EMOTION_WORDS={
-  joy:["joy","joyful","happy","happiness","glad","delight","cheerful","elated","excited","blessed"],
-  peace:["peace","peaceful","calm","rest","still","quiet","serene","tranquil","centered","settled"],
-  anxiety:["anxiety","anxious","worry","worried","nervous","stressed","overwhelmed","panic","dread","uneasy"],
-  fear:["fear","afraid","scared","terrified","frightened","timid","paralyzed","helpless","threatened","insecure"],
-  anger:["anger","angry","frustrated","furious","irritated","resentful","bitter","enraged","mad","hostile"],
-  gratitude:["grateful","thankful","gratitude","appreciate","blessed","fortunate","humbled","gift","abundance","praise"],
-  loneliness:["lonely","alone","isolated","abandoned","rejected","disconnected","invisible","forgotten","empty","unseen"],
-  hope:["hope","hopeful","optimistic","encouraged","expectant","confident","looking forward","anticipate","possibilities","promise"],
-};
-const LIFE_THEMES={
-  relationships:["relationship","friend","friendship","partner","spouse","husband","wife","marriage","connection","community","people","companion"],
-  family:["family","mother","father","mom","dad","parent","child","children","son","daughter","sibling","brother","sister"],
-  calling:["calling","purpose","vocation","mission","ministry","assignment","destiny","path","direction","gifting","anointing","commission"],
-  faith:["faith","believe","trust","God","Jesus","Spirit","prayer","scripture","church","worship","devotion","gospel"],
-  forgiveness:["forgive","forgiveness","pardon","mercy","reconcile","release","grudge","offense","bitterness","grace","restore","heal"],
-  fear_theme:["fear","afraid","anxious","worry","dread","panic","overwhelm","doubt","uncertainty","insecurity","control","paralyzed"],
-  identity:["identity","worth","value","enough","belong","purpose","who I am","self","confidence","image","comparison","approval"],
-  control:["control","grip","manage","fix","plan","force","striving","surrender","let go","trust","release","rest"],
-  waiting:["waiting","patience","season","delay","longing","unfulfilled","hope","endure","persevere","trust","stillness","slow"],
-};
-const FAITH_WORDS={
-  prayerLang:["pray","prayer","praying","intercede","petition","supplication","knees","crying out","asking God","Lord hear"],
-  godRef:["God","Lord","Jesus","Christ","Holy Spirit","Father","Almighty","Savior","Redeemer","Creator","King of kings","Most High"],
-  surrenderLang:["surrender","yield","submit","let go","thy will","your will","not my will","give it to God","lay it down","release to you","trust you","in your hands"],
-};
-const SCRIPTURE_PATTERN=/\b(\d\s*)?[A-Z][a-z]+\s+\d{1,3}:\d{1,3}(?:-\d{1,3})?\b/g;
-const IDENTITY_NEG=["i can't","i'm not enough","i'm broken","i'm worthless","i'm a failure","i don't matter","i'll never","i'm too much","nobody loves","i'm stupid","i'm ugly","i hate myself","i'm not good enough","i'm unlovable","what's wrong with me","i'm invisible","i'm hopeless"];
-const IDENTITY_POS=["i am enough","i'm growing","God made me","i am loved","i'm becoming","i am worthy","i can do","i'm learning","God is with me","i am chosen","i am strong","i'm healing","i am free","i belong","i am called","i'm brave"];
-const GROWTH_MARKERS={
-  forgiveness:["forgive","forgave","forgiven","letting go","released","pardoned","mercy"],
-  surrender:["surrender","yielded","submitted","let go","gave it to God","thy will","released"],
-  gratitude:["grateful","thankful","praise","thanks","appreciation","blessed","counting blessings"],
-  repentance:["repent","repentance","confess","confession","turn from","sorry Lord","convicted"],
-  trust:["trust","trusting","leaning on","relying on","depending on","faith in","confidence in"],
-  obedience:["obey","obedience","obedient","follow","following","submitted","said yes"],
-};
-const STOP_WORDS=new Set(["the","be","to","of","and","a","in","that","have","i","it","for","not","on","with","he","as","you","do","at","this","but","his","by","from","they","we","her","she","or","an","will","my","one","all","would","there","their","what","so","up","out","if","about","who","get","which","go","me","when","make","can","like","time","no","just","him","know","take","people","into","year","your","good","some","could","them","see","other","than","then","now","look","only","come","its","over","think","also","back","after","use","two","how","our","work","first","well","way","even","new","want","because","any","these","give","day","most","us","is","am","are","was","were","been","being","had","has","does","did","got","getting","got","been","had","has","having","doing","would","should","could","might","must","shall","may","need","really","very","much","more","many","still","already","too","thing","things","something","anything","nothing","everything","going","every","each","been","feel","feeling","felt","lot","kind","maybe","around","through","right","own","say","said","been","those","same","both","before","long","down"]);
-const EMOTION_COLORS={joy:"#E8B84B",peace:"#7B9E6B",anxiety:"#C97B4B",fear:"#8B6B8B",anger:"#C45B5B",gratitude:"#D4A853",loneliness:"#6B7B9E",hope:"#5BA8A0"};
-
-/* ═══════════════════════════════════════════════════
-   GROWTH INSIGHTS — ANALYSIS ENGINE
-═══════════════════════════════════════════════════ */
-function computeInsights(entries,prayerPosts){
-  const emotions={};Object.keys(EMOTION_WORDS).forEach(k=>{emotions[k]={count:0,entries:[]};});
-  const lifeThemes={};Object.keys(LIFE_THEMES).forEach(k=>{lifeThemes[k]={count:0,pct:0};});
-  const faithMentions={scriptures:[],prayerLang:0,godRefs:0,surrenderLang:0};
-  const identity={negative:[],positive:[]};
-  const growthMarkers={};Object.keys(GROWTH_MARKERS).forEach(k=>{growthMarkers[k]=0;});
-  const timeOfDay={morning:0,afternoon:0,evening:0,night:0};
-  const wordFreq={};
-  const emotionTimeline=[];
-
-  entries.forEach(e=>{
-    const low=e.text.toLowerCase();
-    // Emotions
-    let entryEmotions=[];
-    Object.entries(EMOTION_WORDS).forEach(([emo,words])=>{
-      const hits=words.filter(w=>low.includes(w)).length;
-      if(hits>0){emotions[emo].count+=hits;emotions[emo].entries.push(e.id);entryEmotions.push(emo);}
-    });
-    emotionTimeline.push({id:e.id,date:e.date,emotions:entryEmotions});
-    // Life themes
-    Object.entries(LIFE_THEMES).forEach(([th,words])=>{
-      const hits=words.filter(w=>low.includes(w)).length;
-      lifeThemes[th].count+=hits;
-    });
-    // Faith
-    const scrMatches=e.text.match(SCRIPTURE_PATTERN);
-    if(scrMatches) scrMatches.forEach(ref=>faithMentions.scriptures.push({ref,entryId:e.id,date:e.date}));
-    FAITH_WORDS.prayerLang.forEach(w=>{if(low.includes(w.toLowerCase())) faithMentions.prayerLang++;});
-    FAITH_WORDS.godRef.forEach(w=>{if(low.includes(w.toLowerCase())) faithMentions.godRefs++;});
-    FAITH_WORDS.surrenderLang.forEach(w=>{if(low.includes(w.toLowerCase())) faithMentions.surrenderLang++;});
-    // Identity
-    IDENTITY_NEG.forEach(p=>{if(low.includes(p)) identity.negative.push({text:p,entryId:e.id,date:e.date});});
-    IDENTITY_POS.forEach(p=>{if(low.includes(p)) identity.positive.push({text:p,entryId:e.id,date:e.date});});
-    // Growth markers
-    Object.entries(GROWTH_MARKERS).forEach(([mk,words])=>{words.forEach(w=>{if(low.includes(w)) growthMarkers[mk]++;});});
-    // Time of day
-    const ts=parseInt(e.id);
-    if(!isNaN(ts)){const h=new Date(ts).getHours();if(h>=5&&h<12)timeOfDay.morning++;else if(h>=12&&h<17)timeOfDay.afternoon++;else if(h>=17&&h<21)timeOfDay.evening++;else timeOfDay.night++;}
-    // Word frequency
-    e.text.replace(/[^a-zA-Z\s]/g,"").toLowerCase().split(/\s+/).forEach(w=>{if(w.length>=3&&!STOP_WORDS.has(w)) wordFreq[w]=(wordFreq[w]||0)+1;});
-  });
-
-  // Life theme percentages
-  const themeSum=Object.values(lifeThemes).reduce((a,b)=>a+b.count,0)||1;
-  Object.keys(lifeThemes).forEach(k=>{lifeThemes[k].pct=Math.round(lifeThemes[k].count/themeSum*100);});
-
-  // Breakthroughs: detect negative→positive shifts in rolling 3-entry windows
-  const breakthroughs=[];
-  const negEmos=new Set(["anxiety","fear","anger","loneliness"]);
-  const posEmos=new Set(["joy","peace","gratitude","hope"]);
-  for(let i=2;i<emotionTimeline.length;i++){
-    const prev=emotionTimeline[i-2].emotions.concat(emotionTimeline[i-1].emotions);
-    const curr=emotionTimeline[i].emotions;
-    const hadNeg=prev.some(em=>negEmos.has(em));
-    const hasPos=curr.some(em=>posEmos.has(em));
-    const noNeg=!curr.some(em=>negEmos.has(em));
-    if(hadNeg&&hasPos&&noNeg){
-      breakthroughs.push({date:emotionTimeline[i].date,from:prev.filter(em=>negEmos.has(em))[0],to:curr.filter(em=>posEmos.has(em))[0],entryId:emotionTimeline[i].id});
-    }
-  }
-
-  return {emotions,lifeThemes,faithMentions,identity,growthMarkers,timeOfDay,wordFreq,breakthroughs};
-}
-
-function computeWeeklyDigest(entries,insights){
-  const now=new Date();const weekAgo=new Date(now-7*24*60*60*1000);
-  const weekEntries=entries.filter(e=>new Date(e.date)>=weekAgo);
-  const rooms={};weekEntries.forEach(e=>{if(e.roomLabel)rooms[e.roomLabel]=(rooms[e.roomLabel]||0)+1;});
-  const topRooms=Object.entries(rooms).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([r])=>r);
-  const totalWords=weekEntries.reduce((s,e)=>s+(e.words||wc(e.text)),0);
-  const topEmotions=Object.entries(insights.emotions).sort((a,b)=>b[1].count-a[1].count).slice(0,3).map(([k])=>k);
-  return {entryCount:weekEntries.length,totalWords,topRooms,topEmotions};
-}
-
-function computeSeasonalSummary(entries,insights,days){
-  const now=new Date();const cutoff=new Date(now-days*24*60*60*1000);
-  const filtered=entries.filter(e=>new Date(e.date)>=cutoff);
-  const totalWords=filtered.reduce((s,e)=>s+(e.words||wc(e.text)),0);
-  const avgWords=filtered.length?Math.round(totalWords/filtered.length):0;
-  const topThemes=Object.entries(insights.lifeThemes).sort((a,b)=>b[1].count-a[1].count).slice(0,3).map(([k])=>k);
-  return {entries:filtered.length,totalWords,avgWords,topThemes,days};
-}
-
-function computeFutureYou(entries){
-  if(entries.length<5) return null;
-  const sorted=[...entries].sort((a,b)=>a.id-b.id);
-  const first=sorted[0];const latest=sorted[sorted.length-1];
-  const firstLow=first.text.toLowerCase();const latestLow=latest.text.toLowerCase();
-  const firstNeg=IDENTITY_NEG.filter(p=>firstLow.includes(p));
-  const firstPos=IDENTITY_POS.filter(p=>firstLow.includes(p));
-  const latestNeg=IDENTITY_NEG.filter(p=>latestLow.includes(p));
-  const latestPos=IDENTITY_POS.filter(p=>latestLow.includes(p));
-  const daysBetween=Math.round((parseInt(latest.id)-parseInt(first.id))/(1000*60*60*24));
-  return {first:{date:first.date,snippet:first.text.slice(0,120),negPatterns:firstNeg,posPatterns:firstPos},latest:{date:latest.date,snippet:latest.text.slice(0,120),negPatterns:latestNeg,posPatterns:latestPos},daysBetween};
-}
-
-/* ═══════════════════════════════════════════════════
-   CANDLE ECONOMY — SHOP ITEMS
-═══════════════════════════════════════════════════ */
-const SHOP_ITEMS=[
-  // Furniture
-  {id:"prayer_chair",name:"Wooden Prayer Chair",emoji:"\u{1FA91}",cost:15,category:"furniture",asset:"/assets/furniture/prayer-chair.png",pos:{top:"62%",left:"8%",width:"12%"}},
-  {id:"prayer_rug",name:"Woven Prayer Rug",emoji:"🪷",cost:10,category:"furniture",asset:"/assets/furniture/prayer-rug.png",pos:{top:"78%",left:"22%",width:"18%"}},
-  {id:"side_table",name:"Rustic Side Table",emoji:"\u{1FAB5}",cost:12,category:"furniture",asset:"/assets/furniture/side-table.png",pos:{top:"60%",left:"60%",width:"10%"}},
-  // Candles & Light
-  {id:"candle_cluster",name:"Candle Cluster",emoji:"\uD83D\uDD6F\uFE0F",cost:8,category:"candles",asset:"/assets/furniture/candle-cluster.png",pos:{top:"58%",left:"62%",width:"8%"}},
-  {id:"lantern",name:"Brass Lantern",emoji:"\uD83C\uDFEE",cost:12,category:"candles",asset:"/assets/furniture/brass-lantern.png",pos:{top:"35%",left:"5%",width:"6%"}},
-  {id:"string_lights",name:"String Lights",emoji:"\u2728",cost:20,category:"candles",asset:"/assets/furniture/string-lights.png",pos:{top:"15%",left:"10%",width:"50%"}},
-  // Decor
-  {id:"cross_wall",name:"Wooden Cross",emoji:"\u271D\uFE0F",cost:10,category:"decor",asset:"/assets/furniture/wooden-cross.png",pos:{top:"25%",left:"48%",width:"8%"}},
-  {id:"plant_pot",name:"Potted Fern",emoji:"\uD83C\uDF3F",cost:6,category:"decor",asset:"/assets/furniture/potted-fern.png",pos:{top:"65%",left:"72%",width:"9%"}},
-  {id:"bookstack",name:"Stack of Books",emoji:"\uD83D\uDCDA",cost:8,category:"decor",asset:"/assets/furniture/book-stack.png",pos:{top:"63%",left:"56%",width:"7%"}},
-  {id:"bible_open",name:"Open Bible",emoji:"\uD83D\uDCD6",cost:14,category:"decor",asset:"/assets/furniture/open-bible.png",pos:{top:"56%",left:"64%",width:"8%"}},
-  {id:"prayer_beads",name:"Prayer Beads",emoji:"\uD83D\uDCFF",cost:5,category:"decor",asset:"/assets/furniture/prayer-beads.png",pos:{top:"58%",left:"70%",width:"6%"}},
-  {id:"tapestry",name:"Woven Tapestry",emoji:"\uD83D\uDDBC\uFE0F",cost:18,category:"decor",asset:"/assets/furniture/woven-tapestry.png",pos:{top:"22%",left:"15%",width:"14%"}},
-];
-
-/* ═══════════════════════════════════════════════════
-   PRAYER GARDEN — PLANTS
-═══════════════════════════════════════════════════ */
-const GARDEN_PLANTS=[
-  // growthBase values are in MINUTES per stage: [seed→sprout, sprout→young, young→mature, mature→harvest]
-  {id:"wheat",       name:"Wheat",        emoji:"🌾", stageEmojis:["🌱","🌿","🌾","🌾","🌾"], harvestItem:"wheat",       harvestEmoji:"🌾", plantCost:2, growthBase:[5,6,7,5]},       // 23 min total
-  {id:"barley",      name:"Barley",       emoji:"🌿", stageEmojis:["🌱","🌿","🌿","🌿","🌿"], harvestItem:"barley",      harvestEmoji:"🌿", plantCost:2, growthBase:[5,6,7,5]},       // 23 min total
-  {id:"grape",       name:"Grape Vine",   emoji:"🍇", stageEmojis:["🌱","🌿","🍃","🍇","🍇"], harvestItem:"grapes",      harvestEmoji:"🍇", plantCost:3, growthBase:[5,7,8,5]},       // 25 min total
-  {id:"fig",         name:"Fig Tree",     emoji:"🌳", stageEmojis:["🌱","🌿","🌳","🌳","🌳"], harvestItem:"figs",        harvestEmoji:"🫒", plantCost:4, growthBase:[6,7,9,6]},       // 28 min total
-  {id:"olive",       name:"Olive Tree",   emoji:"🫒", stageEmojis:["🌱","🌿","🌳","🫒","🫒"], harvestItem:"olives",      harvestEmoji:"🫒", plantCost:5, growthBase:[6,8,10,6]},      // 30 min total
-  {id:"pomegranate", name:"Pomegranate",  emoji:"🍎", stageEmojis:["🌱","🌿","🌳","🍎","🍎"], harvestItem:"pomegranates",harvestEmoji:"🍎", plantCost:6, growthBase:[7,8,11,7]},      // 33 min total
-  {id:"date_palm",   name:"Date Palm",    emoji:"🌴", stageEmojis:["🌱","🌿","🌴","🌴","🌴"], harvestItem:"dates",       harvestEmoji:"🌴", plantCost:7, growthBase:[7,9,12,7]},      // 35 min total
-];
-const GROWTH_STAGES=["seed","sprout","young plant","mature plant","harvestable"];
-const PRAYER_BONUS_MINS=2; // each prayer reduces each stage by 2 min
-
-/* ═══════════════════════════════════════════════════
-   PRAYER GARDEN — CRAFTING STATIONS
-═══════════════════════════════════════════════════ */
-const CRAFTING_STATIONS=[
-  {id:"olive_press", name:"Olive Press",  emoji:"🫒", recipes:[
-    {inputs:{olives:3},  output:"olive_oil",  outputName:"Olive Oil",   outputEmoji:"🫗", outputQty:1},
-    {inputs:{olives:2},  output:"lamp_oil",   outputName:"Lamp Oil",    outputEmoji:"🪔", outputQty:1},
-  ]},
-  {id:"drying_rack",  name:"Drying Rack",  emoji:"🧺", recipes:[
-    {inputs:{figs:2},    output:"dried_figs",  outputName:"Dried Figs",   outputEmoji:"🫘", outputQty:2},
-    {inputs:{grapes:3},  output:"raisins",     outputName:"Raisins",      outputEmoji:"🫐", outputQty:2},
-    {inputs:{dates:2},   output:"dried_dates", outputName:"Dried Dates",  outputEmoji:"🫘", outputQty:2},
-  ]},
-  {id:"grain_mill",   name:"Grain Mill",   emoji:"⚙️", recipes:[
-    {inputs:{wheat:3},   output:"flour",       outputName:"Flour",        outputEmoji:"🌫️", outputQty:2},
-    {inputs:{barley:3},  output:"barley_flour",outputName:"Barley Flour", outputEmoji:"🌫️", outputQty:2},
-  ]},
-  {id:"bread_oven",   name:"Bread Oven",   emoji:"🫓", recipes:[
-    {inputs:{flour:2},        output:"bread",     outputName:"Bread",     outputEmoji:"🍞", outputQty:1},
-    {inputs:{barley_flour:2}, output:"flatbread", outputName:"Flatbread", outputEmoji:"🫓", outputQty:1},
-  ]},
-];
-
-/* ═══════════════════════════════════════════════════
-   ECONOMY — ITEM CATALOG
-═══════════════════════════════════════════════════ */
-const ITEM_CATALOG = {
-  // === Seeds ===
-  herb_seed:    { name:"Herb Seeds",    emoji:"🌿", cat:"seeds",   buyPrice:2,  sellPrice:1  },
-  carrot_seed:  { name:"Carrot Seeds",  emoji:"🥕", cat:"seeds",   buyPrice:3,  sellPrice:1  },
-  onion_seed:   { name:"Onion Seeds",   emoji:"🧅", cat:"seeds",   buyPrice:3,  sellPrice:1  },
-  potato_seed:  { name:"Potato Seeds",  emoji:"🥔", cat:"seeds",   buyPrice:4,  sellPrice:2  },
-  tomato_seed:  { name:"Tomato Seeds",  emoji:"🍅", cat:"seeds",   buyPrice:5,  sellPrice:2  },
-  wheat_seed:   { name:"Wheat Seeds",   emoji:"🌾", cat:"seeds",   buyPrice:4,  sellPrice:2  },
-  // === Garden Crops ===
-  herbs:    { name:"Herbs",    emoji:"🌿", cat:"crops", sellPrice:3  },
-  carrot:   { name:"Carrot",   emoji:"🥕", cat:"crops", sellPrice:5  },
-  onion:    { name:"Onion",    emoji:"🧅", cat:"crops", sellPrice:5  },
-  potato:   { name:"Potato",   emoji:"🥔", cat:"crops", sellPrice:6  },
-  tomato:   { name:"Tomato",   emoji:"🍅", cat:"crops", sellPrice:7  },
-  wheat:    { name:"Wheat",    emoji:"🌾", cat:"crops", sellPrice:4  },
-  barley:   { name:"Barley",   emoji:"🌾", cat:"crops", sellPrice:4  },
-  grapes:   { name:"Grapes",   emoji:"🍇", cat:"crops", sellPrice:6  },
-  figs:     { name:"Figs",     emoji:"🫐", cat:"crops", sellPrice:7  },
-  olives:   { name:"Olives",   emoji:"🫒", cat:"crops", sellPrice:8  },
-  pomegranates:{ name:"Pomegranates", emoji:"🍎", cat:"crops", sellPrice:9 },
-  dates:    { name:"Dates",    emoji:"🌴", cat:"crops", sellPrice:10 },
-  // === Foraged / Ingredients ===
-  mushrooms:{ name:"Mushrooms", emoji:"🍄", cat:"ingredients", buyPrice:4,  sellPrice:3  },
-  berries:  { name:"Berries",   emoji:"🫐", cat:"ingredients", buyPrice:3,  sellPrice:2  },
-  // === Animal Products ===
-  eggs:  { name:"Eggs",  emoji:"🥚", cat:"ingredients", buyPrice:5,  sellPrice:4  },
-  milk:  { name:"Milk",  emoji:"🥛", cat:"ingredients", buyPrice:5,  sellPrice:4  },
-  honey: { name:"Honey", emoji:"🍯", cat:"ingredients", buyPrice:8,  sellPrice:6  },
-  wool:  { name:"Wool",  emoji:"🧶", cat:"ingredients", sellPrice:7  },
-  feed:  { name:"Feed",  emoji:"🌾", cat:"ingredients", buyPrice:3,  sellPrice:1  },
-  // === Crafted Intermediates ===
-  olive_oil:    { name:"Olive Oil",    emoji:"🫗", cat:"ingredients", sellPrice:12 },
-  lamp_oil:     { name:"Lamp Oil",     emoji:"🪔", cat:"ingredients", sellPrice:10 },
-  flour:        { name:"Flour",        emoji:"🌾", cat:"ingredients", sellPrice:6  },
-  barley_flour: { name:"Barley Flour", emoji:"🌾", cat:"ingredients", sellPrice:6  },
-  dried_figs:   { name:"Dried Figs",   emoji:"🫘", cat:"ingredients", sellPrice:10 },
-  dried_dates:  { name:"Dried Dates",  emoji:"🫘", cat:"ingredients", sellPrice:10 },
-  raisins:      { name:"Raisins",      emoji:"🫐", cat:"ingredients", sellPrice:8  },
-  flatbread:    { name:"Flatbread",    emoji:"🫓", cat:"cooked",      sellPrice:12 },
-  // === Cooked Foods ===
-  vegetable_soup:     { name:"Vegetable Soup",     emoji:"🍲", cat:"cooked", sellPrice:15 },
-  bread:              { name:"Bread",              emoji:"🍞", cat:"cooked", sellPrice:12 },
-  roasted_vegetables: { name:"Roasted Vegetables", emoji:"🥘", cat:"cooked", sellPrice:14 },
-  stew:               { name:"Stew",               emoji:"🥘", cat:"cooked", sellPrice:22 },
-  honey_cake:         { name:"Honey Cake",         emoji:"🍰", cat:"cooked", sellPrice:20 },
-  fruit_salad:        { name:"Fruit Salad",        emoji:"🥗", cat:"cooked", sellPrice:16 },
-};
-
-/* ═══════════════════════════════════════════════════
-   ECONOMY — KITCHEN RECIPES
-═══════════════════════════════════════════════════ */
-const KITCHEN_RECIPES = [
-  { id:"vegetable_soup",     name:"Vegetable Soup",     emoji:"🍲", inputs:{carrot:1, onion:1, herbs:1},           output:"vegetable_soup",     qty:1 },
-  { id:"bread",              name:"Bread",              emoji:"🍞", inputs:{flour:2},                              output:"bread",              qty:1 },
-  { id:"roasted_vegetables", name:"Roasted Vegetables", emoji:"🥘", inputs:{potato:1, tomato:1, herbs:1},          output:"roasted_vegetables", qty:1 },
-  { id:"stew",               name:"Stew",               emoji:"🥘", inputs:{carrot:1, potato:1, onion:1, tomato:1},output:"stew",               qty:1 },
-  { id:"honey_cake",         name:"Honey Cake",         emoji:"🍰", inputs:{flour:1, honey:1, eggs:1},             output:"honey_cake",         qty:1 },
-  { id:"fruit_salad",        name:"Fruit Salad",        emoji:"🥗", inputs:{berries:1, figs:1, honey:1},           output:"fruit_salad",        qty:1 },
-];
-
-/* ═══════════════════════════════════════════════════
-   ECONOMY — NPC BARTER TRADES
-═══════════════════════════════════════════════════ */
-const NPC_TRADES = [
-  { id:"t1", npc:"Old Farmer",  offer:{eggs:2},                      want:{wheat:3},      emoji:"👨‍🌾" },
-  { id:"t2", npc:"Beekeeper",   offer:{honey:1},                     want:{berries:3},    emoji:"🧑‍🌾" },
-  { id:"t3", npc:"Shepherd",    offer:{milk:2},                      want:{herbs:2},      emoji:"🧑" },
-  { id:"t4", npc:"Forager",     offer:{mushrooms:3},                 want:{bread:1},      emoji:"🧙" },
-  { id:"t5", npc:"Traveler",    offer:{tomato_seed:2,carrot_seed:2}, want:{olive_oil:1},  emoji:"🧳" },
-];
-
-/* ═══════════════════════════════════════════════════
-   ECONOMY — FARM CROPS (seed-based, no prayer link)
-═══════════════════════════════════════════════════ */
-const FARM_PLANTS = [
-  { id:"herb",   name:"Herbs",   emoji:"🌿", stageEmojis:["🌱","🌿","🌿","🌿","🌿"], harvestItem:"herbs",  seedItem:"herb_seed",   growthBase:[2,3,3,2],   plantCost:0 },
-  { id:"carrot", name:"Carrot",  emoji:"🥕", stageEmojis:["🌱","🌿","🥕","🥕","🥕"], harvestItem:"carrot", seedItem:"carrot_seed", growthBase:[4,6,6,4],   plantCost:0 },
-  { id:"onion",  name:"Onion",   emoji:"🧅", stageEmojis:["🌱","🌿","🧅","🧅","🧅"], harvestItem:"onion",  seedItem:"onion_seed",  growthBase:[4,6,6,4],   plantCost:0 },
-  { id:"potato", name:"Potato",  emoji:"🥔", stageEmojis:["🌱","🌿","🥔","🥔","🥔"], harvestItem:"potato", seedItem:"potato_seed", growthBase:[5,7,8,5],   plantCost:0 },
-  { id:"tomato", name:"Tomato",  emoji:"🍅", stageEmojis:["🌱","🌿","🍅","🍅","🍅"], harvestItem:"tomato", seedItem:"tomato_seed", growthBase:[6,8,9,7],   plantCost:0 },
-  { id:"wheat_farm", name:"Wheat", emoji:"🌾", stageEmojis:["🌱","🌿","🌾","🌾","🌾"], harvestItem:"wheat", seedItem:"wheat_seed", growthBase:[10,12,13,10], plantCost:0 },
-];
-
-/* ═══════════════════════════════════════════════════
-   ECONOMY — FARM ANIMALS (timestamp-based production)
-═══════════════════════════════════════════════════ */
-const ANIMAL_TYPES=[
-  {id:"chicken", name:"Chicken", emoji:"🐔", product:"eggs",  durationMs:3*60*60*1000,  feedCost:1, buyCost:25,  durationLabel:"3h"},
-  {id:"goat",    name:"Goat",    emoji:"🐐", product:"milk",  durationMs:6*60*60*1000,  feedCost:1, buyCost:50,  durationLabel:"6h"},
-  {id:"sheep",   name:"Sheep",   emoji:"🐑", product:"wool",  durationMs:12*60*60*1000, feedCost:1, buyCost:75,  durationLabel:"12h"},
-  {id:"cow",     name:"Cow",     emoji:"🐄", product:"milk",  durationMs:8*60*60*1000,  feedCost:1, buyCost:100, durationLabel:"8h"},
-  {id:"bees",    name:"Bees",    emoji:"🐝", product:"honey", durationMs:24*60*60*1000, feedCost:1, buyCost:120, durationLabel:"24h"},
-];
-const MAX_ANIMALS=6;
 
 async function dbLoad(k){
   try{
@@ -795,12 +229,7 @@ function DustMotes(){
     {motes.map(m=><div key={m.id} style={{position:"absolute",left:`${m.x}%`,top:`${m.y}%`,width:`${m.sz}px`,height:`${m.sz}px`,borderRadius:"50%",background:"rgba(255,240,200,0.5)",animation:`dustFloat ${m.dur}s ease-in-out infinite`,animationDelay:`${m.del}s`}}/>)}
   </div>);
 }
-function BookSparkles(){
-  const sp=useMemo(()=>Array.from({length:12},(_,i)=>({id:i,x:20+Math.random()*60,y:10+Math.random()*80,d:Math.random()*4,dur:2+Math.random()*3,sz:2+Math.random()*3})),[]);
-  return(<div style={{position:"absolute",inset:0,pointerEvents:"none",zIndex:5}}>
-    {sp.map(p=><div key={p.id} style={{position:"absolute",left:`${p.x}%`,top:`${p.y}%`,width:`${p.sz}px`,height:`${p.sz}px`,borderRadius:"50%",background:"radial-gradient(circle,rgba(255,220,130,0.9),rgba(255,200,80,0.3))",animation:`sparkle ${p.dur}s ${p.d}s ease-in-out infinite`}}/>)}
-  </div>);
-}
+/* BookSparkles extracted to components/BookSparkles.jsx */
 function ShelfParticles(){
   const sp=useMemo(()=>Array.from({length:18},(_,i)=>({id:i,x:72+Math.random()*26,y:24+Math.random()*40,d:Math.random()*6,dur:3+Math.random()*5,sz:1+Math.random()*2.5})),[]);
   return(<div style={{position:"absolute",inset:0,pointerEvents:"none",zIndex:8}}>
@@ -933,9 +362,14 @@ function ambientIsPlaying(id) {
   return _amb.id === id && _amb.el && !_amb.el.paused;
 }
 
-/* Room-specific ambient tracks */
+/* ── Sound Library — central catalog of all ambient sounds ── */
+const SOUND_LIBRARY = [
+  { id: "water-calm", name: "Flowing Water", description: "Calm waterfall and river stones", src: "/slrathna-sleep-water-calm-317558.mp3", volume: 0.35, room: "Kitchen Window" },
+  { id: "fire-crackle", name: "Fireplace", description: "Crackling hearth and warm embers", src: "/red_refrigerator--225630.mp3", volume: 0.30, room: "Cabin" },
+];
+/* Room-specific ambient tracks (auto-play when entering a room) */
 const AMBIENT_TRACKS = {
-  "kitchen-window": { src: "/slrathna-sleep-water-calm-317558.mp3", volume: 0.35, id: "water-calm" },
+  "kitchen-window": SOUND_LIBRARY.find(s=>s.id==="water-calm"),
 };
 
 /* ═══════════════════════════════════════════════════
@@ -1563,259 +997,7 @@ function ImmersiveKitchenWindow(){
   );
 }
 
-// Sunken cabin great room — stone fireplace with roaring fire LEFT, large picture window CENTER
-// with pine forest & starry sky, cathedral skylight TOP, string lights across ceiling beams,
-// wooden stairs going DOWN on RIGHT, desk with open book & lamp UPPER-RIGHT, sectional sofa CENTER,
-// rolled paper map with magnifying glass on wooden shelf BOTTOM-CENTER, bookshelf FAR-LEFT, candles on mantel.
-const CABIN_FALLBACK_IMAGE="/cabin-interior.png";
-
-function ImmersiveCabin(){
-  const containerRef=useRef(null);
-  const canvasRef=useRef(null);
-  const offsetX=useRef(0);
-  const offsetY=useRef(0);
-  const targetX=useRef(0);
-  const targetY=useRef(0);
-  const dragStart=useRef(null);
-  const animFrame=useRef(null);
-  const particles=useRef([]);
-  const fireflies=useRef([]);
-  const time=useRef(0);
-  const imgLoaded=useRef(false);
-  const imgRef=useRef(null);
-
-  // Parallax limits (px the image can shift beyond viewport)
-  const PARALLAX=40;
-  const SENSITIVITY=0.6;
-
-  // Initialize warm floating dust particles
-  useEffect(()=>{
-    const pts=[];
-    for(let i=0;i<35;i++){
-      pts.push({
-        x:Math.random(),
-        y:Math.random(),
-        size:Math.random()*2.5+0.8,
-        speed:Math.random()*0.0003+0.0001,
-        drift:Math.random()*0.0004-0.0002,
-        opacity:Math.random()*0.4+0.1,
-        phase:Math.random()*Math.PI*2,
-        warmth:Math.random(), // 0=gold, 1=warm white
-      });
-    }
-    particles.current=pts;
-    // Fireflies — glowing outside the window area
-    const ffs=[];
-    for(let i=0;i<18;i++){
-      ffs.push({
-        x:0.28+Math.random()*0.34,   // window glass only ~28-62%
-        y:0.10+Math.random()*0.24,    // window glass only ~10-34%
-        size:Math.random()*2+1.5,
-        sx:(Math.random()-0.5)*0.0003,
-        sy:(Math.random()-0.5)*0.0002,
-        phase:Math.random()*Math.PI*2,
-        blink:Math.random()*0.003+0.001,
-      });
-    }
-    fireflies.current=ffs;
-  },[]);
-
-  // Gyroscope on mobile
-  useEffect(()=>{
-    let active=true;
-    const handleOrientation=(e)=>{
-      if(!active)return;
-      const beta=e.beta||0;   // front-back tilt (-180..180)
-      const gamma=e.gamma||0; // left-right tilt (-90..90)
-      targetX.current=Math.max(-1,Math.min(1,gamma/30))*PARALLAX;
-      targetY.current=Math.max(-1,Math.min(1,(beta-45)/30))*PARALLAX;
-    };
-    if(typeof DeviceOrientationEvent!=="undefined"&&typeof DeviceOrientationEvent.requestPermission==="function"){
-      // iOS 13+ — request on first user tap
-      const reqPerm=()=>{
-        DeviceOrientationEvent.requestPermission().then(r=>{
-          if(r==="granted") window.addEventListener("deviceorientation",handleOrientation);
-        }).catch(()=>{});
-        window.removeEventListener("touchstart",reqPerm);
-      };
-      window.addEventListener("touchstart",reqPerm,{once:true});
-    } else {
-      window.addEventListener("deviceorientation",handleOrientation);
-    }
-    return()=>{active=false;window.removeEventListener("deviceorientation",handleOrientation);};
-  },[]);
-
-  // Touch drag for look-around
-  useEffect(()=>{
-    const el=containerRef.current;
-    if(!el)return;
-    const start=(x,y)=>{dragStart.current={x,y,ox:targetX.current,oy:targetY.current};};
-    const move=(x,y)=>{
-      if(!dragStart.current)return;
-      const dx=(x-dragStart.current.x)*SENSITIVITY;
-      const dy=(y-dragStart.current.y)*SENSITIVITY;
-      targetX.current=Math.max(-PARALLAX,Math.min(PARALLAX,dragStart.current.ox+dx));
-      targetY.current=Math.max(-PARALLAX,Math.min(PARALLAX,dragStart.current.oy+dy));
-    };
-    const end=()=>{dragStart.current=null;};
-    const ts=(e)=>{const t=e.touches[0];start(t.clientX,t.clientY);};
-    const tm=(e)=>{const t=e.touches[0];move(t.clientX,t.clientY);};
-    const ms=(e)=>{start(e.clientX,e.clientY);};
-    const mm=(e)=>{move(e.clientX,e.clientY);};
-    el.addEventListener("touchstart",ts,{passive:true});
-    el.addEventListener("touchmove",tm,{passive:true});
-    el.addEventListener("touchend",end);
-    el.addEventListener("mousedown",ms);
-    window.addEventListener("mousemove",mm);
-    window.addEventListener("mouseup",end);
-    return()=>{
-      el.removeEventListener("touchstart",ts);
-      el.removeEventListener("touchmove",tm);
-      el.removeEventListener("touchend",end);
-      el.removeEventListener("mousedown",ms);
-      window.removeEventListener("mousemove",mm);
-      window.removeEventListener("mouseup",end);
-    };
-  },[]);
-
-  // Animation loop — smooth parallax + particle canvas
-  useEffect(()=>{
-    const loop=()=>{
-      time.current+=16;
-      // Smooth lerp parallax
-      offsetX.current+=(targetX.current-offsetX.current)*0.08;
-      offsetY.current+=(targetY.current-offsetY.current)*0.08;
-      // Subtle idle breathing
-      const breathX=Math.sin(time.current*0.0004)*3;
-      const breathY=Math.cos(time.current*0.0003)*2;
-      const finalX=offsetX.current+breathX;
-      const finalY=offsetY.current+breathY;
-      // Apply to image
-      if(imgRef.current){
-        imgRef.current.style.transform=`translate(${-PARALLAX+finalX}px,${-PARALLAX+finalY}px) scale(1)`;
-      }
-      // Draw particles on canvas
-      const cvs=canvasRef.current;
-      if(cvs){
-        const ctx=cvs.getContext("2d");
-        const w=cvs.width;
-        const h=cvs.height;
-        ctx.clearRect(0,0,w,h);
-        particles.current.forEach(p=>{
-          p.y-=p.speed;
-          p.x+=p.drift+Math.sin(time.current*0.001+p.phase)*0.0001;
-          if(p.y<-0.05){p.y=1.05;p.x=Math.random();}
-          if(p.x<-0.05||p.x>1.05)p.x=Math.random();
-          const px=p.x*w;
-          const py=p.y*h;
-          const flicker=0.7+0.3*Math.sin(time.current*0.002+p.phase);
-          const alpha=p.opacity*flicker;
-          // Warm gold/amber dust motes
-          const r=255;
-          const g=Math.round(190+p.warmth*40);
-          const b=Math.round(80+p.warmth*60);
-          ctx.beginPath();
-          ctx.arc(px,py,p.size,0,Math.PI*2);
-          ctx.fillStyle=`rgba(${r},${g},${b},${alpha})`;
-          ctx.fill();
-          // Soft glow halo
-          if(p.size>1.5){
-            ctx.beginPath();
-            ctx.arc(px,py,p.size*3,0,Math.PI*2);
-            ctx.fillStyle=`rgba(${r},${g},${b},${alpha*0.15})`;
-            ctx.fill();
-          }
-        });
-        // ── Fireflies outside the window ──
-        fireflies.current.forEach(ff=>{
-          ff.x+=ff.sx+Math.sin(time.current*0.0005+ff.phase)*0.0001;
-          ff.y+=ff.sy+Math.cos(time.current*0.0007+ff.phase)*0.00008;
-          if(ff.x<0.26||ff.x>0.64)ff.sx*=-1;
-          if(ff.y<0.08||ff.y>0.36)ff.sy*=-1;
-          ff.x=Math.max(0.26,Math.min(0.64,ff.x));
-          ff.y=Math.max(0.08,Math.min(0.36,ff.y));
-          const blink=Math.sin(time.current*ff.blink+ff.phase);
-          const a=Math.max(0,blink*0.7+0.3)*0.6;
-          const px=ff.x*w,py=ff.y*h;
-          // Outer glow halo
-          ctx.beginPath();ctx.arc(px,py,ff.size*7,0,Math.PI*2);
-          ctx.fillStyle=`rgba(160,255,90,${a*0.08})`;ctx.fill();
-          // Mid glow
-          ctx.beginPath();ctx.arc(px,py,ff.size*3.5,0,Math.PI*2);
-          ctx.fillStyle=`rgba(180,255,100,${a*0.18})`;ctx.fill();
-          // Core
-          ctx.beginPath();ctx.arc(px,py,ff.size,0,Math.PI*2);
-          ctx.fillStyle=`rgba(210,255,140,${a})`;ctx.fill();
-        });
-      }
-      animFrame.current=requestAnimationFrame(loop);
-    };
-    animFrame.current=requestAnimationFrame(loop);
-    return()=>{if(animFrame.current)cancelAnimationFrame(animFrame.current);};
-  },[]);
-
-  // Resize canvas to match container
-  useEffect(()=>{
-    const resize=()=>{
-      const cvs=canvasRef.current;
-      if(!cvs)return;
-      cvs.width=window.innerWidth;
-      cvs.height=window.innerHeight;
-    };
-    resize();
-    window.addEventListener("resize",resize);
-    return()=>window.removeEventListener("resize",resize);
-  },[]);
-
-  return(
-    <div ref={containerRef} style={{position:"absolute",inset:0,zIndex:0,overflow:"hidden",background:"#060402",cursor:"grab"}} onMouseDown={()=>{if(containerRef.current)containerRef.current.style.cursor="grabbing";}} onMouseUp={()=>{if(containerRef.current)containerRef.current.style.cursor="grab";}}>
-      {/* Cabin image — oversized for parallax movement */}
-      <img
-        ref={imgRef}
-        src={CABIN_FALLBACK_IMAGE}
-        alt="Cabin interior"
-        onLoad={()=>{imgLoaded.current=true;}}
-        style={{
-          position:"absolute",
-          top:0,left:0,
-          width:`calc(100% + ${PARALLAX*2}px)`,
-          height:`calc(100% + ${PARALLAX*2}px)`,
-          objectFit:"cover",
-          transform:`translate(${-PARALLAX}px,${-PARALLAX}px)`,
-          willChange:"transform",
-          userSelect:"none",
-          WebkitUserDrag:"none",
-          pointerEvents:"none",
-        }}
-        draggable={false}
-      />
-      {/* Warm firelight flicker overlay — radiates from LEFT fireplace */}
-      <div className="cabin-firelight" style={{position:"absolute",inset:0,pointerEvents:"none",background:"radial-gradient(ellipse at 10% 48%, rgba(255,160,60,0.10) 0%, rgba(255,120,40,0.03) 35%, transparent 60%)",mixBlendMode:"screen"}}/>
-      {/* Fire motion — animated dancing glow from fireplace */}
-      <div className="cabin-fire-motion" style={{position:"absolute",left:0,top:"22%",width:"24%",height:"55%",pointerEvents:"none",zIndex:1,background:"radial-gradient(ellipse at 55% 55%, rgba(255,100,20,0.14) 0%, rgba(255,60,10,0.04) 45%, transparent 70%)",mixBlendMode:"screen",transformOrigin:"center bottom"}}/>
-      {/* Fire motion secondary — faster flicker layer */}
-      <div className="cabin-fire-flicker" style={{position:"absolute",left:"1%",top:"30%",width:"18%",height:"40%",pointerEvents:"none",zIndex:1,background:"radial-gradient(ellipse at 60% 50%, rgba(255,140,40,0.10) 0%, transparent 60%)",mixBlendMode:"screen",transformOrigin:"center bottom"}}/>
-      {/* String light glow — warm lights across ceiling */}
-      <div className="cabin-string-lights" style={{position:"absolute",left:"8%",right:"8%",top:"6%",height:"14%",pointerEvents:"none",zIndex:1,background:"linear-gradient(90deg, transparent 0%, rgba(255,210,120,0.04) 10%, rgba(255,200,100,0.06) 25%, rgba(255,210,120,0.04) 40%, rgba(255,200,100,0.06) 55%, rgba(255,210,120,0.04) 70%, rgba(255,200,100,0.06) 85%, transparent 100%)",mixBlendMode:"screen"}}/>
-      {/* Candle glow — mantel candles */}
-      <div className="cabin-candle-glow" style={{position:"absolute",left:"8%",top:"26%",width:"8%",height:"8%",pointerEvents:"none",zIndex:1,borderRadius:"50%",background:"radial-gradient(circle, rgba(255,200,80,0.12) 0%, transparent 70%)",mixBlendMode:"screen"}}/>
-      {/* Candle glow — near window */}
-      <div className="cabin-candle-glow2" style={{position:"absolute",left:"32%",top:"34%",width:"6%",height:"6%",pointerEvents:"none",zIndex:1,borderRadius:"50%",background:"radial-gradient(circle, rgba(255,200,80,0.10) 0%, transparent 65%)",mixBlendMode:"screen"}}/>
-      {/* Desk lamp glow — upper right */}
-      <div className="cabin-candle-glow" style={{position:"absolute",right:"8%",top:"20%",width:"10%",height:"10%",pointerEvents:"none",zIndex:1,borderRadius:"50%",background:"radial-gradient(circle, rgba(255,210,120,0.12) 0%, transparent 65%)",mixBlendMode:"screen"}}/>
-      {/* Floating dust particles + fireflies canvas */}
-      <canvas ref={canvasRef} style={{position:"absolute",inset:0,pointerEvents:"none",zIndex:2}}/>
-      {/* Cinematic vignette */}
-      <div style={{position:"absolute",inset:0,pointerEvents:"none",zIndex:3,background:"radial-gradient(ellipse at center, transparent 35%, rgba(8,6,4,0.55) 100%)"}}/>
-      {/* Top shadow for depth */}
-      <div style={{position:"absolute",top:0,left:0,right:0,height:"25%",pointerEvents:"none",zIndex:3,background:"linear-gradient(to bottom, rgba(8,6,4,0.30), transparent)"}}/>
-      {/* Warm color wash — subtle warmth across whole scene */}
-      <div style={{position:"absolute",inset:0,pointerEvents:"none",zIndex:1,background:"linear-gradient(180deg, rgba(201,140,60,0.03) 0%, transparent 40%, rgba(201,140,60,0.02) 100%)"}}/>
-    </div>
-  );
-}
-
-/* CabinScene3D is replaced by ImmersiveCabin above — GLB model will return when rebuilt */
+/* CabinScene3D is replaced by ImmersiveCabin (extracted to components/ImmersiveCabin.jsx) */
 
 /* ═══════════════════════════════════════════════════
    IMMERSIVE GARDEN — Enchanted greenhouse with garden.png
@@ -2382,6 +1564,7 @@ function AppInner(){
   const [prevScreen,    setPrevScreen]    = useState("cabin");
   const [spaceTransit,  setSpaceTransit]  = useState(false);
   const [transitDir,    setTransitDir]    = useState(null);
+  const [overworldPos,  setOverworldPos]  = useState(null);
   const [stoveZoom,     setStoveZoom]     = useState(false);
   const [windowZoom,    setWindowZoom]    = useState(false);
   const [journalZoom,   setJournalZoom]   = useState(false);
@@ -2467,6 +1650,9 @@ function AppInner(){
   // ambient sound
   const [ambientMuted,   setAmbientMuted]  = useState(false);
   const ambientMutedRef = useRef(false); // ref mirror for use inside effects
+  const manualSoundRef = useRef(false); // true when user picked a sound from the menu drawer
+  const [menuOpen,       setMenuOpen]     = useState(false); // bottom menu drawer open/closed
+  const [menuSoundsOpen, setMenuSoundsOpen] = useState(false); // sounds section expanded in drawer
 
   // ── Bible reader (Upper Room) ──
   const [bibleView,     setBibleView]     = useState(null);   // null|"books"|"chapters"|"reading"
@@ -2488,6 +1674,11 @@ function AppInner(){
   const [animalModal,  setAnimalModal]  = useState(null); // null|"buy"|animalId
   const [gardenMode,   setGardenMode]   = useState("farm"); // "farm"|"prayers"
   const [toast,        setToast]        = useState(null); // {msg,emoji} — ephemeral notification
+  // ── Prayer reminders ──
+  const [reminderPanel, setReminderPanel] = useState(null); // null or {id,time,frequency,days} — editing state
+  const [notifPermission, setNotifPermission] = useState(() =>
+    typeof Notification !== 'undefined' ? Notification.permission : 'denied'
+  );
   // ── Multiplayer state ──
   const [userProfile,       setUserProfile]       = useState(null);
   const [communityListings, setCommunityListings] = useState([]);
@@ -2541,6 +1732,9 @@ function AppInner(){
     return ()=>clearInterval(id);
   },[screen]);
 
+  // ── Close menu drawer on screen change ──
+  useEffect(()=>{setMenuOpen(false);},[screen]);
+
   // ── AMBIENT SOUND — auto-play / stop per screen ──
   useEffect(()=>{
     ambientMutedRef.current = ambientMuted;
@@ -2549,16 +1743,17 @@ function AppInner(){
   useEffect(()=>{
     const track = AMBIENT_TRACKS[screen];
     if(track){
+      // Room has its own track — override manual sound
+      manualSoundRef.current = false;
       if(!ambientMutedRef.current){
         ambientPlay(track.src, { volume: track.volume, fadeMs: 2000, id: track.id });
       }
-    } else {
-      // Leaving a room with ambient — fade out
+    } else if(!manualSoundRef.current) {
+      // No room track and no manual sound — fade out
       if(_amb.el) ambientStop(2000);
     }
-    return ()=>{
-      // Cleanup on screen change — if new screen has no track, stop is handled above
-    };
+    // If manualSoundRef is true, keep the user's chosen sound playing
+    return ()=>{};
   },[screen]);
 
   function toggleAmbientMute(){
@@ -2691,6 +1886,41 @@ function AppInner(){
 
   // ── AUTO-CLEAR TOAST ──
   useEffect(()=>{if(toast){const t=setTimeout(()=>setToast(null),2800);return()=>clearTimeout(t);}},[toast]);
+
+  // ── PRAYER REMINDER CHECK (every 60s) ──
+  useEffect(()=>{
+    if(typeof Notification==='undefined') return;
+    const check=()=>{
+      const now=new Date();
+      const hhmm=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+      const todayISO=now.toISOString().slice(0,10);
+      const dayOfWeek=now.getDay(); // 0=Sun
+      setPrayerPosts(prev=>{
+        let changed=false;
+        const next=prev.map(p=>{
+          if(!p.reminder?.enabled) return p;
+          if(p.reminder.time!==hhmm) return p;
+          if(p.reminder.lastNotified===todayISO) return p;
+          // Check frequency
+          if(p.reminder.frequency==='weekly'&&!p.reminder.days?.includes(dayOfWeek)) return p;
+          // Fire notification
+          if(Notification.permission==='granted'){
+            try{new Notification('Prayer Reminder',{body:p.text.slice(0,120),icon:'/favicon.ico',tag:'prayer-'+p.id});}catch(e){}
+          }
+          setToast({msg:'Reminder: '+p.text.slice(0,60)+(p.text.length>60?'...':''),emoji:''});
+          changed=true;
+          const updatedReminder={...p.reminder,lastNotified:todayISO};
+          if(p.reminder.frequency==='once') updatedReminder.enabled=false;
+          return {...p,reminder:updatedReminder};
+        });
+        if(changed) dbSave("irj-prayer",next);
+        return changed?next:prev;
+      });
+    };
+    const timer=setInterval(check,60000);
+    check(); // run once on mount
+    return()=>clearInterval(timer);
+  },[]);
 
   // ── SELL BASKET AUTO-SELL TIMER ──
   useEffect(()=>{
@@ -3042,6 +2272,24 @@ function AppInner(){
   function reactivatePrayer(id){
     const next=prayerPosts.map(p=>p.id===id?{...p,status:"active",answeredDate:null}:p);
     setPrayerPosts(next); dbSave("irj-prayer",next);
+  }
+  function requestNotifPermission(){
+    if(typeof Notification==='undefined') return;
+    Notification.requestPermission().then(perm=>{setNotifPermission(perm);});
+  }
+  function toggleReminder(prayerId, reminderData, keepOpen){
+    const next=prayerPosts.map(p=>p.id===prayerId?{...p,reminder:reminderData}:p);
+    setPrayerPosts(next); dbSave("irj-prayer",next);
+    if(!keepOpen) setReminderPanel(null);
+  }
+  function removeReminder(prayerId){
+    const next=prayerPosts.map(p=>{
+      if(p.id!==prayerId) return p;
+      const {reminder,...rest}=p;
+      return rest;
+    });
+    setPrayerPosts(next); dbSave("irj-prayer",next);
+    setReminderPanel(null);
   }
 
   // ── CANDLE ECONOMY ──
@@ -3717,7 +2965,7 @@ function AppInner(){
     if(dir==="prev"){calMonth===0?(setCalMonth(11),setCalYear(y=>y-1)):setCalMonth(m=>m-1);}
     else{calMonth===11?(setCalMonth(0),setCalYear(y=>y+1)):setCalMonth(m=>m+1);}
   }
-  function goToHistory(){setCalMonth(new Date().getMonth());setCalYear(new Date().getFullYear());setCalSelectedDay(null);setExpandedEntry(null);setScreen("history");}
+  function goToHistory(){setMenuOpen(false);setCalMonth(new Date().getMonth());setCalYear(new Date().getFullYear());setCalSelectedDay(null);setExpandedEntry(null);setScreen("history");}
 
   /* ── SECTION HISTORY RENDERER (shared by all journal sections) ── */
   function renderSectionHistory(sectionEntries, label, onNewEntry, isPrayer){
@@ -3828,162 +3076,6 @@ function AppInner(){
     </>;
   }
 
-  /* ── GLOBAL CSS ── */
-  const CSS=`
-    @keyframes flicker{0%,100%{opacity:1;transform:scaleY(1)}50%{opacity:.85;transform:scaleY(.95)}}
-    @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
-    @keyframes twinkle{0%,100%{opacity:.3;transform:scale(1)}50%{opacity:1;transform:scale(1.4)}}
-    @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
-    @keyframes firefly{0%{opacity:0;transform:translate(0,0) scale(0.5)}15%{opacity:1;transform:translate(8px,-12px) scale(1)}50%{opacity:0.6;transform:translate(-6px,-28px) scale(0.8)}85%{opacity:1;transform:translate(10px,-16px) scale(1.1)}100%{opacity:0;transform:translate(2px,-40px) scale(0.4)}}
-    @keyframes doorGlow{0%,100%{box-shadow:0 0 20px rgba(201,169,110,0.3),0 0 60px rgba(201,169,110,0.1)}50%{box-shadow:0 0 30px rgba(201,169,110,0.5),0 0 80px rgba(201,169,110,0.2)}}
-    @keyframes gentlePulse{0%,100%{transform:scale(1)}50%{transform:scale(1.03)}}
-    @keyframes sceneZoomIn{from{opacity:1;transform:scale(1)}to{opacity:0;transform:scale(1.08)}}
-    @keyframes sceneFadeIn{from{opacity:0}to{opacity:1}}
-    @keyframes smokeDrift{0%{opacity:0;transform:translate(0,0) scale(0.3)}20%{opacity:0.4}60%{opacity:0.2;transform:translate(-12px,-40px) scale(0.7)}100%{opacity:0;transform:translate(-20px,-70px) scale(1)}}
-    @keyframes windowGlow{0%,100%{opacity:0.4;box-shadow:0 0 15px rgba(255,200,80,0.3)}50%{opacity:0.7;box-shadow:0 0 30px rgba(255,200,80,0.5)}}
-    @keyframes waterShimmer{0%{background-position:0% 50%}100%{background-position:200% 50%}}
-    @keyframes textFloat{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
-    .scene-text{animation:textFloat .6s .15s ease both}
-    .scene-text2{animation:textFloat .6s .35s ease both}
-    .scene-text3{animation:textFloat .6s .55s ease both}
-    @keyframes lightRayShift{0%{opacity:0.5;transform:rotate(-3deg)}100%{opacity:0.8;transform:rotate(3deg)}}
-    @keyframes dustFloat{0%{opacity:0;transform:translate(0,0)}25%{opacity:0.6;transform:translate(5px,-8px)}50%{opacity:0.3;transform:translate(-3px,-16px)}75%{opacity:0.5;transform:translate(7px,-10px)}100%{opacity:0;transform:translate(2px,-20px)}}
-    @keyframes bookSlideUp{from{transform:translateY(100%);opacity:0.5}to{transform:translateY(0);opacity:1}}
-    @keyframes spaceFadeIn{from{opacity:0}to{opacity:1}}
-    @keyframes spaceFadeOut{from{opacity:1}to{opacity:0}}
-    button{touch-action:manipulation}
-    .fu{animation:fadeUp .55s ease both}
-    .fu2{animation:fadeUp .55s .12s ease both}
-    .fu3{animation:fadeUp .55s .24s ease both}
-    .fu4{animation:fadeUp .55s .36s ease both}
-    .room-c:hover{transform:translateY(-3px)!important;box-shadow:0 12px 36px rgba(0,0,0,0.12)!important;}
-    textarea::placeholder{font-style:italic;opacity:0.45}
-    textarea:focus,input:focus{outline:none}
-    ::-webkit-scrollbar{width:4px}
-    ::-webkit-scrollbar-thumb{background:rgba(150,130,110,0.25);border-radius:2px}
-    .door-btn{transition:all 0.4s ease;animation:doorGlow 3s ease-in-out infinite}
-    .door-btn:hover{transform:scale(1.06);box-shadow:0 0 40px rgba(201,169,110,0.6),0 0 100px rgba(201,169,110,0.3)!important}
-    .door-btn:active{transform:scale(0.97)}
-    @keyframes pageRevealFwd{0%{transform:perspective(1200px) rotateY(45deg);opacity:0;transform-origin:left center}100%{transform:perspective(1200px) rotateY(0deg);opacity:1;transform-origin:left center}}
-    @keyframes pageRevealBwd{0%{transform:perspective(1200px) rotateY(-45deg);opacity:0;transform-origin:right center}100%{transform:perspective(1200px) rotateY(0deg);opacity:1;transform-origin:right center}}
-    @keyframes bookOpenAnim{0%{transform:translate(-50%,-50%) scale(0.88);opacity:0}100%{transform:translate(-50%,-50%) scale(1);opacity:1}}
-    @keyframes pageInitial{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-    @keyframes sparkle{0%{opacity:0;transform:translate(0,0) scale(0.3)}30%{opacity:1;transform:translate(4px,-10px) scale(1)}70%{opacity:0.3;transform:translate(-3px,-20px) scale(0.5)}100%{opacity:0;transform:translate(6px,-30px) scale(0.2)}}
-    @keyframes pageContentReveal{0%{opacity:0;transform:translateY(10px)}100%{opacity:1;transform:translateY(0)}}
-    .book-nav{transition:all .2s}
-    .book-nav:hover{background:rgba(101,83,55,0.15)!important;border-color:rgba(101,83,55,0.3)!important}
-    .book-nav:active{transform:translateY(-50%) scale(0.9)!important}
-    @keyframes streakFloat{0%{opacity:0;transform:translate(-50%,-20px) scale(0.8)}15%{opacity:1;transform:translate(-50%,0) scale(1)}85%{opacity:1;transform:translate(-50%,0) scale(1)}100%{opacity:0;transform:translate(-50%,-12px) scale(0.9)}}
-    @keyframes candleFloat{0%{opacity:0;transform:translate(-50%,10px) scale(0.8)}12%{opacity:1;transform:translate(-50%,0) scale(1)}80%{opacity:1;transform:translate(-50%,0) scale(1)}100%{opacity:0;transform:translate(-50%,-18px) scale(0.85)}}
-    @keyframes insightsSlideUp{from{opacity:0;transform:translate(-50%,-50%) scale(0.92)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
-    @keyframes candlePulse{0%,100%{filter:drop-shadow(0 0 8px rgba(255,200,80,0.3))}50%{filter:drop-shadow(0 0 18px rgba(255,200,80,0.6))}}
-    @keyframes shelfDust{0%{opacity:0;transform:translate(0,0) scale(0.3)}20%{opacity:0.7;transform:translate(3px,-6px) scale(0.8)}50%{opacity:0.3;transform:translate(-2px,-14px) scale(0.6)}80%{opacity:0.5;transform:translate(4px,-8px) scale(0.9)}100%{opacity:0;transform:translate(1px,-18px) scale(0.3)}}
-    @keyframes shelfGlow{0%,100%{box-shadow:0 0 8px rgba(255,200,80,0.08),0 0 20px rgba(255,200,80,0.03)}50%{box-shadow:0 0 16px rgba(255,200,80,0.18),0 0 35px rgba(255,200,80,0.06)}}
-    @keyframes shelfBookLift{0%{transform:translate(0,0) scale(1);opacity:1}30%{transform:translate(-3px,-12px) scale(1.08);opacity:1}100%{transform:translate(-3px,-12px) scale(1.08);opacity:1}}
-    @keyframes bookArcToDesk{0%{opacity:1;transform:translate(0,0) scale(1.1)}25%{opacity:1;transform:translate(-80px,-30px) scale(1.25)}55%{opacity:0.9;transform:translate(-180px,40px) scale(1.1)}85%{opacity:0.7;transform:translate(-220px,100px) scale(0.85)}100%{opacity:0;transform:translate(-240px,140px) scale(0.7)}}
-    @keyframes bookArcToDeskBottom{0%{opacity:1;transform:translate(0,0) scale(1.1)}25%{opacity:1;transform:translate(-70px,-50px) scale(1.25)}55%{opacity:0.9;transform:translate(-160px,20px) scale(1.1)}85%{opacity:0.7;transform:translate(-200px,80px) scale(0.85)}100%{opacity:0;transform:translate(-230px,120px) scale(0.7)}}
-    @keyframes deskBookFadeOut{0%{opacity:1;transform:translateX(0) scale(1)}100%{opacity:0;transform:translateX(-20px) scale(0.92)}}
-    @keyframes deskBookFadeIn{0%{opacity:0;transform:translateY(8px) scale(0.95)}100%{opacity:1;transform:translateY(0) scale(1)}}
-    .shelf-hotspot{transition:all .4s cubic-bezier(.25,.8,.25,1);cursor:pointer;position:relative}
-    .shelf-hotspot:hover{transform:translate(-2px,-6px) scale(1.06)!important}
-    .shelf-hotspot:active{transform:translate(-1px,-3px) scale(0.98)!important}
-    .window-hotspot{transition:all .3s}
-    .window-hotspot:hover{background:rgba(255,200,80,0.12)!important}
-    @keyframes cabinFirelight{0%,100%{opacity:0.5}25%{opacity:0.85}50%{opacity:0.4}75%{opacity:0.7}}
-    @keyframes fireMotion{0%,100%{opacity:0.5;transform:scaleY(1) scaleX(1)}20%{opacity:0.85;transform:scaleY(1.06) scaleX(0.96)}45%{opacity:0.4;transform:scaleY(0.94) scaleX(1.03)}65%{opacity:0.75;transform:scaleY(1.03) scaleX(0.98)}85%{opacity:0.55;transform:scaleY(0.97) scaleX(1.01)}}
-    @keyframes fireFlicker{0%,100%{opacity:0.4;transform:scaleY(1)}30%{opacity:0.9;transform:scaleY(1.08)}60%{opacity:0.3;transform:scaleY(0.92)}80%{opacity:0.7;transform:scaleY(1.04)}}
-    @keyframes candleGlowPulse{0%,100%{opacity:0.5;transform:scale(1)}40%{opacity:0.9;transform:scale(1.1)}70%{opacity:0.4;transform:scale(0.95)}}
-    @keyframes stringLightTwinkle{0%,100%{opacity:0.4}25%{opacity:0.7}50%{opacity:0.35}75%{opacity:0.65}}
-    .cabin-fire-motion{animation:fireMotion 2.5s ease-in-out infinite}
-    .cabin-fire-flicker{animation:fireFlicker 1.8s ease-in-out infinite}
-    .cabin-string-lights{animation:stringLightTwinkle 6s ease-in-out infinite}
-    .cabin-candle-glow{animation:candleGlowPulse 3.5s ease-in-out infinite}
-    .cabin-candle-glow2{animation:candleGlowPulse 4.2s ease-in-out infinite 0.8s}
-    .cabin-firelight{animation:cabinFirelight 4s ease-in-out infinite}
-    .wp-option{transition:all .2s;cursor:pointer}
-    .wp-option:hover{background:rgba(255,255,255,0.08)!important;transform:translateY(-2px)}
-    .book-room:hover{border-color:rgba(101,83,55,0.4)!important;background:linear-gradient(135deg,rgba(101,83,55,0.08),rgba(101,83,55,0.03))!important}
-    @keyframes bookFlyToDesk{0%{opacity:1;transform:translate(0,0) scale(1)}40%{opacity:1;transform:translate(-120px,-40px) scale(1.3)}100%{opacity:0;transform:translate(-200px,120px) scale(0.7)}}
-    @keyframes bookArcFromBottom{0%{opacity:1;transform:translate(0,0) scale(1)}30%{opacity:1;transform:translate(0,-60px) scale(1.25)}60%{opacity:0.9;transform:translate(-20px,-120px) scale(1.1)}100%{opacity:0;transform:translate(-30px,-160px) scale(0.75)}}
-    @keyframes hotspotPulse{0%,100%{box-shadow:0 0 15px rgba(255,200,80,0.15),0 0 40px rgba(255,200,80,0.05)}50%{box-shadow:0 0 25px rgba(255,200,80,0.3),0 0 60px rgba(255,200,80,0.1)}}
-    @keyframes doorLabelFade{0%,100%{opacity:0.5}50%{opacity:1}}
-    @keyframes magicGlow{0%,100%{box-shadow:0 0 12px rgba(255,210,120,0.12),0 0 30px rgba(255,200,100,0.06),inset 0 0 8px rgba(255,210,120,0.04)}50%{box-shadow:0 0 22px rgba(255,210,120,0.28),0 0 50px rgba(255,200,100,0.12),inset 0 0 14px rgba(255,210,120,0.08)}}
-    @keyframes magicGlowOuter{0%,100%{opacity:0.3;transform:scale(1)}50%{opacity:0.7;transform:scale(1.04)}}
-    @keyframes hotspotPulse{0%,100%{opacity:0.25;transform:scale(0.92)}50%{opacity:1;transform:scale(1.3)}}
-    .magic-hotspot{cursor:pointer;transition:all .3s ease}
-    .magic-hotspot:hover{box-shadow:0 0 30px rgba(255,210,120,0.35),0 0 60px rgba(255,200,100,0.15)!important}
-    .magic-hotspot:active{transform:scale(0.97)!important;box-shadow:0 0 15px rgba(255,210,120,0.2)!important}
-    @keyframes kitchenFireGlow{0%,100%{opacity:0.7;transform:scale(1)}50%{opacity:1;transform:scale(1.04)}}
-    @keyframes stoveFireGlow{0%,100%{opacity:0.7;transform:scale(1)}35%{opacity:1;transform:scale(1.06)}65%{opacity:0.85;transform:scale(1.02)}100%{opacity:0.7;transform:scale(1)}}
-    @keyframes kitchenSteam{0%,100%{opacity:0.3;transform:translateY(0) scale(1)}50%{opacity:0.7;transform:translateY(-6px) scale(1.08)}}
-    @keyframes stoveGlowPulse{0%,100%{box-shadow:0 0 20px rgba(255,120,30,0.15),0 0 50px rgba(255,100,10,0.08),inset 0 0 10px rgba(255,140,40,0.05)}50%{box-shadow:0 0 35px rgba(255,120,30,0.35),0 0 80px rgba(255,100,10,0.18),inset 0 0 18px rgba(255,140,40,0.10)}}
-    @keyframes stoveGlowOuter{0%,100%{opacity:0.25;transform:scale(1)}50%{opacity:0.6;transform:scale(1.06)}}
-    @keyframes walkToStoveZoom{0%{transform:scale(1);filter:brightness(1)}40%{transform:scale(1.8);filter:brightness(1.1)}75%{transform:scale(3);filter:brightness(0.5)}100%{transform:scale(4.5);filter:brightness(0)}}
-    @keyframes walkToStoveVignette{0%{opacity:0}60%{opacity:0}100%{opacity:1}}
-    @keyframes walkToWindowZoom{0%{transform:scale(1);filter:brightness(1)}40%{transform:scale(1.6);filter:brightness(1.15)}75%{transform:scale(2.8);filter:brightness(0.45)}100%{transform:scale(4);filter:brightness(0)}}
-    @keyframes walkToWindowVignette{0%{opacity:0}60%{opacity:0}100%{opacity:1}}
-    @keyframes walkToJournalZoom{0%{transform:scale(1);filter:brightness(1)}35%{transform:scale(1.6);filter:brightness(1.15)}70%{transform:scale(3.2);filter:brightness(0.4)}100%{transform:scale(5);filter:brightness(0)}}
-    @keyframes walkToJournalVignette{0%{opacity:0}55%{opacity:0}100%{opacity:1}}
-    @keyframes journalDeskReveal{0%{opacity:0;transform:scale(1.08)}40%{opacity:1;transform:scale(1.02)}100%{opacity:1;transform:scale(1)}}
-    @keyframes waterShimmer{0%,100%{opacity:0.12;transform:scaleY(1)}50%{opacity:0.25;transform:scaleY(1.02)}}
-    @keyframes mistDrift{0%{transform:translateX(-5%) translateY(2%);opacity:0.15}50%{transform:translateX(3%) translateY(-1%);opacity:0.25}100%{transform:translateX(-5%) translateY(2%);opacity:0.15}}
-    @keyframes lanternFlicker{0%{opacity:0.7;transform:scale(1)}12%{opacity:1;transform:scale(1.08)}28%{opacity:0.75;transform:scale(0.97)}42%{opacity:1;transform:scale(1.10)}58%{opacity:0.65;transform:scale(0.96)}70%{opacity:1;transform:scale(1.06)}85%{opacity:0.7;transform:scale(1.01)}100%{opacity:0.7;transform:scale(1)}}
-    @keyframes windowGlow{0%,100%{opacity:0.55;transform:scale(1)}30%{opacity:0.9;transform:scale(1.03)}60%{opacity:0.6;transform:scale(0.98)}80%{opacity:0.95;transform:scale(1.02)}}
-    @keyframes chimneySmoke{0%{transform:translateY(0) translateX(0) scale(1);opacity:0.30}25%{transform:translateY(-18px) translateX(4px) scale(1.15);opacity:0.22}50%{transform:translateY(-38px) translateX(-3px) scale(1.35);opacity:0.14}75%{transform:translateY(-58px) translateX(6px) scale(1.55);opacity:0.07}100%{transform:translateY(-80px) translateX(2px) scale(1.8);opacity:0}}
-    @keyframes chimneySmokeB{0%{transform:translateY(0) translateX(2px) scale(1);opacity:0.25}25%{transform:translateY(-22px) translateX(-5px) scale(1.2);opacity:0.18}50%{transform:translateY(-42px) translateX(4px) scale(1.4);opacity:0.10}75%{transform:translateY(-65px) translateX(-2px) scale(1.6);opacity:0.05}100%{transform:translateY(-85px) translateX(-4px) scale(1.85);opacity:0}}
-    @keyframes shelfBookHover{0%,100%{transform:translateX(0)}50%{transform:translateX(-4px)}}
-    @keyframes windowPanelSlide{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
-    @keyframes windowPanelSlideLeft{from{transform:translateX(-100%);opacity:0}to{transform:translateX(0);opacity:1}}
-    @keyframes doorLightBurst{0%{transform:translate(-50%,-50%) scale(0.05);opacity:0}40%{opacity:0.85}100%{transform:translate(-50%,-50%) scale(4);opacity:1}}
-    @keyframes doorFadeWarm{0%{opacity:0}55%{opacity:0}100%{opacity:1}}
-    @keyframes doorZoomBg{0%{transform:scale(1);filter:brightness(1)}100%{transform:scale(1.12);filter:brightness(1.3)}}
-    @keyframes walkToDoor{0%{transform:scale(1);filter:brightness(1.25)}35%{transform:scale(1.6);filter:brightness(1.15)}65%{transform:scale(3);filter:brightness(0.6)}100%{transform:scale(5.5);filter:brightness(0)}}
-    @keyframes doorReveal{0%{opacity:0;transform:scale(1.12)}25%{opacity:1;transform:scale(1.03)}100%{opacity:1;transform:scale(1)}}
-    @keyframes doorHoldZoom{0%{transform:scale(1)}100%{transform:scale(1.03)}}
-    @keyframes doorEnterZoom{0%{transform:scale(1.03);filter:brightness(1)}60%{transform:scale(1.6);filter:brightness(1.8)}100%{transform:scale(2.2);filter:brightness(2.5)}}
-    @keyframes doorEnterFade{0%{opacity:0}100%{opacity:1}}
-    @keyframes walkVignette{0%{opacity:0}60%{opacity:0.3}100%{opacity:1}}
-    @keyframes gardenSway{0%,100%{transform:rotate(-2deg)}50%{transform:rotate(2deg)}}
-    @keyframes gardenGrow{from{transform:scale(0.6);opacity:0}to{transform:scale(1);opacity:1}}
-    @keyframes harvestGlow{0%,100%{filter:drop-shadow(0 0 6px rgba(255,220,80,0.4)) brightness(1.1)}50%{filter:drop-shadow(0 0 18px rgba(255,200,60,0.7)) brightness(1.2)}}
-    @keyframes harvestBounce{0%{transform:scale(1)}25%{transform:scale(1.15)}50%{transform:scale(0.95)}75%{transform:scale(1.05)}100%{transform:scale(1)}}
-    @keyframes gardenPlotFadeIn{from{opacity:0;transform:translate(-50%,-50%) scale(0.8)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
-    @keyframes doorChoiceFadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
-    @keyframes bloomPulse{0%,100%{filter:drop-shadow(0 0 6px rgba(180,140,255,0.3))}50%{filter:drop-shadow(0 0 16px rgba(180,140,255,0.6))}}
-    @keyframes emptyPlotPulse{0%,100%{opacity:0.35;transform:scale(1)}50%{opacity:0.7;transform:scale(1.12)}}
-    @keyframes gardenPlotHover{0%,100%{box-shadow:0 0 8px rgba(255,200,80,0.08)}50%{box-shadow:0 0 18px rgba(255,200,80,0.2)}}
-    @keyframes gardenDoorGlow{0%,100%{box-shadow:0 0 20px rgba(255,200,80,0.15),0 0 50px rgba(255,200,80,0.05)}50%{box-shadow:0 0 35px rgba(255,200,80,0.3),0 0 80px rgba(255,200,80,0.1)}}
-    .garden-lantern-glow{animation:candleGlowPulse 4s ease-in-out infinite}
-    .garden-lantern-glow2{animation:candleGlowPulse 4.8s ease-in-out infinite 1s}
-    .garden-door-glow{animation:candleGlowPulse 3.5s ease-in-out infinite 0.5s}
-    .garden-string-lights{animation:stringLightTwinkle 7s ease-in-out infinite}
-    @keyframes animalBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
-    @keyframes produceFloat{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-6px) scale(1.1)}}
-    .animal-slot{transition:transform .15s ease;cursor:pointer}
-    .animal-slot:active{transform:translate(-50%,-50%) scale(0.9)!important}
-    .garden-plot-hotspot{transition:all .25s ease;cursor:pointer}
-    .garden-plot-hotspot:hover{transform:translate(-50%,-50%) scale(1.12)!important}
-    .garden-plot-hotspot:active{transform:translate(-50%,-50%) scale(0.92)!important}
-    .garden-plot{transition:all .2s ease;cursor:pointer}
-    .garden-plot:hover{transform:translateY(-2px);box-shadow:0 4px 16px rgba(0,0,0,0.15)!important}
-    .garden-plot:active{transform:scale(0.96)}
-    .craft-btn{transition:all .2s}
-    .craft-btn:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,0.15)!important}
-    @keyframes panelSlideUp{from{transform:translateY(100%);opacity:0.5}to{transform:translateY(0);opacity:1}}
-    @keyframes mapHotspotFadeIn{from{opacity:0;transform:translate(-50%,-50%) scale(0.7)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
-    @keyframes mapLabelFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
-    .map-hotspot{cursor:pointer}
-    .map-hotspot:hover{box-shadow:0 0 35px rgba(255,210,120,0.45),0 0 70px rgba(255,210,120,0.15)!important;transform:translate(-50%,-50%) scale(1.08)!important}
-    .map-hotspot:active{transform:translate(-50%,-50%) scale(0.94)!important}
-    @keyframes verseReveal{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
-    @keyframes actionBarSlideUp{from{opacity:0;transform:translateY(40px)}to{opacity:1;transform:translateY(0)}}
-    @keyframes overlayFadeIn{from{opacity:0}to{opacity:1}}
-    @keyframes mapBtnGlow{0%,100%{box-shadow:0 0 8px rgba(255,210,120,0.15),0 2px 12px rgba(0,0,0,0.3)}50%{box-shadow:0 0 18px rgba(255,210,120,0.35),0 2px 12px rgba(0,0,0,0.3)}}
-    @keyframes panelSlideUp{from{opacity:0;transform:translateY(100%)}to{opacity:1;transform:translateY(0)}}
-    .verse-tap:active{transform:scale(0.98);}
-    .bible-book{transition:all .2s ease;cursor:pointer}.bible-book:hover{background:rgba(180,160,210,0.12)!important;transform:translateX(4px)}.bible-book:active{transform:translateX(2px) scale(0.98)}
-    .bible-chap{transition:all .2s ease;cursor:pointer}.bible-chap:hover{background:rgba(180,160,210,0.18)!important;transform:scale(1.08)}.bible-chap:active{transform:scale(0.94)}
-  `;
 
   /* ── DARK HEADER (reusable) ── */
   const DarkHeader = ({title, onBack, extra, backLabel}) => (
@@ -4002,6 +3094,123 @@ function AppInner(){
       <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.75rem",color:"rgba(255,240,200,0.55)",letterSpacing:"0.02em"}}>Map</span>
     </button>
   );
+
+  /* ══ BOTTOM MENU DRAWER — collapsible tray with Map, Sounds, History, Account ══ */
+  const BottomMenuDrawer=()=>{
+    const sIsPlaying=(id)=>_amb.id===id&&_amb.el&&!_amb.el.paused;
+    const anyPlaying=_amb.el&&!_amb.el.paused;
+    return(<>
+      {/* Collapsed "Menu" tab — glowing, always visible */}
+      {!menuOpen&&(
+        <button onClick={()=>setMenuOpen(true)} style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",zIndex:50,background:"rgba(26,22,18,0.88)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",border:"1px solid rgba(201,169,110,0.3)",borderBottom:"none",borderRadius:"14px 14px 0 0",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:7,padding:"7px 28px",animation:"fadeUp .6s .8s ease both, mapBtnGlow 4s 2s ease-in-out infinite",boxShadow:"0 -2px 16px rgba(201,169,110,0.12), 0 0 24px rgba(201,169,110,0.06)"}}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,240,200,0.55)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+          <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.75rem",color:"rgba(255,240,200,0.55)",letterSpacing:"0.03em"}}>Menu</span>
+          {anyPlaying&&<div style={{width:5,height:5,borderRadius:"50%",background:"rgba(90,138,106,0.8)",animation:"gentlePulse 1.5s infinite"}}/>}
+        </button>
+      )}
+      {/* Backdrop */}
+      {menuOpen&&<div onClick={()=>setMenuOpen(false)} style={{position:"fixed",inset:0,zIndex:58,background:"rgba(10,8,6,0.4)",animation:"spaceFadeIn .25s ease"}}/>}
+      {/* Expanded drawer */}
+      {menuOpen&&(
+        <div style={{position:"fixed",bottom:0,left:0,right:0,zIndex:60,maxHeight:420,background:"rgba(26,22,18,0.94)",backdropFilter:"blur(16px)",WebkitBackdropFilter:"blur(16px)",borderTop:"1px solid rgba(201,169,110,0.2)",borderRadius:"18px 18px 0 0",animation:"menuDrawerUp .35s cubic-bezier(.22,1,.36,1) both",display:"flex",flexDirection:"column",overflowY:"auto",WebkitOverflowScrolling:"touch",padding:"0 20px 28px"}}>
+          {/* Drag handle */}
+          <div onClick={()=>setMenuOpen(false)} style={{display:"flex",justifyContent:"center",padding:"12px 0 10px",cursor:"pointer"}}>
+            <div style={{width:36,height:4,borderRadius:2,background:"rgba(201,169,110,0.3)"}}/>
+          </div>
+
+          {/* ── MAP BUTTON — prominent at top ── */}
+          <button onClick={()=>{setMenuOpen(false);setScreen("map");setMarketStall(null);setShopStall(null);}} style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,width:"100%",background:"rgba(201,169,110,0.08)",border:"1px solid rgba(201,169,110,0.2)",borderRadius:10,padding:"13px 14px",cursor:"pointer",marginBottom:14,transition:"all 0.2s"}}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,240,200,0.6)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
+            <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.82rem",color:B.goldL}}>World Map</span>
+          </button>
+
+          {/* ── SOUNDS (collapsible) ── */}
+          <div style={{marginBottom:14}}>
+            {/* Sounds header — tap to expand/collapse */}
+            <button onClick={()=>setMenuSoundsOpen(p=>!p)} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"rgba(255,255,255,0.03)",border:"1px solid rgba(201,169,110,0.08)",borderRadius:10,padding:"11px 14px",cursor:"pointer",transition:"all 0.2s",marginBottom:menuSoundsOpen?10:0}}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="rgba(201,169,110,0.5)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+              <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.78rem",color:B.goldL,flex:1,textAlign:"left"}}>Sounds</span>
+              {/* Now-playing mini indicator when collapsed */}
+              {!menuSoundsOpen&&anyPlaying&&(
+                <div style={{display:"flex",alignItems:"center",gap:5}}>
+                  <div style={{display:"flex",alignItems:"flex-end",gap:1.5,height:10}}>
+                    {[0,1,2].map(i=><div key={i} style={{width:2,borderRadius:1,background:"rgba(90,138,106,0.6)",animation:`soundBar 0.${6+i*2}s ease-in-out infinite alternate`,animationDelay:`${i*0.1}s`,height:i===1?"100%":"55%"}}/>)}
+                  </div>
+                  <span style={{fontFamily:SANS,fontSize:"0.62rem",color:"rgba(190,211,196,0.5)"}}>{SOUND_LIBRARY.find(s=>s.id===_amb.id)?.name||""}</span>
+                </div>
+              )}
+              {/* Chevron */}
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(201,169,110,0.35)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{transition:"transform 0.25s",transform:menuSoundsOpen?"rotate(180deg)":"rotate(0deg)"}}><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            {/* Expandable sound options */}
+            {menuSoundsOpen&&(<>
+              {/* Now playing bar */}
+              {anyPlaying&&(
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10,padding:"8px 12px",background:"rgba(90,138,106,0.08)",border:"1px solid rgba(90,138,106,0.15)",borderRadius:8}}>
+                  <div style={{display:"flex",alignItems:"flex-end",gap:2,height:12}}>
+                    {[0,1,2].map(i=><div key={i} style={{width:2.5,borderRadius:1,background:"rgba(90,138,106,0.6)",animation:`soundBar 0.${6+i*2}s ease-in-out infinite alternate`,animationDelay:`${i*0.15}s`,height:i===1?"100%":"60%"}}/>)}
+                  </div>
+                  <span style={{fontFamily:SANS,fontSize:"0.7rem",color:"rgba(190,211,196,0.6)",flex:1}}>{SOUND_LIBRARY.find(s=>s.id===_amb.id)?.name||"Playing"}</span>
+                  <button onClick={()=>{ambientStop(800);setAmbientMuted(false);manualSoundRef.current=false;}} style={{background:"transparent",border:"1px solid rgba(255,100,100,0.15)",borderRadius:6,padding:"3px 8px",cursor:"pointer",color:"rgba(255,150,150,0.5)",fontSize:"0.62rem",fontFamily:SANS,fontWeight:600}}>Stop</button>
+                </div>
+              )}
+              {/* Sound list */}
+              <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                {SOUND_LIBRARY.map(sound=>{
+                  const active=sIsPlaying(sound.id);
+                  return(
+                    <button key={sound.id} onClick={()=>{
+                      if(active){ambientStop(800);manualSoundRef.current=false;}
+                      else{setAmbientMuted(false);manualSoundRef.current=true;ambientPlay(sound.src,{volume:sound.volume,fadeMs:1200,id:sound.id});}
+                    }} style={{display:"flex",alignItems:"center",gap:10,background:active?"rgba(90,138,106,0.08)":"rgba(255,255,255,0.03)",border:"1px solid "+(active?"rgba(90,138,106,0.2)":"rgba(201,169,110,0.08)"),borderRadius:10,padding:"10px 14px",cursor:"pointer",transition:"all 0.2s",width:"100%",textAlign:"left"}}>
+                      <div style={{width:32,height:32,borderRadius:"50%",background:active?"rgba(90,138,106,0.2)":"rgba(201,169,110,0.08)",border:"1px solid "+(active?"rgba(90,138,106,0.35)":"rgba(201,169,110,0.15)"),display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                        {active?<svg width="12" height="12" viewBox="0 0 24 24" fill="rgba(190,211,196,0.8)" stroke="none"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>:<svg width="12" height="12" viewBox="0 0 24 24" fill="rgba(201,169,110,0.7)" stroke="none"><polygon points="6,3 20,12 6,21"/></svg>}
+                      </div>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontFamily:SERIF,fontSize:"0.82rem",color:active?"rgba(190,211,196,0.9)":B.goldL,fontWeight:500}}>{sound.name}</div>
+                        <div style={{fontFamily:SANS,fontSize:"0.65rem",color:"rgba(255,248,232,0.25)",lineHeight:1.3}}>{sound.description}</div>
+                      </div>
+                      <span style={{fontSize:"0.55rem",background:"rgba(201,169,110,0.06)",color:"rgba(201,169,110,0.4)",border:"1px solid rgba(201,169,110,0.1)",padding:"2px 6px",borderRadius:99,fontFamily:SANS,fontWeight:600,whiteSpace:"nowrap",flexShrink:0}}>{sound.room}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              {/* Mute toggle */}
+              <button onClick={toggleAmbientMute} style={{display:"flex",alignItems:"center",gap:6,marginTop:8,padding:"6px 14px",background:"rgba(255,255,255,0.03)",border:"1px solid rgba(201,169,110,0.08)",borderRadius:8,cursor:"pointer"}}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={ambientMuted?"rgba(255,150,150,0.5)":"rgba(201,169,110,0.5)"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>{ambientMuted?<><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></>:<><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></>}</svg>
+                <span style={{fontFamily:SANS,fontSize:"0.68rem",color:ambientMuted?"rgba(255,150,150,0.5)":"rgba(255,248,232,0.35)",fontWeight:600}}>{ambientMuted?"Unmute":"Mute"}</span>
+              </button>
+            </>)}
+          </div>
+
+          {/* Divider */}
+          <div style={{height:1,background:"rgba(201,169,110,0.1)",margin:"0 0 14px"}}/>
+
+          {/* ── MAP + HISTORY + ACCOUNT ROW ── */}
+          <div style={{display:"flex",gap:10}}>
+            {/* History */}
+            <button onClick={()=>{setMenuOpen(false);goToHistory();}} style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:8,background:"rgba(255,255,255,0.04)",border:"1px solid rgba(201,169,110,0.12)",borderRadius:10,padding:"12px 14px",cursor:"pointer",transition:"all 0.2s"}}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(201,169,110,0.5)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+              <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.75rem",color:B.goldL}}>History</span>
+            </button>
+            {/* Account */}
+            {!user&&!authLoading&&auth?(
+              <button onClick={()=>{setMenuOpen(false);handleGoogleSignIn();}} style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:8,background:"rgba(255,255,255,0.04)",border:"1px solid rgba(201,169,110,0.12)",borderRadius:10,padding:"12px 14px",cursor:"pointer",transition:"all 0.2s"}}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+                <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.72rem",color:"rgba(255,248,232,0.5)"}}>Sign in</span>
+              </button>
+            ):user?(
+              <button onClick={()=>{setMenuOpen(false);setWindowPanel("profile");}} style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:8,background:"rgba(255,255,255,0.04)",border:"1px solid rgba(201,169,110,0.12)",borderRadius:10,padding:"12px 14px",cursor:"pointer",transition:"all 0.2s"}}>
+                {user.photoURL?<img src={user.photoURL} alt="" referrerPolicy="no-referrer" style={{width:20,height:20,borderRadius:"50%",objectFit:"cover",border:"1px solid rgba(201,169,110,0.3)"}}/>:<span style={{fontSize:"0.72rem",color:B.goldL,fontFamily:DISPLAY,fontWeight:700}}>{user.displayName?.[0]||"?"}</span>}
+                <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.72rem",color:B.goldL}}>Profile</span>
+                {syncStatus==="synced"&&<div style={{width:6,height:6,borderRadius:"50%",background:"#6AAA6A"}}/>}
+              </button>
+            ):null}
+          </div>
+        </div>
+      )}
+    </>);
+  };
 
   /* ══ LOADING ══════════════════════════════════════ */
   if(screen==="loading") return(
@@ -4180,718 +3389,43 @@ function AppInner(){
     );
   }
 
+
   /* ══ CABIN (Private Interior — Immersive Hub) ══════ */
   if(screen==="cabin") return(
-    <div style={{position:"fixed",inset:0,overflow:"hidden",fontFamily:SANS}}>
-      <style>{GFONTS}{CSS}</style>
-
-      {/* ── Full-screen cabin background ── */}
-      {/* cabinMode "immersive" = parallax fallback (temporary until real 3D cabin is built) */}
-      {/* cabinMode "3d" = future React Three Fiber scene (swap in when GLB is ready) */}
-      {cabinMode==="3d"&&cabin3DReady?(
-        /* Future: <CabinScene3D/> — will render the real GLB model here */
-        <div style={{position:"absolute",inset:0,background:"#060402",zIndex:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
-          <span style={{color:"rgba(255,248,232,0.3)",fontFamily:SERIF,fontStyle:"italic",fontSize:"0.8rem"}}>3D cabin loading…</span>
-        </div>
-      ):(
-        <ImmersiveCabin/>
-      )}
-
-      {/* ── Owned furniture decorations ── */}
-      {ownedItems.map(itemId=>{
-        const item=SHOP_ITEMS.find(i=>i.id===itemId);
-        if(!item) return null;
-        return(
-          <div key={item.id} style={{position:"absolute",top:item.pos.top,left:item.pos.left,width:item.pos.width,zIndex:5,pointerEvents:"none",animation:"fadeUp 0.6s ease both"}}>
-            <img src={item.asset} alt={item.name} onError={e=>{e.target.parentNode.style.display="none";}} style={{width:"100%",height:"auto",display:"block"}}/>
-          </div>
-        );
-      })}
-
-      {/* ═══ INTERACTIVE HOTSPOTS ═══ */}
-      {/* Positions mapped to cabin-interior.png: sunken great room — fireplace LEFT, window CENTER,
-          stairs RIGHT, desk with open book UPPER-RIGHT, sectional sofa CENTER, rolled map on shelf BOTTOM-CENTER */}
-      {/* ─── HOW TO EDIT HOTSPOTS ───
-          Each hotspot is a <button> with absolute positioning (left/right/top/bottom as %).
-          To reposition: change the left/top/width/height percentages.
-          To change navigation: change the onClick function.
-          Glow class: "magic-hotspot" + animation:"magicGlow ..." for the enchanted look.
-          The outer <div> with magicGlowOuter adds the soft radial aura around each hotspot. ─── */}
-
-      {/* 1. MAP ON SHELF — rolled paper map with magnifying glass on the wooden shelf → world map */}
-      <button onClick={()=>transitionToMap()} style={{position:"absolute",left:"28%",top:"82%",width:"44%",height:"14%",zIndex:11,background:"transparent",border:"none",padding:0,cursor:"pointer",borderRadius:"10px",outline:"none",WebkitTapHighlightColor:"transparent"}}>
-        {/* Pulse glow on magnifying glass */}
-        <div style={{position:"absolute",left:"40%",top:"-55%",width:"28%",height:"100%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,220,120,0.32) 0%,rgba(255,190,80,0.12) 40%,transparent 72%)",pointerEvents:"none",animation:"hotspotPulse 2.6s ease-in-out infinite"}}/>
-        <div style={{position:"absolute",left:"45%",top:"-45%",width:"18%",height:"70%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,245,180,0.22) 0%,transparent 55%)",pointerEvents:"none",animation:"hotspotPulse 3s ease-in-out infinite",animationDelay:"0.5s"}}/>
-      </button>
-
-      {/* 2. STAIRS — wooden stairs on the RIGHT → downstairs kitchen */}
-      <button onClick={()=>transitionToKitchen()} style={{position:"absolute",right:"0%",top:"52%",width:"20%",height:"34%",zIndex:12,background:"transparent",border:"none",padding:0,cursor:"pointer",borderRadius:"8px",outline:"none",WebkitTapHighlightColor:"transparent"}}>
-        {/* Pulse glow on staircase */}
-        <div style={{position:"absolute",left:"15%",top:"20%",width:"70%",height:"50%",borderRadius:"45%",background:"radial-gradient(ellipse at 55% 50%,rgba(255,210,120,0.30) 0%,rgba(255,180,80,0.10) 45%,transparent 72%)",pointerEvents:"none",animation:"hotspotPulse 3s ease-in-out infinite"}}/>
-        <div style={{position:"absolute",left:"25%",top:"28%",width:"50%",height:"38%",borderRadius:"50%",background:"radial-gradient(ellipse at 50% 50%,rgba(255,240,170,0.18) 0%,transparent 55%)",pointerEvents:"none",animation:"hotspotPulse 3.5s ease-in-out infinite",animationDelay:"0.7s"}}/>
-      </button>
-
-      {/* 3. OPEN BOOK ON DESK — upper-right corner on the desk near lamp → journal */}
-      <button onClick={()=>transitionToJournal()} style={{position:"absolute",right:"6%",top:"30%",width:"18%",height:"16%",zIndex:11,background:"transparent",border:"none",padding:0,cursor:"pointer",borderRadius:"8px",outline:"none",WebkitTapHighlightColor:"transparent"}}>
-        {/* Pulse glow on open book */}
-        <div style={{position:"absolute",left:"10%",top:"10%",width:"80%",height:"85%",borderRadius:"45%",background:"radial-gradient(ellipse at 50% 55%,rgba(255,215,130,0.30) 0%,rgba(255,190,90,0.10) 45%,transparent 72%)",pointerEvents:"none",animation:"hotspotPulse 2.8s ease-in-out infinite",animationDelay:"0.3s"}}/>
-        <div style={{position:"absolute",left:"22%",top:"18%",width:"56%",height:"65%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,245,180,0.20) 0%,transparent 55%)",pointerEvents:"none",animation:"hotspotPulse 3.3s ease-in-out infinite",animationDelay:"1s"}}/>
-      </button>
-
-      {/* 4. LEFT WINDOW — left half of the large picture window (forest + starry sky) */}
-      <button className="window-hotspot" onClick={()=>setWindowPanel("left")} style={{position:"absolute",left:"18%",top:"6%",width:"25%",height:"32%",zIndex:10,background:"transparent",border:"none",cursor:"pointer",borderRadius:"8px"}}/>
-
-      {/* 5. RIGHT WINDOW — right half of the large picture window */}
-      <button className="window-hotspot" onClick={()=>setWindowPanel("right")} style={{position:"absolute",left:"44%",top:"6%",width:"25%",height:"32%",zIndex:10,background:"transparent",border:"none",cursor:"pointer",borderRadius:"8px"}}/>
-
-      {/* 6. CANDLE / STREAK — over the fireplace mantel candles (LEFT side) */}
-      <button onClick={tapCandle} style={{position:"absolute",left:"2%",top:"20%",width:"16%",height:"20%",zIndex:10,background:"transparent",border:"none",cursor:"pointer",borderRadius:"50%",animation:"candlePulse 3s ease-in-out infinite"}}>
-        <div style={{position:"absolute",inset:"-20%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,200,80,0.06),transparent 65%)",pointerEvents:"none"}}/>
-      </button>
-
-      {/* 7. INSIGHTS — center area on the fluffy rug/carpet */}
-      <button onClick={()=>setShowInsights(true)} style={{position:"absolute",left:"30%",right:"30%",top:"58%",height:"14%",zIndex:10,background:"transparent",border:"none",cursor:"pointer",borderRadius:"8px"}}>
-        <div style={{position:"absolute",inset:"-10%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,200,80,0.04),transparent 60%)",pointerEvents:"none"}}/>
-      </button>
-
-      {/* 8. SIGN-IN / PROFILE — bottom-left beneath desk (always visible) */}
-      {!user&&!authLoading&&auth&&(
-        <button onClick={handleGoogleSignIn} style={{position:"absolute",left:"4%",bottom:"3%",zIndex:12,background:"rgba(26,22,18,0.65)",backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",border:"1px solid rgba(201,169,110,0.2)",borderRadius:14,padding:"8px 14px",cursor:"pointer",display:"flex",alignItems:"center",gap:8,animation:"fadeUp 1s 1.5s ease both",boxShadow:"0 4px 16px rgba(0,0,0,0.3)"}}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
-            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-          </svg>
-          <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.68rem",color:"rgba(255,248,232,0.5)",letterSpacing:"0.02em"}}>Save your journey</span>
-        </button>
-      )}
-      {user&&(
-        <button onClick={()=>setWindowPanel("profile")} style={{position:"absolute",left:"4%",bottom:"3%",zIndex:12,width:40,height:40,borderRadius:"50%",overflow:"hidden",border:`2px solid rgba(201,169,110,${syncStatus==="synced"?0.5:0.25})`,background:"rgba(26,22,18,0.6)",cursor:"pointer",boxShadow:"0 2px 14px rgba(0,0,0,0.35)",animation:"fadeUp .5s ease both",padding:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
-          {user.photoURL?(<img src={user.photoURL} alt="" referrerPolicy="no-referrer" style={{width:"100%",height:"100%",objectFit:"cover"}}/>):(<span style={{fontSize:"0.95rem",color:B.goldL,fontFamily:DISPLAY,fontWeight:700}}>{user.displayName?.[0]||"?"}</span>)}
-          {syncStatus==="syncing"&&<div style={{position:"absolute",bottom:-2,right:-2,width:10,height:10,borderRadius:"50%",background:B.gold,border:"2px solid #1A1612",animation:"gentlePulse 1s infinite"}}/>}
-          {syncStatus==="synced"&&<div style={{position:"absolute",bottom:-2,right:-2,width:10,height:10,borderRadius:"50%",background:"#6AAA6A",border:"2px solid #1A1612"}}/>}
-        </button>
-      )}
-
-      {/* 9. HISTORY — bottom-right floating button */}
-      <button onClick={goToHistory} style={{position:"absolute",right:"4%",bottom:"3%",zIndex:12,background:"rgba(26,22,18,0.65)",backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",border:"1px solid rgba(201,169,110,0.2)",borderRadius:14,padding:"8px 14px",cursor:"pointer",display:"flex",alignItems:"center",gap:8,animation:"fadeUp 1s 1.8s ease both",boxShadow:"0 4px 16px rgba(0,0,0,0.3)"}}>
-        <span style={{fontSize:"0.85rem"}}>📖</span>
-        <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.68rem",color:"rgba(255,248,232,0.5)",letterSpacing:"0.02em"}}>History</span>
-      </button>
-
-      {/* 10. BOOKSHELF — far left behind fireplace → shelf books */}
-      {SHELF_BOOKS.filter(b=>b.id!=="prayers"&&b.id!=="dreams").map((book,i)=>{
-        const cv=BOOK_COVERS[book.id]||BOOK_COVERS.journal;
-        const isActive=deskBook===book.id;
-        const bookPositions=[
-          {left:"0%",bottom:"42%",width:"6%",height:"8%"},  // book 1
-          {left:"1%",bottom:"50%",width:"6%",height:"8%"},  // book 2
-          {left:"0%",bottom:"58%",width:"7%",height:"7%"},  // book 3
-          {left:"1%",bottom:"34%",width:"6%",height:"8%"},  // book 4
-          {left:"0%",bottom:"66%",width:"7%",height:"7%"},  // book 5
-          {left:"1%",bottom:"26%",width:"6%",height:"8%"},  // book 6
-        ];
-        const pos=bookPositions[i]||bookPositions[0];
-        return(
-          <button key={book.id} className="shelf-hotspot" onClick={()=>selectShelfBook(book.id)}
-            style={{position:"absolute",left:pos.left,bottom:pos.bottom,width:pos.width,height:pos.height,zIndex:11,background:"transparent",border:"none",cursor:"pointer",borderRadius:"4px",animation:isActive?"none":"shelfGlow 4s ease-in-out infinite",animationDelay:`${i*0.3}s`}}>
-            {isActive&&<div style={{position:"absolute",inset:"-15%",borderRadius:"50%",background:`radial-gradient(circle,${cv.accent}25,transparent 65%)`,pointerEvents:"none"}}/>}
-          </button>
-        );
-      })}
-
-      {/* CURRENCY BALANCE — candles + coins (triple-tap = toggle debug hotspots) — always visible */}
-      <div onClick={debugTripleTap} style={{position:"absolute",left:"3%",top:"4%",zIndex:12,background:"rgba(26,22,18,0.7)",backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",border:"1px solid rgba(212,180,100,0.15)",borderRadius:10,padding:"5px 12px",display:"flex",alignItems:"center",gap:10,animation:"fadeUp 1s 2s ease both",cursor:"default"}}>
-        <div style={{display:"flex",alignItems:"center",gap:4}}>
-          <span style={{fontSize:"0.8rem"}}>🕯️</span>
-          <span style={{fontFamily:DISPLAY,fontSize:"0.82rem",fontWeight:700,color:B.goldL}}>{candles}</span>
-        </div>
-        <div style={{width:1,height:14,background:"rgba(212,180,100,0.2)"}}/>
-        <div style={{display:"flex",alignItems:"center",gap:4}}>
-          <span style={{fontSize:"0.75rem",color:"rgba(255,210,120,0.7)"}}>o</span>
-          <span style={{fontFamily:DISPLAY,fontSize:"0.82rem",fontWeight:700,color:"rgba(255,210,120,0.85)"}}>{bank.coins}</span>
-        </div>
-      </div>
-
-      {/* Back to village — top-right navigation */}
-      <button onClick={()=>transitionToMap()} style={{position:"absolute",right:"3%",top:"4%",zIndex:12,background:"rgba(26,22,18,0.6)",backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",border:"1px solid rgba(201,169,110,0.15)",borderRadius:999,padding:"6px 16px",cursor:"pointer",color:"rgba(255,248,232,0.55)",fontFamily:SANS,fontSize:"0.7rem",transition:"all 0.2s",display:"inline-flex",alignItems:"center",gap:5,animation:"fadeUp 1s 2s ease both",boxShadow:"0 2px 12px rgba(0,0,0,0.25)"}}>
-        <span style={{fontSize:"0.65rem"}}>&#8592;</span> Back to village
-      </button>
-
-      {/* ═══ HOTSPOT DEBUG OVERLAY (2D only) ═══ */}
-      {debugHotspots&&<>
-        <div style={{position:"fixed",top:8,left:"50%",transform:"translateX(-50%)",zIndex:999,background:"rgba(255,60,60,0.85)",color:"#fff",fontFamily:SANS,fontSize:"0.65rem",fontWeight:700,padding:"4px 14px",borderRadius:20,letterSpacing:"0.04em",pointerEvents:"none",backdropFilter:"blur(6px)",WebkitBackdropFilter:"blur(6px)",whiteSpace:"nowrap"}}>DEBUG HOTSPOTS ON</div>
-        {/* 1. Map on shelf */}
-        <div style={{position:"absolute",left:"28%",top:"82%",width:"44%",height:"14%",zIndex:900,background:"rgba(255,100,100,0.25)",border:"2px solid rgba(255,100,100,0.7)",borderRadius:10,pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.5rem",fontWeight:700,color:"#fff",background:"rgba(255,60,60,0.75)",padding:"2px 6px",borderRadius:8}}>MAP → World Map</span></div>
-        {/* 2. Stairs */}
-        <div style={{position:"absolute",right:"0%",top:"42%",width:"20%",height:"42%",zIndex:900,background:"rgba(100,255,100,0.25)",border:"2px solid rgba(100,255,100,0.7)",borderRadius:8,pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.5rem",fontWeight:700,color:"#fff",background:"rgba(60,180,60,0.85)",padding:"2px 6px",borderRadius:8}}>STAIRS → Kitchen</span></div>
-        {/* 3. Open book on desk */}
-        <div style={{position:"absolute",right:"6%",top:"20%",width:"18%",height:"16%",zIndex:900,background:"rgba(100,100,255,0.25)",border:"2px solid rgba(100,100,255,0.7)",borderRadius:8,pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.5rem",fontWeight:700,color:"#fff",background:"rgba(60,60,255,0.75)",padding:"2px 6px",borderRadius:8}}>BOOK → Journal</span></div>
-        {/* 4. Left Window */}
-        <div style={{position:"absolute",left:"18%",top:"6%",width:"25%",height:"32%",zIndex:900,background:"rgba(255,255,100,0.2)",border:"2px solid rgba(255,255,100,0.7)",borderRadius:8,pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.5rem",fontWeight:700,color:"#fff",background:"rgba(180,180,0,0.85)",padding:"2px 6px",borderRadius:8}}>L-WIN</span></div>
-        {/* 5. Right Window */}
-        <div style={{position:"absolute",left:"44%",top:"6%",width:"25%",height:"32%",zIndex:900,background:"rgba(255,165,0,0.2)",border:"2px solid rgba(255,165,0,0.7)",borderRadius:8,pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.5rem",fontWeight:700,color:"#fff",background:"rgba(200,120,0,0.85)",padding:"2px 6px",borderRadius:8}}>R-WIN</span></div>
-        {/* 6. Candle (fireplace) */}
-        <div style={{position:"absolute",left:"2%",top:"20%",width:"16%",height:"20%",zIndex:900,background:"rgba(255,100,255,0.25)",border:"2px solid rgba(255,100,255,0.7)",borderRadius:"50%",pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.5rem",fontWeight:700,color:"#fff",background:"rgba(200,60,200,0.85)",padding:"2px 6px",borderRadius:8}}>CANDLE</span></div>
-        {/* 7. Insights (rug) */}
-        <div style={{position:"absolute",left:"30%",right:"30%",top:"58%",height:"14%",zIndex:900,background:"rgba(0,200,200,0.2)",border:"2px solid rgba(0,200,200,0.7)",borderRadius:8,pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.5rem",fontWeight:700,color:"#fff",background:"rgba(0,150,150,0.85)",padding:"2px 6px",borderRadius:8}}>INSIGHTS</span></div>
-      </>}
-
-      {/* ═══ STREAK FLOATING INDICATOR ═══ */}
-      {showStreak&&<div style={{position:"fixed",bottom:"28%",left:"50%",zIndex:60,animation:"streakFloat 3s ease both",pointerEvents:"none"}}>
-        <div style={{background:"rgba(26,22,18,0.92)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",border:"1px solid rgba(201,169,110,0.3)",borderRadius:16,padding:"14px 24px",display:"flex",alignItems:"center",gap:12,boxShadow:"0 8px 32px rgba(0,0,0,0.4), 0 0 20px rgba(201,169,110,0.1)",whiteSpace:"nowrap"}}>
-          <span style={{fontSize:"1.5rem"}}>🔥</span>
-          <div>
-            <div style={{fontFamily:DISPLAY,fontSize:"1.2rem",fontWeight:700,color:B.goldL}}>{streak}-day streak</div>
-            <div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.72rem",color:"rgba(255,248,232,0.4)",marginTop:2}}>{streak>=7?"The locked room awaits":"Keep showing up"}</div>
-          </div>
-        </div>
-      </div>}
-
-      {/* ═══ CANDLE REWARD FLOAT ═══ */}
-      {candleReward&&<div style={{position:"fixed",bottom:"35%",left:"50%",zIndex:60,animation:"candleFloat 2.5s ease both",pointerEvents:"none"}}>
-        <div style={{background:"rgba(26,22,18,0.92)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",border:"1px solid rgba(212,180,100,0.35)",borderRadius:16,padding:"14px 24px",display:"flex",alignItems:"center",gap:12,boxShadow:"0 8px 32px rgba(0,0,0,0.4), 0 0 20px rgba(212,180,100,0.15)",whiteSpace:"nowrap"}}>
-          <span style={{fontSize:"1.5rem"}}>🕯️</span>
-          <div>
-            <div style={{fontFamily:DISPLAY,fontSize:"1.2rem",fontWeight:700,color:B.goldL}}>+{candleReward.amount} 🕯️</div>
-            <div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.72rem",color:"rgba(255,248,232,0.5)",marginTop:2}}>{candleReward.message}</div>
-          </div>
-        </div>
-      </div>}
-
-      {/* ═══ TOAST NOTIFICATION ═══ */}
-      {toast&&<div style={{position:"fixed",bottom:"12%",left:"50%",transform:"translateX(-50%)",zIndex:70,animation:"candleFloat 2.8s ease both",pointerEvents:"none"}}>
-        <div style={{background:"rgba(26,22,18,0.92)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",border:"1px solid rgba(201,169,110,0.25)",borderRadius:14,padding:"10px 20px",display:"flex",alignItems:"center",gap:8,boxShadow:"0 6px 24px rgba(0,0,0,0.4)",whiteSpace:"nowrap"}}>
-          {toast.emoji&&<span style={{fontSize:"1.1rem"}}>{toast.emoji}</span>}
-          <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.82rem",color:"rgba(255,248,232,0.75)"}}>{toast.msg}</span>
-        </div>
-      </div>}
-
-      {/* ═══ INSIGHTS OVERLAY ═══ */}
-      {showInsights&&<div style={{position:"fixed",inset:0,zIndex:80}}>
-        <div onClick={()=>setShowInsights(false)} style={{position:"absolute",inset:0,background:"rgba(10,8,6,0.6)",animation:"spaceFadeIn .25s ease"}}/>
-        <div style={{position:"absolute",top:"50%",left:"50%",width:"min(88vw,400px)",maxHeight:"min(80vh,600px)",animation:"insightsSlideUp .4s cubic-bezier(.22,1,.36,1) both",background:"rgba(26,22,18,0.95)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",border:"1px solid rgba(201,169,110,0.2)",borderRadius:20,overflow:"hidden",display:"flex",flexDirection:"column"}}>
-          {/* Close */}
-          <button onClick={()=>setShowInsights(false)} style={{position:"absolute",top:14,right:14,width:30,height:30,borderRadius:"50%",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(201,169,110,0.15)",color:"rgba(255,248,232,0.5)",fontSize:"0.7rem",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",zIndex:5}}>✕</button>
-          <div style={{overflowY:"auto",padding:"28px 24px 24px",flex:1}}>
-            {/* Header */}
-            <div style={{textAlign:"center",marginBottom:20}}>
-              <div style={{fontSize:"1.3rem",marginBottom:6}}>✨</div>
-              <h3 style={{fontFamily:DISPLAY,fontSize:"1.2rem",fontWeight:700,color:B.goldL,margin:"0 0 4px"}}>Your Journey</h3>
-              <div style={{width:40,height:1,background:"linear-gradient(90deg,transparent,rgba(201,169,110,0.4),transparent)",margin:"8px auto 0"}}/>
-            </div>
-            {/* Stats row */}
-            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:18}}>
-              {[{v:entries.length,l:"Reflections",e:"📝"},{v:totalWords.toLocaleString(),l:"Words",e:"✍️"},{v:`${streak}d`,l:"Streak",e:"🔥"}].map(s=>(
-                <div key={s.l} style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(201,169,110,0.1)",borderRadius:12,padding:"12px 8px",textAlign:"center"}}>
-                  <div style={{fontSize:"0.9rem",marginBottom:4}}>{s.e}</div>
-                  <div style={{fontFamily:SERIF,fontSize:"1.15rem",fontWeight:700,color:B.goldL}}>{s.v}</div>
-                  <div style={{fontSize:"0.56rem",color:"rgba(255,248,232,0.35)",letterSpacing:"0.08em",textTransform:"uppercase",marginTop:2}}>{s.l}</div>
-                </div>
-              ))}
-            </div>
-            {/* Theme breakdown */}
-            {entries.length>0&&<>
-              <div style={{fontSize:"0.6rem",fontFamily:SANS,fontWeight:600,letterSpacing:"0.12em",color:"rgba(255,248,232,0.3)",textTransform:"uppercase",marginBottom:10}}>Theme Breakdown</div>
-              {themeData.filter(t=>t.count>0).slice(0,5).map(t=>(
-                <div key={t.theme} style={{marginBottom:10}}>
-                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
-                    <span style={{fontSize:"0.78rem",color:"rgba(255,248,232,0.7)",textTransform:"capitalize"}}>{t.theme}</span>
-                    <span style={{fontSize:"0.68rem",color:"rgba(255,248,232,0.35)"}}>{t.pct}%</span>
-                  </div>
-                  <div style={{height:4,background:"rgba(255,255,255,0.06)",borderRadius:99,overflow:"hidden"}}>
-                    <div style={{height:"100%",width:`${t.pct}%`,background:`linear-gradient(90deg,${B.gold},${B.goldL})`,borderRadius:99,transition:"width .7s ease"}}/>
-                  </div>
-                </div>
-              ))}
-              {/* Room progress */}
-              <div style={{fontSize:"0.6rem",fontFamily:SANS,fontWeight:600,letterSpacing:"0.12em",color:"rgba(255,248,232,0.3)",textTransform:"uppercase",margin:"18px 0 10px"}}>Room Progress</div>
-              {REFLECTION_ROOMS.map(room=>{
-                const prog=roomProg(room),pct=Math.round(prog/room.days.length*100);
-                return(<div key={room.id} style={{marginBottom:8}}>
-                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
-                    <span style={{fontSize:"0.74rem",color:"rgba(255,248,232,0.6)"}}>{room.emoji} {room.label}</span>
-                    <span style={{fontSize:"0.64rem",color:"rgba(255,248,232,0.3)"}}>{prog}/{room.days.length}</span>
-                  </div>
-                  <div style={{height:3,background:"rgba(255,255,255,0.06)",borderRadius:99,overflow:"hidden"}}>
-                    <div style={{height:"100%",width:`${pct}%`,background:th(room.id).accent,borderRadius:99,transition:"width .6s"}}/>
-                  </div>
-                </div>);
-              })}
-            </>}
-            {entries.length===0&&<div style={{textAlign:"center",padding:"20px 0"}}>
-              <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.85rem",color:"rgba(255,248,232,0.35)",lineHeight:1.6}}>Your insights will emerge as you reflect. Open a book to begin.</p>
-            </div>}
-            {entries.length>0&&<button onClick={()=>{setShowInsights(false);goToHistory();}} style={{width:"100%",marginTop:16,background:"rgba(201,169,110,0.08)",border:"1px solid rgba(201,169,110,0.15)",borderRadius:10,padding:"11px",color:B.goldL,fontFamily:SERIF,fontStyle:"italic",fontSize:"0.82rem",cursor:"pointer",textAlign:"center"}}>View all reflections 📖</button>}
-            <button onClick={()=>{setShowInsights(false);setJourneyTab("overview");setScreen("insights");}} style={{width:"100%",marginTop:8,background:"rgba(201,169,110,0.12)",border:"1px solid rgba(201,169,110,0.2)",borderRadius:10,padding:"11px",color:B.goldL,fontFamily:SERIF,fontStyle:"italic",fontSize:"0.82rem",cursor:"pointer",textAlign:"center"}}>View full journey ✨</button>
-          </div>
-        </div>
-      </div>}
-
-      {/* ═══ SHELF-TO-DESK ANIMATION OVERLAY ═══ */}
-      {shelfAnim&&(()=>{
-        const book=SHELF_BOOKS.find(b=>b.id===shelfAnim);
-        const idx=SHELF_BOOKS.findIndex(b=>b.id===shelfAnim);
-        // Books are now at the bottom — calculate horizontal start position
-        const bookLefts=[20,31,42,53,64,75];
-        const startLeft=`${bookLefts[idx]||45}%`;
-        return <div style={{position:"fixed",inset:0,zIndex:50,pointerEvents:"none"}}>
-          {/* Floating book emoji arcing from bottom shelf upward to center */}
-          <div style={{position:"absolute",left:startLeft,bottom:"6%",fontSize:"2rem",animation:"bookArcFromBottom 1.2s cubic-bezier(.25,.46,.45,.94) forwards",filter:"drop-shadow(0 4px 24px rgba(255,200,80,0.6)) drop-shadow(0 0 12px rgba(255,220,130,0.3))"}}>
-            {book?.emoji||"📖"}
-          </div>
-          {/* Soft golden trail glow */}
-          <div style={{position:"absolute",left:startLeft,bottom:"6%",width:"30px",height:"30px",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,220,130,0.4),transparent 70%)",animation:"bookArcFromBottom 1.2s 0.08s cubic-bezier(.25,.46,.45,.94) forwards",opacity:0.5}}/>
-          {/* Desk book fade-out */}
-          <div style={{position:"absolute",left:"45%",top:"55%",fontSize:"1.6rem",animation:"deskBookFadeOut 0.6s 0.3s ease forwards",opacity:1}}>
-            {SHELF_BOOKS.find(b=>b.id===deskBook)?.emoji||"📖"}
-          </div>
-        </div>;
-      })()}
-
-      {/* ═══ WINDOW / PROFILE PANEL OVERLAY ═══ */}
-      {windowPanel&&<div style={{position:"fixed",inset:0,zIndex:80}}>
-        {/* Backdrop */}
-        <div onClick={()=>setWindowPanel(null)} style={{position:"absolute",inset:0,background:"rgba(10,8,6,0.5)",animation:"spaceFadeIn .25s ease"}}/>
-        {/* Panel */}
-        <div style={{position:"absolute",[windowPanel==="right"?"right":"left"]:0,top:0,bottom:0,width:"min(82vw,360px)",background:"linear-gradient(180deg,rgba(26,22,18,0.96),rgba(20,16,12,0.98))",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderRight:windowPanel!=="right"?"1px solid rgba(201,169,110,0.15)":"none",borderLeft:windowPanel==="right"?"1px solid rgba(201,169,110,0.15)":"none",animation:windowPanel==="right"?"windowPanelSlide .35s ease both":"windowPanelSlideLeft .35s ease both",display:"flex",flexDirection:"column",padding:"48px 28px 36px"}}>
-          {/* Close */}
-          <button onClick={()=>setWindowPanel(null)} style={{position:"absolute",top:16,right:16,width:32,height:32,borderRadius:"50%",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(201,169,110,0.15)",color:"rgba(255,248,232,0.5)",fontSize:"0.75rem",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
-
-          {/* ── PROFILE PANEL ── */}
-          {windowPanel==="profile"&&<>
-            <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:24}}>
-              {user?.photoURL?(<img src={user.photoURL} alt="" referrerPolicy="no-referrer" style={{width:52,height:52,borderRadius:"50%",border:"2px solid rgba(201,169,110,0.3)",objectFit:"cover"}}/>):(<div style={{width:52,height:52,borderRadius:"50%",background:"rgba(201,169,110,0.12)",border:"2px solid rgba(201,169,110,0.25)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.4rem",color:B.goldL,fontFamily:DISPLAY,fontWeight:700}}>{user?.displayName?.[0]||"?"}</div>)}
-              <div>
-                <h3 style={{fontFamily:DISPLAY,fontSize:"1.15rem",fontWeight:700,color:"#FFF8E8",margin:"0 0 3px"}}>{user?.displayName||"Journaler"}</h3>
-                <div style={{fontFamily:SANS,fontSize:"0.7rem",color:"rgba(255,248,232,0.4)"}}>{user?.email}</div>
-              </div>
-            </div>
-            <div style={{width:"100%",height:1,background:"linear-gradient(90deg,rgba(201,169,110,0.3),transparent)",marginBottom:22}}/>
-            {/* Sync status */}
-            <div style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(201,169,110,0.12)",borderRadius:12,padding:"14px 18px",display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
-              <div style={{display:"flex",alignItems:"center",gap:10}}>
-                <span style={{fontSize:"1.1rem"}}>☁️</span>
-                <span style={{fontFamily:SERIF,fontSize:"0.88rem",color:"#FFF8E8"}}>Cloud sync</span>
-              </div>
-              <span style={{fontFamily:SANS,fontSize:"0.7rem",color:"#6AAA6A",fontWeight:600}}>Active</span>
-            </div>
-            {/* Stats */}
-            <div style={{display:"flex",gap:10,marginBottom:18}}>
-              <div style={{flex:1,background:"rgba(255,255,255,0.03)",border:"1px solid rgba(201,169,110,0.08)",borderRadius:10,padding:"12px 14px",textAlign:"center"}}>
-                <div style={{fontFamily:DISPLAY,fontSize:"1.3rem",fontWeight:700,color:B.goldL}}>{entries.length}</div>
-                <div style={{fontFamily:SANS,fontSize:"0.62rem",color:"rgba(255,248,232,0.35)",marginTop:2}}>Reflections</div>
-              </div>
-              <div style={{flex:1,background:"rgba(255,255,255,0.03)",border:"1px solid rgba(201,169,110,0.08)",borderRadius:10,padding:"12px 14px",textAlign:"center"}}>
-                <div style={{fontFamily:DISPLAY,fontSize:"1.3rem",fontWeight:700,color:B.goldL}}>{streak}</div>
-                <div style={{fontFamily:SANS,fontSize:"0.62rem",color:"rgba(255,248,232,0.35)",marginTop:2}}>Day streak</div>
-              </div>
-              <div style={{flex:1,background:"rgba(255,255,255,0.03)",border:"1px solid rgba(201,169,110,0.08)",borderRadius:10,padding:"12px 14px",textAlign:"center"}}>
-                <div style={{fontFamily:DISPLAY,fontSize:"1.3rem",fontWeight:700,color:B.goldL}}>{prayerPosts.length}</div>
-                <div style={{fontFamily:SANS,fontSize:"0.62rem",color:"rgba(255,248,232,0.35)",marginTop:2}}>Prayers</div>
-              </div>
-            </div>
-            {/* Info */}
-            <div style={{background:"rgba(106,170,106,0.06)",border:"1px solid rgba(106,170,106,0.12)",borderRadius:10,padding:"12px 16px",marginBottom:14}}>
-              <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.78rem",color:"rgba(255,248,232,0.45)",margin:0,lineHeight:1.6}}>Your reflections, prayers, and progress are safely synced across all your devices.</p>
-            </div>
-            <button onClick={()=>{setWindowPanel(null);goToHistory();}} style={{width:"100%",background:"rgba(255,255,255,0.04)",border:"1px solid rgba(201,169,110,0.15)",borderRadius:10,padding:"13px 18px",color:B.goldL,fontFamily:SANS,fontSize:"0.82rem",cursor:"pointer",transition:"all .2s",marginBottom:8,display:"flex",alignItems:"center",gap:10}}>
-              <span style={{fontSize:"1rem"}}>📖</span> Reflection History
-            </button>
-            <div style={{flex:1}}/>
-            {/* Sign out */}
-            <button onClick={()=>{handleSignOut();setWindowPanel(null);}} style={{width:"100%",background:"rgba(255,255,255,0.04)",border:"1px solid rgba(201,169,110,0.15)",borderRadius:10,padding:"13px 18px",color:"rgba(255,248,232,0.45)",fontFamily:SANS,fontSize:"0.82rem",cursor:"pointer",transition:"all .2s",marginTop:12}}>Sign out</button>
-            <div style={{textAlign:"center",marginTop:14}}>
-              <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.68rem",color:"rgba(255,248,232,0.15)"}}>Tap outside to close</p>
-            </div>
-          </>}
-
-          {/* ── WINDOW PANELS (left/right) ── */}
-          {(windowPanel==="left"||windowPanel==="right")&&<>
-            {/* Title */}
-            <div style={{marginBottom:28}}>
-              <div style={{fontSize:"1.4rem",marginBottom:8}}>{windowPanel==="left"?"🌲":"🌊"}</div>
-              <h3 style={{fontFamily:DISPLAY,fontSize:"1.3rem",fontWeight:700,color:"#FFF8E8",margin:"0 0 4px"}}>{windowPanel==="left"?"Forest View":"Waterfall View"}</h3>
-              <div style={{width:40,height:1,background:"linear-gradient(90deg,rgba(201,169,110,0.4),transparent)",marginTop:8}}/>
-            </div>
-            {/* Options */}
-            <div style={{display:"flex",flexDirection:"column",gap:"14px",flex:1}}>
-              {(windowPanel==="left"?[
-                {emoji:"🔊",label:"Nature Sounds",desc:"Forest birdsong & gentle breeze"},
-                {emoji:"⏱️",label:"Prayer Timer",desc:"1 · 3 · 5 · 10 minutes of stillness"},
-                {emoji:"🕊️",label:"Stillness Mode",desc:"Quiet your mind. Just breathe."},
-              ]:[
-                {emoji:"📖",label:"Daily Scripture",desc:"A word to carry with you today"},
-                {emoji:"🔊",label:"Water Sounds",desc:"Flowing waterfall & river stones"},
-                {emoji:"🙏",label:"Quiet Prayer Space",desc:"Pour out your heart in this place"},
-              ]).map((opt,i)=>(
-                <div key={i} className="wp-option" style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(201,169,110,0.12)",borderRadius:12,padding:"16px 18px",display:"flex",alignItems:"center",gap:"14px"}}>
-                  <div style={{fontSize:"1.3rem",width:36,textAlign:"center"}}>{opt.emoji}</div>
-                  <div>
-                    <div style={{fontFamily:SERIF,fontSize:"0.92rem",color:"#FFF8E8",fontWeight:600,marginBottom:2}}>{opt.label}</div>
-                    <div style={{fontFamily:SANS,fontSize:"0.7rem",color:"rgba(255,248,232,0.4)"}}>{opt.desc}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-            {/* Footer hint */}
-            <div style={{textAlign:"center",marginTop:20}}>
-              <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.72rem",color:"rgba(255,248,232,0.2)"}}>Tap outside to close</p>
-            </div>
-          </>}
-        </div>
-      </div>}
-
-      {/* ═══ IMMERSIVE PAGE-FLIPPING JOURNAL ═══ */}
-      {bookOpen&&<div style={{position:"fixed",inset:0,zIndex:100}}>
-        {/* Backdrop */}
-        <div onClick={()=>{setBookOpen(false);setJournalSection(null);}} style={{position:"absolute",inset:0,background:"rgba(10,8,6,0.72)",backdropFilter:"blur(3px)",WebkitBackdropFilter:"blur(3px)",animation:"spaceFadeIn .3s ease"}}/>
-        <BookSparkles/>
-        {/* Book container */}
-        <div onTouchStart={bookTouchStart} onTouchEnd={bookTouchEnd} style={{position:"absolute",top:"50%",left:"50%",width:"min(88vw,420px)",height:"min(78vh,640px)",animation:"bookOpenAnim .5s cubic-bezier(.22,1,.36,1) both",display:"flex",flexDirection:"column"}}>
-          {/* Leather spine binding */}
-          <div style={{position:"absolute",left:-6,top:4,bottom:4,width:13,background:"linear-gradient(90deg,#2E1E10,#4A3220,#3D2B18,#2E1E10)",borderRadius:"4px 0 0 4px",boxShadow:"2px 0 12px rgba(0,0,0,0.4), inset -1px 0 2px rgba(255,200,80,0.05)",zIndex:3}}/>
-          {/* Page edges */}
-          <div style={{position:"absolute",right:-3,top:8,bottom:8,width:6,background:"linear-gradient(90deg,#E8D5B0,#DCC89C,#D4BF90)",borderRadius:"0 2px 2px 0",boxShadow:"-1px 0 4px rgba(0,0,0,0.1)",zIndex:1}}/>
-          {/* Cream page */}
-          <div key={`p-${bookPage}-${deskBook}`} style={{flex:1,background:"linear-gradient(155deg,#F5E6C8 0%,#ECD9B5 35%,#E4CFA5 70%,#DCC89C 100%)",borderRadius:"3px 10px 10px 3px",position:"relative",overflow:"hidden",animation:`${flipDir==="bwd"?"pageRevealBwd":flipDir==="fwd"?"pageRevealFwd":"pageInitial"} .45s ease-out both`,boxShadow:"0 4px 30px rgba(0,0,0,0.4), 0 0 60px rgba(0,0,0,0.15), inset -2px 0 6px rgba(139,109,69,0.08)"}}>
-            {/* Paper texture */}
-            <div style={{position:"absolute",inset:0,background:"repeating-linear-gradient(0deg,transparent,transparent 28px,rgba(139,119,89,0.04) 28px,rgba(139,119,89,0.04) 29px)",pointerEvents:"none",borderRadius:"inherit"}}/>
-            <div style={{position:"absolute",inset:0,boxShadow:"inset 0 0 80px rgba(139,109,69,0.12), inset 0 0 30px rgba(139,109,69,0.06)",pointerEvents:"none",borderRadius:"inherit"}}/>
-            <div style={{position:"absolute",left:0,top:0,bottom:0,width:20,background:"linear-gradient(90deg,rgba(80,55,30,0.18),rgba(80,55,30,0.05),transparent)",pointerEvents:"none"}}/>
-            {/* Page content */}
-            <div style={{position:"relative",zIndex:2,height:"100%",display:"flex",flexDirection:"column",padding:"28px 22px 16px 30px",overflowY:"auto",WebkitOverflowScrolling:"touch"}}>
-
-              {/* ══ JOURNAL-TYPE PAGES (Reflection Journal = default desk book) ══ */}
-              {deskBook==="journal"&&<>
-                {/* PAGE 0: Cover — pure journalondesk.png, no text */}
-                {bookPage===0&&<>
-                  <div style={{flex:1,position:"relative",animation:"pageContentReveal .5s .15s ease both",margin:"-28px -22px -16px -30px",overflow:"hidden",borderRadius:"3px 10px 10px 3px"}}>
-                    <img src="/journalondesk.png" alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",objectPosition:"center 45%",borderRadius:"inherit"}} draggable={false}/>
-                    {/* Page-turn arrow on the book's right edge */}
-                    <button onClick={()=>flipPage("fwd")} style={{position:"absolute",right:"16%",top:"48%",transform:"translateY(-50%)",width:36,height:36,borderRadius:"50%",background:"rgba(245,230,200,0.75)",border:"1px solid rgba(139,109,69,0.25)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.1rem",color:"#5C4A2E",zIndex:5,boxShadow:"0 2px 10px rgba(0,0,0,0.3)",animation:"pageContentReveal 1s 1s ease both",backdropFilter:"blur(4px)",WebkitBackdropFilter:"blur(4px)"}}>&#8250;</button>
-                  </div>
-                </>}
-
-                {/* PAGE 1: Table of Contents (section chooser) */}
-                {bookPage===1&&!journalSection&&<>
-                  <div style={{flex:1,display:"flex",flexDirection:"column",animation:"pageContentReveal .5s .1s ease both"}}>
-                    <div style={{textAlign:"center",marginBottom:18}}>
-                      <h2 style={{fontFamily:DISPLAY,fontSize:"clamp(1.15rem,4.5vw,1.35rem)",fontWeight:700,color:"#3D2B18",margin:"0 0 4px"}}>Choose Your Path</h2>
-                      <div style={{width:50,height:1,background:"linear-gradient(90deg,transparent,#8B6D45,transparent)",margin:"8px auto 0"}}/>
-                    </div>
-                    <div style={{flex:1,display:"flex",flexDirection:"column",gap:12,justifyContent:"center"}}>
-                      {[
-                        {id:"blank",label:"Blank Journal",desc:"Free write your thoughts"},
-                        {id:"rooms",label:"Reflection Rooms",desc:"Guided daily reflections"},
-                        {id:"dreams",label:"Dream Journal",desc:"Record your dreams"},
-                        {id:"prayers",label:"Prayer Journal",desc:"Prayers that water your garden"},
-                      ].map(opt=>(
-                        <button key={opt.id} onClick={()=>{setJournalSection(opt.id);setBookPage(2);setFlipDir("fwd");setBookText("");setBookSaveMsg("");setHistoryMode("list");}} style={{background:"rgba(139,109,69,0.06)",border:"1px solid rgba(139,109,69,0.15)",borderRadius:10,padding:"14px 16px",cursor:"pointer",display:"flex",alignItems:"center",gap:12,transition:"all .2s",textAlign:"left"}} onMouseEnter={e=>e.currentTarget.style.background="rgba(139,109,69,0.12)"} onMouseLeave={e=>e.currentTarget.style.background="rgba(139,109,69,0.06)"}>
-                          <div>
-                            <div style={{fontFamily:DISPLAY,fontSize:"0.92rem",fontWeight:700,color:"#3D2B18",marginBottom:2}}>{opt.label}</div>
-                            <div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.76rem",color:"rgba(107,85,58,0.5)"}}>{opt.desc}</div>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </>}
-
-                {/* ── SECTION: BLANK JOURNAL HISTORY (page 2) ── */}
-                {journalSection==="blank"&&bookPage===2&&<>
-                  <div style={{flex:1,display:"flex",flexDirection:"column",animation:"pageContentReveal .5s .1s ease both"}}>
-                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
-                      <button onClick={()=>{setJournalSection(null);setBookPage(1);setFlipDir("bwd");}} style={{background:"transparent",border:"none",cursor:"pointer",fontFamily:SERIF,fontSize:"0.74rem",color:"rgba(107,85,58,0.5)",padding:0}}>&#8249; Contents</button>
-                    </div>
-                    <h2 style={{fontFamily:DISPLAY,fontSize:"clamp(1.05rem,4vw,1.2rem)",fontWeight:700,color:"#3D2B18",margin:"0 0 10px",textAlign:"center"}}>Past Entries</h2>
-                    <div style={{width:40,height:1,background:"linear-gradient(90deg,transparent,rgba(139,109,69,0.3),transparent)",margin:"0 auto 12px"}}/>
-                    {renderSectionHistory(
-                      entries.filter(e=>e.roomId==="blank"),
-                      "entry",
-                      ()=>{setBookPage(3);setFlipDir("fwd");setBookText("");setHistoryMode("list");}
-                    )}
-                  </div>
-                </>}
-
-                {/* ── SECTION: BLANK JOURNAL (free write, page 3) ── */}
-                {journalSection==="blank"&&bookPage===3&&<>
-                  <div style={{flex:1,display:"flex",flexDirection:"column",animation:"pageContentReveal .5s .1s ease both"}}>
-                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
-                      <button onClick={()=>{setJournalSection(null);setBookPage(1);setFlipDir("bwd");}} style={{background:"transparent",border:"none",cursor:"pointer",fontFamily:SERIF,fontSize:"0.74rem",color:"rgba(107,85,58,0.5)",padding:0}}>&#8249; Contents</button>
-                      <div style={{flex:1}}/>
-                      <span style={{fontFamily:SANS,fontSize:"0.58rem",color:"rgba(107,85,58,0.35)",letterSpacing:"0.1em",textTransform:"uppercase"}}>{todayStr()}</span>
-                    </div>
-                    <h2 style={{fontFamily:DISPLAY,fontSize:"clamp(1.1rem,4vw,1.3rem)",fontWeight:700,color:"#3D2B18",margin:"0 0 12px",textAlign:"center"}}>Free Write</h2>
-                    <div style={{width:40,height:1,background:"linear-gradient(90deg,transparent,rgba(139,109,69,0.3),transparent)",margin:"0 auto 14px"}}/>
-                    <div style={{background:"rgba(139,109,69,0.04)",border:"1px solid rgba(139,109,69,0.1)",borderRadius:10,overflow:"hidden",flex:1,minHeight:160}}>
-                      <textarea value={bookText} onChange={e=>setBookText(e.target.value)} placeholder="Write freely... no prompts, no rules." style={{width:"100%",height:"100%",minHeight:160,background:"transparent",border:"none",padding:"14px 16px",fontFamily:SERIF,fontSize:"0.88rem",color:"#4A3826",lineHeight:1.8,boxSizing:"border-box",resize:"none"}}/>
-                    </div>
-                    {bookText.trim()&&<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 12px",marginTop:8,background:"rgba(139,109,69,0.08)",borderRadius:8,border:"1px solid rgba(139,109,69,0.15)"}}>
-                      <span style={{fontSize:"0.7rem",color:"rgba(107,85,58,0.5)",fontFamily:SANS}}>{bookSaveMsg||`${wc(bookText)} words`}</span>
-                      <button onClick={()=>{const e={id:Date.now().toString(),date:todayStr(),time:nowTime(),roomId:"blank",roomLabel:"Blank Journal",roomEmoji:"📝",day:0,prompt:"Free write",text:bookText.trim(),words:wc(bookText)};persistEntries([e,...entries]);addCandles(3,"Reflection saved +3");setBookSaveMsg("Saved!");setTimeout(()=>setBookSaveMsg(""),2500);}} style={{background:"linear-gradient(135deg,#5C4A2E,#3D2B18)",border:"none",color:"#F5E6C8",padding:"6px 18px",borderRadius:6,cursor:"pointer",fontSize:"0.76rem",fontFamily:SANS,fontWeight:600}}>Save</button>
-                    </div>}
-                  </div>
-                </>}
-
-                {/* ── SECTION: REFLECTION ROOMS ── */}
-                {journalSection==="rooms"&&bookPage>=2&&<>
-                  {(()=>{
-                    const roomIdx=bookPage-2; // 0=entries, 1-7=rooms, 8=jesus, 9=locked, 10=daily
-                    return<div style={{flex:1,display:"flex",flexDirection:"column",animation:"pageContentReveal .5s .1s ease both"}}>
-                      <div style={{display:"flex",alignItems:"center",marginBottom:10}}>
-                        <button onClick={()=>{setJournalSection(null);setBookPage(1);setFlipDir("bwd");}} style={{background:"transparent",border:"none",cursor:"pointer",fontFamily:SERIF,fontSize:"0.74rem",color:"rgba(107,85,58,0.5)",padding:0}}>&#8249; Contents</button>
-                      </div>
-                      {/* Past Reflections (roomIdx 0, page 2) */}
-                      {roomIdx===0&&<>
-                        <h2 style={{fontFamily:DISPLAY,fontSize:"clamp(1.05rem,4vw,1.2rem)",fontWeight:700,color:"#3D2B18",margin:"0 0 10px",textAlign:"center"}}>Past Reflections</h2>
-                        <div style={{width:40,height:1,background:"linear-gradient(90deg,transparent,rgba(139,109,69,0.3),transparent)",margin:"0 auto 12px"}}/>
-                        {renderSectionHistory(
-                          entries.filter(e=>REFLECTION_ROOMS.some(r=>r.id===e.roomId)||e.roomId==="jesus"),
-                          "reflection",
-                          ()=>{setBookPage(3);setFlipDir("fwd");setHistoryMode("list");}
-                        )}
-                      </>}
-                      {/* Reflection Rooms (pages 3-9, roomIdx 1-7) */}
-                      {roomIdx>=1&&roomIdx<=REFLECTION_ROOMS.length&&(()=>{
-                        const room=REFLECTION_ROOMS[roomIdx-1],prog=roomProg(room),done=prog>=room.days.length,currentDay=Math.min(prog,room.days.length-1),dayData=room.days[currentDay];
-                        return<>
-                          <div style={{textAlign:"center",marginBottom:14}}>
-                            <div style={{fontSize:"1.8rem",marginBottom:6}}>{room.emoji}</div>
-                            <h2 style={{fontFamily:DISPLAY,fontSize:"clamp(1.15rem,4.5vw,1.35rem)",fontWeight:700,color:"#3D2B18",margin:"0 0 4px"}}>{room.label}</h2>
-                            <div style={{fontFamily:SANS,fontSize:"0.6rem",color:"rgba(107,85,58,0.5)",letterSpacing:"0.1em",textTransform:"uppercase",marginTop:3}}>{done?"Complete":`Day ${prog+1} of ${room.days.length}`}</div>
-                          </div>
-                          <div style={{width:40,height:1,background:"linear-gradient(90deg,transparent,rgba(139,109,69,0.3),transparent)",margin:"0 auto 16px"}}/>
-                          <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.85rem,3vw,0.95rem)",color:"#5C4A2E",lineHeight:1.7,textAlign:"center",margin:"0 6px 8px"}}>"{room.question}"</p>
-                          {!done&&<div style={{background:"rgba(139,109,69,0.06)",borderRadius:8,padding:"14px 16px",margin:"12px 0",border:"1px solid rgba(139,109,69,0.1)"}}>
-                            <div style={{fontFamily:SANS,fontSize:"0.56rem",color:"rgba(107,85,58,0.45)",letterSpacing:"0.12em",textTransform:"uppercase",marginBottom:6}}>Today's Prompt</div>
-                            <p style={{fontFamily:SERIF,fontSize:"clamp(0.8rem,2.8vw,0.88rem)",color:"#4A3826",lineHeight:1.6,margin:0}}>{dayData.q}</p>
-                            <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.72rem",color:"rgba(107,85,58,0.38)",margin:"6px 0 0"}}>{dayData.hint}</p>
-                          </div>}
-                          {done&&<div style={{background:"rgba(139,109,69,0.05)",borderRadius:8,padding:"12px 16px",margin:"12px 0",border:"1px dashed rgba(139,109,69,0.12)",textAlign:"center"}}>
-                            <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.82rem",color:"rgba(107,85,58,0.45)",margin:0}}>You've completed all {room.days.length} days in this room.</p>
-                          </div>}
-                          <div style={{flex:1,minHeight:16}}/>
-                          <button className="book-room" onClick={()=>{setBookOpen(false);enterRoom(room,"cabin");}} style={{alignSelf:"center",background:"linear-gradient(135deg,rgba(93,74,46,0.1),rgba(93,74,46,0.04))",border:"1px solid rgba(93,74,46,0.22)",color:"#5C4A2E",padding:"11px 32px",borderRadius:8,fontFamily:SERIF,fontStyle:"italic",fontSize:"0.84rem",cursor:"pointer",transition:"all .2s",letterSpacing:"0.02em"}}>{done?"Revisit this room":"Begin reflecting"}</button>
-                        </>;
-                      })()}
-                      {/* Jesus Questions (roomIdx 8) */}
-                      {roomIdx===REFLECTION_ROOMS.length+1&&(()=>{
-                        const jq=JESUS_QUESTIONS[Math.min(jesusIdx,JESUS_QUESTIONS.length-1)];
-                        if(!jq) return null;
-                        return<>
-                        <div style={{textAlign:"center",marginBottom:14}}>
-                          <div style={{fontSize:"1.8rem",marginBottom:8}}>&#10013;&#65039;</div>
-                          <h2 style={{fontFamily:DISPLAY,fontSize:"clamp(1.1rem,4.5vw,1.3rem)",fontWeight:700,color:"#3D2B18",margin:"0 0 4px",textAlign:"center"}}>Questions Jesus Asked</h2>
-                        </div>
-                        <div style={{width:40,height:1,background:"linear-gradient(90deg,transparent,rgba(139,109,69,0.3),transparent)",margin:"0 auto 16px"}}/>
-                        <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.88rem,3vw,1rem)",color:"#5C4A2E",lineHeight:1.7,textAlign:"center",margin:"0 4px"}}>"{jq.q}"</p>
-                        <p style={{fontFamily:SANS,fontSize:"0.66rem",color:"rgba(107,85,58,0.4)",margin:"8px 0 0",textAlign:"center"}}>{jq.ref}</p>
-                        <div style={{background:"rgba(139,109,69,0.06)",borderRadius:8,padding:"12px 16px",margin:"18px 0",border:"1px solid rgba(139,109,69,0.1)"}}>
-                          <p style={{fontFamily:SERIF,fontSize:"0.82rem",color:"#4A3826",lineHeight:1.55,margin:0,textAlign:"center"}}>{jq.app}</p>
-                        </div>
-                        <div style={{flex:1}}/>
-                        <button className="book-room" onClick={()=>{setBookOpen(false);setScreen("jesus");}} style={{alignSelf:"center",background:"linear-gradient(135deg,rgba(93,74,46,0.1),rgba(93,74,46,0.04))",border:"1px solid rgba(93,74,46,0.22)",color:"#5C4A2E",padding:"11px 32px",borderRadius:8,fontFamily:SERIF,fontStyle:"italic",fontSize:"0.84rem",cursor:"pointer",transition:"all .2s"}}>Open Scripture questions</button>
-                      </>;})()}
-                      {/* Locked Room (roomIdx 9) */}
-                      {roomIdx===REFLECTION_ROOMS.length+2&&(()=>{
-                        const unlocked=streak>=7;
-                        return<div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center"}}>
-                          <div style={{fontSize:"2rem",marginBottom:12}}>{unlocked?"🗝️":"🔒"}</div>
-                          <h2 style={{fontFamily:DISPLAY,fontSize:"clamp(1.1rem,4.5vw,1.3rem)",fontWeight:700,color:unlocked?"#3D2B18":"rgba(61,43,24,0.4)",margin:"0 0 4px"}}>The Locked Room</h2>
-                          <div style={{width:40,height:1,background:`linear-gradient(90deg,transparent,rgba(139,109,69,${unlocked?0.3:0.12}),transparent)`,margin:"12px auto 18px"}}/>
-                          {unlocked?<>
-                            <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.92rem",color:"#5C4A2E",lineHeight:1.7,margin:"0 8px 24px"}}>The deepest questions await.</p>
-                            <button className="book-room" onClick={()=>{setBookOpen(false);enterRoom(LOCKED_ROOM,"cabin");}} style={{background:"linear-gradient(135deg,rgba(93,74,46,0.1),rgba(93,74,46,0.04))",border:"1px solid rgba(93,74,46,0.22)",color:"#5C4A2E",padding:"11px 32px",borderRadius:8,fontFamily:SERIF,fontStyle:"italic",fontSize:"0.84rem",cursor:"pointer"}}>Enter the locked room</button>
-                          </>:<>
-                            <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.88rem",color:"rgba(107,85,58,0.4)",lineHeight:1.7,margin:"0 8px"}}>Some rooms only open with consistency.</p>
-                            <div style={{width:"60%",maxWidth:180,height:4,background:"rgba(139,109,69,0.1)",borderRadius:99,margin:"22px auto 8px",overflow:"hidden"}}><div style={{width:`${(streak/7)*100}%`,height:"100%",background:"linear-gradient(90deg,#8B6D45,#C9A96E)",borderRadius:99}}/></div>
-                            <p style={{fontFamily:SANS,fontSize:"0.66rem",color:"rgba(107,85,58,0.35)"}}>{7-streak} more day{7-streak===1?"":"s"} to unlock</p>
-                          </>}
-                        </div>;
-                      })()}
-                      {/* Daily Question (roomIdx 10) */}
-                      {roomIdx===REFLECTION_ROOMS.length+3&&(()=>{
-                        const dailyQ=VIRAL_QS[new Date().getDate()%VIRAL_QS.length];
-                        return<>
-                          <div style={{textAlign:"center",marginBottom:14}}>
-                            <h2 style={{fontFamily:DISPLAY,fontSize:"clamp(1.05rem,4vw,1.2rem)",fontWeight:700,color:"#3D2B18",margin:"0 0 4px"}}>Question to Carry Today</h2>
-                          </div>
-                          <div style={{width:40,height:1,background:"linear-gradient(90deg,transparent,rgba(139,109,69,0.3),transparent)",margin:"0 auto 16px"}}/>
-                          <div style={{background:"rgba(139,109,69,0.06)",borderRadius:8,padding:"18px 16px",border:"1px solid rgba(139,109,69,0.1)",marginBottom:14}}>
-                            <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.88rem,3vw,0.98rem)",color:"#5C4A2E",lineHeight:1.7,margin:0,textAlign:"center"}}>{dailyQ}</p>
-                          </div>
-                          <button className="book-room" onClick={()=>{setBookOpen(false);setCardQ(dailyQ);setIsCustomCard(false);setScreen("cards");}} style={{alignSelf:"center",background:"transparent",border:"1px solid rgba(101,83,55,0.2)",color:"#5C4A2E",padding:"9px 22px",borderRadius:8,fontFamily:SERIF,fontStyle:"italic",fontSize:"0.78rem",cursor:"pointer"}}>Make a card</button>
-                        </>;
-                      })()}
-                      <div style={{textAlign:"center",fontFamily:SANS,fontSize:"0.6rem",color:"rgba(107,85,58,0.3)",letterSpacing:"0.1em",textTransform:"uppercase",marginTop:10}}>{bookPage+1} of {TOTAL_BOOK_PAGES}</div>
-                    </div>;
-                  })()}
-                </>}
-
-                {/* ── SECTION: DREAM JOURNAL ── */}
-                {journalSection==="dreams"&&bookPage>=2&&(()=>{
-                  const dreamPages=BOOK_CONTENT.dreams?.pages||[];
-                  /* Page 2: Dream History */
-                  if(bookPage===2) return<div style={{flex:1,display:"flex",flexDirection:"column",animation:"pageContentReveal .5s .1s ease both"}}>
-                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
-                      <button onClick={()=>{setJournalSection(null);setBookPage(1);setFlipDir("bwd");}} style={{background:"transparent",border:"none",cursor:"pointer",fontFamily:SERIF,fontSize:"0.74rem",color:"rgba(107,85,58,0.5)",padding:0}}>&#8249; Contents</button>
-                    </div>
-                    <h2 style={{fontFamily:DISPLAY,fontSize:"clamp(1.05rem,4vw,1.2rem)",fontWeight:700,color:"#3D2B18",margin:"0 0 10px",textAlign:"center"}}>Dream History</h2>
-                    <div style={{width:40,height:1,background:"linear-gradient(90deg,transparent,rgba(139,109,69,0.3),transparent)",margin:"0 auto 12px"}}/>
-                    {renderSectionHistory(
-                      entries.filter(e=>e.roomId==="dreams"),
-                      "dream",
-                      ()=>{setBookPage(3);setFlipDir("fwd");setBookText("");setHistoryMode("list");}
-                    )}
-                  </div>;
-                  /* Pages 3+: Dream prompts */
-                  const pgIdx=bookPage-3;
-                  const pg=dreamPages[pgIdx];
-                  if(!pg) return null;
-                  return<div style={{flex:1,display:"flex",flexDirection:"column",animation:"pageContentReveal .5s .1s ease both"}}>
-                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
-                      <button onClick={()=>{setJournalSection(null);setBookPage(1);setFlipDir("bwd");}} style={{background:"transparent",border:"none",cursor:"pointer",fontFamily:SERIF,fontSize:"0.74rem",color:"rgba(107,85,58,0.5)",padding:0}}>&#8249; Contents</button>
-                      <div style={{flex:1}}/>
-                      <span style={{fontFamily:SANS,fontSize:"0.58rem",color:"rgba(107,85,58,0.35)",letterSpacing:"0.1em",textTransform:"uppercase"}}>Dream {pgIdx+1} of {dreamPages.length}</span>
-                    </div>
-                    <h2 style={{fontFamily:DISPLAY,fontSize:"clamp(1.15rem,4.5vw,1.35rem)",fontWeight:700,color:"#3D2B18",margin:"0 0 4px",textAlign:"center"}}>{pg.title}</h2>
-                    <div style={{width:40,height:1,background:"linear-gradient(90deg,transparent,rgba(139,109,69,0.3),transparent)",margin:"8px auto 16px"}}/>
-                    <div style={{background:"rgba(139,109,69,0.06)",borderRadius:8,padding:"16px 18px",margin:"0 0 10px",border:"1px solid rgba(139,109,69,0.1)"}}>
-                      <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.88rem,3vw,0.98rem)",color:"#5C4A2E",lineHeight:1.7,margin:0,textAlign:"center"}}>{pg.prompt}</p>
-                    </div>
-                    <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.74rem",color:"rgba(107,85,58,0.4)",textAlign:"center",margin:"0 0 14px",lineHeight:1.6}}>{pg.hint}</p>
-                    <div style={{background:"rgba(139,109,69,0.04)",border:"1px solid rgba(139,109,69,0.1)",borderRadius:10,overflow:"hidden",flex:1,minHeight:120}}>
-                      <textarea value={bookText} onChange={e=>setBookText(e.target.value)} placeholder="Write your thoughts here..." style={{width:"100%",height:"100%",minHeight:120,background:"transparent",border:"none",padding:"14px 16px",fontFamily:SERIF,fontSize:"0.88rem",color:"#4A3826",lineHeight:1.8,boxSizing:"border-box",resize:"none"}}/>
-                    </div>
-                    {bookText.trim()&&<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 12px",marginTop:8,background:"rgba(139,109,69,0.08)",borderRadius:8,border:"1px solid rgba(139,109,69,0.15)"}}>
-                      <span style={{fontSize:"0.7rem",color:"rgba(107,85,58,0.5)",fontFamily:SANS}}>{bookSaveMsg||`${wc(bookText)} words`}</span>
-                      <button onClick={()=>{const e={id:Date.now().toString(),date:todayStr(),time:nowTime(),roomId:"dreams",roomLabel:"Dream Journal",roomEmoji:"🌙",day:pgIdx,prompt:pg.prompt,text:bookText.trim(),words:wc(bookText)};persistEntries([e,...entries]);addCandles(3,"Dream saved +3");setBookSaveMsg("Saved!");setTimeout(()=>setBookSaveMsg(""),2500);}} style={{background:"linear-gradient(135deg,#5C4A2E,#3D2B18)",border:"none",color:"#F5E6C8",padding:"6px 18px",borderRadius:6,cursor:"pointer",fontSize:"0.76rem",fontFamily:SANS,fontWeight:600}}>Save</button>
-                    </div>}
-                  </div>;
-                })()}
-
-                {/* ── SECTION: PRAYER JOURNAL ── */}
-                {journalSection==="prayers"&&bookPage>=2&&<>
-                  <div style={{flex:1,display:"flex",flexDirection:"column",animation:"pageContentReveal .5s .1s ease both"}}>
-                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
-                      <button onClick={()=>{setJournalSection(null);setBookPage(1);setFlipDir("bwd");}} style={{background:"transparent",border:"none",cursor:"pointer",fontFamily:SERIF,fontSize:"0.74rem",color:"rgba(107,85,58,0.5)",padding:0}}>&#8249; Contents</button>
-                    </div>
-                    {/* Page 2: Prayer history with garden status */}
-                    {bookPage===2&&<>
-                      <h2 style={{fontFamily:DISPLAY,fontSize:"clamp(1.05rem,4vw,1.2rem)",fontWeight:700,color:"#3D2B18",margin:"0 0 10px",textAlign:"center"}}>Your Prayers</h2>
-                      <div style={{width:40,height:1,background:"linear-gradient(90deg,transparent,rgba(139,109,69,0.3),transparent)",margin:"0 auto 12px"}}/>
-                      {renderSectionHistory(
-                        prayerPosts.map(p=>({...p,words:wc(p.text||""),roomId:"prayers",prompt:p.tag||""})),
-                        "prayer",
-                        ()=>{setBookPage(3);setFlipDir("fwd");setBookText("");setHistoryMode("list");},
-                        true
-                      )}
-                    </>}
-                    {/* Page 3: Write a prayer */}
-                    {bookPage===3&&<>
-                      <h2 style={{fontFamily:DISPLAY,fontSize:"clamp(1.1rem,4vw,1.3rem)",fontWeight:700,color:"#3D2B18",margin:"0 0 4px",textAlign:"center"}}>Write a Prayer</h2>
-                      <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.78rem",color:"rgba(107,85,58,0.45)",textAlign:"center",margin:"4px 0 14px"}}>Each prayer waters a plant in your garden</p>
-                      <div style={{width:40,height:1,background:"linear-gradient(90deg,transparent,rgba(139,109,69,0.3),transparent)",margin:"0 auto 14px"}}/>
-                      <div style={{background:"rgba(139,109,69,0.04)",border:"1px solid rgba(139,109,69,0.1)",borderRadius:10,overflow:"hidden",flex:1,minHeight:160}}>
-                        <textarea value={bookText} onChange={e=>setBookText(e.target.value)} placeholder="Pour out your heart... He is listening." style={{width:"100%",height:"100%",minHeight:160,background:"transparent",border:"none",padding:"14px 16px",fontFamily:SERIF,fontSize:"0.88rem",color:"#4A3826",lineHeight:1.8,boxSizing:"border-box",resize:"none"}}/>
-                      </div>
-                      {bookText.trim()&&<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 12px",marginTop:8,background:"rgba(139,109,69,0.08)",borderRadius:8,border:"1px solid rgba(139,109,69,0.15)"}}>
-                        <span style={{fontSize:"0.7rem",color:"rgba(107,85,58,0.5)",fontFamily:SANS}}>{bookSaveMsg||`${wc(bookText)} words`}</span>
-                        <button onClick={savePrayerJournalEntry} style={{background:"linear-gradient(135deg,#3D6B3D,#2E5A2E)",border:"none",color:"#E8F5E8",padding:"6px 18px",borderRadius:6,cursor:"pointer",fontSize:"0.76rem",fontFamily:SANS,fontWeight:600}}>Save & Water Garden</button>
-                      </div>}
-                    </>}
-                  </div>
-                </>}
-              </>}
-
-              {/* ══ OTHER BOOK TYPES (Bible, Prayers, Gratitude, Dreams, Prophecy) ══ */}
-              {deskBook!=="journal"&&BOOK_CONTENT[deskBook]&&<>
-                {/* PAGE 0: Cover */}
-                {bookPage===0&&<>
-                  <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center",animation:"pageContentReveal .5s .15s ease both"}}>
-                    <div style={{fontSize:"2.2rem",marginBottom:14,filter:"drop-shadow(0 2px 4px rgba(139,109,69,0.2))"}}>
-                      {SHELF_BOOKS.find(b=>b.id===deskBook)?.emoji||"📖"}
-                    </div>
-                    <h2 style={{fontFamily:DISPLAY,fontSize:"clamp(1.3rem,5vw,1.6rem)",fontWeight:700,color:"#3D2B18",margin:"0 0 6px",letterSpacing:"0.02em"}}>{BOOK_CONTENT[deskBook].cover.title}</h2>
-                    <div style={{width:50,height:1,background:"linear-gradient(90deg,transparent,#8B6D45,transparent)",margin:"4px auto 18px"}}/>
-                    <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.88rem,3vw,1rem)",color:"#6B553A",lineHeight:1.75,maxWidth:280,margin:"0 auto"}}>{BOOK_CONTENT[deskBook].cover.subtitle}</p>
-                    <p style={{fontFamily:SERIF,fontSize:"0.78rem",color:"rgba(107,85,58,0.4)",marginTop:28,letterSpacing:"0.02em"}}>Turn the page to begin →</p>
-                  </div>
-                  <div style={{textAlign:"center",fontFamily:SANS,fontSize:"0.6rem",color:"rgba(107,85,58,0.3)",letterSpacing:"0.1em",textTransform:"uppercase"}}>— 1 of {TOTAL_BOOK_PAGES} —</div>
-                </>}
-
-                {/* CONTENT PAGES */}
-                {bookPage>=1&&bookPage<=BOOK_CONTENT[deskBook].pages.length&&(()=>{
-                  const pg=BOOK_CONTENT[deskBook].pages[bookPage-1];
-                  if(!pg) return null;
-                  return<>
-                    <div style={{flex:1,display:"flex",flexDirection:"column",animation:"pageContentReveal .5s .1s ease both"}}>
-                      <div style={{textAlign:"center",marginBottom:14}}>
-                        <div style={{fontFamily:SANS,fontSize:"0.56rem",color:"rgba(107,85,58,0.45)",letterSpacing:"0.12em",textTransform:"uppercase",marginBottom:8}}>Page {bookPage}</div>
-                        <h2 style={{fontFamily:DISPLAY,fontSize:"clamp(1.15rem,4.5vw,1.35rem)",fontWeight:700,color:"#3D2B18",margin:"0 0 4px"}}>{pg.title}</h2>
-                      </div>
-                      <div style={{width:40,height:1,background:"linear-gradient(90deg,transparent,rgba(139,109,69,0.3),transparent)",margin:"0 auto 16px"}}/>
-                      <div style={{background:"rgba(139,109,69,0.06)",borderRadius:8,padding:"16px 18px",margin:"0 0 14px",border:"1px solid rgba(139,109,69,0.1)"}}>
-                        <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.88rem,3vw,0.98rem)",color:"#5C4A2E",lineHeight:1.7,margin:0,textAlign:"center"}}>{pg.prompt}</p>
-                      </div>
-                      <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.74rem",color:"rgba(107,85,58,0.4)",textAlign:"center",margin:"0 0 16px",lineHeight:1.6}}>{pg.hint}</p>
-                      {/* Writing area */}
-                      <div style={{background:"rgba(139,109,69,0.04)",border:"1px solid rgba(139,109,69,0.1)",borderRadius:10,overflow:"hidden",flex:1,minHeight:120}}>
-                        <textarea value={bookText} onChange={e=>setBookText(e.target.value)} placeholder="Write your thoughts here…" style={{width:"100%",height:"100%",minHeight:120,background:"transparent",border:"none",padding:"14px 16px",fontFamily:SERIF,fontSize:"0.88rem",color:"#4A3826",lineHeight:1.8,boxSizing:"border-box",resize:"none"}}/>
-                      </div>
-                      {/* Save bar */}
-                      {bookText.trim()&&<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 12px",marginTop:8,background:"rgba(139,109,69,0.08)",borderRadius:8,border:"1px solid rgba(139,109,69,0.15)"}}>
-                        <span style={{fontSize:"0.7rem",color:"rgba(107,85,58,0.5)",fontFamily:SANS}}>{bookSaveMsg||`${wc(bookText)} words`}</span>
-                        <button onClick={saveBookEntry} style={{background:"linear-gradient(135deg,#5C4A2E,#3D2B18)",border:"none",color:"#F5E6C8",padding:"6px 18px",borderRadius:6,cursor:"pointer",fontSize:"0.76rem",fontFamily:SANS,fontWeight:600,letterSpacing:"0.02em"}}>Save →</button>
-                      </div>}
-                    </div>
-                    <div style={{textAlign:"center",fontFamily:SANS,fontSize:"0.6rem",color:"rgba(107,85,58,0.3)",letterSpacing:"0.1em",textTransform:"uppercase",marginTop:10}}>— {bookPage+1} of {TOTAL_BOOK_PAGES} —</div>
-                  </>;
-                })()}
-              </>}
-
-            </div>
-          </div>
-          {/* Nav arrows */}
-          {bookPage>0&&<button className="book-nav" onClick={()=>flipPage("bwd")} style={{position:"absolute",left:-20,top:"50%",transform:"translateY(-50%)",width:38,height:38,borderRadius:"50%",background:"rgba(245,230,200,0.92)",border:"1px solid rgba(101,83,55,0.15)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1rem",color:"#5C4A2E",zIndex:10,boxShadow:"0 2px 12px rgba(0,0,0,0.25)"}}>‹</button>}
-          {bookPage<TOTAL_BOOK_PAGES-1&&<button className="book-nav" onClick={()=>flipPage("fwd")} style={{position:"absolute",right:-20,top:"50%",transform:"translateY(-50%)",width:38,height:38,borderRadius:"50%",background:"rgba(245,230,200,0.92)",border:"1px solid rgba(101,83,55,0.15)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1rem",color:"#5C4A2E",zIndex:10,boxShadow:"0 2px 12px rgba(0,0,0,0.25)"}}>›</button>}
-          {/* Close */}
-          <button onClick={()=>{setBookOpen(false);setJournalSection(null);}} style={{position:"absolute",top:-16,right:-16,width:34,height:34,borderRadius:"50%",background:"rgba(26,22,18,0.88)",border:"1px solid rgba(201,169,110,0.2)",color:"rgba(255,248,232,0.6)",fontSize:"0.8rem",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",zIndex:10,transition:"all .2s",boxShadow:"0 2px 12px rgba(0,0,0,0.35)"}} onMouseEnter={e=>{e.currentTarget.style.background="rgba(201,169,110,0.25)";e.currentTarget.style.color="#FFF8E8";}} onMouseLeave={e=>{e.currentTarget.style.background="rgba(26,22,18,0.88)";e.currentTarget.style.color="rgba(255,248,232,0.6)";}}>✕</button>
-        </div>
-      </div>}
-
-      {/* ═══ WALK-TO-JOURNAL ZOOM ANIMATION ═══ */}
-      {journalZoom&&(
-        <div style={{position:"fixed",inset:0,zIndex:9998,overflow:"hidden",pointerEvents:"all"}}>
-          {/* Cabin zooms toward the desk/book area (upper-right) */}
-          <div style={{position:"absolute",inset:0,transformOrigin:"85% 36%",animation:"walkToJournalZoom 1.4s cubic-bezier(0.4,0,0.2,1) forwards"}}>
-            <img src={CABIN_FALLBACK_IMAGE} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}} draggable={false}/>
-            {/* Warm lamp glow intensifies on the desk during zoom */}
-            <div style={{position:"absolute",right:"6%",top:"26%",width:"22%",height:"20%",borderRadius:"45%",background:"radial-gradient(ellipse at 50% 50%,rgba(255,215,130,0.35) 0%,rgba(255,190,90,0.12) 45%,transparent 72%)",mixBlendMode:"screen"}}/>
-          </div>
-          {/* Journal desk image cross-fades in as cabin darkens */}
-          <div style={{position:"fixed",inset:0,animation:"journalDeskReveal 0.6s 0.8s ease both"}}>
-            <img src="/journalondesk.png" alt="" style={{width:"100%",height:"100%",objectFit:"cover",objectPosition:"center 40%"}} draggable={false}/>
-            {/* Warm candlelight glow overlay */}
-            <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse at 50% 45%,rgba(255,200,100,0.08) 0%,transparent 60%)",mixBlendMode:"screen",pointerEvents:"none"}}/>
-          </div>
-          {/* Dark vignette during transition */}
-          <div style={{position:"fixed",inset:0,background:"#0A0806",animation:"walkToJournalVignette 1.4s cubic-bezier(0.4,0,0.2,1) forwards"}}/>
-        </div>
-      )}
-
-      {/* ═══ SPACE TRANSITION OVERLAY ═══ */}
-      {spaceTransit&&<div style={{position:"fixed",inset:0,zIndex:9999,background:"#0A0806",display:"flex",alignItems:"center",justifyContent:"center",animation:"spaceFadeIn .5s ease"}}>
-        <div style={{textAlign:"center",animation:"fadeUp .6s .15s ease both"}}>
-          <div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"1.05rem",color:"rgba(255,248,232,0.5)",letterSpacing:"0.04em"}}>{transitDir==="toHall"?"Stepping into The Upper Room...":transitDir==="toGarden"?"Walking to the garden...":"Returning to the cabin..."}</div>
-        </div>
-      </div>}
-      <MapHudButton/>
-    </div>
+    <CabinScreen
+      spaceTransit={spaceTransit} transitDir={transitDir}
+      transitionToMap={transitionToMap} transitionToKitchen={transitionToKitchen}
+      transitionToJournal={transitionToJournal}
+      cabinMode={cabinMode} cabin3DReady={cabin3DReady}
+      debugHotspots={debugHotspots} debugTripleTap={debugTripleTap}
+      bookOpen={bookOpen} setBookOpen={setBookOpen} deskBook={deskBook}
+      shelfAnim={shelfAnim} bookPage={bookPage} flipDir={flipDir}
+      bookText={bookText} setBookText={setBookText}
+      bookSaveMsg={bookSaveMsg} setBookSaveMsg={setBookSaveMsg}
+      journalSection={journalSection} setJournalSection={setJournalSection}
+      journalZoom={journalZoom}
+      selectShelfBook={selectShelfBook} flipPage={flipPage}
+      bookTouchStart={bookTouchStart} bookTouchEnd={bookTouchEnd}
+      TOTAL_BOOK_PAGES={TOTAL_BOOK_PAGES}
+      windowPanel={windowPanel} setWindowPanel={setWindowPanel}
+      showInsights={showInsights} setShowInsights={setShowInsights}
+      streak={streak} showStreak={showStreak} candleReward={candleReward}
+      candles={candles} bank={bank} tapCandle={tapCandle} addCandles={addCandles}
+      entries={entries} totalWords={totalWords} themeData={themeData} roomProg={roomProg}
+      ownedItems={ownedItems} toast={toast} user={user}
+      handleSignOut={handleSignOut} prayerPosts={prayerPosts}
+      enterRoom={enterRoom} persistEntries={persistEntries}
+      renderSectionHistory={renderSectionHistory}
+      savePrayerJournalEntry={savePrayerJournalEntry} saveBookEntry={saveBookEntry}
+      setFlipDir={setFlipDir} setBookPage={setBookPage}
+      setHistoryMode={setHistoryMode} historyMode={historyMode}
+      jesusIdx={jesusIdx} setScreen={setScreen} setJourneyTab={setJourneyTab}
+      setCardQ={setCardQ} setIsCustomCard={setIsCustomCard} setCardCustom={setCardCustom}
+      menuOpen={menuOpen} setMenuOpen={setMenuOpen}
+      BottomMenuDrawer={BottomMenuDrawer} goToHistory={goToHistory}
+    />
   );
+
 
   /* ══ JOURNAL ══════════════════════════════════════ */
   if(screen==="journal"&&activeRoom){
@@ -4983,7 +3517,7 @@ function AppInner(){
             </div>
           </div>
         )}
-        <MapHudButton/>
+        <BottomMenuDrawer/>
       </div>
     );
   }
@@ -5026,7 +3560,7 @@ function AppInner(){
             )}
           </div>
         </main>
-        <MapHudButton/>
+        <BottomMenuDrawer/>
       </div>
     );
   }
@@ -5135,7 +3669,7 @@ function AppInner(){
           </div>
         )}
       </main>
-      <MapHudButton/>
+      <BottomMenuDrawer/>
     </div>
   );
 
@@ -5227,14 +3761,65 @@ function AppInner(){
                       <span style={{fontSize:"0.66rem",color:"rgba(255,248,232,0.25)",fontFamily:SANS,marginLeft:"auto"}}>{p.date}</span>
                     </div>
                     <p style={{fontFamily:SERIF,fontSize:"0.92rem",color:"rgba(255,248,232,0.7)",margin:"0 0 10px",lineHeight:1.65}}>{p.text}</p>
-                    <div style={{display:"flex",gap:8}}>
+                    <div style={{display:"flex",gap:8,alignItems:"center"}}>
                       {prayedFor.includes(p.id)?(<span style={{background:"rgba(90,138,106,0.08)",border:"1px solid rgba(90,138,106,0.15)",color:"rgba(190,211,196,0.5)",padding:"5px 14px",borderRadius:7,fontSize:"0.74rem",fontFamily:SANS,fontWeight:600}}>Praying ({p.prayers})</span>):(<button onClick={()=>prayFor(p.id)} style={{background:"rgba(90,138,106,0.15)",border:"1px solid rgba(90,138,106,0.25)",color:"#BED3C4",padding:"5px 14px",borderRadius:7,cursor:"pointer",fontSize:"0.74rem",fontFamily:SANS,fontWeight:600,transition:"all 0.15s"}} onMouseEnter={e=>e.target.style.background="rgba(90,138,106,0.3)"} onMouseLeave={e=>e.target.style.background="rgba(90,138,106,0.15)"}>Pray ({p.prayers})</button>)}
                       {p.status==="answered"?
                         <button onClick={()=>reactivatePrayer(p.id)} style={{background:"transparent",border:"1px solid rgba(201,169,110,0.15)",color:"rgba(255,248,232,0.35)",padding:"5px 12px",borderRadius:7,cursor:"pointer",fontSize:"0.72rem",fontFamily:SANS,fontWeight:600}}>Reactivate</button>
                       :
                         <button onClick={()=>markPrayerAnswered(p.id)} style={{background:"rgba(201,169,110,0.1)",border:"1px solid rgba(201,169,110,0.2)",color:B.gold,padding:"5px 12px",borderRadius:7,cursor:"pointer",fontSize:"0.72rem",fontFamily:SANS,fontWeight:600,transition:"all 0.15s"}} onMouseEnter={e=>e.target.style.background="rgba(201,169,110,0.2)"} onMouseLeave={e=>e.target.style.background="rgba(201,169,110,0.1)"}>Answered</button>
                       }
+                      {/* Bell icon — reminder toggle */}
+                      <button onClick={()=>setReminderPanel(prev=>prev?.id===p.id?null:{id:p.id,time:p.reminder?.time||"09:00",frequency:p.reminder?.frequency||"daily",days:p.reminder?.days||[1,2,3,4,5]})} title="Set reminder" style={{marginLeft:"auto",background:p.reminder?.enabled?"rgba(201,169,110,0.15)":"transparent",border:"1px solid "+(p.reminder?.enabled?"rgba(201,169,110,0.35)":"rgba(201,169,110,0.12)"),borderRadius:7,padding:"4px 8px",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",transition:"all 0.15s"}}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={p.reminder?.enabled?"rgba(201,169,110,0.9)":"rgba(255,248,232,0.35)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>{p.reminder?.enabled&&<circle cx="18" cy="5" r="3" fill="rgba(201,169,110,0.9)" stroke="none"/>}</svg>
+                      </button>
                     </div>
+                    {/* ── Reminder Panel (inline) ── */}
+                    {reminderPanel?.id===p.id&&(()=>{
+                      const rp=reminderPanel;
+                      return (
+                        <div style={{marginTop:10,background:"rgba(26,22,18,0.7)",backdropFilter:"blur(10px)",WebkitBackdropFilter:"blur(10px)",border:"1px solid rgba(201,169,110,0.15)",borderRadius:10,padding:14}}>
+                          {notifPermission!=='granted'&&(
+                            <div style={{marginBottom:10,padding:"8px 12px",background:"rgba(201,169,110,0.06)",border:"1px solid rgba(201,169,110,0.12)",borderRadius:8,display:"flex",alignItems:"center",gap:10}}>
+                              <span style={{fontSize:"0.76rem",fontFamily:SANS,color:"rgba(255,248,232,0.5)",flex:1}}>Notifications are {notifPermission==='denied'?'blocked':'not enabled'}</span>
+                              {notifPermission!=='denied'&&<button onClick={requestNotifPermission} style={{background:"rgba(201,169,110,0.15)",border:"1px solid rgba(201,169,110,0.3)",borderRadius:7,padding:"5px 12px",cursor:"pointer",color:B.gold,fontSize:"0.72rem",fontFamily:SANS,fontWeight:600}}>Enable</button>}
+                            </div>
+                          )}
+                          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
+                            <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.82rem",color:"rgba(255,248,232,0.6)"}}>Reminder</span>
+                            <div style={{flex:1}}/>
+                            <button onClick={()=>{toggleReminder(p.id,{enabled:!(p.reminder?.enabled),time:rp.time,frequency:rp.frequency,days:rp.days,lastNotified:p.reminder?.lastNotified||null},true);}} style={{background:p.reminder?.enabled?"rgba(90,138,106,0.25)":"rgba(255,248,232,0.04)",border:"1px solid "+(p.reminder?.enabled?"rgba(90,138,106,0.4)":"rgba(201,169,110,0.1)"),borderRadius:99,padding:"3px 14px",cursor:"pointer",color:p.reminder?.enabled?"#BED3C4":"rgba(255,248,232,0.35)",fontSize:"0.7rem",fontFamily:SANS,fontWeight:600,transition:"all 0.15s"}}>{p.reminder?.enabled?"On":"Off"}</button>
+                          </div>
+                          <div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:10}}>
+                            <div style={{flex:1,minWidth:100}}>
+                              <label style={{fontSize:"0.66rem",fontFamily:SANS,color:"rgba(255,248,232,0.35)",display:"block",marginBottom:4}}>Time</label>
+                              <input type="time" value={rp.time} onChange={e=>setReminderPanel(prev=>({...prev,time:e.target.value}))} style={{background:"rgba(255,248,232,0.04)",border:"1px solid rgba(201,169,110,0.12)",borderRadius:7,color:B.goldL,fontSize:"0.82rem",fontFamily:SANS,padding:"6px 10px",width:"100%",boxSizing:"border-box",colorScheme:"dark"}}/>
+                            </div>
+                            <div style={{flex:1,minWidth:100}}>
+                              <label style={{fontSize:"0.66rem",fontFamily:SANS,color:"rgba(255,248,232,0.35)",display:"block",marginBottom:4}}>Frequency</label>
+                              <select value={rp.frequency} onChange={e=>setReminderPanel(prev=>({...prev,frequency:e.target.value}))} style={{background:"rgba(255,248,232,0.04)",border:"1px solid rgba(201,169,110,0.12)",borderRadius:7,color:B.goldL,fontSize:"0.82rem",fontFamily:SANS,padding:"6px 10px",width:"100%",boxSizing:"border-box"}}>
+                                <option value="daily">Daily</option>
+                                <option value="weekly">Weekly</option>
+                                <option value="once">Once</option>
+                              </select>
+                            </div>
+                          </div>
+                          {rp.frequency==='weekly'&&(
+                            <div style={{marginBottom:10}}>
+                              <label style={{fontSize:"0.66rem",fontFamily:SANS,color:"rgba(255,248,232,0.35)",display:"block",marginBottom:5}}>Days</label>
+                              <div style={{display:"flex",gap:4}}>
+                                {["S","M","T","W","T","F","S"].map((d,i)=>(
+                                  <button key={i} onClick={()=>setReminderPanel(prev=>{const s=new Set(prev.days||[]);s.has(i)?s.delete(i):s.add(i);return{...prev,days:[...s]};})} style={{width:28,height:28,borderRadius:"50%",border:"1px solid "+(rp.days?.includes(i)?"rgba(201,169,110,0.4)":"rgba(201,169,110,0.1)"),background:rp.days?.includes(i)?"rgba(201,169,110,0.15)":"transparent",color:rp.days?.includes(i)?B.gold:"rgba(255,248,232,0.3)",fontSize:"0.68rem",fontFamily:SANS,fontWeight:600,cursor:"pointer",padding:0,display:"flex",alignItems:"center",justifyContent:"center"}}>{d}</button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
+                            {p.reminder&&<button onClick={()=>removeReminder(p.id)} style={{background:"transparent",border:"1px solid rgba(255,100,100,0.2)",borderRadius:7,padding:"5px 12px",cursor:"pointer",color:"rgba(255,150,150,0.6)",fontSize:"0.7rem",fontFamily:SANS,fontWeight:600}}>Remove</button>}
+                            <button onClick={()=>toggleReminder(p.id,{enabled:true,time:rp.time,frequency:rp.frequency,days:rp.days,lastNotified:p.reminder?.lastNotified||null})} style={{background:"rgba(90,138,106,0.2)",border:"1px solid rgba(90,138,106,0.35)",borderRadius:7,padding:"5px 16px",cursor:"pointer",color:"#BED3C4",fontSize:"0.72rem",fontFamily:SANS,fontWeight:600,transition:"all 0.15s"}}>Save</button>
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 ))}
               </div>
@@ -5330,7 +3915,7 @@ function AppInner(){
           <div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"1.05rem",color:"rgba(255,248,232,0.5)",letterSpacing:"0.04em"}}>{transitDir==="toCabin"?"Returning to the cabin...":"Stepping into The Upper Room..."}</div>
         </div>
       </div>}
-      <MapHudButton/>
+      <BottomMenuDrawer/>
     </div>
   );
 
@@ -5550,48 +4135,78 @@ function AppInner(){
           </JCard>}
         </>}
       </main>
-      <MapHudButton/>
+      <BottomMenuDrawer/>
     </div>
   );}
 
-  /* ══ WORLD MAP — Navigation Hub ═══════════════════ */
+  /* ══ WORLD MAP — Tile-based Overworld ═══════════════════ */
   if(screen==="map"){
-    // Helper: navigate from map to a destination with transition
-    const mapGoTo=(dest)=>{
+    const handleEnterLocation=(dest)=>{
       setSpaceTransit(true);
       setTransitDir("fromMap");
+      // Set garden mode before transitioning
+      if(dest==="garden"){setGardenMode("prayers");setSelectedPlot(null);}
+      if(dest==="farm"){setGardenMode("farm");setSelectedPlot(null);}
       setTimeout(()=>{
-        if(dest==="cabin"){setScreen("cabin");}
-        else if(dest==="garden"){setScreen("garden");}
-        else if(dest==="hall"){setScreen("hall");}
-        else if(dest==="market"){setScreen("market");}
-        else if(dest==="upper-room"){setScreen("upper-room");}
-        else{setScreen(dest);}
+        // Farm uses the garden screen with gardenMode="farm"
+        setScreen(dest==="farm"?"garden":dest);
         setSpaceTransit(false);setTransitDir(null);
       },700);
     };
     return(
       <div style={{position:"fixed",inset:0,overflow:"hidden",fontFamily:SANS}}>
         <style>{GFONTS}{CSS}</style>
-
-        {/* ── Full-screen immersive map background ── */}
-        <ImmersiveMap/>
-
-        {/* ═══ LOCATION HOTSPOTS — positioned over map labels ═══ */}
-        {MAP_LOCATIONS.map((loc,idx)=>(
-          <button key={loc.id} onClick={()=>mapGoTo(loc.id)} style={{
-            position:"absolute",left:loc.left,top:loc.top,
-            transform:"translate(-50%,-50%)",
-            width:loc.w,height:loc.h,
-            borderRadius:16,border:"none",zIndex:10,
-            background:"transparent",cursor:"pointer",
-            WebkitTapHighlightColor:"transparent",
-            padding:0,outline:"none",
-          }}/>
-        ))}
-
-        {/* ═══ SPACE TRANSIT OVERLAY ═══ */}
+        <OverworldScreen
+          onEnterLocation={handleEnterLocation}
+          playerPos={overworldPos}
+          onPosChange={(x,y)=>setOverworldPos({x,y})}
+        />
         {spaceTransit&&<div style={{position:"fixed",inset:0,zIndex:9999,background:"#0A0806",animation:"spaceFadeIn .6s ease both",pointerEvents:"all"}}/>}
+      </div>
+    );
+  }
+
+  /* ══ MAP 2 — second map area (placeholder until artwork is added) ═══ */
+  if(screen==="map2"){
+    return(
+      <div style={{position:"fixed",inset:0,overflow:"hidden",fontFamily:SANS,background:"#0A0806"}}>
+        <style>{GFONTS}{CSS}</style>
+
+        {/* Atmospheric dark background with subtle vignette */}
+        <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse at 50% 40%, rgba(26,22,18,0.6) 0%, #0A0806 70%)"}}/>
+
+        {/* Content */}
+        <div style={{position:"relative",zIndex:10,height:"100%",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
+
+          {/* Back arrow — top-left */}
+          <button onClick={()=>{setSpaceTransit(true);setTransitDir("fromMap");setTimeout(()=>{setScreen("map");setSpaceTransit(false);setTransitDir(null);},700);}} style={{
+            position:"absolute",top:28,left:20,
+            background:"rgba(26,22,18,0.7)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",
+            border:"1px solid rgba(201,169,110,0.2)",borderRadius:999,
+            padding:"9px 18px 9px 14px",cursor:"pointer",
+            color:"rgba(255,240,200,0.7)",fontFamily:SANS,fontSize:"0.82rem",
+            display:"flex",alignItems:"center",gap:6,
+            transition:"all 0.2s",zIndex:20,
+            animation:"fadeUp .6s ease both"
+          }}>
+            <span style={{fontSize:"1.1em",lineHeight:1}}>&#10094;</span> Back to map
+          </button>
+
+          {/* Placeholder content */}
+          <div style={{textAlign:"center",padding:"0 32px",animation:"fadeUp .8s .2s ease both",opacity:0}}>
+            <div style={{fontSize:"2.4rem",marginBottom:16,opacity:0.25}}>&#9968;</div>
+            <h2 style={{fontFamily:DISPLAY,fontSize:"1.5rem",fontWeight:700,color:"rgba(255,240,200,0.7)",margin:"0 0 12px",letterSpacing:"0.02em"}}>
+              New Lands Ahead
+            </h2>
+            <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.92rem",color:"rgba(255,240,200,0.35)",margin:0,maxWidth:320,lineHeight:1.6}}>
+              This area is being prepared. A new map will appear here soon.
+            </p>
+          </div>
+
+        </div>
+
+        {spaceTransit&&<div style={{position:"fixed",inset:0,zIndex:9999,background:"#0A0806",animation:"spaceFadeIn .6s ease both",pointerEvents:"all"}}/>}
+        <BottomMenuDrawer/>
       </div>
     );
   }
@@ -5662,7 +4277,7 @@ function AppInner(){
             }
           </div>
         </div>
-        <MapHudButton/>
+        <BottomMenuDrawer/>
       </div>
     );
   }
@@ -6137,7 +4752,7 @@ function AppInner(){
             )}
           </div>
         </div>}
-        <MapHudButton/>
+        <BottomMenuDrawer/>
       </div>
     );
   }
@@ -6183,7 +4798,7 @@ function AppInner(){
           </div>
           {filteredItems.length===0&&<p style={{fontFamily:SERIF,fontStyle:"italic",color:"rgba(255,248,232,0.3)",textAlign:"center",marginTop:40}}>No items in this category yet.</p>}
         </main>
-        <MapHudButton/>
+        <BottomMenuDrawer/>
       </div>
     );
   }
@@ -6298,7 +4913,7 @@ function AppInner(){
           </div>}
 
         </main>
-        <MapHudButton/>
+        <BottomMenuDrawer/>
       </div>
     );
   }
@@ -6357,7 +4972,7 @@ function AppInner(){
           </div>
         )}
         {spaceTransit&&<div style={{position:"fixed",inset:0,zIndex:9999,background:"#0A0806",animation:"spaceFadeIn .6s ease both",pointerEvents:"all"}}/>}
-        <MapHudButton/>
+        <BottomMenuDrawer/>
       </div>
     );
   }
@@ -6420,7 +5035,7 @@ function AppInner(){
           <div style={{fontSize:"1.8rem",marginBottom:8}}>🍳</div>
           <div style={{fontFamily:DISPLAY,fontSize:"1rem",fontWeight:700,color:B.goldL}}>{candleReward.message}</div>
         </div>}
-        <MapHudButton/>
+        <BottomMenuDrawer/>
       </div>
     );
   }
@@ -6457,7 +5072,7 @@ function AppInner(){
           </div>
         </div>
         {spaceTransit&&<div style={{position:"fixed",inset:0,zIndex:9999,background:"#0A0806",animation:"spaceFadeIn .6s ease both",pointerEvents:"all"}}/>}
-        <MapHudButton/>
+        <BottomMenuDrawer/>
       </div>
     );
   }
@@ -6813,7 +5428,7 @@ function AppInner(){
             </div>
           </div>
         )}
-        <MapHudButton/>
+        <BottomMenuDrawer/>
       </div>
     );
   }
@@ -7069,7 +5684,7 @@ function AppInner(){
         )}
 
         {spaceTransit&&<div style={{position:"fixed",inset:0,zIndex:9999,background:"#0A0806",animation:"spaceFadeIn .6s ease both",pointerEvents:"all"}}/>}
-        <MapHudButton/>
+        <BottomMenuDrawer/>
       </div>
     );
   }
