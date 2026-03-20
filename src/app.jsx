@@ -3422,7 +3422,7 @@ function AppInner(){
       jesusIdx={jesusIdx} setScreen={setScreen} setJourneyTab={setJourneyTab}
       setCardQ={setCardQ} setIsCustomCard={setIsCustomCard} setCardCustom={setCardCustom}
       menuOpen={menuOpen} setMenuOpen={setMenuOpen}
-      BottomMenuDrawer={BottomMenuDrawer} MapHudButton={MapHudButton} goToHistory={goToHistory}
+      BottomMenuDrawer={BottomMenuDrawer} goToHistory={goToHistory}
     />
   );
 
