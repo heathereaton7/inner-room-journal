@@ -260,6 +260,7 @@ export function todayStr(){ return new Date().toISOString().slice(0,10); }
 export function nowTime(){ return new Date().toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}); }
 export function entryTime(e){ if(e.time) return e.time; const ts=parseInt(e.id); if(!ts||isNaN(ts)) return ""; return new Date(ts).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}); }
 export function isoDate(d){ return d.toISOString().slice(0,10); }
+export function getWeekStart(){ const d=new Date(); const day=d.getDay(); d.setDate(d.getDate()-(day===0?6:day-1)); return d.toISOString().slice(0,10); }
 export function wc(t){ return t.trim().split(/\s+/).filter(Boolean).length; }
 export function shuffle(a){ return [...a].sort(()=>Math.random()-.5); }
 
@@ -522,6 +523,16 @@ export const ITEM_CATALOG = {
   stew:               { name:"Stew",               emoji:"🥘", cat:"cooked", sellPrice:22 },
   honey_cake:         { name:"Honey Cake",         emoji:"🍰", cat:"cooked", sellPrice:20 },
   fruit_salad:        { name:"Fruit Salad",        emoji:"🥗", cat:"cooked", sellPrice:16 },
+  // === Premium Items (Inner Room Plus) ===
+  saffron:        { name:"Saffron",        emoji:"✨", cat:"crops", sellPrice:15 },
+  frankincense:   { name:"Frankincense",   emoji:"🌲", cat:"crops", sellPrice:18 },
+  myrrh:          { name:"Myrrh",          emoji:"🪵", cat:"crops", sellPrice:20 },
+  lavender:       { name:"Lavender",       emoji:"💜", cat:"crops", sellPrice:12 },
+  lavender_seed:  { name:"Lavender Seeds", emoji:"💜", cat:"seeds", buyPrice:6, sellPrice:3 },
+  flax_fiber:     { name:"Flax Fiber",     emoji:"🧵", cat:"crops", sellPrice:14 },
+  flax_seed:      { name:"Flax Seeds",     emoji:"🧵", cat:"seeds", buyPrice:7, sellPrice:3 },
+  feathers:       { name:"Feathers",       emoji:"🪶", cat:"ingredients", sellPrice:8 },
+  transport:      { name:"Transport",      emoji:"📦", cat:"ingredients", sellPrice:12 },
 };
 
 /* ═══════════════════════════════════════════════════
@@ -571,4 +582,71 @@ export const ANIMAL_TYPES=[
 ];
 export const MAX_ANIMALS=6;
 
+export const DAILY_MISSIONS=[
+  {id:"daily_journal",     label:"Journal a prayer",   description:"Write a prayer or reflection", target:1, reward:{candles:10}},
+  {id:"daily_pray_3",      label:"Pray for 3 people",  description:"Lift others' prayers",         target:3, reward:{candles:8}},
+  {id:"daily_comment",     label:"Encourage someone",  description:"Comment on a community prayer", target:1, reward:{candles:5}},
+  {id:"daily_harvest",     label:"Harvest a crop",     description:"Gather from your garden or farm",target:1, reward:{coins:10}},
+  {id:"daily_feed_animal", label:"Feed an animal",     description:"Care for one of your animals",  target:1, reward:{candles:5}},
+];
+export const WEEKLY_MISSIONS=[
+  {id:"weekly_journal_5",    label:"Journal 5 times",   description:"Write 5 reflections this week", target:5,  reward:{candles:25}},
+  {id:"weekly_pray_10",      label:"Pray for 10 people",description:"Lift 10 prayers this week",     target:10, reward:{candles:20}},
+  {id:"weekly_harvest_5",    label:"Harvest 5 crops",   description:"Gather 5 harvests this week",   target:5,  reward:{coins:25}},
+  {id:"weekly_share_prayer", label:"Share a prayer",    description:"Post a prayer to the community", target:1,  reward:{candles:15}},
+];
+
 export const CABIN_FALLBACK_IMAGE="/cabin-interior.png";
+
+/* ══════════════════════════════════════════════════════
+   INNER ROOM PLUS — Premium Content
+   ══════════════════════════════════════════════════════ */
+
+export const PREMIUM_DAILY_MISSIONS=[
+  {id:"plus_daily_deep_journal", label:"Deep reflection",  description:"Write 3 layers deep in a journal entry", target:1, reward:{candles:15}, premium:true},
+  {id:"plus_daily_verse_save",   label:"Save a scripture", description:"Save a verse from the Upper Room Bible",  target:1, reward:{candles:12}, premium:true},
+  {id:"plus_daily_craft",        label:"Craft an item",    description:"Create something at a crafting station",   target:1, reward:{coins:15},   premium:true},
+];
+
+export const PREMIUM_WEEKLY_MISSIONS=[
+  {id:"plus_weekly_journal_10",  label:"Journal 10 times", description:"Write 10 reflections this week", target:10, reward:{candles:50}, premium:true},
+  {id:"plus_weekly_harvest_10",  label:"Harvest 10 crops", description:"Gather 10 harvests this week",   target:10, reward:{coins:50},   premium:true},
+];
+
+export const PREMIUM_GARDEN_PLANTS=[
+  {id:"saffron",      name:"Saffron Crocus", emoji:"✨", stageEmojis:["🌱","🌿","🌸","🌸","🌸"], harvestItem:"saffron",      harvestEmoji:"✨", plantCost:8,  growthBase:[8,10,14,8], premium:true},
+  {id:"frankincense", name:"Frankincense",   emoji:"🌲", stageEmojis:["🌱","🌿","🌲","🌲","🌲"], harvestItem:"frankincense", harvestEmoji:"🌲", plantCost:10, growthBase:[10,12,16,10],premium:true},
+  {id:"myrrh",        name:"Myrrh Tree",     emoji:"🪵", stageEmojis:["🌱","🌿","🌳","🪵","🪵"], harvestItem:"myrrh",        harvestEmoji:"🪵", plantCost:12, growthBase:[12,14,18,12],premium:true},
+];
+
+export const PREMIUM_FARM_PLANTS=[
+  {id:"lavender", name:"Lavender", emoji:"💜", stageEmojis:["🌱","🌿","💜","💜","💜"], harvestItem:"lavender",   seedItem:"lavender_seed", growthBase:[8,10,12,8],  plantCost:0, premium:true},
+  {id:"flax",     name:"Flax",     emoji:"🧵", stageEmojis:["🌱","🌿","🧵","🧵","🧵"], harvestItem:"flax_fiber", seedItem:"flax_seed",     growthBase:[10,12,14,10],plantCost:0, premium:true},
+];
+
+export const PREMIUM_ANIMALS=[
+  {id:"dove",   name:"Dove",   emoji:"🕊️", product:"feathers",  durationMs:4*60*60*1000,  feedCost:1, buyCost:80,  durationLabel:"4h",  premium:true},
+  {id:"donkey", name:"Donkey", emoji:"🫏",  product:"transport", durationMs:16*60*60*1000, feedCost:1, buyCost:150, durationLabel:"16h", premium:true},
+];
+
+export const PREMIUM_PROMPTS=[
+  {q:"What is the prayer you have never prayed out loud?",                                hint:"Some prayers live in the body, not the mouth."},
+  {q:"If you could hear God's voice clearly right now, what do you think He would say?",  hint:"Sit with this. Don't rush the answer."},
+  {q:"What part of your story have you never let God into?",                              hint:"The locked rooms are where healing begins."},
+  {q:"What would change if you stopped performing your faith?",                           hint:"Authenticity is a form of worship."},
+  {q:"What are you building your identity on that could be taken away?",                  hint:"Name the foundations."},
+];
+
+export const PREMIUM_SHOP_ITEMS=[
+  {id:"golden_frame",   name:"Golden Frame",   emoji:"🖼️", cost:25, category:"decor",     asset:"/assets/furniture/golden-frame.png",   pos:{top:"28%",left:"40%",width:"10%"}, premium:true},
+  {id:"silk_curtains",  name:"Silk Curtains",   emoji:"🧣", cost:30, category:"furniture", asset:"/assets/furniture/silk-curtains.png",  pos:{top:"10%",left:"30%",width:"20%"}, premium:true},
+  {id:"incense_burner", name:"Incense Burner",  emoji:"🫕", cost:20, category:"candles",   asset:"/assets/furniture/incense-burner.png", pos:{top:"58%",left:"18%",width:"7%"},  premium:true},
+];
+
+export const PLUS_BENEFITS=[
+  {icon:"scroll",   title:"Bonus Missions",  desc:"Extra daily and weekly missions with greater rewards"},
+  {icon:"seedling", title:"Exclusive Seeds",  desc:"Premium plants like Saffron, Frankincense, and Myrrh"},
+  {icon:"feather",  title:"Rare Animals",     desc:"Unique creatures like the Dove and Donkey"},
+  {icon:"quill",    title:"Deeper Prompts",   desc:"Exclusive journal questions that go beneath the surface"},
+  {icon:"frame",    title:"Cabin Upgrades",   desc:"Premium furniture and decor for your cabin"},
+];
