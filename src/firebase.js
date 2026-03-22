@@ -19,10 +19,12 @@ import {
   where,
   orderBy,
   limit,
+  startAfter,
   addDoc,
   deleteDoc,
   serverTimestamp,
   Timestamp,
+  onSnapshot,
 } from "firebase/firestore";
 import {
   getFunctions,
@@ -71,9 +73,11 @@ export {
   where,
   orderBy,
   limit,
+  startAfter,
   addDoc,
   deleteDoc,
   serverTimestamp,
   Timestamp,
+  onSnapshot,
   httpsCallable,
 };

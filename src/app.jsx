@@ -1,12 +1,16 @@
 import { useState, useEffect, useMemo, useRef, useCallback, Component } from "react";
-import { auth, db, functions, googleProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged, doc, getDoc, setDoc, collection, getDocs, query, where, orderBy, limit, addDoc, deleteDoc, serverTimestamp, Timestamp, httpsCallable } from "./firebase.js";
+import { auth, db, functions, googleProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged, doc, getDoc, setDoc, collection, getDocs, query, where, orderBy, limit, addDoc, deleteDoc, serverTimestamp, Timestamp, onSnapshot, httpsCallable } from "./firebase.js";
 import { OverworldScreen } from './overworld/index.js';
 /* R3F imports removed — ImmersiveCabin uses pure DOM/Canvas2D for performance */
-import { GFONTS, B, SERIF, SANS, DISPLAY, RT, th, REFLECTION_ROOMS, COMMUNITY_ROOMS, LOCKED_ROOM, JESUS_QUESTIONS, QUESTION_SETS, ALL_CARD_QS, CARD_THEMES, CARD_RATIOS, VERSE_THEMES, VIRAL_QS, SAMPLE_PRAYERS, SHELF_BOOKS, BOOK_COVERS, BOOK_CONTENT, getBookPageCount, todayStr, nowTime, entryTime, isoDate, wc, shuffle, THEME_WORDS, aggregateThemes, EMOTION_WORDS, LIFE_THEMES, FAITH_WORDS, SCRIPTURE_PATTERN, IDENTITY_NEG, IDENTITY_POS, GROWTH_MARKERS, STOP_WORDS, EMOTION_COLORS, computeInsights, computeWeeklyDigest, computeSeasonalSummary, computeFutureYou, SHOP_ITEMS, GARDEN_PLANTS, GROWTH_STAGES, PRAYER_BONUS_MINS, CRAFTING_STATIONS, ITEM_CATALOG, KITCHEN_RECIPES, NPC_TRADES, FARM_PLANTS, ANIMAL_TYPES, MAX_ANIMALS, CABIN_FALLBACK_IMAGE } from './constants.js';
+import { GFONTS, B, SERIF, SANS, DISPLAY, RT, th, REFLECTION_ROOMS, COMMUNITY_ROOMS, LOCKED_ROOM, JESUS_QUESTIONS, QUESTION_SETS, ALL_CARD_QS, CARD_THEMES, CARD_RATIOS, VERSE_THEMES, VIRAL_QS, SAMPLE_PRAYERS, SHELF_BOOKS, BOOK_COVERS, BOOK_CONTENT, getBookPageCount, todayStr, nowTime, entryTime, isoDate, wc, shuffle, THEME_WORDS, aggregateThemes, EMOTION_WORDS, LIFE_THEMES, FAITH_WORDS, SCRIPTURE_PATTERN, IDENTITY_NEG, IDENTITY_POS, GROWTH_MARKERS, STOP_WORDS, EMOTION_COLORS, computeInsights, computeWeeklyDigest, computeSeasonalSummary, computeFutureYou, SHOP_ITEMS, GARDEN_PLANTS, GROWTH_STAGES, PRAYER_BONUS_MINS, CRAFTING_STATIONS, ITEM_CATALOG, KITCHEN_RECIPES, NPC_TRADES, FARM_PLANTS, ANIMAL_TYPES, MAX_ANIMALS, DAILY_MISSIONS, WEEKLY_MISSIONS, getWeekStart, CABIN_FALLBACK_IMAGE, PREMIUM_DAILY_MISSIONS, PREMIUM_WEEKLY_MISSIONS, PREMIUM_GARDEN_PLANTS, PREMIUM_FARM_PLANTS, PREMIUM_ANIMALS, PREMIUM_PROMPTS, PREMIUM_SHOP_ITEMS, PLUS_BENEFITS } from './constants.js';
 import { CSS } from './styles.js';
 import ImmersiveCabin from './components/ImmersiveCabin.jsx';
 import BookSparkles from './components/BookSparkles.jsx';
 import CabinScreen from './screens/CabinScreen.jsx';
+import ProfileScreen from './screens/ProfileScreen.jsx';
+import FeedScreen from './screens/FeedScreen.jsx';
+import NotificationsScreen from './screens/NotificationsScreen.jsx';
+import PostCard from './components/PostCard.jsx';
 
 
 async function dbLoad(k){
@@ -21,7 +25,7 @@ async function dbSave(k,v){
     localStorage.setItem(k,JSON.stringify(v));
     // Dual-write to Firestore when signed in
     if(auth?.currentUser){
-      const fieldMap={"irj-entries":"entries","irj-prayer":"prayerPosts","irj-saved-cards":"savedCards","irj-onboarded":"isOnboarded","irj-candles":"candles","irj-prayed":"prayedFor","irj-owned-items":"ownedItems","irj-garden":"gardenPlots","irj-inventory":"inventory","irj-saved-verses":"savedVerses","irj-bank":"bank","irj-sell-basket":"sellBasket","irj-farm-plots":"farmPlots","irj-animals":"animals"};
+      const fieldMap={"irj-entries":"entries","irj-prayer":"prayerPosts","irj-saved-cards":"savedCards","irj-onboarded":"isOnboarded","irj-candles":"candles","irj-prayed":"prayedFor","irj-owned-items":"ownedItems","irj-garden":"gardenPlots","irj-inventory":"inventory","irj-saved-verses":"savedVerses","irj-bank":"bank","irj-sell-basket":"sellBasket","irj-farm-plots":"farmPlots","irj-animals":"animals","irj-missions":"missions","irj-premium":"isPremium"};
       const field=fieldMap[k];
       if(field){
         const userRef=doc(db,"users",auth.currentUser.uid);
@@ -1685,11 +1689,22 @@ function AppInner(){
   const [communityPrayers,  setCommunityPrayers]  = useState([]);
   const [communityEvents,   setCommunityEvents]   = useState([]);
   const [visitingFarm,      setVisitingFarm]      = useState(null); // {userId,username,farmPlots,gardenPlots}
+  const [profileUserId,     setProfileUserId]     = useState(null);
+  const [unreadCount,       setUnreadCount]       = useState(0);
+  const [missions,          setMissions]          = useState(null);
+  const [showMissions,      setShowMissions]      = useState(false);
+  const [isPremium,         setIsPremium]         = useState(false);
+  const [devPremiumOverride,setDevPremiumOverride]= useState(false);
   const [communityTab,      setCommunityTab]      = useState("browse"); // "browse"|"myListings"|"npc"
   const [prayerWallTab,     setPrayerWallTab]     = useState("mine"); // "mine"|"community"
   const [farmerSearch,      setFarmerSearch]       = useState("");
   const [farmerResults,     setFarmerResults]     = useState([]);
   const [communityLoading,  setCommunityLoading]  = useState(false);
+  const [prayedPostIds,     setPrayedPostIds]     = useState(new Set());
+  const [expandedComments,  setExpandedComments]  = useState(null);
+  const [postComments,      setPostComments]      = useState({});
+  const [commentText,       setCommentText]       = useState("");
+  const [commentLoading,    setCommentLoading]    = useState(false);
   const [listingForm,       setListingForm]       = useState(null); // {itemType,quantity,pricePerUnit}
   // ── Verse selection, saving, sharing ──
   const [selectedVerses,    setSelectedVerses]    = useState(new Set());
@@ -1816,10 +1831,26 @@ function AppInner(){
 
   // ── HOTSPOT DEBUG MODE ──
   // Toggle: ?debug=1 in URL  |  Ctrl+Shift+. on desktop  |  triple-tap "🕯️ 0" candle badge on mobile
+  // ── Premium computed ──
+  const hasPremium = isPremium || devPremiumOverride;
+  // ── Missions computed values ──
+  const activeMissions=useMemo(()=>getOrResetMissions?getOrResetMissions(missions):null,[missions]);
+  const totalUnclaimed=useMemo(()=>{
+    if(!activeMissions) return 0;
+    const dc=DAILY_MISSIONS.filter(m=>{const s=activeMissions.daily?.progress?.[m.id];return s&&s.count>=m.target&&!s.claimed;}).length;
+    const wc2=WEEKLY_MISSIONS.filter(m=>{const s=activeMissions.weekly?.progress?.[m.id];return s&&s.count>=m.target&&!s.claimed;}).length;
+    const pdc=hasPremium?PREMIUM_DAILY_MISSIONS.filter(m=>{const s=activeMissions.daily?.progress?.[m.id];return s&&s.count>=m.target&&!s.claimed;}).length:0;
+    const pwc=hasPremium?PREMIUM_WEEKLY_MISSIONS.filter(m=>{const s=activeMissions.weekly?.progress?.[m.id];return s&&s.count>=m.target&&!s.claimed;}).length:0;
+    return dc+wc2+pdc+pwc;
+  },[activeMissions,hasPremium]);
+
   const debugTapRef=useRef({count:0,timer:null});
   useEffect(()=>{
     if(new URLSearchParams(window.location.search).get("debug")==="1") setDebugHotspots(true);
-    const handler=(e)=>{if(e.ctrlKey&&e.shiftKey&&e.key===">"){e.preventDefault();setDebugHotspots(d=>!d);}};
+    const handler=(e)=>{
+      if(e.ctrlKey&&e.shiftKey&&e.key===">"){e.preventDefault();setDebugHotspots(d=>!d);}
+      if(e.ctrlKey&&e.shiftKey&&e.key==="P"){e.preventDefault();setDevPremiumOverride(d=>{console.log("[DEV] Premium override:",!d);return !d;});}
+    };
     window.addEventListener("keydown",handler);
     return ()=>window.removeEventListener("keydown",handler);
   },[]);
@@ -1848,6 +1879,8 @@ function AppInner(){
       const sb   = await dbLoad("irj-sell-basket") || [];
       const fp   = await dbLoad("irj-farm-plots") || Array.from({length:12},(_,i)=>({id:i+1,plantType:null,stage:"empty",plantedAt:null}));
       const an   = await dbLoad("irj-animals") || [];
+      const ms   = await dbLoad("irj-missions") || null;
+      const pm   = await dbLoad("irj-premium") || false;
       // Migrate prayers: add status/answeredDate/category if missing
       let migrated=false;
       const mpp=pp.map(p=>{
@@ -1857,7 +1890,7 @@ function AppInner(){
       if(migrated) dbSave("irj-prayer",mpp);
       setEntries(ens); setPrayerPosts(mpp); setSavedCards(sc);
       setCandles(cn); setPrayedFor(pf); setOwnedItems(oi); setGardenPlots(gp); setInventory(inv); setSavedVerses(sv);
-      setBank(bnk); setSellBasket(sb); setFarmPlots(fp); setAnimals(an);
+      setBank(bnk); setSellBasket(sb); setFarmPlots(fp); setAnimals(an); setMissions(ms); setIsPremium(!!pm);
       let s=0,d=new Date(),map={};
       ens.forEach(e=>{map[e.date]=true;});
       while(map[isoDate(d)]){s++;d.setDate(d.getDate()-1);} setStreak(s);
@@ -1883,6 +1916,14 @@ function AppInner(){
     });
     return ()=>unsub();
   },[]);
+
+  // ── UNREAD NOTIFICATIONS LISTENER ──
+  useEffect(()=>{
+    if(!db||!user){ setUnreadCount(0); return; }
+    const q=query(collection(db,"notifications"),where("recipientId","==",user.uid),where("read","==",false));
+    const unsub2=onSnapshot(q,snap=>setUnreadCount(snap.size),err=>console.warn("notif listener:",err));
+    return ()=>unsub2();
+  },[db,user]);
 
   // ── AUTO-CLEAR TOAST ──
   useEffect(()=>{if(toast){const t=setTimeout(()=>setToast(null),2800);return()=>clearTimeout(t);}},[toast]);
@@ -1983,6 +2024,8 @@ function AppInner(){
       const localSellBasket=await dbLoad("irj-sell-basket")||[];
       const localFarmPlots=await dbLoad("irj-farm-plots")||[];
       const localAnimals=await dbLoad("irj-animals")||[];
+      const localMissions=await dbLoad("irj-missions")||null;
+      const localPremium=await dbLoad("irj-premium")||false;
 
       const mergedEntries=mergeById(localEntries,cloud.entries||[]);
       const mergedPrayers=mergeById(localPrayers,cloud.prayerPosts||[]);
@@ -2027,6 +2070,16 @@ function AppInner(){
       // Add any cloud-only animals not in local
       cloudAnimals.forEach(ca=>{if(!mergedAnimals.find(a=>a.id===ca.id))mergedAnimals.push(ca);});
 
+      // Missions: take whichever period is more recent
+      const cloudMissions=cloud.missions||null;
+      let mergedMissions=localMissions||cloudMissions||null;
+      if(localMissions&&cloudMissions){
+        mergedMissions={
+          daily:(localMissions.daily?.date||"")>=(cloudMissions.daily?.date||"")?localMissions.daily:cloudMissions.daily,
+          weekly:(localMissions.weekly?.weekStart||"")>=(cloudMissions.weekly?.weekStart||"")?localMissions.weekly:cloudMissions.weekly,
+        };
+      }
+
       localStorage.setItem("irj-entries",JSON.stringify(mergedEntries));
       localStorage.setItem("irj-prayer",JSON.stringify(mergedPrayers));
       localStorage.setItem("irj-saved-cards",JSON.stringify(mergedCards));
@@ -2041,6 +2094,9 @@ function AppInner(){
       localStorage.setItem("irj-sell-basket",JSON.stringify(mergedSellBasket));
       localStorage.setItem("irj-farm-plots",JSON.stringify(mergedFarmPlots));
       localStorage.setItem("irj-animals",JSON.stringify(mergedAnimals));
+      if(mergedMissions) localStorage.setItem("irj-missions",JSON.stringify(mergedMissions));
+      const mergedPremium=cloud.isPremium||localPremium||false;
+      localStorage.setItem("irj-premium",JSON.stringify(mergedPremium));
 
       await setDoc(userRef,{
         entries:mergedEntries,
@@ -2057,6 +2113,8 @@ function AppInner(){
         sellBasket:mergedSellBasket,
         farmPlots:mergedFarmPlots,
         animals:mergedAnimals,
+        missions:mergedMissions,
+        isPremium:mergedPremium,
         lastSyncedAt:new Date().toISOString(),
       });
 
@@ -2074,6 +2132,8 @@ function AppInner(){
       setSellBasket(mergedSellBasket);
       setFarmPlots(mergedFarmPlots);
       setAnimals(mergedAnimals);
+      setMissions(mergedMissions);
+      setIsPremium(!!mergedPremium);
 
       let s=0,d=new Date(),map={};
       mergedEntries.forEach(e=>{map[e.date]=true;});
@@ -2201,6 +2261,7 @@ function AppInner(){
     const e={id:Date.now().toString(),date:todayStr(),time:nowTime(),roomId:activeRoom.id,roomLabel:activeRoom.label||"",roomEmoji:activeRoom.emoji||"",day:activeDay,prompt:dayData?.q||"",text:jTexts.filter(Boolean).join("\n\n---\n\n"),words:jTexts.filter(Boolean).reduce((s,t)=>s+wc(t),0)};
     persistEntries([e,...entries]);
     addCandles(3,"Reflection saved +3 🕯️");
+    trackMission("daily_journal"); trackMission("weekly_journal_5");
     setSaveMsg("✓ Saved to your history"); setTimeout(()=>{setSaveMsg("");setScreen(prevScreen);},2200);
   }
   function saveBookEntry(){
@@ -2211,6 +2272,7 @@ function AppInner(){
     const e={id:Date.now().toString(),date:todayStr(),time:nowTime(),roomId:deskBook,roomLabel:book?.label||deskBook,roomEmoji:book?.emoji||"📖",day:bookPage-1,prompt:pg.prompt||"",text:bookText.trim(),words:wc(bookText)};
     persistEntries([e,...entries]);
     addCandles(3,"Reflection saved +3 🕯️");
+    trackMission("daily_journal"); trackMission("weekly_journal_5");
     setBookSaveMsg("✓ Saved to history 📖"); setTimeout(()=>setBookSaveMsg(""),2500);
   }
 
@@ -2230,6 +2292,7 @@ function AppInner(){
       return next;
     });
     addCandles(2,"Prayer saved +2");
+    trackMission("daily_journal"); trackMission("weekly_journal_5");
     setBookText("");
     setBookSaveMsg("Prayer saved & garden watered!");
     setTimeout(()=>setBookSaveMsg(""),2500);
@@ -2256,6 +2319,7 @@ function AppInner(){
       return next;
     });
     addCandles(2,"You lit a candle for this prayer");
+    trackMission("daily_pray_3"); trackMission("weekly_pray_10");
   }
   function markPrayerAnswered(id){
     const next=prayerPosts.map(p=>p.id===id?{...p,status:"answered",answeredDate:todayStr()}:p);
@@ -2353,6 +2417,60 @@ function AppInner(){
     return true;
   }
 
+  // ── MISSIONS ──
+  function buildFreshMissions(){
+    const dp={}; DAILY_MISSIONS.forEach(m=>{dp[m.id]={count:0,claimed:false};}); PREMIUM_DAILY_MISSIONS.forEach(m=>{dp[m.id]={count:0,claimed:false};});
+    const wp={}; WEEKLY_MISSIONS.forEach(m=>{wp[m.id]={count:0,claimed:false};}); PREMIUM_WEEKLY_MISSIONS.forEach(m=>{wp[m.id]={count:0,claimed:false};});
+    return {daily:{date:todayStr(),progress:dp},weekly:{weekStart:getWeekStart(),progress:wp}};
+  }
+  function getOrResetMissions(current){
+    const fresh=buildFreshMissions();
+    let result=current?{...current}:fresh;
+    if(!result.daily||result.daily.date!==todayStr()) result={...result,daily:fresh.daily};
+    if(!result.weekly||result.weekly.weekStart!==getWeekStart()) result={...result,weekly:fresh.weekly};
+    return result;
+  }
+  function trackMission(missionId){
+    setMissions(prev=>{
+      const current=getOrResetMissions(prev);
+      let changed=false;
+      if(current.daily.progress[missionId]!==undefined){
+        const slot=current.daily.progress[missionId];
+        const def=DAILY_MISSIONS.find(m=>m.id===missionId);
+        if(def&&!slot.claimed&&slot.count<def.target){
+          current.daily.progress={...current.daily.progress,[missionId]:{...slot,count:slot.count+1}};
+          changed=true;
+        }
+      }
+      if(current.weekly.progress[missionId]!==undefined){
+        const slot=current.weekly.progress[missionId];
+        const def=WEEKLY_MISSIONS.find(m=>m.id===missionId);
+        if(def&&!slot.claimed&&slot.count<def.target){
+          current.weekly.progress={...current.weekly.progress,[missionId]:{...slot,count:slot.count+1}};
+          changed=true;
+        }
+      }
+      if(!changed) return prev;
+      dbSave("irj-missions",current);
+      return current;
+    });
+  }
+  function claimMissionReward(missionId,period){
+    const defs=period==="daily"?DAILY_MISSIONS:WEEKLY_MISSIONS;
+    const def=defs.find(m=>m.id===missionId);
+    if(!def) return;
+    setMissions(prev=>{
+      const current=getOrResetMissions(prev);
+      const slot=current[period].progress[missionId];
+      if(!slot||slot.claimed||slot.count<def.target) return prev;
+      current[period].progress={...current[period].progress,[missionId]:{...slot,claimed:true}};
+      dbSave("irj-missions",current);
+      return current;
+    });
+    if(def.reward.candles) addCandles(def.reward.candles,`${def.label} complete`);
+    if(def.reward.coins) addCoins(def.reward.coins,`${def.label} complete`);
+  }
+
   // ── MULTIPLAYER — User Profiles ──
   async function ensureUserProfile(uid, displayName){
     if(!db) return;
@@ -2360,7 +2478,7 @@ function AppInner(){
       const profileRef=doc(db,"userProfiles",uid);
       const snap=await getDoc(profileRef);
       if(!snap.exists()){
-        await setDoc(profileRef,{username:displayName||"Anonymous Traveler",level:1,lastLogin:serverTimestamp(),farmPublic:true});
+        await setDoc(profileRef,{username:displayName||"Anonymous Traveler",level:1,lastLogin:serverTimestamp(),farmPublic:true,bio:"",avatarUrl:null,followersCount:0,followingCount:0,postsCount:0,joinedAt:serverTimestamp(),lastPostAt:null});
       } else {
         await setDoc(profileRef,{lastLogin:serverTimestamp()},{merge:true});
       }
@@ -2466,9 +2584,17 @@ function AppInner(){
     if(!db) return;
     setCommunityLoading(true);
     try{
-      const q=query(collection(db,"prayerRequests"),where("status","==","active"),orderBy("createdAt","desc"),limit(40));
+      const q=query(collection(db,"posts"),where("type","==","prayer"),orderBy("createdAt","desc"),limit(40));
       const snap=await getDocs(q);
-      setCommunityPrayers(snap.docs.map(d=>({id:d.id,...d.data()})));
+      const prayers=snap.docs.map(d=>({id:d.id,...d.data()}));
+      setCommunityPrayers(prayers);
+      // Batch-check which prayers user has prayed for (liked)
+      if(user&&prayers.length>0){
+        const checks=await Promise.all(prayers.map(p=>getDoc(doc(db,"posts",p.id,"likes",user.uid))));
+        const likedIds=new Set();
+        checks.forEach((s,i)=>{if(s.exists()) likedIds.add(prayers[i].id);});
+        setPrayedPostIds(likedIds);
+      }
     }catch(e){console.warn("loadCommunityPrayers error:",e);}
     setCommunityLoading(false);
   }
@@ -2476,40 +2602,76 @@ function AppInner(){
   async function postCommunityPrayer(){
     if(!db||!user||!newPrayer.trim()) return;
     try{
-      await addDoc(collection(db,"prayerRequests"),{
-        userId:user.uid,
-        username:userProfile?.username||"Anonymous",
-        message:newPrayer.trim(),
+      await addDoc(collection(db,"posts"),{
+        authorId:user.uid,
+        authorName:userProfile?.username||"Anonymous",
+        authorAvatarUrl:userProfile?.avatarUrl||null,
+        type:"prayer",
+        content:newPrayer.trim(),
         tag:prayerTag||"General",
+        imageUrl:null,
+        likesCount:0,
+        commentsCount:0,
         createdAt:serverTimestamp(),
-        prayedCount:0,
-        status:"active",
+        updatedAt:serverTimestamp(),
+        visibility:"public",
+        tags:prayerTag?[prayerTag.toLowerCase()]:[],
       });
+      // Also save locally so it appears in My Prayers tab
+      const localP={id:Date.now().toString(),date:todayStr(),time:nowTime(),text:newPrayer.trim(),tag:prayerTag||"General",prayers:0,status:"active",answeredDate:null,category:prayerTag||"General"};
+      const nextPrayers=[localP,...prayerPosts]; setPrayerPosts(nextPrayers); dbSave("irj-prayer",nextPrayers);
       setNewPrayer(""); setPrayerTag("");
       setToast({msg:"Prayer shared with community",emoji:"🕯️"});
+      trackMission("weekly_share_prayer");
       await loadCommunityPrayers();
     }catch(e){
       setToast({msg:e.message||"Failed to post prayer",emoji:"❌"});
     }
   }
 
-  async function prayForCommunityRequest(requestId){
+  async function togglePrayForPost(postId){
     if(!functions||!user) return;
+    const alreadyPrayed=prayedPostIds.has(postId);
     try{
-      const fn=httpsCallable(functions,"prayForRequest");
-      const result=await fn({requestId});
-      if(result.data.success){
-        setPrayedFor(prev=>{const np=[...prev,requestId];dbSave("irj-prayed",np);return np;});
-        addCandles(2,"You lit a candle for this prayer");
-        await loadCommunityPrayers();
-      }
+      const fnName=alreadyPrayed?"unlikePost":"likePost";
+      const fn=httpsCallable(functions,fnName);
+      const result=await fn({postId});
+      // Optimistic local update
+      setPrayedPostIds(prev=>{const next=new Set(prev);alreadyPrayed?next.delete(postId):next.add(postId);return next;});
+      setCommunityPrayers(prev=>prev.map(p=>p.id===postId?{...p,likesCount:result.data.newLikesCount}:p));
+      if(!alreadyPrayed){ addCandles(2,"You lifted this prayer"); trackMission("daily_pray_3"); trackMission("weekly_pray_10"); }
     }catch(e){
       if(e.code==="functions/already-exists"){
-        setToast({msg:"You already prayed for this",emoji:"🙏"});
+        setToast({msg:"Already praying for this",emoji:"🙏"});
       } else {
         setToast({msg:e.message||"Failed",emoji:"❌"});
       }
     }
+  }
+
+  async function loadComments(postId){
+    if(!db) return;
+    try{
+      const q=query(collection(db,"posts",postId,"comments"),orderBy("createdAt","asc"),limit(50));
+      const snap=await getDocs(q);
+      setPostComments(prev=>({...prev,[postId]:snap.docs.map(d=>({id:d.id,...d.data()}))}));
+    }catch(e){console.warn("loadComments error:",e);}
+  }
+
+  async function submitComment(postId){
+    if(!functions||!user||!commentText.trim()) return;
+    setCommentLoading(true);
+    try{
+      const fn=httpsCallable(functions,"addComment");
+      await fn({postId,content:commentText.trim()});
+      setCommentText("");
+      await loadComments(postId);
+      trackMission("daily_comment");
+      setCommunityPrayers(prev=>prev.map(p=>p.id===postId?{...p,commentsCount:(p.commentsCount||0)+1}:p));
+    }catch(e){
+      setToast({msg:e.message||"Could not post comment",emoji:"❌"});
+    }
+    setCommentLoading(false);
   }
 
   // ── MULTIPLAYER — Community Events ──
@@ -2579,6 +2741,12 @@ function AppInner(){
     setCommunityLoading(false);
   }
 
+  function viewProfile(userId){
+    setProfileUserId(userId);
+    setPrevScreen(screen);
+    setScreen("profile");
+  }
+
   // ── FARM GARDEN (economy crops) ──
   function getFarmComputedStage(plot){
     if(plot.stage==="empty"||!plot.plantedAt) return "empty";
@@ -2622,6 +2790,7 @@ function AppInner(){
       return next;
     });
     setCandleReward({amount:1, message:`Harvested ${plant.name}!`});
+    trackMission("daily_harvest"); trackMission("weekly_harvest_5");
     setTimeout(()=>setCandleReward(null),2500);
   }
 
@@ -2652,6 +2821,7 @@ function AppInner(){
     const next=animals.map(a=>a.id===animalId?{...a,produceReadyAt:Date.now()+type.durationMs}:a);
     persistAnimals(next);
     setToast({msg:`Fed ${type.name}!`,emoji:type.emoji});
+    trackMission("daily_feed_animal");
   }
   function collectAnimalProduce(animalId){
     const animal=animals.find(a=>a.id===animalId);
@@ -2738,6 +2908,7 @@ function AppInner(){
       return next;
     });
     addCandles(1,"Harvest gathered +1 🕯️");
+    trackMission("daily_harvest"); trackMission("weekly_harvest_5");
   }
   function craftItem(stationId,recipeIdx){
     const station=CRAFTING_STATIONS.find(s=>s.id===stationId);
@@ -3087,6 +3258,26 @@ function AppInner(){
     </header>
   );
 
+  /* ── PREMIUM LOCK OVERLAY ── */
+  const PremiumLock=({compact})=>(
+    <div onClick={(e)=>{e.stopPropagation();setMenuOpen(false);setPrevScreen(screen);setScreen("upgrade");}}
+      style={{position:"absolute",inset:0,zIndex:5,background:"rgba(10,8,6,0.65)",backdropFilter:"blur(2px)",WebkitBackdropFilter:"blur(2px)",borderRadius:"inherit",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:compact?4:8,cursor:"pointer",transition:"all 0.2s"}}>
+      <svg width={compact?14:18} height={compact?14:18} viewBox="0 0 24 24" fill="none" stroke={B.gold} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      {!compact&&<span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.68rem",color:B.goldL,textAlign:"center",lineHeight:1.3}}>Inner Room Plus</span>}
+    </div>
+  );
+
+  /* ── PLUS ICON HELPER (for upgrade screen) ── */
+  const PlusIcon=({type})=>{
+    const s={stroke:"rgba(201,169,110,0.7)",strokeWidth:"1.8",strokeLinecap:"round",strokeLinejoin:"round",fill:"none"};
+    if(type==="scroll") return <svg width="18" height="18" viewBox="0 0 24 24" {...s}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>;
+    if(type==="seedling") return <svg width="18" height="18" viewBox="0 0 24 24" {...s}><path d="M7 20h10"/><path d="M10 20c5.5-2.5 8-6 6-10-4 2-6 5.5-6 10"/><path d="M14 20c-5.5-2.5-8-6-6-10 4 2 6 5.5 6 10"/></svg>;
+    if(type==="feather") return <svg width="18" height="18" viewBox="0 0 24 24" {...s}><path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"/><line x1="16" y1="8" x2="2" y2="22"/><line x1="17.5" y1="15" x2="9" y2="15"/></svg>;
+    if(type==="quill") return <svg width="18" height="18" viewBox="0 0 24 24" {...s}><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>;
+    if(type==="frame") return <svg width="18" height="18" viewBox="0 0 24 24" {...s}><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>;
+    return null;
+  };
+
   /* ══ MAP HUD BUTTON — persistent nav across all scenes ══ */
   const MapHudButton=()=>(
     <button onClick={()=>{setScreen("map");setMarketStall(null);setShopStall(null);}} style={{position:"fixed",bottom:20,left:"50%",transform:"translateX(-50%)",zIndex:50,background:"rgba(26,22,18,0.75)",backdropFilter:"blur(10px)",WebkitBackdropFilter:"blur(10px)",border:"1px solid rgba(201,169,110,0.25)",borderRadius:14,padding:"8px 22px",cursor:"pointer",display:"flex",alignItems:"center",gap:7,animation:"fadeUp .8s 1s ease both, mapBtnGlow 4s 2s ease-in-out infinite",transition:"all 0.2s",boxShadow:"0 2px 12px rgba(0,0,0,0.3)"}}>
@@ -3106,6 +3297,8 @@ function AppInner(){
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,240,200,0.55)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
           <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.75rem",color:"rgba(255,240,200,0.55)",letterSpacing:"0.03em"}}>Menu</span>
           {anyPlaying&&<div style={{width:5,height:5,borderRadius:"50%",background:"rgba(90,138,106,0.8)",animation:"gentlePulse 1.5s infinite"}}/>}
+          {unreadCount>0&&<div style={{width:7,height:7,borderRadius:"50%",background:B.gold,animation:"gentlePulse 1.5s ease-in-out infinite"}}/>}
+          {totalUnclaimed>0&&!unreadCount&&<div style={{width:7,height:7,borderRadius:"50%",background:B.gold,animation:"gentlePulse 1.5s ease-in-out infinite"}}/>}
         </button>
       )}
       {/* Backdrop */}
@@ -3183,24 +3376,53 @@ function AppInner(){
             </>)}
           </div>
 
+          {/* ── MISSIONS BUTTON ── */}
+          <button onClick={()=>{const reset=getOrResetMissions(missions);setMissions(reset);dbSave("irj-missions",reset);setShowMissions(true);setMenuOpen(false);}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"rgba(255,255,255,0.03)",border:"1px solid rgba(201,169,110,0.08)",borderRadius:10,padding:"11px 14px",cursor:"pointer",transition:"all 0.2s",marginBottom:14}}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="rgba(201,169,110,0.5)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+            <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.78rem",color:"rgba(255,248,232,0.5)",flex:1,textAlign:"left"}}>Missions</span>
+            {totalUnclaimed>0&&<div style={{minWidth:18,height:18,borderRadius:9,background:B.gold,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:SANS,fontSize:"0.55rem",fontWeight:700,color:B.night,padding:"0 5px"}}>{totalUnclaimed}</div>}
+          </button>
+
+          {/* ── INNER ROOM PLUS CTA ── */}
+          {!hasPremium&&(
+            <button onClick={()=>{setMenuOpen(false);setPrevScreen(screen);setScreen("upgrade");}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"rgba(201,169,110,0.05)",border:"1px solid rgba(201,169,110,0.14)",borderRadius:10,padding:"11px 14px",cursor:"pointer",transition:"all 0.2s",marginBottom:14}}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="rgba(201,169,110,0.5)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.78rem",color:"rgba(201,169,110,0.55)",flex:1,textAlign:"left"}}>Inner Room Plus</span>
+              <span style={{fontSize:"0.55rem",color:"rgba(201,169,110,0.3)",fontFamily:SANS,fontWeight:600,background:"rgba(201,169,110,0.06)",border:"1px solid rgba(201,169,110,0.12)",borderRadius:99,padding:"2px 8px"}}>New</span>
+            </button>
+          )}
+
           {/* Divider */}
           <div style={{height:1,background:"rgba(201,169,110,0.1)",margin:"0 0 14px"}}/>
 
-          {/* ── MAP + HISTORY + ACCOUNT ROW ── */}
-          <div style={{display:"flex",gap:10}}>
+          {/* ── FEED + ALERTS + HISTORY + ACCOUNT ROW ── */}
+          <div style={{display:"flex",gap:8}}>
+            {/* Feed */}
+            <button onClick={()=>{setMenuOpen(false);setScreen("feed");}} style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:6,background:"rgba(255,255,255,0.04)",border:"1px solid rgba(201,169,110,0.12)",borderRadius:10,padding:"12px 8px",cursor:"pointer",transition:"all 0.2s"}}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="rgba(201,169,110,0.5)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.72rem",color:B.goldL}}>Feed</span>
+            </button>
+            {/* Alerts */}
+            {user&&(
+              <button onClick={()=>{setMenuOpen(false);setPrevScreen(screen);setScreen("notifications");}} style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:6,position:"relative",background:"rgba(255,255,255,0.04)",border:"1px solid rgba(201,169,110,0.12)",borderRadius:10,padding:"12px 8px",cursor:"pointer",transition:"all 0.2s"}}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="rgba(201,169,110,0.5)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.72rem",color:B.goldL}}>Alerts</span>
+                {unreadCount>0&&<div style={{position:"absolute",top:4,right:6,minWidth:16,height:16,borderRadius:8,background:B.gold,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:SANS,fontSize:"0.55rem",fontWeight:700,color:B.night,lineHeight:1,padding:"0 4px"}}>{unreadCount>99?"99+":unreadCount}</div>}
+              </button>
+            )}
             {/* History */}
-            <button onClick={()=>{setMenuOpen(false);goToHistory();}} style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:8,background:"rgba(255,255,255,0.04)",border:"1px solid rgba(201,169,110,0.12)",borderRadius:10,padding:"12px 14px",cursor:"pointer",transition:"all 0.2s"}}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(201,169,110,0.5)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
-              <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.75rem",color:B.goldL}}>History</span>
+            <button onClick={()=>{setMenuOpen(false);goToHistory();}} style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:6,background:"rgba(255,255,255,0.04)",border:"1px solid rgba(201,169,110,0.12)",borderRadius:10,padding:"12px 8px",cursor:"pointer",transition:"all 0.2s"}}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="rgba(201,169,110,0.5)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+              <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.72rem",color:B.goldL}}>History</span>
             </button>
             {/* Account */}
             {!user&&!authLoading&&auth?(
-              <button onClick={()=>{setMenuOpen(false);handleGoogleSignIn();}} style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:8,background:"rgba(255,255,255,0.04)",border:"1px solid rgba(201,169,110,0.12)",borderRadius:10,padding:"12px 14px",cursor:"pointer",transition:"all 0.2s"}}>
+              <button onClick={()=>{setMenuOpen(false);handleGoogleSignIn();}} style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:6,background:"rgba(255,255,255,0.04)",border:"1px solid rgba(201,169,110,0.12)",borderRadius:10,padding:"12px 8px",cursor:"pointer",transition:"all 0.2s"}}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
                 <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.72rem",color:"rgba(255,248,232,0.5)"}}>Sign in</span>
               </button>
             ):user?(
-              <button onClick={()=>{setMenuOpen(false);setWindowPanel("profile");}} style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:8,background:"rgba(255,255,255,0.04)",border:"1px solid rgba(201,169,110,0.12)",borderRadius:10,padding:"12px 14px",cursor:"pointer",transition:"all 0.2s"}}>
+              <button onClick={()=>{setMenuOpen(false);setWindowPanel("profile");}} style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:6,background:"rgba(255,255,255,0.04)",border:"1px solid rgba(201,169,110,0.12)",borderRadius:10,padding:"12px 8px",cursor:"pointer",transition:"all 0.2s"}}>
                 {user.photoURL?<img src={user.photoURL} alt="" referrerPolicy="no-referrer" style={{width:20,height:20,borderRadius:"50%",objectFit:"cover",border:"1px solid rgba(201,169,110,0.3)"}}/>:<span style={{fontSize:"0.72rem",color:B.goldL,fontFamily:DISPLAY,fontWeight:700}}>{user.displayName?.[0]||"?"}</span>}
                 <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.72rem",color:B.goldL}}>Profile</span>
                 {syncStatus==="synced"&&<div style={{width:6,height:6,borderRadius:"50%",background:"#6AAA6A"}}/>}
@@ -3208,6 +3430,216 @@ function AppInner(){
             ):null}
           </div>
         </div>
+      )}
+      {/* ══ MISSIONS MODAL ═══════════════════════════ */}
+      {showMissions&&(
+        <>
+          {/* Backdrop */}
+          <div onClick={()=>setShowMissions(false)} style={{position:"fixed",inset:0,zIndex:299,background:"rgba(10,8,6,0.55)",backdropFilter:"blur(4px)",WebkitBackdropFilter:"blur(4px)",animation:"spaceFadeIn .25s ease"}}/>
+          {/* Panel */}
+          <div style={{position:"fixed",bottom:0,left:0,right:0,zIndex:300,maxHeight:"80vh",background:"rgba(26,22,18,0.97)",backdropFilter:"blur(18px)",WebkitBackdropFilter:"blur(18px)",borderTop:"1px solid rgba(201,169,110,0.25)",borderRadius:"18px 18px 0 0",animation:"panelSlideUp .35s cubic-bezier(.22,1,.36,1) both",display:"flex",flexDirection:"column"}}>
+            {/* Drag handle */}
+            <div onClick={()=>setShowMissions(false)} style={{display:"flex",justifyContent:"center",padding:"12px 0 6px",cursor:"pointer",flexShrink:0}}>
+              <div style={{width:36,height:4,borderRadius:2,background:"rgba(201,169,110,0.3)"}}/>
+            </div>
+            {/* Header */}
+            <div style={{textAlign:"center",padding:"0 20px 16px",flexShrink:0}}>
+              <h2 style={{fontFamily:DISPLAY,fontSize:"1.25rem",fontWeight:700,color:B.goldL,margin:"0 0 4px",textShadow:"0 2px 12px rgba(0,0,0,0.5)"}}>Missions</h2>
+              <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.76rem",color:"rgba(255,248,232,0.3)",margin:0}}>Complete missions for rewards</p>
+            </div>
+            {/* Scrollable content */}
+            <div style={{overflowY:"auto",WebkitOverflowScrolling:"touch",padding:"0 20px 28px",flex:1}}>
+
+              {/* ── DAILY SECTION ── */}
+              <div style={{marginBottom:24}}>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
+                  <span style={{fontFamily:SANS,fontSize:"0.65rem",fontWeight:700,color:B.gold,letterSpacing:"0.1em",textTransform:"uppercase"}}>Daily</span>
+                  <div style={{flex:1,height:1,background:"rgba(201,169,110,0.1)"}}/>
+                  <span style={{fontFamily:SANS,fontSize:"0.58rem",color:"rgba(255,248,232,0.2)"}}>Resets at midnight</span>
+                </div>
+                <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                  {DAILY_MISSIONS.map((m,idx)=>{
+                    const s=activeMissions?.daily?.progress?.[m.id]||{count:0,claimed:false};
+                    const done=s.count>=m.target;
+                    const claimed=s.claimed;
+                    const pct=Math.min(s.count/m.target,1);
+                    return (
+                      <div key={m.id} style={{background:claimed?"rgba(255,255,255,0.015)":done?"rgba(201,169,110,0.08)":"rgba(255,255,255,0.03)",border:`1px solid ${claimed?"rgba(201,169,110,0.06)":done?"rgba(201,169,110,0.22)":"rgba(201,169,110,0.08)"}`,borderRadius:12,padding:"12px 14px",opacity:claimed?0.5:1,transition:"all 0.2s",animation:`fadeUp .4s ${idx*0.05}s ease both`}}>
+                        <div style={{display:"flex",alignItems:"center",gap:10}}>
+                          {/* Status icon */}
+                          {claimed?(
+                            <div style={{width:22,height:22,borderRadius:"50%",background:"rgba(106,170,106,0.15)",border:"1.5px solid rgba(106,170,106,0.35)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#6AAA6A" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                            </div>
+                          ):done?(
+                            <div style={{width:22,height:22,borderRadius:"50%",background:"rgba(201,169,110,0.2)",border:"1.5px solid rgba(201,169,110,0.5)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                              <div style={{width:8,height:8,borderRadius:"50%",background:B.gold}}/>
+                            </div>
+                          ):(
+                            <div style={{width:22,height:22,borderRadius:"50%",background:"transparent",border:"1.5px solid rgba(255,248,232,0.15)",flexShrink:0}}/>
+                          )}
+                          {/* Label + description */}
+                          <div style={{flex:1,minWidth:0}}>
+                            <div style={{fontFamily:SANS,fontSize:"0.78rem",fontWeight:600,color:done?B.goldL:"rgba(255,248,232,0.7)",lineHeight:1.3}}>{m.label}</div>
+                            <div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.68rem",color:"rgba(255,248,232,0.25)",marginTop:1}}>{m.description}</div>
+                          </div>
+                          {/* Reward or claim */}
+                          {claimed?(
+                            <span style={{fontFamily:SANS,fontSize:"0.62rem",fontWeight:600,color:"rgba(106,170,106,0.5)"}}>Claimed</span>
+                          ):done?(
+                            <button onClick={()=>claimMissionReward(m.id,"daily")} style={{background:"rgba(201,169,110,0.15)",border:"1px solid rgba(201,169,110,0.4)",borderRadius:999,padding:"5px 14px",cursor:"pointer",fontFamily:SANS,fontSize:"0.68rem",fontWeight:700,color:B.gold,transition:"all 0.2s",whiteSpace:"nowrap"}}>Claim</button>
+                          ):(
+                            <span style={{fontFamily:SANS,fontSize:"0.62rem",color:"rgba(255,248,232,0.2)",whiteSpace:"nowrap"}}>+{m.reward.candles?`${m.reward.candles} candles`:""}{m.reward.coins?`${m.reward.coins} coins`:""}</span>
+                          )}
+                        </div>
+                        {/* Progress bar (for multi-target missions) */}
+                        {m.target>1&&!claimed&&(
+                          <div style={{marginTop:8,display:"flex",alignItems:"center",gap:8}}>
+                            <div style={{flex:1,height:4,borderRadius:2,background:"rgba(255,255,255,0.06)",overflow:"hidden"}}>
+                              <div style={{width:`${pct*100}%`,height:"100%",borderRadius:2,background:done?"rgba(201,169,110,0.7)":"rgba(201,169,110,0.35)",transition:"width 0.4s ease"}}/>
+                            </div>
+                            <span style={{fontFamily:SANS,fontSize:"0.58rem",color:"rgba(255,248,232,0.25)",whiteSpace:"nowrap"}}>{Math.min(s.count,m.target)}/{m.target}</span>
+                          </div>
+                        )}
+                        {/* Single-target progress note */}
+                        {m.target===1&&!claimed&&!done&&(
+                          <div style={{marginTop:4}}>
+                            <span style={{fontFamily:SANS,fontSize:"0.58rem",color:"rgba(255,248,232,0.15)"}}>{s.count}/{m.target}</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* ── PLUS DAILY MISSIONS ── */}
+              <div style={{marginTop:16,marginBottom:24}}>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={B.gold} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                  <span style={{fontFamily:SANS,fontSize:"0.6rem",fontWeight:700,color:B.gold,letterSpacing:"0.1em",textTransform:"uppercase"}}>Plus Daily</span>
+                  <div style={{flex:1,height:1,background:"rgba(201,169,110,0.1)"}}/>
+                </div>
+                <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                  {PREMIUM_DAILY_MISSIONS.map((m,idx)=>{
+                    const s=hasPremium?(activeMissions?.daily?.progress?.[m.id]||{count:0,claimed:false}):{count:0,claimed:false};
+                    const done=s.count>=m.target;
+                    const claimed=s.claimed;
+                    const pct=Math.min(s.count/m.target,1);
+                    return(
+                      <div key={m.id} style={{position:"relative",background:claimed?"rgba(255,255,255,0.015)":done?"rgba(201,169,110,0.08)":"rgba(255,255,255,0.03)",border:`1px solid ${claimed?"rgba(201,169,110,0.06)":done?"rgba(201,169,110,0.22)":"rgba(201,169,110,0.08)"}`,borderRadius:12,padding:"12px 14px",opacity:claimed?0.5:1,transition:"all 0.2s",animation:`fadeUp .4s ${idx*0.05}s ease both`}}>
+                        <div style={{display:"flex",alignItems:"center",gap:10}}>
+                          {claimed?(<div style={{width:22,height:22,borderRadius:"50%",background:"rgba(106,170,106,0.15)",border:"1.5px solid rgba(106,170,106,0.35)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#6AAA6A" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>):done?(<div style={{width:22,height:22,borderRadius:"50%",background:"rgba(201,169,110,0.2)",border:"1.5px solid rgba(201,169,110,0.5)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><div style={{width:8,height:8,borderRadius:"50%",background:B.gold}}/></div>):(<div style={{width:22,height:22,borderRadius:"50%",background:"transparent",border:"1.5px solid rgba(255,248,232,0.15)",flexShrink:0}}/>)}
+                          <div style={{flex:1,minWidth:0}}>
+                            <div style={{fontFamily:SANS,fontSize:"0.78rem",fontWeight:600,color:done?B.goldL:"rgba(255,248,232,0.7)",lineHeight:1.3}}>{m.label}</div>
+                            <div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.68rem",color:"rgba(255,248,232,0.25)",marginTop:1}}>{m.description}</div>
+                          </div>
+                          {claimed?(<span style={{fontFamily:SANS,fontSize:"0.62rem",fontWeight:600,color:"rgba(106,170,106,0.5)"}}>Claimed</span>):done?(<button onClick={()=>claimMissionReward(m.id,"daily")} style={{background:"rgba(201,169,110,0.15)",border:"1px solid rgba(201,169,110,0.4)",borderRadius:999,padding:"5px 14px",cursor:"pointer",fontFamily:SANS,fontSize:"0.68rem",fontWeight:700,color:B.gold,transition:"all 0.2s",whiteSpace:"nowrap"}}>Claim</button>):(<span style={{fontFamily:SANS,fontSize:"0.62rem",color:"rgba(255,248,232,0.2)",whiteSpace:"nowrap"}}>+{m.reward.candles?`${m.reward.candles} candles`:""}{m.reward.coins?`${m.reward.coins} coins`:""}</span>)}
+                        </div>
+                        {m.target>1&&!claimed&&(<div style={{marginTop:8,display:"flex",alignItems:"center",gap:8}}><div style={{flex:1,height:4,borderRadius:2,background:"rgba(255,255,255,0.06)",overflow:"hidden"}}><div style={{width:`${pct*100}%`,height:"100%",borderRadius:2,background:done?"rgba(201,169,110,0.7)":"rgba(201,169,110,0.35)",transition:"width 0.4s ease"}}/></div><span style={{fontFamily:SANS,fontSize:"0.58rem",color:"rgba(255,248,232,0.25)",whiteSpace:"nowrap"}}>{Math.min(s.count,m.target)}/{m.target}</span></div>)}
+                        {!hasPremium&&<PremiumLock compact/>}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* ── WEEKLY SECTION ── */}
+              <div>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
+                  <span style={{fontFamily:SANS,fontSize:"0.65rem",fontWeight:700,color:B.gold,letterSpacing:"0.1em",textTransform:"uppercase"}}>Weekly</span>
+                  <div style={{flex:1,height:1,background:"rgba(201,169,110,0.1)"}}/>
+                  <span style={{fontFamily:SANS,fontSize:"0.58rem",color:"rgba(255,248,232,0.2)"}}>Resets Monday</span>
+                </div>
+                <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                  {WEEKLY_MISSIONS.map((m,idx)=>{
+                    const s=activeMissions?.weekly?.progress?.[m.id]||{count:0,claimed:false};
+                    const done=s.count>=m.target;
+                    const claimed=s.claimed;
+                    const pct=Math.min(s.count/m.target,1);
+                    return (
+                      <div key={m.id} style={{background:claimed?"rgba(255,255,255,0.015)":done?"rgba(201,169,110,0.08)":"rgba(255,255,255,0.03)",border:`1px solid ${claimed?"rgba(201,169,110,0.06)":done?"rgba(201,169,110,0.22)":"rgba(201,169,110,0.08)"}`,borderRadius:12,padding:"12px 14px",opacity:claimed?0.5:1,transition:"all 0.2s",animation:`fadeUp .4s ${idx*0.05+0.1}s ease both`}}>
+                        <div style={{display:"flex",alignItems:"center",gap:10}}>
+                          {/* Status icon */}
+                          {claimed?(
+                            <div style={{width:22,height:22,borderRadius:"50%",background:"rgba(106,170,106,0.15)",border:"1.5px solid rgba(106,170,106,0.35)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#6AAA6A" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                            </div>
+                          ):done?(
+                            <div style={{width:22,height:22,borderRadius:"50%",background:"rgba(201,169,110,0.2)",border:"1.5px solid rgba(201,169,110,0.5)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                              <div style={{width:8,height:8,borderRadius:"50%",background:B.gold}}/>
+                            </div>
+                          ):(
+                            <div style={{width:22,height:22,borderRadius:"50%",background:"transparent",border:"1.5px solid rgba(255,248,232,0.15)",flexShrink:0}}/>
+                          )}
+                          {/* Label + description */}
+                          <div style={{flex:1,minWidth:0}}>
+                            <div style={{fontFamily:SANS,fontSize:"0.78rem",fontWeight:600,color:done?B.goldL:"rgba(255,248,232,0.7)",lineHeight:1.3}}>{m.label}</div>
+                            <div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.68rem",color:"rgba(255,248,232,0.25)",marginTop:1}}>{m.description}</div>
+                          </div>
+                          {/* Reward or claim */}
+                          {claimed?(
+                            <span style={{fontFamily:SANS,fontSize:"0.62rem",fontWeight:600,color:"rgba(106,170,106,0.5)"}}>Claimed</span>
+                          ):done?(
+                            <button onClick={()=>claimMissionReward(m.id,"weekly")} style={{background:"rgba(201,169,110,0.15)",border:"1px solid rgba(201,169,110,0.4)",borderRadius:999,padding:"5px 14px",cursor:"pointer",fontFamily:SANS,fontSize:"0.68rem",fontWeight:700,color:B.gold,transition:"all 0.2s",whiteSpace:"nowrap"}}>Claim</button>
+                          ):(
+                            <span style={{fontFamily:SANS,fontSize:"0.62rem",color:"rgba(255,248,232,0.2)",whiteSpace:"nowrap"}}>+{m.reward.candles?`${m.reward.candles} candles`:""}{m.reward.coins?`${m.reward.coins} coins`:""}</span>
+                          )}
+                        </div>
+                        {/* Progress bar */}
+                        {m.target>1&&!claimed&&(
+                          <div style={{marginTop:8,display:"flex",alignItems:"center",gap:8}}>
+                            <div style={{flex:1,height:4,borderRadius:2,background:"rgba(255,255,255,0.06)",overflow:"hidden"}}>
+                              <div style={{width:`${pct*100}%`,height:"100%",borderRadius:2,background:done?"rgba(201,169,110,0.7)":"rgba(201,169,110,0.35)",transition:"width 0.4s ease"}}/>
+                            </div>
+                            <span style={{fontFamily:SANS,fontSize:"0.58rem",color:"rgba(255,248,232,0.25)",whiteSpace:"nowrap"}}>{Math.min(s.count,m.target)}/{m.target}</span>
+                          </div>
+                        )}
+                        {m.target===1&&!claimed&&!done&&(
+                          <div style={{marginTop:4}}>
+                            <span style={{fontFamily:SANS,fontSize:"0.58rem",color:"rgba(255,248,232,0.15)"}}>{s.count}/{m.target}</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* ── PLUS WEEKLY MISSIONS ── */}
+              <div style={{marginTop:16}}>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={B.gold} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                  <span style={{fontFamily:SANS,fontSize:"0.6rem",fontWeight:700,color:B.gold,letterSpacing:"0.1em",textTransform:"uppercase"}}>Plus Weekly</span>
+                  <div style={{flex:1,height:1,background:"rgba(201,169,110,0.1)"}}/>
+                </div>
+                <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                  {PREMIUM_WEEKLY_MISSIONS.map((m,idx)=>{
+                    const s=hasPremium?(activeMissions?.weekly?.progress?.[m.id]||{count:0,claimed:false}):{count:0,claimed:false};
+                    const done=s.count>=m.target;
+                    const claimed=s.claimed;
+                    const pct=Math.min(s.count/m.target,1);
+                    return(
+                      <div key={m.id} style={{position:"relative",background:claimed?"rgba(255,255,255,0.015)":done?"rgba(201,169,110,0.08)":"rgba(255,255,255,0.03)",border:`1px solid ${claimed?"rgba(201,169,110,0.06)":done?"rgba(201,169,110,0.22)":"rgba(201,169,110,0.08)"}`,borderRadius:12,padding:"12px 14px",opacity:claimed?0.5:1,transition:"all 0.2s",animation:`fadeUp .4s ${idx*0.05+0.1}s ease both`}}>
+                        <div style={{display:"flex",alignItems:"center",gap:10}}>
+                          {claimed?(<div style={{width:22,height:22,borderRadius:"50%",background:"rgba(106,170,106,0.15)",border:"1.5px solid rgba(106,170,106,0.35)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#6AAA6A" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>):done?(<div style={{width:22,height:22,borderRadius:"50%",background:"rgba(201,169,110,0.2)",border:"1.5px solid rgba(201,169,110,0.5)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><div style={{width:8,height:8,borderRadius:"50%",background:B.gold}}/></div>):(<div style={{width:22,height:22,borderRadius:"50%",background:"transparent",border:"1.5px solid rgba(255,248,232,0.15)",flexShrink:0}}/>)}
+                          <div style={{flex:1,minWidth:0}}>
+                            <div style={{fontFamily:SANS,fontSize:"0.78rem",fontWeight:600,color:done?B.goldL:"rgba(255,248,232,0.7)",lineHeight:1.3}}>{m.label}</div>
+                            <div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.68rem",color:"rgba(255,248,232,0.25)",marginTop:1}}>{m.description}</div>
+                          </div>
+                          {claimed?(<span style={{fontFamily:SANS,fontSize:"0.62rem",fontWeight:600,color:"rgba(106,170,106,0.5)"}}>Claimed</span>):done?(<button onClick={()=>claimMissionReward(m.id,"weekly")} style={{background:"rgba(201,169,110,0.15)",border:"1px solid rgba(201,169,110,0.4)",borderRadius:999,padding:"5px 14px",cursor:"pointer",fontFamily:SANS,fontSize:"0.68rem",fontWeight:700,color:B.gold,transition:"all 0.2s",whiteSpace:"nowrap"}}>Claim</button>):(<span style={{fontFamily:SANS,fontSize:"0.62rem",color:"rgba(255,248,232,0.2)",whiteSpace:"nowrap"}}>+{m.reward.candles?`${m.reward.candles} candles`:""}{m.reward.coins?`${m.reward.coins} coins`:""}</span>)}
+                        </div>
+                        {m.target>1&&!claimed&&(<div style={{marginTop:8,display:"flex",alignItems:"center",gap:8}}><div style={{flex:1,height:4,borderRadius:2,background:"rgba(255,255,255,0.06)",overflow:"hidden"}}><div style={{width:`${pct*100}%`,height:"100%",borderRadius:2,background:done?"rgba(201,169,110,0.7)":"rgba(201,169,110,0.35)",transition:"width 0.4s ease"}}/></div><span style={{fontFamily:SANS,fontSize:"0.58rem",color:"rgba(255,248,232,0.25)",whiteSpace:"nowrap"}}>{Math.min(s.count,m.target)}/{m.target}</span></div>)}
+                        {!hasPremium&&<PremiumLock compact/>}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </>
       )}
     </>);
   };
@@ -3483,6 +3915,22 @@ function AppInner(){
               <textarea value={jTexts[2]} onChange={e=>setJTexts(tx=>{const n=[...tx];n[2]=e.target.value;return n;})} placeholder="This is the root. Sit with it gently…" style={{width:"100%",background:"transparent",border:"none",minHeight:"110px",lineHeight:"1.9",fontSize:"1rem",fontFamily:SERIF,padding:"16px",color:t.text,boxSizing:"border-box"}}/>
             </div>
           </div>}
+          {/* ── Premium Plus Prompt ── */}
+          {hasPremium&&journalStep>=1&&(
+            <div className="fu" style={{marginBottom:"22px"}}>
+              <div style={{display:"flex",alignItems:"center",gap:"8px",marginBottom:"10px"}}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={t.accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                <span style={{fontSize:"0.64rem",fontFamily:SANS,fontWeight:600,letterSpacing:"0.14em",color:t.sub,textTransform:"uppercase",opacity:.7}}>Plus prompt</span>
+              </div>
+              <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"1.08rem",color:t.text,margin:"0 0 8px",lineHeight:1.55}}>{PREMIUM_PROMPTS[activeDay%PREMIUM_PROMPTS.length].q}</p>
+              <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.82rem",color:t.sub,margin:0,lineHeight:1.5,opacity:.7}}>{PREMIUM_PROMPTS[activeDay%PREMIUM_PROMPTS.length].hint}</p>
+            </div>
+          )}
+          {!hasPremium&&journalStep>=1&&(
+            <div onClick={()=>{setPrevScreen(screen);setScreen("upgrade");}} style={{marginBottom:22,padding:"14px 18px",background:"rgba(201,169,110,0.04)",border:"1px dashed rgba(201,169,110,0.15)",borderRadius:12,cursor:"pointer",textAlign:"center",transition:"all 0.2s"}}>
+              <div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.78rem",color:"rgba(201,169,110,0.35)",lineHeight:1.5}}>Unlock deeper prompts with Inner Room Plus</div>
+            </div>
+          )}
           {/* Save bar */}
           {jTexts[0].trim()&&<div className="fu" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"13px 17px",background:"rgba(0,0,0,0.2)",borderRadius:"10px",border:`1px solid ${t.border}`,backdropFilter:"blur(4px)",flexWrap:"wrap",gap:"10px"}}>
             <div>{saveMsg?<span style={{fontSize:"0.78rem",color:t.accent,fontWeight:600}}>{saveMsg}</span>:<span style={{fontSize:"0.73rem",color:t.sub,opacity:.6}}>{jTexts.filter(Boolean).reduce((s,tx)=>s+wc(tx),0)} words</span>}</div>
@@ -3850,23 +4298,23 @@ function AppInner(){
                   <p style={{fontFamily:SERIF,fontStyle:"italic",color:"rgba(255,248,232,0.35)",fontSize:"0.88rem",margin:0}}>No community prayers yet. Be the first to share.</p>
                 </div>}
                 <div style={{display:"flex",flexDirection:"column",gap:9}}>
-                  {communityPrayers.map(cp=>(
-                    <div key={cp.id} style={{background:"rgba(26,22,18,0.5)",backdropFilter:"blur(6px)",WebkitBackdropFilter:"blur(6px)",border:"1px solid rgba(201,169,110,0.08)",borderRadius:12,padding:"15px 17px"}}>
-                      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:7}}>
-                        {cp.category&&<span style={{fontSize:"0.6rem",background:"rgba(200,164,106,0.1)",color:B.gold,border:"1px solid rgba(200,164,106,0.2)",padding:"2px 8px",borderRadius:99,fontFamily:SANS,fontWeight:600}}>{cp.category}</span>}
-                        <span style={{fontSize:"0.66rem",color:"rgba(255,248,232,0.25)",fontFamily:SANS,marginLeft:"auto"}}>{cp.createdAt?.toDate?cp.createdAt.toDate().toLocaleDateString():""}</span>
-                      </div>
-                      <p style={{fontFamily:SERIF,fontSize:"0.92rem",color:"rgba(255,248,232,0.7)",margin:"0 0 10px",lineHeight:1.65}}>{cp.text}</p>
-                      <div style={{display:"flex",alignItems:"center",gap:8}}>
-                        <span style={{fontSize:"0.66rem",color:"rgba(255,248,232,0.25)",fontFamily:SANS}}>by {cp.authorName||"Anonymous"}</span>
-                        <div style={{flex:1}}/>
-                        {cp.userId===user.uid?
-                          <span style={{fontSize:"0.7rem",fontFamily:SANS,color:"rgba(255,248,232,0.3)"}}>Your prayer ({cp.prayedCount||0} praying)</span>
-                        :
-                          <button onClick={()=>prayForCommunityRequest(cp.id)} style={{background:"rgba(90,138,106,0.15)",border:"1px solid rgba(90,138,106,0.25)",color:"#BED3C4",padding:"5px 14px",borderRadius:7,cursor:"pointer",fontSize:"0.74rem",fontFamily:SANS,fontWeight:600,transition:"all 0.15s"}} onMouseEnter={e=>e.target.style.background="rgba(90,138,106,0.3)"} onMouseLeave={e=>e.target.style.background="rgba(90,138,106,0.15)"}>Prayed for you ({cp.prayedCount||0})</button>
-                        }
-                      </div>
-                    </div>
+                  {communityPrayers.map((cp,idx)=>(
+                    <PostCard key={cp.id}
+                      post={cp} idx={idx} user={user}
+                      prayed={prayedPostIds.has(cp.id)}
+                      commentsOpen={expandedComments===cp.id}
+                      comments={postComments[cp.id]||[]}
+                      commentText={expandedComments===cp.id?commentText:""}
+                      commentLoading={commentLoading}
+                      onTogglePray={()=>togglePrayForPost(cp.id)}
+                      onToggleComments={()=>{
+                        if(expandedComments===cp.id){setExpandedComments(null);}
+                        else{setExpandedComments(cp.id);setCommentText("");if(!postComments[cp.id])loadComments(cp.id);}
+                      }}
+                      onCommentTextChange={setCommentText}
+                      onSubmitComment={()=>submitComment(cp.id)}
+                      onAuthorTap={viewProfile}
+                    />
                   ))}
                 </div>
               </>}
@@ -3896,11 +4344,12 @@ function AppInner(){
                 {farmerResults.map(farmer=>(
                   <div key={farmer.id} style={{background:"rgba(26,22,18,0.5)",backdropFilter:"blur(6px)",WebkitBackdropFilter:"blur(6px)",border:"1px solid rgba(201,169,110,0.08)",borderRadius:12,padding:"14px 16px",display:"flex",alignItems:"center",gap:12}}>
                     <div style={{width:36,height:36,borderRadius:"50%",background:"rgba(201,169,110,0.12)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1rem",flexShrink:0}}>{farmer.username?farmer.username[0].toUpperCase():"?"}</div>
-                    <div style={{flex:1}}>
+                    <div style={{flex:1,cursor:"pointer"}} onClick={()=>viewProfile(farmer.id)}>
                       <div style={{fontFamily:SERIF,fontSize:"0.9rem",color:B.goldL,fontWeight:500}}>{farmer.username||"Anonymous"}</div>
                       <div style={{fontFamily:SANS,fontSize:"0.68rem",color:"rgba(255,248,232,0.3)"}}>{farmer.publishedFarm?.length||0} plots</div>
                     </div>
-                    <button onClick={()=>visitFarm(farmer.id)} style={{background:"rgba(90,138,106,0.15)",border:"1px solid rgba(90,138,106,0.25)",borderRadius:8,padding:"7px 16px",cursor:"pointer",color:"#BED3C4",fontSize:"0.74rem",fontFamily:SANS,fontWeight:600,transition:"all 0.15s"}} onMouseEnter={e=>e.target.style.background="rgba(90,138,106,0.3)"} onMouseLeave={e=>e.target.style.background="rgba(90,138,106,0.15)"}>Visit Farm</button>
+                    <button onClick={()=>viewProfile(farmer.id)} style={{background:"rgba(201,169,110,0.08)",border:"1px solid rgba(201,169,110,0.15)",borderRadius:8,padding:"7px 12px",cursor:"pointer",color:B.gold,fontSize:"0.74rem",fontFamily:SANS,fontWeight:600,transition:"all 0.15s"}} onMouseEnter={e=>e.target.style.background="rgba(201,169,110,0.18)"} onMouseLeave={e=>e.target.style.background="rgba(201,169,110,0.08)"}>Profile</button>
+                    <button onClick={()=>visitFarm(farmer.id)} style={{background:"rgba(90,138,106,0.15)",border:"1px solid rgba(90,138,106,0.25)",borderRadius:8,padding:"7px 12px",cursor:"pointer",color:"#BED3C4",fontSize:"0.74rem",fontFamily:SANS,fontWeight:600,transition:"all 0.15s"}} onMouseEnter={e=>e.target.style.background="rgba(90,138,106,0.3)"} onMouseLeave={e=>e.target.style.background="rgba(90,138,106,0.15)"}>Farm</button>
                   </div>
                 ))}
               </div>
@@ -4211,6 +4660,39 @@ function AppInner(){
     );
   }
 
+  /* ══ FEED — social feed of posts from followed users ═══════════════ */
+  if(screen==="feed") return(
+    <FeedScreen
+      user={user} db={db} functions={functions}
+      setScreen={setScreen} prevScreen={prevScreen}
+      setToast={setToast} addCandles={addCandles}
+      viewProfile={viewProfile}
+      trackMission={trackMission}
+    />
+  );
+
+  /* ══ PROFILE — view user profile + follow ═══════════════════════════ */
+  if(screen==="profile"&&profileUserId) return(
+    <ProfileScreen
+      user={user}
+      db={db}
+      functions={functions}
+      profileUserId={profileUserId}
+      setScreen={setScreen}
+      prevScreen={prevScreen}
+      setToast={setToast}
+    />
+  );
+
+  /* ══ NOTIFICATIONS ═══════════════════════════════════════════════════ */
+  if(screen==="notifications") return(
+    <NotificationsScreen
+      user={user} db={db} functions={functions}
+      setScreen={setScreen} prevScreen={prevScreen}
+      setToast={setToast} viewProfile={viewProfile}
+    />
+  );
+
   /* ══ VISIT FARM — read-only view of another player's farm ═══════════ */
   if(screen==="visit-farm"&&visitingFarm){
     const vfPlots=visitingFarm.publishedFarm||[];
@@ -4446,17 +4928,19 @@ function AppInner(){
             </div>
             <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.75rem",color:"rgba(190,211,196,0.4)",marginBottom:16}}>Feed them to produce goods. {animals.length}/{MAX_ANIMALS} slots used.</p>
             <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10}}>
-              {ANIMAL_TYPES.map(type=>{
+              {[...ANIMAL_TYPES,...PREMIUM_ANIMALS].map(type=>{
+                const isLocked=type.premium&&!hasPremium;
                 const canAfford=bank.coins>=type.buyCost;
                 const atMax=animals.length>=MAX_ANIMALS;
-                const disabled=!canAfford||atMax;
+                const disabled=!canAfford||atMax||isLocked;
                 return(
-                  <button key={type.id} onClick={()=>{if(!disabled)buyAnimal(type.id);}} style={{background:disabled?"rgba(255,255,255,0.02)":"rgba(90,138,106,0.06)",border:`1px solid ${disabled?"rgba(190,211,196,0.06)":"rgba(90,138,106,0.2)"}`,borderRadius:14,padding:"14px 10px",cursor:disabled?"default":"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:5,transition:"all .15s",opacity:disabled?0.4:1}}>
+                  <button key={type.id} onClick={()=>{if(!disabled)buyAnimal(type.id);}} style={{position:"relative",background:disabled?"rgba(255,255,255,0.02)":"rgba(90,138,106,0.06)",border:`1px solid ${disabled?"rgba(190,211,196,0.06)":"rgba(90,138,106,0.2)"}`,borderRadius:14,padding:"14px 10px",cursor:disabled?"default":"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:5,transition:"all .15s",opacity:disabled?0.4:1}}>
                     <span style={{fontSize:"1.5rem"}}>{type.emoji}</span>
                     <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.78rem",color:"rgba(190,211,196,0.8)"}}>{type.name}</span>
                     <span style={{fontFamily:SANS,fontSize:"0.6rem",color:"rgba(190,211,196,0.45)"}}>Produces {ITEM_CATALOG[type.product]?.emoji||""} {ITEM_CATALOG[type.product]?.name||type.product}</span>
                     <span style={{fontFamily:SANS,fontSize:"0.58rem",color:"rgba(190,211,196,0.35)"}}>Every {type.durationLabel}</span>
                     <span style={{fontFamily:SANS,fontSize:"0.68rem",fontWeight:600,color:canAfford?B.goldL:"rgba(190,211,196,0.25)"}}>🪙 {type.buyCost}</span>
+                    {isLocked&&<PremiumLock compact/>}
                   </button>
                 );
               })}
@@ -4701,14 +5185,16 @@ function AppInner(){
                 <div style={{fontFamily:DISPLAY,fontSize:"1rem",fontWeight:700,color:"#BED3C4",marginBottom:4}}>Plant a Crop</div>
                 <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.75rem",color:"rgba(190,211,196,0.4)",marginBottom:16}}>Use seeds from your inventory to plant crops.</p>
                 <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10}}>
-                  {FARM_PLANTS.map(plant=>{
+                  {[...FARM_PLANTS,...PREMIUM_FARM_PLANTS].map(plant=>{
+                    const isLocked=plant.premium&&!hasPremium;
                     const seedCount=inventory[plant.seedItem]||0;
                     const hasSeed=seedCount>0;
                     return(
-                      <button key={plant.id} onClick={()=>{if(hasSeed){plantFarmSeed(plantModal,plant.id);setPlantModal(null);}}} style={{background:hasSeed?"rgba(90,138,106,0.06)":"rgba(255,255,255,0.02)",border:`1px solid ${hasSeed?"rgba(90,138,106,0.2)":"rgba(190,211,196,0.06)"}`,borderRadius:14,padding:"14px 10px",cursor:hasSeed?"pointer":"default",display:"flex",flexDirection:"column",alignItems:"center",gap:6,transition:"all .15s",opacity:hasSeed?1:0.4}}>
+                      <button key={plant.id} onClick={()=>{if(!isLocked&&hasSeed){plantFarmSeed(plantModal,plant.id);setPlantModal(null);}}} style={{position:"relative",background:hasSeed&&!isLocked?"rgba(90,138,106,0.06)":"rgba(255,255,255,0.02)",border:`1px solid ${hasSeed&&!isLocked?"rgba(90,138,106,0.2)":"rgba(190,211,196,0.06)"}`,borderRadius:14,padding:"14px 10px",cursor:hasSeed&&!isLocked?"pointer":"default",display:"flex",flexDirection:"column",alignItems:"center",gap:6,transition:"all .15s",opacity:isLocked?0.5:hasSeed?1:0.4}}>
                         <span style={{fontSize:"1.4rem"}}>{plant.emoji}</span>
                         <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.78rem",color:"rgba(190,211,196,0.8)"}}>{plant.name}</span>
-                        <span style={{fontFamily:SANS,fontSize:"0.68rem",fontWeight:600,color:hasSeed?"#BED3C4":"rgba(190,211,196,0.25)"}}>{hasSeed?`${seedCount} seed${seedCount>1?"s":""}`:"No seeds"}</span>
+                        <span style={{fontFamily:SANS,fontSize:"0.68rem",fontWeight:600,color:hasSeed?"#BED3C4":"rgba(190,211,196,0.25)"}}>{isLocked?"Plus":hasSeed?`${seedCount} seed${seedCount>1?"s":""}`:"No seeds"}</span>
+                        {isLocked&&<PremiumLock compact/>}
                       </button>
                     );
                   })}
@@ -4737,13 +5223,15 @@ function AppInner(){
                 <div style={{fontFamily:DISPLAY,fontSize:"1rem",fontWeight:700,color:"#BED3C4",marginBottom:4}}>Choose a Plant</div>
                 <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.75rem",color:"rgba(190,211,196,0.4)",marginBottom:16}}>Each plant has a different cost and growth time.</p>
                 <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10}}>
-                  {GARDEN_PLANTS.map(plant=>{
+                  {[...GARDEN_PLANTS,...PREMIUM_GARDEN_PLANTS].map(plant=>{
+                    const isLocked=plant.premium&&!hasPremium;
                     const canAfford=candles>=plant.plantCost;
                     return(
-                      <button key={plant.id} onClick={()=>{if(canAfford)plantSeed(plantModal,plantPrayerId,plant.id);}} style={{background:canAfford?"rgba(90,138,106,0.06)":"rgba(255,255,255,0.02)",border:`1px solid ${canAfford?"rgba(90,138,106,0.2)":"rgba(190,211,196,0.06)"}`,borderRadius:14,padding:"14px 10px",cursor:canAfford?"pointer":"default",display:"flex",flexDirection:"column",alignItems:"center",gap:6,transition:"all .15s",opacity:canAfford?1:0.4}}>
+                      <button key={plant.id} onClick={()=>{if(!isLocked&&canAfford)plantSeed(plantModal,plantPrayerId,plant.id);}} style={{position:"relative",background:canAfford&&!isLocked?"rgba(90,138,106,0.06)":"rgba(255,255,255,0.02)",border:`1px solid ${canAfford&&!isLocked?"rgba(90,138,106,0.2)":"rgba(190,211,196,0.06)"}`,borderRadius:14,padding:"14px 10px",cursor:canAfford&&!isLocked?"pointer":"default",display:"flex",flexDirection:"column",alignItems:"center",gap:6,transition:"all .15s",opacity:isLocked?0.5:canAfford?1:0.4}}>
                         <span style={{fontSize:"1.4rem"}}>{plant.emoji}</span>
                         <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.78rem",color:"rgba(190,211,196,0.8)"}}>{plant.name}</span>
                         <span style={{fontFamily:SANS,fontSize:"0.68rem",fontWeight:600,color:canAfford?B.goldL:"rgba(190,211,196,0.25)"}}>🕯️ {plant.plantCost}</span>
+                        {isLocked&&<PremiumLock compact/>}
                       </button>
                     );
                   })}
@@ -4759,7 +5247,8 @@ function AppInner(){
 
   /* ══ ROOM SHOP ════════════════════════════════════ */
   if(screen==="shop"){
-    const filteredItems=shopCategory==="all"?SHOP_ITEMS:SHOP_ITEMS.filter(i=>i.category===shopCategory);
+    const allShopItems=[...SHOP_ITEMS,...PREMIUM_SHOP_ITEMS];
+    const filteredItems=shopCategory==="all"?allShopItems:allShopItems.filter(i=>i.category===shopCategory);
     const cats=[{id:"all",label:"All"},{id:"furniture",label:"Furniture"},{id:"candles",label:"Candles"},{id:"decor",label:"Decor"}];
     return(
       <div style={{minHeight:"100vh",background:"linear-gradient(160deg,#1A1208,#2A1E08)",color:"#FFF8E8",fontFamily:SANS}}>
@@ -4775,8 +5264,10 @@ function AppInner(){
             {filteredItems.map(item=>{
               const owned=ownedItems.includes(item.id);
               const canAfford=candles>=item.cost;
+              const isLocked=item.premium&&!hasPremium;
               return(
-                <div key={item.id} style={{background:owned?"rgba(90,138,106,0.08)":"rgba(255,255,255,0.03)",border:`1px solid ${owned?"rgba(90,138,106,0.25)":"rgba(212,180,100,0.12)"}`,borderRadius:14,padding:"18px 14px",display:"flex",flexDirection:"column",alignItems:"center",gap:8,transition:"all 0.2s"}}>
+                <div key={item.id} style={{position:"relative",background:owned?"rgba(90,138,106,0.08)":"rgba(255,255,255,0.03)",border:`1px solid ${owned?"rgba(90,138,106,0.25)":"rgba(212,180,100,0.12)"}`,borderRadius:14,padding:"18px 14px",display:"flex",flexDirection:"column",alignItems:"center",gap:8,transition:"all 0.2s"}}>
+                  {isLocked&&<PremiumLock/>}
                   {/* Item preview */}
                   <div style={{width:"60px",height:"60px",display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(255,255,255,0.03)",borderRadius:12,position:"relative"}}>
                     <img src={item.asset} alt={item.name} onError={e=>{e.target.style.display="none";e.target.nextSibling.style.display="flex";}} style={{maxWidth:"100%",maxHeight:"100%",objectFit:"contain"}}/>
@@ -4790,7 +5281,7 @@ function AppInner(){
                   {owned?(
                     <div style={{background:"rgba(90,138,106,0.15)",border:"1px solid rgba(90,138,106,0.2)",borderRadius:8,padding:"6px 16px",fontSize:"0.74rem",fontFamily:SANS,fontWeight:600,color:"rgba(190,211,196,0.7)"}}>✓ Owned</div>
                   ):(
-                    <button onClick={()=>{if(canAfford)buyShopItem(item);}} style={{background:canAfford?"rgba(212,180,100,0.2)":"rgba(255,255,255,0.04)",border:`1px solid ${canAfford?"rgba(212,180,100,0.35)":"rgba(255,255,255,0.08)"}`,borderRadius:8,padding:"6px 16px",fontSize:"0.74rem",fontFamily:SANS,fontWeight:600,color:canAfford?B.goldL:"rgba(255,248,232,0.25)",cursor:canAfford?"pointer":"default",transition:"all 0.15s"}}>{canAfford?"Buy":"Not enough 🕯️"}</button>
+                    <button onClick={()=>{if(canAfford&&!isLocked)buyShopItem(item);}} style={{background:canAfford&&!isLocked?"rgba(212,180,100,0.2)":"rgba(255,255,255,0.04)",border:`1px solid ${canAfford&&!isLocked?"rgba(212,180,100,0.35)":"rgba(255,255,255,0.08)"}`,borderRadius:8,padding:"6px 16px",fontSize:"0.74rem",fontFamily:SANS,fontWeight:600,color:canAfford&&!isLocked?B.goldL:"rgba(255,248,232,0.25)",cursor:canAfford&&!isLocked?"pointer":"default",transition:"all 0.15s"}}>{isLocked?"Plus":canAfford?"Buy":"Not enough 🕯️"}</button>
                   )}
                 </div>
               );
@@ -5429,6 +5920,46 @@ function AppInner(){
           </div>
         )}
         <BottomMenuDrawer/>
+      </div>
+    );
+  }
+
+  /* ══ UPGRADE — Inner Room Plus ══════════════════════ */
+  if(screen==="upgrade"){
+    return(
+      <div style={{minHeight:"100vh",background:"linear-gradient(160deg,#1A1208 0%,#1A1612 40%,#2A1E08 100%)",color:"#FFF8E8",fontFamily:SANS}}>
+        <style>{GFONTS}{CSS}</style>
+        <DarkHeader title="" onBack={()=>setScreen(prevScreen||"cabin")} backLabel="← Back"/>
+        <main style={{maxWidth:"520px",margin:"0 auto",padding:"40px 24px 80px",textAlign:"center"}}>
+          {/* Title */}
+          <h1 style={{fontFamily:DISPLAY,fontSize:"1.8rem",fontWeight:700,color:B.goldL,margin:"0 0 8px",textShadow:"0 2px 16px rgba(201,169,110,0.3)",lineHeight:1.2}}>Inner Room Plus</h1>
+          <div style={{width:60,height:1,background:"rgba(201,169,110,0.4)",margin:"12px auto 16px"}}/>
+          <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"1rem",color:"rgba(255,248,232,0.4)",margin:"0 0 44px",lineHeight:1.6}}>Go deeper. Grow more. Walk further.</p>
+
+          {/* Benefits list */}
+          <div style={{display:"flex",flexDirection:"column",gap:24,textAlign:"left",marginBottom:52}}>
+            {PLUS_BENEFITS.map((b,i)=>(
+              <div key={i} style={{display:"flex",gap:16,alignItems:"flex-start",animation:`fadeUp .5s ${i*0.08}s ease both`}}>
+                {/* Icon circle */}
+                <div style={{width:44,height:44,borderRadius:"50%",flexShrink:0,background:"rgba(201,169,110,0.06)",border:"1px solid rgba(201,169,110,0.18)",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                  <PlusIcon type={b.icon}/>
+                </div>
+                <div>
+                  <div style={{fontFamily:SANS,fontSize:"0.88rem",fontWeight:600,color:B.goldL,marginBottom:4}}>{b.title}</div>
+                  <div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.78rem",color:"rgba(255,248,232,0.3)",lineHeight:1.55}}>{b.desc}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* CTA */}
+          <button style={{background:"rgba(201,169,110,0.1)",border:"1.5px solid rgba(201,169,110,0.35)",borderRadius:999,padding:"14px 44px",cursor:"default",fontFamily:SERIF,fontStyle:"italic",fontSize:"0.95rem",color:B.goldL,boxShadow:"0 0 24px rgba(201,169,110,0.06)",transition:"all 0.2s",letterSpacing:"0.02em"}}>
+            Coming Soon
+          </button>
+          <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.72rem",color:"rgba(255,248,232,0.18)",marginTop:18,lineHeight:1.6}}>
+            We are still preparing this offering.<br/>Thank you for walking with us.
+          </p>
+        </main>
       </div>
     );
   }

@@ -256,3 +256,267 @@ exports.contributeToEvent = onCall({ cors: true }, async (request) => {
     return { success: true, newProgress, completed };
   });
 });
+
+// ══════════════════════════════════════════════════════
+// ── SOCIAL LAYER FUNCTIONS ──
+// ══════════════════════════════════════════════════════
+
+// ── FOLLOW USER ──
+// Creates follow doc, increments counters on both profiles, creates notification
+exports.followUser = onCall({ cors: true }, async (request) => {
+  if (!request.auth) throw new HttpsError("unauthenticated", "Must be signed in");
+  const uid = request.auth.uid;
+  const { targetUserId } = request.data;
+
+  if (!targetUserId) throw new HttpsError("invalid-argument", "Missing targetUserId");
+  if (targetUserId === uid) throw new HttpsError("failed-precondition", "Cannot follow yourself");
+
+  const followId = `${uid}_${targetUserId}`;
+  const followRef = db.collection("follows").doc(followId);
+  const actorProfileRef = db.collection("userProfiles").doc(uid);
+  const targetProfileRef = db.collection("userProfiles").doc(targetUserId);
+
+  return db.runTransaction(async (tx) => {
+    const followDoc = await tx.get(followRef);
+    if (followDoc.exists) throw new HttpsError("already-exists", "Already following this user");
+
+    const targetProfileDoc = await tx.get(targetProfileRef);
+    if (!targetProfileDoc.exists) throw new HttpsError("not-found", "User not found");
+
+    const actorProfileDoc = await tx.get(actorProfileRef);
+    const actorName = actorProfileDoc.exists ? (actorProfileDoc.data().username || "Anonymous") : "Anonymous";
+    const actorAvatarUrl = actorProfileDoc.exists ? (actorProfileDoc.data().avatarUrl || null) : null;
+
+    // Create follow doc
+    tx.set(followRef, {
+      followerId: uid,
+      followingId: targetUserId,
+      createdAt: FieldValue.serverTimestamp(),
+    });
+
+    // Increment counters
+    tx.update(actorProfileRef, { followingCount: FieldValue.increment(1) });
+    tx.update(targetProfileRef, { followersCount: FieldValue.increment(1) });
+
+    // Create notification for target user
+    const notifRef = db.collection("notifications").doc();
+    tx.set(notifRef, {
+      recipientId: targetUserId,
+      type: "follow",
+      actorId: uid,
+      actorName,
+      actorAvatarUrl,
+      postId: null,
+      postPreview: null,
+      message: `${actorName} started following you`,
+      read: false,
+      createdAt: FieldValue.serverTimestamp(),
+    });
+
+    return { success: true };
+  });
+});
+
+// ── UNFOLLOW USER ──
+// Deletes follow doc, decrements counters on both profiles
+exports.unfollowUser = onCall({ cors: true }, async (request) => {
+  if (!request.auth) throw new HttpsError("unauthenticated", "Must be signed in");
+  const uid = request.auth.uid;
+  const { targetUserId } = request.data;
+
+  if (!targetUserId) throw new HttpsError("invalid-argument", "Missing targetUserId");
+
+  const followId = `${uid}_${targetUserId}`;
+  const followRef = db.collection("follows").doc(followId);
+  const actorProfileRef = db.collection("userProfiles").doc(uid);
+  const targetProfileRef = db.collection("userProfiles").doc(targetUserId);
+
+  return db.runTransaction(async (tx) => {
+    const followDoc = await tx.get(followRef);
+    if (!followDoc.exists) throw new HttpsError("not-found", "Not following this user");
+
+    // Delete follow doc
+    tx.delete(followRef);
+
+    // Decrement counters
+    tx.update(actorProfileRef, { followingCount: FieldValue.increment(-1) });
+    tx.update(targetProfileRef, { followersCount: FieldValue.increment(-1) });
+
+    return { success: true };
+  });
+});
+
+// ── LIKE POST ──
+// Creates like subcol doc, increments likesCount, creates notification
+exports.likePost = onCall({ cors: true }, async (request) => {
+  if (!request.auth) throw new HttpsError("unauthenticated", "Must be signed in");
+  const uid = request.auth.uid;
+  const { postId } = request.data;
+
+  if (!postId) throw new HttpsError("invalid-argument", "Missing postId");
+
+  const postRef = db.collection("posts").doc(postId);
+  const likeRef = postRef.collection("likes").doc(uid);
+  const actorProfileRef = db.collection("userProfiles").doc(uid);
+
+  return db.runTransaction(async (tx) => {
+    const likeDoc = await tx.get(likeRef);
+    if (likeDoc.exists) throw new HttpsError("already-exists", "Already liked this post");
+
+    const postDoc = await tx.get(postRef);
+    if (!postDoc.exists) throw new HttpsError("not-found", "Post not found");
+    const post = postDoc.data();
+
+    const actorProfileDoc = await tx.get(actorProfileRef);
+    const actorName = actorProfileDoc.exists ? (actorProfileDoc.data().username || "Anonymous") : "Anonymous";
+    const actorAvatarUrl = actorProfileDoc.exists ? (actorProfileDoc.data().avatarUrl || null) : null;
+
+    // Create like doc
+    tx.set(likeRef, {
+      userId: uid,
+      createdAt: FieldValue.serverTimestamp(),
+    });
+
+    // Increment post likesCount
+    tx.update(postRef, { likesCount: FieldValue.increment(1) });
+
+    // Create notification for post author (skip if liking own post)
+    if (post.authorId !== uid) {
+      const notifRef = db.collection("notifications").doc();
+      tx.set(notifRef, {
+        recipientId: post.authorId,
+        type: "like",
+        actorId: uid,
+        actorName,
+        actorAvatarUrl,
+        postId,
+        postPreview: (post.content || "").substring(0, 80),
+        message: `${actorName} liked your ${post.type || "post"}`,
+        read: false,
+        createdAt: FieldValue.serverTimestamp(),
+      });
+    }
+
+    return { success: true, newLikesCount: (post.likesCount || 0) + 1 };
+  });
+});
+
+// ── UNLIKE POST ──
+// Deletes like subcol doc, decrements likesCount
+exports.unlikePost = onCall({ cors: true }, async (request) => {
+  if (!request.auth) throw new HttpsError("unauthenticated", "Must be signed in");
+  const uid = request.auth.uid;
+  const { postId } = request.data;
+
+  if (!postId) throw new HttpsError("invalid-argument", "Missing postId");
+
+  const postRef = db.collection("posts").doc(postId);
+  const likeRef = postRef.collection("likes").doc(uid);
+
+  return db.runTransaction(async (tx) => {
+    const likeDoc = await tx.get(likeRef);
+    if (!likeDoc.exists) throw new HttpsError("not-found", "Not liked");
+
+    const postDoc = await tx.get(postRef);
+    if (!postDoc.exists) throw new HttpsError("not-found", "Post not found");
+
+    // Delete like doc
+    tx.delete(likeRef);
+
+    // Decrement likesCount
+    tx.update(postRef, { likesCount: FieldValue.increment(-1) });
+
+    return { success: true, newLikesCount: Math.max(0, (postDoc.data().likesCount || 0) - 1) };
+  });
+});
+
+// ── ADD COMMENT ──
+// Creates comment subcol doc, increments commentsCount, creates notification
+exports.addComment = onCall({ cors: true }, async (request) => {
+  if (!request.auth) throw new HttpsError("unauthenticated", "Must be signed in");
+  const uid = request.auth.uid;
+  const { postId, content } = request.data;
+
+  if (!postId) throw new HttpsError("invalid-argument", "Missing postId");
+  if (!content || typeof content !== "string" || content.trim().length === 0) throw new HttpsError("invalid-argument", "Comment cannot be empty");
+  if (content.length > 2000) throw new HttpsError("invalid-argument", "Comment too long (max 2000 chars)");
+
+  const postRef = db.collection("posts").doc(postId);
+  const actorProfileRef = db.collection("userProfiles").doc(uid);
+
+  return db.runTransaction(async (tx) => {
+    const postDoc = await tx.get(postRef);
+    if (!postDoc.exists) throw new HttpsError("not-found", "Post not found");
+    const post = postDoc.data();
+
+    const actorProfileDoc = await tx.get(actorProfileRef);
+    const actorName = actorProfileDoc.exists ? (actorProfileDoc.data().username || "Anonymous") : "Anonymous";
+    const actorAvatarUrl = actorProfileDoc.exists ? (actorProfileDoc.data().avatarUrl || null) : null;
+
+    // Create comment doc
+    const commentRef = postRef.collection("comments").doc();
+    tx.set(commentRef, {
+      authorId: uid,
+      authorName: actorName,
+      authorAvatarUrl: actorAvatarUrl,
+      content: content.trim(),
+      createdAt: FieldValue.serverTimestamp(),
+      likesCount: 0,
+    });
+
+    // Increment post commentsCount
+    tx.update(postRef, { commentsCount: FieldValue.increment(1) });
+
+    // Create notification for post author (skip if commenting on own post)
+    if (post.authorId !== uid) {
+      const notifRef = db.collection("notifications").doc();
+      tx.set(notifRef, {
+        recipientId: post.authorId,
+        type: "comment",
+        actorId: uid,
+        actorName,
+        actorAvatarUrl,
+        postId,
+        postPreview: (post.content || "").substring(0, 80),
+        message: `${actorName} commented on your ${post.type || "post"}`,
+        read: false,
+        createdAt: FieldValue.serverTimestamp(),
+      });
+    }
+
+    return { success: true, commentId: commentRef.id };
+  });
+});
+
+// ── MARK NOTIFICATIONS READ ──
+// Batch-updates read:true on caller's unread notifications
+exports.markNotificationsRead = onCall({ cors: true }, async (request) => {
+  if (!request.auth) throw new HttpsError("unauthenticated", "Must be signed in");
+  const uid = request.auth.uid;
+  const { notificationIds } = request.data;
+
+  // If specific IDs provided, mark only those; otherwise mark all unread
+  if (notificationIds && Array.isArray(notificationIds) && notificationIds.length > 0) {
+    const batch = db.batch();
+    for (const nid of notificationIds.slice(0, 50)) { // cap at 50 per call
+      const ref = db.collection("notifications").doc(nid);
+      batch.update(ref, { read: true });
+    }
+    await batch.commit();
+    return { success: true, count: Math.min(notificationIds.length, 50) };
+  } else {
+    // Mark all unread notifications as read
+    const snap = await db.collection("notifications")
+      .where("recipientId", "==", uid)
+      .where("read", "==", false)
+      .limit(100)
+      .get();
+
+    if (snap.empty) return { success: true, count: 0 };
+
+    const batch = db.batch();
+    snap.docs.forEach(d => batch.update(d.ref, { read: true }));
+    await batch.commit();
+    return { success: true, count: snap.size };
+  }
+});
