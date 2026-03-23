@@ -382,40 +382,40 @@ export const INTERACTION_ZONES = [
     label: 'Cabin',
     description: 'Your quiet place',
     screen: 'cabin',
-    // Door at south face of cabin → row 55
+    // Centered on cabin building (cols 12-16, rows 51-55)
     cx: 14 * TILE + TILE / 2,
-    cy: 55 * TILE + TILE / 2,
-    radius: 96,
+    cy: 53 * TILE + TILE / 2,
+    radius: 384,   // ~6 tiles — covers the whole cabin clearing
   },
   {
     id: 'garden',
     label: 'Prayer Garden',
     description: 'Grow your prayers',
     screen: 'garden',
-    // Door at south face → row 25
+    // Centered on garden building (cols 6-9, rows 22-25)
     cx: 8 * TILE + TILE / 2,
-    cy: 25 * TILE + TILE / 2,
-    radius: 96,
+    cy: 24 * TILE + TILE / 2,
+    radius: 384,   // ~6 tiles — covers greenhouse + flower beds
   },
   {
     id: 'market',
     label: 'Market',
     description: 'Trade & provision',
     screen: 'market',
-    // Door on west face → col 23
-    cx: 23 * TILE,
+    // Centered on market stalls (cols 23-31, rows 30-33)
+    cx: 27 * TILE + TILE / 2,
     cy: 32 * TILE + TILE / 2,
-    radius: 96,
+    radius: 420,   // ~6.5 tiles — covers all three stalls + plaza
   },
   {
     id: 'upper-room',
     label: 'Upper Room',
     description: 'Worship & encounter',
     screen: 'upper-room',
-    // Door at south face → row 11
+    // Centered on upper room building (cols 30-34, rows 7-11)
     cx: 32 * TILE + TILE / 2,
-    cy: 11 * TILE + TILE / 2,
-    radius: 96,
+    cy: 9 * TILE + TILE / 2,
+    radius: 384,   // ~6 tiles — covers courtyard + approach
   },
 
   // ── Farm area zones (rows 72+) ──
@@ -424,10 +424,10 @@ export const INTERACTION_ZONES = [
     label: 'Barn',
     description: 'Tools & animals',
     screen: 'farm',
-    // Door on east face of barn → col 12, row 89
-    cx: 13 * TILE,
+    // Centered on barn (cols 8-12, rows 87-90)
+    cx: 10 * TILE + TILE / 2,
     cy: 89 * TILE + TILE / 2,
-    radius: 96,
+    radius: 320,   // ~5 tiles
   },
   {
     id: 'crops',
@@ -437,17 +437,17 @@ export const INTERACTION_ZONES = [
     // Center of crop field area
     cx: 24 * TILE + TILE / 2,
     cy: 97 * TILE + TILE / 2,
-    radius: 128,
+    radius: 320,   // ~5 tiles
   },
   {
     id: 'farmhouse',
     label: 'Farmhouse',
     description: 'Rest & provision',
     screen: 'farm',
-    // Door on west face of farmhouse → col 33, row 89
-    cx: 32 * TILE + TILE / 2,
+    // Centered on farmhouse (cols 33-37, rows 87-90)
+    cx: 35 * TILE + TILE / 2,
     cy: 89 * TILE + TILE / 2,
-    radius: 96,
+    radius: 320,   // ~5 tiles
   },
 ];
 

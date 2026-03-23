@@ -1,9 +1,9 @@
-import { INTERACT_RADIUS, INTERACT_TAP_RADIUS } from './constants.js';
 import { INTERACTION_ZONES } from './worldMap.js';
 
 /**
  * InteractionZones — Proximity detection for enterable locations.
  * Checks player distance to zone centers each frame.
+ * Uses each zone's own `radius` for detection range.
  */
 export class InteractionZones {
   constructor() {
@@ -23,7 +23,7 @@ export class InteractionZones {
       const dx = playerX - zone.cx;
       const dy = playerY - zone.cy;
       const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist < INTERACT_RADIUS && dist < closestDist) {
+      if (dist < zone.radius && dist < closestDist) {
         closest = zone;
         closestDist = dist;
       }
@@ -33,7 +33,7 @@ export class InteractionZones {
   }
 
   /**
-   * Returns the zone the player can enter (within tap radius), or null.
+   * Returns the zone the player can enter (within zone radius), or null.
    * @param {number} playerX  world x
    * @param {number} playerY  world y
    */
@@ -42,6 +42,6 @@ export class InteractionZones {
     const dx = playerX - this.nearbyZone.cx;
     const dy = playerY - this.nearbyZone.cy;
     const dist = Math.sqrt(dx * dx + dy * dy);
-    return dist < INTERACT_TAP_RADIUS ? this.nearbyZone : null;
+    return dist < this.nearbyZone.radius ? this.nearbyZone : null;
   }
 }
