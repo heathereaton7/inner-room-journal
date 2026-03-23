@@ -151,11 +151,15 @@ export function buildWorldGrid() {
 
   // Cabin (5x5 building, center ~14,53, door on south face)
   building(grid, 12, 51, 5, 5, T.CABIN_INT, 0);
+  // Seal cabin — make entire footprint solid so player walks AROUND it
+  // (entry is via interaction zone prompt, not by walking through the door)
+  rect(grid, 12, 51, 16, 55, T.BUILDING);
   // Porch area (dirt in front of cabin door)
   rect(grid, 12, 56, 16, 57, T.DIRT);
 
   // Prayer Garden (4x4 building, center ~8,24, door on south face)
   building(grid, 6, 22, 4, 4, T.GARDEN_INT, 0);
+  rect(grid, 6, 22, 9, 25, T.BUILDING);  // seal garden building
   // Flower borders around prayer garden
   rect(grid, 4, 22, 5, 25, T.FLOWER);
   rect(grid, 10, 22, 11, 25, T.FLOWER);
@@ -163,11 +167,14 @@ export function buildWorldGrid() {
   // Market (main stall 5x4 + secondary stall, door on west face)
   building(grid, 23, 30, 5, 4, T.MARKET_INT, 2);
   building(grid, 28, 30, 4, 3, T.MARKET_INT, 2);
+  rect(grid, 23, 30, 27, 33, T.BUILDING);  // seal market stall 1
+  rect(grid, 28, 30, 31, 32, T.BUILDING);  // seal market stall 2
   // Market square (dirt plaza)
   rect(grid, 20, 30, 22, 35, T.DIRT);
 
   // Upper Room (5x5 building, center ~32,9, door on south face)
   building(grid, 30, 7, 5, 5, T.UPPER_INT, 0);
+  rect(grid, 30, 7, 34, 11, T.BUILDING);  // seal upper room
   // Decorative flowers beside upper room
   rect(grid, 29, 7, 29, 11, T.FLOWER);
 
@@ -445,6 +452,6 @@ export const INTERACTION_ZONES = [
 ];
 
 // ─── Player Spawn ──────────────────────────────────────────────────
-// On the path just south of the cabin
-export const SPAWN_X = 14 * TILE + TILE / 2;   // col 14 center
-export const SPAWN_Y = 57 * TILE + TILE / 2;   // row 57, south of cabin porch
+// On the road to the left of the cabin (col 11, row 53)
+export const SPAWN_X = 11 * TILE + TILE / 2;   // col 11, left side of road
+export const SPAWN_Y = 53 * TILE + TILE / 2;   // row 53, beside cabin
