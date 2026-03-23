@@ -4004,7 +4004,7 @@ function AppInner(){
                     What shall we call you here?
                   </p>
                   <div style={{width:"100%",position:"relative",marginBottom:"8px"}}>
-                    <input value={setupUsername} onChange={e=>{const v=e.target.value.replace(/[^a-zA-Z0-9_]/g,"").slice(0,20);setSetupUsername(v);setUsernameError("");setUsernameAvailable(false);}} onBlur={()=>{if(setupUsername.length>=3){if(!user){setUsernameAvailable(true);return;}validateUsername(setupUsername,user?.uid);}}} autoCapitalize="none" autoCorrect="off" spellCheck={false} placeholder="your name here..." style={{width:"100%",boxSizing:"border-box",background:"transparent",border:"none",borderBottom:`1px solid ${usernameError?"rgba(220,100,100,0.5)":usernameAvailable?"rgba(100,180,100,0.5)":"rgba(201,169,110,0.35)"}`,padding:"10px 36px 10px 4px",color:"#FFF8E8",fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(1.2rem,5vw,1.6rem)",outline:"none",textAlign:"center",letterSpacing:"0.06em",transition:"border-color 0.3s"}}/>
+                    <input value={setupUsername} onChange={e=>{const v=e.target.value.replace(/[^a-zA-Z0-9_]/g,"").slice(0,20);setSetupUsername(v);setUsernameError("");setUsernameAvailable(false);}} onBlur={()=>{if(setupUsername.length>=3){if(!user){setUsernameAvailable(true);return;}validateUsername(setupUsername,user?.uid);}}} autoCapitalize="none" autoCorrect="off" spellCheck={false} placeholder="your name here..." style={{width:"100%",boxSizing:"border-box",background:"transparent",border:"none",borderBottom:`1px solid ${usernameError?"rgba(220,100,100,0.5)":usernameAvailable?"rgba(100,180,100,0.5)":"rgba(201,169,110,0.35)"}`,padding:"10px 36px 10px 4px",color:"#FFF8E8",fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(1.2rem,5vw,1.6rem)",outline:"none",textAlign:"center",letterSpacing:"0.06em",transition:"border-color 0.3s, box-shadow 0.4s",boxShadow:setupUsername.length>=3?"0 2px 12px rgba(201,169,110,0.12)":"none"}}/>
                     <div style={{position:"absolute",right:4,top:"50%",transform:"translateY(-50%)"}}>
                       {usernameChecking&&<span style={{color:"rgba(255,248,232,0.3)",fontSize:"0.75rem",fontFamily:SANS}}>...</span>}
                       {usernameAvailable&&!usernameChecking&&<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(100,180,100,0.8)" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>}
@@ -4013,6 +4013,7 @@ function AppInner(){
                   </div>
                   {usernameError&&<p style={{fontFamily:SANS,fontSize:"0.7rem",color:"rgba(220,120,120,0.75)",margin:"4px 0 0",textAlign:"center"}}>{usernameError}</p>}
                   {!usernameError&&<p style={{fontFamily:SANS,fontSize:"0.62rem",color:"rgba(255,248,232,0.2)",margin:"4px 0 0",textAlign:"center",letterSpacing:"0.04em"}}>Letters, numbers, and underscores</p>}
+                  <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.68rem",color:"rgba(255,248,232,0.15)",margin:"8px 0 0",textAlign:"center",letterSpacing:"0.03em"}}>This name will be seen in the community</p>
                   <button onClick={()=>{if(step1Ok)setOnboardStep(2);}} disabled={!step1Ok} className={step1Ok?"door-btn":""} style={{marginTop:"28px",background:step1Ok?"linear-gradient(135deg,rgba(201,169,110,0.22),rgba(201,169,110,0.06))":"transparent",border:`1px solid ${step1Ok?"rgba(201,169,110,0.45)":"rgba(255,248,232,0.08)"}`,borderRadius:"28px",padding:"13px 44px",cursor:step1Ok?"pointer":"default",color:step1Ok?"#FFF8E8":"rgba(255,248,232,0.2)",fontFamily:SERIF,fontStyle:"italic",fontWeight:600,fontSize:"0.88rem",letterSpacing:"0.1em",transition:"all 0.3s"}}>
                     Continue
                   </button>
@@ -4029,9 +4030,9 @@ function AppInner(){
                     How do you wish to be known?
                   </p>
                   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"14px",width:"100%"}}>
-                    {[["male","Male"],["female","Female"]].map(([val,label])=>(
+                    {[["male","Son of God"],["female","Daughter of God"]].map(([val,label])=>(
                       <button key={val} onClick={()=>{setSetupGender(val);setTimeout(()=>setOnboardStep(3),600);}} style={{background:setupGender===val?"linear-gradient(135deg,rgba(201,169,110,0.18),rgba(201,169,110,0.06))":"rgba(255,248,232,0.04)",border:`1.5px solid ${setupGender===val?"rgba(201,169,110,0.55)":"rgba(255,248,232,0.12)"}`,borderRadius:"16px",padding:"22px 16px",cursor:"pointer",transition:"all 0.25s ease",boxShadow:setupGender===val?"0 0 22px rgba(201,169,110,0.18),inset 0 0 10px rgba(201,169,110,0.04)":"none"}}>
-                        <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"1.1rem",color:setupGender===val?"#FFF8E8":"rgba(255,248,232,0.45)",transition:"color 0.25s",letterSpacing:"0.04em"}}>{label}</span>
+                        <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"1rem",color:setupGender===val?"#FFF8E8":"rgba(255,248,232,0.45)",transition:"color 0.25s",letterSpacing:"0.04em"}}>{label}</span>
                       </button>
                     ))}
                   </div>
@@ -4085,7 +4086,14 @@ function AppInner(){
                   <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.9rem,3vw,1.1rem)",color:"rgba(255,248,232,0.5)",margin:0,textAlign:"center",maxWidth:"320px",lineHeight:1.65,letterSpacing:"0.03em",animation:"fadeUp 1s 0.7s ease both"}}>
                     Your journal is waiting.
                   </p>
-                  <p style={{fontFamily:SANS,fontSize:"0.64rem",color:"rgba(255,248,232,0.18)",margin:"12px 0 0",letterSpacing:"0.08em",animation:"fadeUp 1s 1.4s ease both"}}>
+                  {/* Guided first action — gentle prompt */}
+                  <div style={{marginTop:"24px",animation:"fadeUp 1s 1.6s ease both",opacity:0,display:"flex",flexDirection:"column",alignItems:"center",gap:"8px"}}>
+                    <div style={{width:"30px",height:"1px",background:"rgba(201,169,110,0.25)",marginBottom:"4px"}}/>
+                    <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.82rem",color:"rgba(255,248,232,0.35)",margin:0,textAlign:"center",letterSpacing:"0.03em"}}>
+                      When you're ready, write your first prayer.
+                    </p>
+                  </div>
+                  <p style={{fontFamily:SANS,fontSize:"0.64rem",color:"rgba(255,248,232,0.18)",margin:"16px 0 0",letterSpacing:"0.08em",animation:"fadeUp 1s 2s ease both"}}>
                     Tap anywhere to enter
                   </p>
                 </div>
@@ -6695,9 +6703,9 @@ function AppInner(){
           <div style={{marginBottom:20}}>
             <label style={{fontFamily:SANS,fontSize:"0.68rem",letterSpacing:"0.08em",textTransform:"uppercase",color:"rgba(200,190,230,0.35)",display:"block",marginBottom:8}}>Gender</label>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-              {[["male","Male"],["female","Female"]].map(([val,label])=>(
+              {[["male","Son of God"],["female","Daughter of God"]].map(([val,label])=>(
                 <button key={val} onClick={()=>setEditG(val)} style={{background:editG===val?"rgba(180,160,210,0.15)":"rgba(180,160,210,0.04)",border:`1.5px solid ${editG===val?"rgba(180,160,210,0.45)":"rgba(180,160,210,0.12)"}`,borderRadius:14,padding:"14px 16px",cursor:"pointer",textAlign:"center",transition:"all 0.2s"}}>
-                  <div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.95rem",color:editG===val?"#D8C8F0":"rgba(200,190,230,0.45)"}}>{label}</div>
+                  <div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.92rem",color:editG===val?"#D8C8F0":"rgba(200,190,230,0.45)"}}>{label}</div>
                 </button>
               ))}
             </div>
