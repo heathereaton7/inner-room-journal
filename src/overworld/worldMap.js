@@ -106,7 +106,9 @@ export function buildWorldGrid() {
   rect(grid, 11, 24, 14, 28, T.GRASS);   // connects junction to garden
 
   // ── Cabin N-S corridor (junction south to cabin) ──
-  rect(grid, 13, 30, 16, 50, T.GRASS);   // long vertical spine
+  // Wide enough (cols 11-17) so the character can walk AROUND the cabin
+  // building (cols 12-16, rows 51-55) on the left or right side
+  rect(grid, 11, 30, 17, 50, T.GRASS);   // wide vertical spine past cabin
 
   // ── Cabin south to river bridge ──
   rect(grid, 13, 59, 17, 64, T.GRASS);
