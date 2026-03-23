@@ -316,8 +316,13 @@ export default function CabinScreen({
               <span style={{fontSize:"1rem"}}>📖</span> Reflection History
             </button>
             <div style={{flex:1}}/>
+            {/* Edit Profile */}
+            <button onClick={()=>{setWindowPanel(null);setScreen("edit-profile");}} style={{width:"100%",background:"rgba(255,255,255,0.04)",border:"1px solid rgba(201,169,110,0.15)",borderRadius:10,padding:"13px 18px",color:B.goldL,fontFamily:SANS,fontSize:"0.82rem",cursor:"pointer",transition:"all .2s",marginTop:12,display:"flex",alignItems:"center",gap:10}}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(201,169,110,0.5)" strokeWidth="1.8"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              Edit Profile
+            </button>
             {/* Sign out */}
-            <button onClick={()=>{handleSignOut();setWindowPanel(null);}} style={{width:"100%",background:"rgba(255,255,255,0.04)",border:"1px solid rgba(201,169,110,0.15)",borderRadius:10,padding:"13px 18px",color:"rgba(255,248,232,0.45)",fontFamily:SANS,fontSize:"0.82rem",cursor:"pointer",transition:"all .2s",marginTop:12}}>Sign out</button>
+            <button onClick={()=>{handleSignOut();setWindowPanel(null);}} style={{width:"100%",background:"rgba(255,255,255,0.04)",border:"1px solid rgba(201,169,110,0.15)",borderRadius:10,padding:"13px 18px",color:"rgba(255,248,232,0.45)",fontFamily:SANS,fontSize:"0.82rem",cursor:"pointer",transition:"all .2s",marginTop:8}}>Sign out</button>
             <div style={{textAlign:"center",marginTop:14}}>
               <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.68rem",color:"rgba(255,248,232,0.15)"}}>Tap outside to close</p>
             </div>

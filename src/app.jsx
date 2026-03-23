@@ -1701,6 +1701,13 @@ function AppInner(){
   const [userSearch,        setUserSearch]         = useState("");
   const [userResults,       setUserResults]        = useState([]);
   const [userSearchLoading, setUserSearchLoading]  = useState(false);
+  const [showProfileSetup,  setShowProfileSetup]   = useState(false);
+  const [setupUsername,      setSetupUsername]      = useState("");
+  const [setupGender,        setSetupGender]        = useState(null); // "male"|"female"
+  const [setupBio,           setSetupBio]           = useState("");
+  const [usernameError,      setUsernameError]      = useState("");
+  const [usernameChecking,   setUsernameChecking]   = useState(false);
+  const [usernameAvailable,  setUsernameAvailable]  = useState(false);
   const [farmerSearch,      setFarmerSearch]       = useState("");
   const [farmerResults,     setFarmerResults]     = useState([]);
   const [communityLoading,  setCommunityLoading]  = useState(false);
@@ -1754,6 +1761,7 @@ function AppInner(){
   // ── Close menu drawer on screen change ──
   useEffect(()=>{setMenuOpen(false);},[screen]);
   useEffect(()=>{if(screen!=="upper-room"){setUpperRoomView(null);setUserSearch("");setUserResults([]);}},[screen]);
+  useEffect(()=>{if(screen==="edit-profile"&&userProfile){setSetupUsername(userProfile.username||"");setSetupGender(userProfile.gender||null);setSetupBio(userProfile.bio||"");setUsernameError("");setUsernameAvailable(false);}},[screen]);
 
   // ── AMBIENT SOUND — auto-play / stop per screen ──
   useEffect(()=>{
@@ -2477,18 +2485,108 @@ function AppInner(){
   }
 
   // ── MULTIPLAYER — User Profiles ──
+  async function checkUsernameAvailable(username, excludeUid){
+    if(!db) return false;
+    if(!username||username.length<3||username.length>20) return false;
+    if(!/^[a-zA-Z0-9_]+$/.test(username)) return false;
+    try{
+      const q=query(collection(db,"userProfiles"),where("usernameLower","==",username.toLowerCase()),limit(1));
+      const snap=await getDocs(q);
+      if(snap.empty) return true;
+      // If the only match is the current user, it's still available
+      return snap.docs.length===1&&snap.docs[0].id===excludeUid;
+    }catch(e){console.warn("checkUsername error:",e);return false;}
+  }
+
+  async function validateUsername(username, excludeUid){
+    setUsernameError("");setUsernameAvailable(false);
+    if(!username){setUsernameError("");return;}
+    if(username.length<3){setUsernameError("At least 3 characters");return;}
+    if(username.length>20){setUsernameError("Max 20 characters");return;}
+    if(!/^[a-zA-Z0-9_]+$/.test(username)){setUsernameError("Letters, numbers, and underscores only");return;}
+    setUsernameChecking(true);
+    const available=await checkUsernameAvailable(username, excludeUid);
+    setUsernameChecking(false);
+    if(!available){setUsernameError("Username already taken");return;}
+    setUsernameAvailable(true);
+  }
+
+  async function completeProfileSetup(uid){
+    if(!db||!setupUsername||!setupGender) return;
+    const available=await checkUsernameAvailable(setupUsername, uid);
+    if(!available){setUsernameError("Username already taken");return;}
+    try{
+      const profileRef=doc(db,"userProfiles",uid);
+      const snap=await getDoc(profileRef);
+      const data={
+        username:setupUsername,
+        usernameLower:setupUsername.toLowerCase(),
+        gender:setupGender,
+        bio:setupBio,
+        level:1,lastLogin:serverTimestamp(),farmPublic:true,avatarUrl:null,
+        followersCount:0,followingCount:0,postsCount:0,
+        joinedAt:serverTimestamp(),lastPostAt:null,anonymous:false,
+      };
+      if(snap.exists()){
+        // Existing user migration — merge new fields
+        await setDoc(profileRef,{username:setupUsername,usernameLower:setupUsername.toLowerCase(),gender:setupGender,bio:setupBio||snap.data().bio||"",anonymous:false,lastLogin:serverTimestamp()},{merge:true});
+      } else {
+        await setDoc(profileRef,data);
+      }
+      const updated=await getDoc(profileRef);
+      setUserProfile({id:uid,...updated.data()});
+      setShowProfileSetup(false);
+      setToast({msg:"Profile created"});
+    }catch(e){console.warn("completeProfileSetup error:",e);setToast({msg:"Error saving profile"});}
+  }
+
+  async function saveProfileEdits(uid, newUsername, newGender, newBio, newAnonymous){
+    if(!db) return;
+    // Check username change
+    if(newUsername!==userProfile?.username){
+      const available=await checkUsernameAvailable(newUsername, uid);
+      if(!available){setUsernameError("Username already taken");return false;}
+    }
+    try{
+      const profileRef=doc(db,"userProfiles",uid);
+      await setDoc(profileRef,{
+        username:newUsername,usernameLower:newUsername.toLowerCase(),
+        gender:newGender,bio:newBio,anonymous:!!newAnonymous,
+      },{merge:true});
+      const updated=await getDoc(profileRef);
+      setUserProfile({id:uid,...updated.data()});
+      setToast({msg:"Profile updated"});
+      return true;
+    }catch(e){console.warn("saveProfileEdits error:",e);return false;}
+  }
+
   async function ensureUserProfile(uid, displayName){
     if(!db) return;
     try{
       const profileRef=doc(db,"userProfiles",uid);
       const snap=await getDoc(profileRef);
       if(!snap.exists()){
-        await setDoc(profileRef,{username:displayName||"Anonymous Traveler",level:1,lastLogin:serverTimestamp(),farmPublic:true,bio:"",avatarUrl:null,followersCount:0,followingCount:0,postsCount:0,joinedAt:serverTimestamp(),lastPostAt:null});
-      } else {
-        await setDoc(profileRef,{lastLogin:serverTimestamp()},{merge:true});
+        // New user — show setup screen instead of auto-creating
+        setSetupUsername(displayName||"");
+        setSetupGender(null);
+        setSetupBio("");
+        setShowProfileSetup(true);
+        return;
       }
-      const updated=await getDoc(profileRef);
-      setUserProfile({id:uid,...updated.data()});
+      const data=snap.data();
+      if(!data.gender||!data.usernameLower){
+        // Existing user missing required fields — show setup to complete
+        setSetupUsername(data.username||displayName||"");
+        setSetupGender(data.gender||null);
+        setSetupBio(data.bio||"");
+        setShowProfileSetup(true);
+        // Still set profile so app works while setup is pending
+        setUserProfile({id:uid,...data});
+        return;
+      }
+      // Returning user with complete profile
+      await setDoc(profileRef,{lastLogin:serverTimestamp()},{merge:true});
+      setUserProfile({id:uid,...data});
     }catch(e){console.warn("ensureUserProfile error:",e);}
   }
 
@@ -2734,7 +2832,7 @@ function AppInner(){
       const results=snap.docs
         .map(d=>({id:d.id,...d.data()}))
         .filter(p=>p.id!==user?.uid)
-        .filter(p=>!searchTerm||(p.username||"").toLowerCase().includes(searchTerm.toLowerCase()));
+        .filter(p=>!searchTerm||(p.usernameLower||p.username||"").includes(searchTerm.toLowerCase()));
       setUserResults(results);
     }catch(e){console.warn("searchUsers error:",e);}
     setUserSearchLoading(false);
@@ -6398,6 +6496,122 @@ function AppInner(){
 
         {spaceTransit&&<div style={{position:"fixed",inset:0,zIndex:9999,background:"#0A0806",animation:"spaceFadeIn .6s ease both",pointerEvents:"all"}}/>}
         <BottomMenuDrawer/>
+      </div>
+    );
+  }
+
+  /* ══ PROFILE SETUP — shown after first sign-in ═══════════════════ */
+  if(showProfileSetup&&user){
+    const canSubmit=usernameAvailable&&setupGender&&!usernameChecking;
+    return(
+      <div style={{position:"fixed",inset:0,background:"linear-gradient(180deg,#0E0B14 0%,#1A1420 100%)",zIndex:9000,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:SANS}}>
+        <style>{GFONTS}{CSS}</style>
+        <div style={{maxWidth:420,width:"90%",maxHeight:"90vh",overflowY:"auto",padding:"36px 28px"}}>
+          <div style={{textAlign:"center",marginBottom:32}}>
+            <h1 style={{fontFamily:DISPLAY,fontSize:"1.8rem",fontWeight:700,color:"#D8C8F0",margin:"0 0 10px"}}>Set Up Your Profile</h1>
+            <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.88rem",color:"rgba(200,190,230,0.45)",margin:0,lineHeight:1.6}}>Choose a username to save your journal and connect with others.</p>
+          </div>
+          {/* Username */}
+          <div style={{marginBottom:24}}>
+            <label style={{fontFamily:SANS,fontSize:"0.68rem",letterSpacing:"0.08em",textTransform:"uppercase",color:"rgba(200,190,230,0.35)",display:"block",marginBottom:8}}>Username</label>
+            <div style={{position:"relative"}}>
+              <input value={setupUsername} onChange={e=>{const v=e.target.value.replace(/[^a-zA-Z0-9_]/g,"").slice(0,20);setSetupUsername(v);setUsernameError("");setUsernameAvailable(false);}} onBlur={()=>{if(setupUsername.length>=3)validateUsername(setupUsername,user.uid);}} placeholder="your_username" style={{width:"100%",boxSizing:"border-box",background:"rgba(180,160,210,0.08)",border:`1px solid ${usernameError?"rgba(220,100,100,0.4)":usernameAvailable?"rgba(100,180,100,0.4)":"rgba(180,160,210,0.15)"}`,borderRadius:12,padding:"12px 40px 12px 16px",color:"#E8E0F0",fontFamily:SANS,fontSize:"0.9rem",outline:"none",transition:"border-color 0.2s"}}/>
+              <div style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)"}}>
+                {usernameChecking&&<span style={{color:"rgba(200,190,230,0.4)",fontSize:"0.7rem"}}>...</span>}
+                {usernameAvailable&&!usernameChecking&&<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6AAA6A" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>}
+                {usernameError&&!usernameChecking&&<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#CC6666" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>}
+              </div>
+            </div>
+            {usernameError&&<p style={{fontFamily:SANS,fontSize:"0.72rem",color:"rgba(220,120,120,0.8)",margin:"6px 0 0 4px"}}>{usernameError}</p>}
+            <p style={{fontFamily:SANS,fontSize:"0.62rem",color:"rgba(200,190,230,0.25)",margin:"6px 0 0 4px"}}>3-20 characters, letters, numbers, and underscores</p>
+          </div>
+          {/* Gender */}
+          <div style={{marginBottom:24}}>
+            <label style={{fontFamily:SANS,fontSize:"0.68rem",letterSpacing:"0.08em",textTransform:"uppercase",color:"rgba(200,190,230,0.35)",display:"block",marginBottom:8}}>I am</label>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+              {[["male","Male"],["female","Female"]].map(([val,label])=>(
+                <button key={val} onClick={()=>setSetupGender(val)} style={{background:setupGender===val?"rgba(180,160,210,0.15)":"rgba(180,160,210,0.04)",border:`1.5px solid ${setupGender===val?"rgba(180,160,210,0.45)":"rgba(180,160,210,0.12)"}`,borderRadius:14,padding:"18px 16px",cursor:"pointer",textAlign:"center",transition:"all 0.2s"}}>
+                  <div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"1rem",color:setupGender===val?"#D8C8F0":"rgba(200,190,230,0.45)"}}>{label}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+          {/* Bio (optional) */}
+          <div style={{marginBottom:28}}>
+            <label style={{fontFamily:SANS,fontSize:"0.68rem",letterSpacing:"0.08em",textTransform:"uppercase",color:"rgba(200,190,230,0.35)",display:"block",marginBottom:8}}>Bio <span style={{textTransform:"none",fontWeight:400}}>(optional)</span></label>
+            <textarea value={setupBio} onChange={e=>setSetupBio(e.target.value.slice(0,160))} placeholder="A little about yourself..." style={{width:"100%",boxSizing:"border-box",background:"rgba(180,160,210,0.08)",border:"1px solid rgba(180,160,210,0.15)",borderRadius:12,padding:"12px 16px",color:"#E8E0F0",fontFamily:SERIF,fontSize:"0.88rem",minHeight:60,resize:"vertical",outline:"none",lineHeight:1.6}}/>
+          </div>
+          {/* Submit */}
+          <button onClick={()=>completeProfileSetup(user.uid)} disabled={!canSubmit} style={{width:"100%",background:canSubmit?"linear-gradient(135deg,rgba(180,160,210,0.25),rgba(180,160,210,0.10))":"rgba(180,160,210,0.04)",border:`1px solid ${canSubmit?"rgba(180,160,210,0.35)":"rgba(180,160,210,0.08)"}`,borderRadius:16,padding:"14px 0",cursor:canSubmit?"pointer":"default",color:canSubmit?"#E8E0F0":"rgba(200,190,230,0.25)",fontFamily:SERIF,fontStyle:"italic",fontSize:"1rem",transition:"all 0.3s",boxShadow:canSubmit?"0 4px 20px rgba(0,0,0,0.3)":"none"}}>
+            Continue
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  /* ══ EDIT PROFILE ═══════════════════════════════════════════════ */
+  if(screen==="edit-profile"&&user&&userProfile){
+    const ep=userProfile;
+    const [editU,setEditU]=[setupUsername,setSetupUsername];
+    const [editG,setEditG]=[setupGender,setSetupGender];
+    const [editB,setEditB]=[setupBio,setSetupBio];
+    const canSave=usernameAvailable||editU===ep.username;
+    return(
+      <div style={{position:"fixed",inset:0,background:"linear-gradient(180deg,#0E0B14 0%,#1A1420 100%)",fontFamily:SANS,overflowY:"auto",WebkitOverflowScrolling:"touch"}}>
+        <style>{GFONTS}{CSS}</style>
+        <div style={{maxWidth:420,margin:"0 auto",padding:"28px 22px 80px"}}>
+          <button onClick={()=>{setScreen(prevScreen||"cabin");setUsernameError("");setUsernameAvailable(false);}} style={{background:"rgba(26,22,30,0.55)",backdropFilter:"blur(12px)",border:"1px solid rgba(180,160,210,0.15)",borderRadius:999,padding:"8px 20px",cursor:"pointer",color:"rgba(230,220,248,0.6)",fontFamily:SANS,fontSize:"0.78rem",marginBottom:28,display:"inline-flex",alignItems:"center",gap:6}}>
+            Back
+          </button>
+          <div style={{textAlign:"center",marginBottom:28}}>
+            {user.photoURL?<img src={user.photoURL} alt="" referrerPolicy="no-referrer" style={{width:72,height:72,borderRadius:"50%",border:"2px solid rgba(180,160,210,0.25)",marginBottom:12}}/>:<div style={{width:72,height:72,borderRadius:"50%",background:"rgba(180,160,210,0.1)",border:"2px solid rgba(180,160,210,0.25)",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:DISPLAY,fontSize:"1.5rem",color:"#D8C8F0",margin:"0 auto 12px"}}>{(ep.username||"?")[0].toUpperCase()}</div>}
+            <h1 style={{fontFamily:DISPLAY,fontSize:"1.5rem",fontWeight:700,color:"#D8C8F0",margin:0}}>Edit Profile</h1>
+          </div>
+          {/* Username */}
+          <div style={{marginBottom:20}}>
+            <label style={{fontFamily:SANS,fontSize:"0.68rem",letterSpacing:"0.08em",textTransform:"uppercase",color:"rgba(200,190,230,0.35)",display:"block",marginBottom:8}}>Username</label>
+            <div style={{position:"relative"}}>
+              <input value={editU} onChange={e=>{const v=e.target.value.replace(/[^a-zA-Z0-9_]/g,"").slice(0,20);setEditU(v);setUsernameError("");if(v===ep.username){setUsernameAvailable(false);}}} onBlur={()=>{if(editU.length>=3&&editU!==ep.username)validateUsername(editU,user.uid);}} style={{width:"100%",boxSizing:"border-box",background:"rgba(180,160,210,0.08)",border:`1px solid ${usernameError?"rgba(220,100,100,0.4)":usernameAvailable?"rgba(100,180,100,0.4)":"rgba(180,160,210,0.15)"}`,borderRadius:12,padding:"12px 40px 12px 16px",color:"#E8E0F0",fontFamily:SANS,fontSize:"0.9rem",outline:"none"}}/>
+              <div style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)"}}>
+                {usernameChecking&&<span style={{color:"rgba(200,190,230,0.4)",fontSize:"0.7rem"}}>...</span>}
+                {usernameAvailable&&!usernameChecking&&<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6AAA6A" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>}
+                {usernameError&&!usernameChecking&&<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#CC6666" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>}
+              </div>
+            </div>
+            {usernameError&&<p style={{fontFamily:SANS,fontSize:"0.72rem",color:"rgba(220,120,120,0.8)",margin:"6px 0 0 4px"}}>{usernameError}</p>}
+          </div>
+          {/* Gender */}
+          <div style={{marginBottom:20}}>
+            <label style={{fontFamily:SANS,fontSize:"0.68rem",letterSpacing:"0.08em",textTransform:"uppercase",color:"rgba(200,190,230,0.35)",display:"block",marginBottom:8}}>Gender</label>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+              {[["male","Male"],["female","Female"]].map(([val,label])=>(
+                <button key={val} onClick={()=>setEditG(val)} style={{background:editG===val?"rgba(180,160,210,0.15)":"rgba(180,160,210,0.04)",border:`1.5px solid ${editG===val?"rgba(180,160,210,0.45)":"rgba(180,160,210,0.12)"}`,borderRadius:14,padding:"14px 16px",cursor:"pointer",textAlign:"center",transition:"all 0.2s"}}>
+                  <div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.95rem",color:editG===val?"#D8C8F0":"rgba(200,190,230,0.45)"}}>{label}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+          {/* Bio */}
+          <div style={{marginBottom:20}}>
+            <label style={{fontFamily:SANS,fontSize:"0.68rem",letterSpacing:"0.08em",textTransform:"uppercase",color:"rgba(200,190,230,0.35)",display:"block",marginBottom:8}}>Bio</label>
+            <textarea value={editB} onChange={e=>setEditB(e.target.value.slice(0,160))} placeholder="A little about yourself..." style={{width:"100%",boxSizing:"border-box",background:"rgba(180,160,210,0.08)",border:"1px solid rgba(180,160,210,0.15)",borderRadius:12,padding:"12px 16px",color:"#E8E0F0",fontFamily:SERIF,fontSize:"0.88rem",minHeight:60,resize:"vertical",outline:"none",lineHeight:1.6}}/>
+          </div>
+          {/* Anonymous toggle */}
+          <div style={{marginBottom:28,display:"flex",alignItems:"center",gap:12,background:"rgba(180,160,210,0.04)",border:"1px solid rgba(180,160,210,0.1)",borderRadius:12,padding:"14px 16px"}}>
+            <div style={{flex:1}}>
+              <div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.88rem",color:"#D8C8F0"}}>Anonymous in communities</div>
+              <div style={{fontFamily:SANS,fontSize:"0.66rem",color:"rgba(200,190,230,0.35)",marginTop:2}}>Posts show "Anonymous" instead of your name</div>
+            </div>
+            <button onClick={()=>{/* toggle stored in profile on save */const el=document.getElementById("anon-toggle");el.dataset.on=el.dataset.on==="true"?"false":"true";el.style.background=el.dataset.on==="true"?"rgba(100,180,100,0.4)":"rgba(180,160,210,0.15)";}} id="anon-toggle" data-on={ep.anonymous?"true":"false"} style={{width:44,height:24,borderRadius:12,background:ep.anonymous?"rgba(100,180,100,0.4)":"rgba(180,160,210,0.15)",border:"none",cursor:"pointer",position:"relative",transition:"background 0.2s",flexShrink:0}}>
+              <div style={{width:18,height:18,borderRadius:9,background:"#E8E0F0",position:"absolute",top:3,left:ep.anonymous?23:3,transition:"left 0.2s",boxShadow:"0 1px 4px rgba(0,0,0,0.3)"}}/>
+            </button>
+          </div>
+          {/* Save */}
+          <button onClick={async()=>{const anonEl=document.getElementById("anon-toggle");const isAnon=anonEl?.dataset.on==="true";const ok=await saveProfileEdits(user.uid,editU,editG,editB,isAnon);if(ok)setScreen(prevScreen||"cabin");}} disabled={!canSave&&editU!==ep.username} style={{width:"100%",background:"linear-gradient(135deg,rgba(180,160,210,0.25),rgba(180,160,210,0.10))",border:"1px solid rgba(180,160,210,0.35)",borderRadius:16,padding:"14px 0",cursor:"pointer",color:"#E8E0F0",fontFamily:SERIF,fontStyle:"italic",fontSize:"1rem",transition:"all 0.3s",boxShadow:"0 4px 20px rgba(0,0,0,0.3)"}}>
+            Save Changes
+          </button>
+        </div>
       </div>
     );
   }
