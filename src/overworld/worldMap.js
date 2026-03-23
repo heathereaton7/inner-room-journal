@@ -69,8 +69,7 @@ export function buildWorldGrid() {
   grid.fill(T.TREE);
 
   // ══════════════════════════════════════════════════════════════════
-  // 1. BUILDING PLAZAS — Tight walkable areas around each building
-  //    (just enough room to approach the entrance, no wide clearings)
+  // 1. BUILDING PLAZAS — Walkable areas around each building
   // ══════════════════════════════════════════════════════════════════
 
   // Cabin plaza (wraps building 12-16,51-55 + porch area)
@@ -89,65 +88,53 @@ export function buildWorldGrid() {
   rect(grid, 12, 64, 18, 69, T.GRASS);
 
   // ══════════════════════════════════════════════════════════════════
-  // 2. PATH CORRIDORS — Narrow 3-4 tile-wide paths connecting plazas
-  //    (forces character to follow the painted paths on the map)
+  // 2. PATH CORRIDORS — Follow the painted paths on the map
+  //    Upper Room sweeps diagonally down-left → Market → Junction
+  //    Junction branches left to Garden and south to Cabin
   // ══════════════════════════════════════════════════════════════════
 
-  // Cabin north to junction (N-S spine, 4 tiles wide)
-  rect(grid, 13, 37, 16, 50, T.GRASS);
+  // ── Upper Room diagonal path (sweeps down-left to Market area) ──
+  rect(grid, 28, 14, 32, 18, T.GRASS);   // just below Upper Room plaza
+  rect(grid, 25, 18, 29, 22, T.GRASS);   // diagonal segment 1
+  rect(grid, 22, 22, 26, 26, T.GRASS);   // diagonal segment 2
+  rect(grid, 19, 26, 23, 29, T.GRASS);   // connects into Market plaza top
 
-  // Junction crossroads hub (where paths branch E-W)
-  rect(grid, 13, 34, 19, 37, T.GRASS);
+  // ── Junction area (where Market, Garden, and Cabin paths meet) ──
+  rect(grid, 14, 26, 19, 30, T.GRASS);   // junction hub left of market
 
-  // Junction south toward garden (vertical connector)
-  rect(grid, 13, 28, 15, 34, T.GRASS);
+  // ── Garden connector (junction west to garden plaza) ──
+  rect(grid, 11, 24, 14, 28, T.GRASS);   // connects junction to garden
 
-  // Garden approach from east (connects to garden plaza)
-  rect(grid, 11, 25, 13, 28, T.GRASS);
+  // ── Cabin N-S corridor (junction south to cabin) ──
+  rect(grid, 13, 30, 16, 50, T.GRASS);   // long vertical spine
 
-  // Junction east to market (already covered by junction hub + market plaza overlap)
-  // Add narrow connector to bridge the gap
-  rect(grid, 19, 33, 19, 37, T.GRASS);
-
-  // Market north to Upper Room (4 tiles wide)
-  rect(grid, 30, 14, 33, 29, T.GRASS);
-
-  // Cabin south to river bridge (connects plaza to bridge)
+  // ── Cabin south to river bridge ──
   rect(grid, 13, 59, 17, 64, T.GRASS);
 
   // ══════════════════════════════════════════════════════════════════
-  // 3. MARK PATH TILES — Distinguish paths from open grass
-  //    (Both are walkable; paths just mark the intended route)
+  // 3. MARK PATH TILES — Painted path markers (cosmetic, all walkable)
   // ══════════════════════════════════════════════════════════════════
 
-  // Main north-south spine from cabin to junction
-  for (let r = 37; r <= 58; r++) {
-    set(grid, 14, r, T.PATH);
-    set(grid, 15, r, T.PATH);
+  // Diagonal from Upper Room down to Market area
+  for (let i = 0; i <= 16; i++) {
+    const c = 30 - i;   // cols 30 → 14
+    const r = 14 + i;   // rows 14 → 30
+    if (c >= 0 && r < WORLD_ROWS) {
+      set(grid, c, r, T.PATH);
+      set(grid, c + 1, r, T.PATH);
+    }
   }
 
-  // East-west path from junction to market
-  for (let c = 15; c <= 24; c++) {
-    set(grid, c, 35, T.PATH);
-    set(grid, c, 36, T.PATH);
-  }
-
-  // Path from junction south toward garden
-  for (let r = 25; r <= 34; r++) {
-    set(grid, 13, r, T.PATH);
-    set(grid, 14, r, T.PATH);
-  }
-
-  // East-west path into garden
-  for (let c = 8; c <= 13; c++) {
+  // E-W path from junction to garden
+  for (let c = 8; c <= 15; c++) {
     set(grid, c, 26, T.PATH);
     set(grid, c, 27, T.PATH);
   }
 
-  // Path from market area north to upper room
-  for (let r = 12; r <= 29; r++) {
-    set(grid, 31, r, T.PATH);
-    set(grid, 32, r, T.PATH);
+  // N-S spine from junction down to cabin
+  for (let r = 30; r <= 58; r++) {
+    set(grid, 14, r, T.PATH);
+    set(grid, 15, r, T.PATH);
   }
 
   // Path south from cabin to river bridge
@@ -273,14 +260,14 @@ function buildFarmArea(grid) {
   // Crop field area (includes fields + approach paths)
   rect(grid, 14, 93, 34, 103, T.GRASS);
 
-  // South from spine toward water wheel (narrow corridor)
-  rect(grid, 17, 110, 20, 120, T.GRASS);
+  // South from spine toward water wheel (wider corridor)
+  rect(grid, 14, 110, 22, 120, T.GRASS);
 
-  // Water wheel plaza
-  rect(grid, 14, 120, 22, 128, T.GRASS);
+  // Water wheel plaza (wide area around waterfall + wheel)
+  rect(grid, 10, 118, 26, 132, T.GRASS);
 
   // Bottom exit area
-  rect(grid, 16, 128, 20, 136, T.GRASS);
+  rect(grid, 14, 132, 22, 138, T.GRASS);
 
   // ── 3. FARM PATHS ──
 
