@@ -1568,6 +1568,7 @@ function AppInner(){
   const [prevScreen,    setPrevScreen]    = useState("cabin");
   const [spaceTransit,  setSpaceTransit]  = useState(false);
   const [transitDir,    setTransitDir]    = useState(null);
+  const [onboardStep,   setOnboardStep]   = useState(0);
   const [overworldPos,  setOverworldPos]  = useState(null);
   const [stoveZoom,     setStoveZoom]     = useState(false);
   const [windowZoom,    setWindowZoom]    = useState(false);
@@ -1762,6 +1763,7 @@ function AppInner(){
   useEffect(()=>{setMenuOpen(false);},[screen]);
   useEffect(()=>{if(screen!=="upper-room"){setUpperRoomView(null);setUserSearch("");setUserResults([]);}},[screen]);
   useEffect(()=>{if(screen==="edit-profile"&&userProfile){setSetupUsername(userProfile.username||"");setSetupGender(userProfile.gender||null);setSetupBio(userProfile.bio||"");setUsernameError("");setUsernameAvailable(false);}},[screen]);
+  useEffect(()=>{if(screen!=="profile-onboard"||onboardStep!==4)return;const t=setTimeout(()=>{setIsOnboarded(true);dbSave("irj-onboarded",true);fadeOutAmbient();setScreen("cabin");},3000);return()=>clearTimeout(t);},[screen,onboardStep]);
 
   // ── AMBIENT SOUND — auto-play / stop per screen ──
   useEffect(()=>{
@@ -2566,25 +2568,31 @@ function AppInner(){
       const profileRef=doc(db,"userProfiles",uid);
       const snap=await getDoc(profileRef);
       if(!snap.exists()){
-        // New user — show setup screen instead of auto-creating
+        // Check if user already filled out onboarding steps in this session
+        if(setupUsername&&setupGender){
+          await completeProfileSetup(uid);
+          setOnboardStep(4);setScreen("profile-onboard");
+          return;
+        }
         setSetupUsername(displayName||"");
-        setSetupGender(null);
-        setSetupBio("");
-        setShowProfileSetup(true);
+        setSetupGender(null);setSetupBio("");
+        setOnboardStep(1);setScreen("profile-onboard");
         return;
       }
       const data=snap.data();
       if(!data.gender||!data.usernameLower){
-        // Existing user missing required fields — show setup to complete
+        if(setupUsername&&setupGender){
+          await completeProfileSetup(uid);
+          setOnboardStep(4);setScreen("profile-onboard");
+          setUserProfile({id:uid,...data});
+          return;
+        }
         setSetupUsername(data.username||displayName||"");
-        setSetupGender(data.gender||null);
-        setSetupBio(data.bio||"");
-        setShowProfileSetup(true);
-        // Still set profile so app works while setup is pending
+        setSetupGender(data.gender||null);setSetupBio(data.bio||"");
+        setOnboardStep(1);setScreen("profile-onboard");
         setUserProfile({id:uid,...data});
         return;
       }
-      // Returning user with complete profile
       await setDoc(profileRef,{lastLogin:serverTimestamp()},{merge:true});
       setUserProfile({id:uid,...data});
     }catch(e){console.warn("ensureUserProfile error:",e);}
@@ -3843,7 +3851,7 @@ function AppInner(){
             setTimeout(()=>setDoorPhase("enter"),3300);
             setTimeout(()=>{setDoorOpening(false);setDoorPhase(null);setScreen("cabin");},4000);
           }else{
-            setDontShowAgain(false);startAmbient();setSceneIdx(0);setScenePrev(-1);setSceneTransit(false);setScreen("onboard");
+            setOnboardStep(0);startAmbient();setScreen("profile-onboard");
           }
         }} style={{background:"linear-gradient(135deg, rgba(201,169,110,0.22), rgba(201,169,110,0.06))",backdropFilter:"blur(10px)",WebkitBackdropFilter:"blur(10px)",border:"1px solid rgba(201,169,110,0.45)",color:"#FFF8E8",padding:"16px 52px",borderRadius:"30px",cursor:"pointer",fontSize:"0.92rem",fontFamily:SERIF,fontWeight:600,letterSpacing:"0.14em",textTransform:"none",fontStyle:"italic",boxShadow:"0 4px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,248,232,0.06)"}}>
           {isOnboarded?"Return to the cabin":"Enter the cabin"}
@@ -3936,6 +3944,156 @@ function AppInner(){
         {sceneIdx<SCENES.length-1&&<button onClick={skipOnboarding} style={{marginTop:"10px",background:"transparent",border:"none",cursor:"pointer",color:"rgba(255,248,232,0.25)",fontSize:"0.74rem",fontFamily:SANS,letterSpacing:"0.08em",transition:"color 0.2s"}} onMouseEnter={e=>e.target.style.color="rgba(255,248,232,0.5)"} onMouseLeave={e=>e.target.style.color="rgba(255,248,232,0.25)"}>Skip intro</button>}
       </div>
     </div>
+    );
+  }
+
+  /* ══ PROFILE ONBOARDING — Immersive 5-step cabin setup ═════════ */
+  if(screen==="profile-onboard"){
+    const step1Ok=setupUsername.length>=3&&(usernameAvailable||!user)&&!usernameChecking;
+    const CAM={
+      1:{transform:"scale(1.4) translate(15%, 10%)"},
+      2:{transform:"scale(1.3) translate(-10%, -5%)"},
+      3:{transform:"scale(1.1) translate(0%, 0%)"},
+      4:{transform:"scale(1) translate(0%, 0%)"},
+    };
+    const cam=CAM[onboardStep]||CAM[4];
+
+    return(
+      <div style={{position:"fixed",inset:0,overflow:"hidden",background:"#0A0806"}}>
+        <style>{GFONTS}{CSS}</style>
+
+        {/* ── STEP 0: Entry scene (outdoor) ── */}
+        {onboardStep===0&&(
+          <div style={{position:"absolute",inset:0}}>
+            <img src="/outdoor.png" alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",objectPosition:"center 30%",filter:"brightness(0.85)",animation:"sceneFadeIn 1s ease both"}}/>
+            <div style={{position:"absolute",inset:0,background:"linear-gradient(to bottom,transparent 0%,transparent 40%,rgba(10,8,6,0.55) 65%,rgba(10,8,6,0.92) 88%,rgba(10,8,6,0.98) 100%)"}}/>
+            <div style={{position:"absolute",inset:0,pointerEvents:"none",zIndex:2}}><Fireflies/></div>
+            <div style={{position:"absolute",bottom:0,left:0,right:0,zIndex:3,display:"flex",flexDirection:"column",alignItems:"center",padding:"0 32px 56px"}}>
+              <div className="fu" style={{display:"flex",alignItems:"center",gap:"10px",marginBottom:"16px"}}>
+                <div style={{width:"32px",height:"1px",background:"linear-gradient(90deg,transparent,rgba(201,169,110,0.4))"}}/>
+                <div style={{width:"4px",height:"4px",borderRadius:"50%",background:"rgba(201,169,110,0.35)"}}/>
+                <div style={{width:"32px",height:"1px",background:"linear-gradient(90deg,rgba(201,169,110,0.4),transparent)"}}/>
+              </div>
+              <h1 className="fu2" style={{fontFamily:DISPLAY,fontSize:"clamp(1.6rem,6.5vw,2.6rem)",fontWeight:700,color:"#FFF8E8",margin:"0 0 12px",textAlign:"center",textShadow:"0 2px 24px rgba(0,0,0,0.8),0 0 50px rgba(201,169,110,0.12)",lineHeight:1.25,maxWidth:"400px",letterSpacing:"0.03em"}}>
+                A place has been prepared for you.
+              </h1>
+              <div className="fu3" style={{width:"50px",height:"1px",background:"linear-gradient(90deg,transparent,rgba(201,169,110,0.5),transparent)",margin:"4px 0 14px"}}/>
+              <p className="fu3" style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.88rem,3vw,1.04rem)",color:"rgba(255,248,232,0.6)",margin:"0 0 32px",textAlign:"center",maxWidth:"340px",lineHeight:1.7,letterSpacing:"0.02em",textShadow:"0 1px 8px rgba(0,0,0,0.5)"}}>
+                Step inside and make it your own.
+              </p>
+              <button className="fu4 door-btn" onClick={()=>setOnboardStep(1)} style={{background:"linear-gradient(135deg,rgba(201,169,110,0.22),rgba(201,169,110,0.06))",backdropFilter:"blur(10px)",WebkitBackdropFilter:"blur(10px)",border:"1px solid rgba(201,169,110,0.45)",color:"#FFF8E8",padding:"15px 50px",borderRadius:"28px",cursor:"pointer",fontSize:"0.9rem",fontFamily:SERIF,fontWeight:600,letterSpacing:"0.14em",fontStyle:"italic",boxShadow:"0 4px 24px rgba(0,0,0,0.3),inset 0 1px 0 rgba(255,248,232,0.06)"}}>
+                Enter
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ── STEPS 1-4: ImmersiveCabin with camera ── */}
+        {onboardStep>=1&&(
+          <div style={{position:"absolute",inset:0,overflow:"hidden"}}>
+            <div style={{position:"absolute",inset:0,transform:cam.transform,transition:"transform 1.2s cubic-bezier(0.25,0.46,0.45,0.94)",willChange:"transform",transformOrigin:"center center"}}>
+              <ImmersiveCabin/>
+            </div>
+
+            {/* ── STEP 1: Username (desk) ── */}
+            {onboardStep===1&&(
+              <div style={{position:"absolute",inset:0,zIndex:10,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-end",padding:"0 0 48px"}}>
+                <div style={{position:"absolute",bottom:0,left:0,right:0,height:"65%",background:"linear-gradient(to top,rgba(6,4,2,0.94) 0%,rgba(6,4,2,0.7) 50%,transparent 100%)",pointerEvents:"none"}}/>
+                <div className="fu" style={{position:"relative",zIndex:1,width:"100%",maxWidth:"420px",padding:"0 28px",display:"flex",flexDirection:"column",alignItems:"center"}}>
+                  <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.88rem,3vw,1.05rem)",color:"rgba(255,248,232,0.55)",margin:"0 0 10px",textAlign:"center",letterSpacing:"0.04em",lineHeight:1.6}}>
+                    What shall we call you here?
+                  </p>
+                  <div style={{width:"100%",position:"relative",marginBottom:"8px"}}>
+                    <input value={setupUsername} onChange={e=>{const v=e.target.value.replace(/[^a-zA-Z0-9_]/g,"").slice(0,20);setSetupUsername(v);setUsernameError("");setUsernameAvailable(false);}} onBlur={()=>{if(setupUsername.length>=3){if(!user){setUsernameAvailable(true);return;}validateUsername(setupUsername,user?.uid);}}} autoCapitalize="none" autoCorrect="off" spellCheck={false} placeholder="your name here..." style={{width:"100%",boxSizing:"border-box",background:"transparent",border:"none",borderBottom:`1px solid ${usernameError?"rgba(220,100,100,0.5)":usernameAvailable?"rgba(100,180,100,0.5)":"rgba(201,169,110,0.35)"}`,padding:"10px 36px 10px 4px",color:"#FFF8E8",fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(1.2rem,5vw,1.6rem)",outline:"none",textAlign:"center",letterSpacing:"0.06em",transition:"border-color 0.3s"}}/>
+                    <div style={{position:"absolute",right:4,top:"50%",transform:"translateY(-50%)"}}>
+                      {usernameChecking&&<span style={{color:"rgba(255,248,232,0.3)",fontSize:"0.75rem",fontFamily:SANS}}>...</span>}
+                      {usernameAvailable&&!usernameChecking&&<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(100,180,100,0.8)" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>}
+                      {usernameError&&!usernameChecking&&<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(220,100,100,0.6)" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>}
+                    </div>
+                  </div>
+                  {usernameError&&<p style={{fontFamily:SANS,fontSize:"0.7rem",color:"rgba(220,120,120,0.75)",margin:"4px 0 0",textAlign:"center"}}>{usernameError}</p>}
+                  {!usernameError&&<p style={{fontFamily:SANS,fontSize:"0.62rem",color:"rgba(255,248,232,0.2)",margin:"4px 0 0",textAlign:"center",letterSpacing:"0.04em"}}>Letters, numbers, and underscores</p>}
+                  <button onClick={()=>{if(step1Ok)setOnboardStep(2);}} disabled={!step1Ok} className={step1Ok?"door-btn":""} style={{marginTop:"28px",background:step1Ok?"linear-gradient(135deg,rgba(201,169,110,0.22),rgba(201,169,110,0.06))":"transparent",border:`1px solid ${step1Ok?"rgba(201,169,110,0.45)":"rgba(255,248,232,0.08)"}`,borderRadius:"28px",padding:"13px 44px",cursor:step1Ok?"pointer":"default",color:step1Ok?"#FFF8E8":"rgba(255,248,232,0.2)",fontFamily:SERIF,fontStyle:"italic",fontWeight:600,fontSize:"0.88rem",letterSpacing:"0.1em",transition:"all 0.3s"}}>
+                    Continue
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* ── STEP 2: Gender (mirror) ── */}
+            {onboardStep===2&&(
+              <div style={{position:"absolute",inset:0,zIndex:10,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-end",padding:"0 0 52px"}}>
+                <div style={{position:"absolute",bottom:0,left:0,right:0,height:"60%",background:"linear-gradient(to top,rgba(6,4,2,0.94) 0%,rgba(6,4,2,0.65) 50%,transparent 100%)",pointerEvents:"none"}}/>
+                <div className="fu" style={{position:"relative",zIndex:1,width:"100%",maxWidth:"380px",padding:"0 28px",display:"flex",flexDirection:"column",alignItems:"center"}}>
+                  <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.88rem,3vw,1.05rem)",color:"rgba(255,248,232,0.55)",margin:"0 0 20px",textAlign:"center",letterSpacing:"0.04em",lineHeight:1.6}}>
+                    How do you wish to be known?
+                  </p>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"14px",width:"100%"}}>
+                    {[["male","Male"],["female","Female"]].map(([val,label])=>(
+                      <button key={val} onClick={()=>{setSetupGender(val);setTimeout(()=>setOnboardStep(3),600);}} style={{background:setupGender===val?"linear-gradient(135deg,rgba(201,169,110,0.18),rgba(201,169,110,0.06))":"rgba(255,248,232,0.04)",border:`1.5px solid ${setupGender===val?"rgba(201,169,110,0.55)":"rgba(255,248,232,0.12)"}`,borderRadius:"16px",padding:"22px 16px",cursor:"pointer",transition:"all 0.25s ease",boxShadow:setupGender===val?"0 0 22px rgba(201,169,110,0.18),inset 0 0 10px rgba(201,169,110,0.04)":"none"}}>
+                        <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"1.1rem",color:setupGender===val?"#FFF8E8":"rgba(255,248,232,0.45)",transition:"color 0.25s",letterSpacing:"0.04em"}}>{label}</span>
+                      </button>
+                    ))}
+                  </div>
+                  <button onClick={()=>setOnboardStep(1)} style={{marginTop:"20px",background:"transparent",border:"none",cursor:"pointer",color:"rgba(255,248,232,0.22)",fontFamily:SERIF,fontStyle:"italic",fontSize:"0.78rem",letterSpacing:"0.06em",transition:"color 0.2s"}} onMouseEnter={e=>e.target.style.color="rgba(255,248,232,0.45)"} onMouseLeave={e=>e.target.style.color="rgba(255,248,232,0.22)"}>
+                    Back
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* ── STEP 3: Sign-in choice ── */}
+            {onboardStep===3&&(()=>{
+              if(user){completeProfileSetup(user.uid).then(()=>setOnboardStep(4));return null;}
+              return(
+                <div style={{position:"absolute",inset:0,zIndex:10,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-end",padding:"0 0 52px"}}>
+                  <div style={{position:"absolute",bottom:0,left:0,right:0,height:"65%",background:"linear-gradient(to top,rgba(6,4,2,0.94) 0%,rgba(6,4,2,0.65) 50%,transparent 100%)",pointerEvents:"none"}}/>
+                  <div className="fu" style={{position:"relative",zIndex:1,width:"100%",maxWidth:"380px",padding:"0 28px",display:"flex",flexDirection:"column",alignItems:"center"}}>
+                    <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.9rem,3vw,1.1rem)",color:"rgba(255,248,232,0.7)",margin:"0 0 24px",textAlign:"center",letterSpacing:"0.03em",lineHeight:1.65}}>
+                      Would you like to save your place?
+                    </p>
+                    <button className="door-btn" onClick={handleGoogleSignIn} style={{width:"100%",background:"linear-gradient(135deg,rgba(201,169,110,0.22),rgba(201,169,110,0.06))",border:"1px solid rgba(201,169,110,0.45)",borderRadius:"16px",padding:"16px 0",cursor:"pointer",color:"#FFF8E8",fontFamily:SERIF,fontStyle:"italic",fontSize:"0.95rem",fontWeight:600,letterSpacing:"0.06em",marginBottom:"12px",transition:"all 0.3s"}}>
+                      Save my place
+                    </button>
+                    <button onClick={()=>{try{localStorage.setItem("irj-localProfile",JSON.stringify({username:setupUsername,gender:setupGender}));}catch(e){}setIsOnboarded(true);dbSave("irj-onboarded",true);setOnboardStep(4);}} style={{width:"100%",background:"transparent",border:"1px solid rgba(255,248,232,0.12)",borderRadius:"16px",padding:"14px 0",cursor:"pointer",color:"rgba(255,248,232,0.45)",fontFamily:SERIF,fontStyle:"italic",fontSize:"0.88rem",letterSpacing:"0.05em",marginBottom:"16px",transition:"all 0.3s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor="rgba(255,248,232,0.25)";e.currentTarget.style.color="rgba(255,248,232,0.65)";}} onMouseLeave={e=>{e.currentTarget.style.borderColor="rgba(255,248,232,0.12)";e.currentTarget.style.color="rgba(255,248,232,0.45)";}}>
+                      Continue for now
+                    </button>
+                    <p style={{fontFamily:SANS,fontSize:"0.65rem",color:"rgba(255,248,232,0.2)",textAlign:"center",margin:0,lineHeight:1.55,letterSpacing:"0.03em",maxWidth:"280px"}}>
+                      Without signing in, your journal stays on this device only.
+                    </p>
+                    <button onClick={()=>setOnboardStep(2)} style={{marginTop:"16px",background:"transparent",border:"none",cursor:"pointer",color:"rgba(255,248,232,0.2)",fontFamily:SERIF,fontStyle:"italic",fontSize:"0.75rem",letterSpacing:"0.06em"}} onMouseEnter={e=>e.target.style.color="rgba(255,248,232,0.4)"} onMouseLeave={e=>e.target.style.color="rgba(255,248,232,0.2)"}>
+                      Back
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* ── STEP 4: Welcome ── */}
+            {onboardStep===4&&(
+              <div onClick={()=>{setIsOnboarded(true);dbSave("irj-onboarded",true);fadeOutAmbient();setScreen("cabin");}} style={{position:"absolute",inset:0,zIndex:10,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",cursor:"pointer"}}>
+                <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse at center,rgba(255,200,80,0.08) 0%,transparent 70%)",pointerEvents:"none",animation:"candleGlowPulse 3.5s ease-in-out infinite"}}/>
+                <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:"12px",animation:"fadeUp 1s 0.3s ease both"}}>
+                  <div style={{display:"flex",alignItems:"center",gap:"10px",marginBottom:"4px"}}>
+                    <div style={{width:"40px",height:"1px",background:"linear-gradient(90deg,transparent,rgba(201,169,110,0.5))"}}/>
+                    <div style={{width:"5px",height:"5px",borderRadius:"50%",background:"rgba(201,169,110,0.4)"}}/>
+                    <div style={{width:"40px",height:"1px",background:"linear-gradient(90deg,rgba(201,169,110,0.5),transparent)"}}/>
+                  </div>
+                  <h1 style={{fontFamily:DISPLAY,fontSize:"clamp(2rem,8vw,3.2rem)",fontWeight:700,color:"#FFF8E8",margin:0,textAlign:"center",textShadow:"0 2px 24px rgba(0,0,0,0.7),0 0 60px rgba(201,169,110,0.15)",letterSpacing:"0.04em",lineHeight:1.2}}>
+                    Welcome, {setupUsername||"friend"}.
+                  </h1>
+                  <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.9rem,3vw,1.1rem)",color:"rgba(255,248,232,0.5)",margin:0,textAlign:"center",maxWidth:"320px",lineHeight:1.65,letterSpacing:"0.03em",animation:"fadeUp 1s 0.7s ease both"}}>
+                    Your journal is waiting.
+                  </p>
+                  <p style={{fontFamily:SANS,fontSize:"0.64rem",color:"rgba(255,248,232,0.18)",margin:"12px 0 0",letterSpacing:"0.08em",animation:"fadeUp 1s 1.4s ease both"}}>
+                    Tap anywhere to enter
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     );
   }
 
@@ -6500,55 +6658,7 @@ function AppInner(){
     );
   }
 
-  /* ══ PROFILE SETUP — shown after first sign-in ═══════════════════ */
-  if(showProfileSetup&&user){
-    const canSubmit=usernameAvailable&&setupGender&&!usernameChecking;
-    return(
-      <div style={{position:"fixed",inset:0,background:"linear-gradient(180deg,#0E0B14 0%,#1A1420 100%)",zIndex:9000,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:SANS}}>
-        <style>{GFONTS}{CSS}</style>
-        <div style={{maxWidth:420,width:"90%",maxHeight:"90vh",overflowY:"auto",padding:"36px 28px"}}>
-          <div style={{textAlign:"center",marginBottom:32}}>
-            <h1 style={{fontFamily:DISPLAY,fontSize:"1.8rem",fontWeight:700,color:"#D8C8F0",margin:"0 0 10px"}}>Set Up Your Profile</h1>
-            <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.88rem",color:"rgba(200,190,230,0.45)",margin:0,lineHeight:1.6}}>Choose a username to save your journal and connect with others.</p>
-          </div>
-          {/* Username */}
-          <div style={{marginBottom:24}}>
-            <label style={{fontFamily:SANS,fontSize:"0.68rem",letterSpacing:"0.08em",textTransform:"uppercase",color:"rgba(200,190,230,0.35)",display:"block",marginBottom:8}}>Username</label>
-            <div style={{position:"relative"}}>
-              <input value={setupUsername} onChange={e=>{const v=e.target.value.replace(/[^a-zA-Z0-9_]/g,"").slice(0,20);setSetupUsername(v);setUsernameError("");setUsernameAvailable(false);}} onBlur={()=>{if(setupUsername.length>=3)validateUsername(setupUsername,user.uid);}} placeholder="your_username" style={{width:"100%",boxSizing:"border-box",background:"rgba(180,160,210,0.08)",border:`1px solid ${usernameError?"rgba(220,100,100,0.4)":usernameAvailable?"rgba(100,180,100,0.4)":"rgba(180,160,210,0.15)"}`,borderRadius:12,padding:"12px 40px 12px 16px",color:"#E8E0F0",fontFamily:SANS,fontSize:"0.9rem",outline:"none",transition:"border-color 0.2s"}}/>
-              <div style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)"}}>
-                {usernameChecking&&<span style={{color:"rgba(200,190,230,0.4)",fontSize:"0.7rem"}}>...</span>}
-                {usernameAvailable&&!usernameChecking&&<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6AAA6A" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>}
-                {usernameError&&!usernameChecking&&<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#CC6666" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>}
-              </div>
-            </div>
-            {usernameError&&<p style={{fontFamily:SANS,fontSize:"0.72rem",color:"rgba(220,120,120,0.8)",margin:"6px 0 0 4px"}}>{usernameError}</p>}
-            <p style={{fontFamily:SANS,fontSize:"0.62rem",color:"rgba(200,190,230,0.25)",margin:"6px 0 0 4px"}}>3-20 characters, letters, numbers, and underscores</p>
-          </div>
-          {/* Gender */}
-          <div style={{marginBottom:24}}>
-            <label style={{fontFamily:SANS,fontSize:"0.68rem",letterSpacing:"0.08em",textTransform:"uppercase",color:"rgba(200,190,230,0.35)",display:"block",marginBottom:8}}>I am</label>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-              {[["male","Male"],["female","Female"]].map(([val,label])=>(
-                <button key={val} onClick={()=>setSetupGender(val)} style={{background:setupGender===val?"rgba(180,160,210,0.15)":"rgba(180,160,210,0.04)",border:`1.5px solid ${setupGender===val?"rgba(180,160,210,0.45)":"rgba(180,160,210,0.12)"}`,borderRadius:14,padding:"18px 16px",cursor:"pointer",textAlign:"center",transition:"all 0.2s"}}>
-                  <div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"1rem",color:setupGender===val?"#D8C8F0":"rgba(200,190,230,0.45)"}}>{label}</div>
-                </button>
-              ))}
-            </div>
-          </div>
-          {/* Bio (optional) */}
-          <div style={{marginBottom:28}}>
-            <label style={{fontFamily:SANS,fontSize:"0.68rem",letterSpacing:"0.08em",textTransform:"uppercase",color:"rgba(200,190,230,0.35)",display:"block",marginBottom:8}}>Bio <span style={{textTransform:"none",fontWeight:400}}>(optional)</span></label>
-            <textarea value={setupBio} onChange={e=>setSetupBio(e.target.value.slice(0,160))} placeholder="A little about yourself..." style={{width:"100%",boxSizing:"border-box",background:"rgba(180,160,210,0.08)",border:"1px solid rgba(180,160,210,0.15)",borderRadius:12,padding:"12px 16px",color:"#E8E0F0",fontFamily:SERIF,fontSize:"0.88rem",minHeight:60,resize:"vertical",outline:"none",lineHeight:1.6}}/>
-          </div>
-          {/* Submit */}
-          <button onClick={()=>completeProfileSetup(user.uid)} disabled={!canSubmit} style={{width:"100%",background:canSubmit?"linear-gradient(135deg,rgba(180,160,210,0.25),rgba(180,160,210,0.10))":"rgba(180,160,210,0.04)",border:`1px solid ${canSubmit?"rgba(180,160,210,0.35)":"rgba(180,160,210,0.08)"}`,borderRadius:16,padding:"14px 0",cursor:canSubmit?"pointer":"default",color:canSubmit?"#E8E0F0":"rgba(200,190,230,0.25)",fontFamily:SERIF,fontStyle:"italic",fontSize:"1rem",transition:"all 0.3s",boxShadow:canSubmit?"0 4px 20px rgba(0,0,0,0.3)":"none"}}>
-            Continue
-          </button>
-        </div>
-      </div>
-    );
-  }
+  /* Old profile setup overlay removed — replaced by immersive profile-onboard screen */
 
   /* ══ EDIT PROFILE ═══════════════════════════════════════════════ */
   if(screen==="edit-profile"&&user&&userProfile){
