@@ -65,8 +65,8 @@ function building(grid, left, top, w, h, intType, doorSide = 0) {
 export function buildWorldGrid() {
   const grid = new Uint8Array(WORLD_COLS * WORLD_ROWS);
 
-  // ── Fill entire world with forest (solid) ──
-  grid.fill(T.TREE);
+  // ── Fill entire world with walkable grass (no collision) ──
+  grid.fill(T.GRASS);
 
   // ══════════════════════════════════════════════════════════════════
   // 1. BUILDING PLAZAS — Walkable areas around each building
