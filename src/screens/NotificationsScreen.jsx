@@ -6,7 +6,7 @@ import { collection, query, where, orderBy, limit, getDocs, startAfter, httpsCal
 const PAGE_SIZE = 20;
 
 export default function NotificationsScreen({
-  user, db, functions, setScreen, prevScreen, setToast, viewProfile,
+  user, db, functions, setScreen, prevScreen, setToast, viewProfile, onBack, onFeedTap,
 }) {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading]             = useState(true);
@@ -74,7 +74,7 @@ export default function NotificationsScreen({
     if (notif.type === "follow") {
       viewProfile(notif.actorId);
     } else {
-      setScreen("feed");
+      onFeedTap ? onFeedTap() : setScreen("feed");
     }
   }
 
@@ -224,7 +224,7 @@ export default function NotificationsScreen({
         <div style={{ maxWidth: 520, margin: "0 auto", padding: "28px 22px 80px" }}>
 
           {/* Back button */}
-          <button onClick={() => setScreen(prevScreen || "map")}
+          <button onClick={() => onBack ? onBack() : setScreen(prevScreen || "map")}
             style={{ background: "rgba(26,22,18,0.55)", backdropFilter: "blur(12px)",
               WebkitBackdropFilter: "blur(12px)",
               border: "1px solid rgba(201,169,110,0.12)", borderRadius: 999,
@@ -235,7 +235,7 @@ export default function NotificationsScreen({
               animation: "fadeUp .6s ease both" }}
             onMouseEnter={e => e.target.style.color = B.gold}
             onMouseLeave={e => e.target.style.color = "rgba(180,165,148,0.55)"}>
-            Back to village
+            {onBack ? "Back to Upper Room" : "Back to village"}
           </button>
 
           {/* Title */}

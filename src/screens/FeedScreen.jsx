@@ -8,7 +8,7 @@ const PAGE_SIZE = 20;
 
 export default function FeedScreen({
   user, db, functions, setScreen, prevScreen, setToast, addCandles, viewProfile,
-  trackMission,
+  trackMission, onBack,
 }) {
   const [feedPosts, setFeedPosts]       = useState([]);
   const [feedLoading, setFeedLoading]   = useState(true);
@@ -181,8 +181,8 @@ export default function FeedScreen({
         <div style={{ maxWidth: 520, margin: "0 auto", padding: "28px 22px 80px" }}>
 
           {/* Back button */}
-          <button onClick={() => setScreen(prevScreen || "map")} style={{ background: "rgba(26,22,18,0.55)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", border: "1px solid rgba(201,169,110,0.12)", borderRadius: 999, padding: "8px 20px", cursor: "pointer", color: "rgba(180,165,148,0.55)", fontFamily: SANS, fontSize: "0.78rem", marginBottom: 28, transition: "all 0.2s", display: "inline-flex", alignItems: "center", gap: 6, animation: "fadeUp .6s ease both" }} onMouseEnter={e => e.target.style.color = B.gold} onMouseLeave={e => e.target.style.color = "rgba(180,165,148,0.55)"}>
-            Back to village
+          <button onClick={() => onBack ? onBack() : setScreen(prevScreen || "map")} style={{ background: "rgba(26,22,18,0.55)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", border: "1px solid rgba(201,169,110,0.12)", borderRadius: 999, padding: "8px 20px", cursor: "pointer", color: "rgba(180,165,148,0.55)", fontFamily: SANS, fontSize: "0.78rem", marginBottom: 28, transition: "all 0.2s", display: "inline-flex", alignItems: "center", gap: 6, animation: "fadeUp .6s ease both" }} onMouseEnter={e => e.target.style.color = B.gold} onMouseLeave={e => e.target.style.color = "rgba(180,165,148,0.55)"}>
+            {onBack ? "Back to Upper Room" : "Back to village"}
           </button>
 
           {/* Title */}

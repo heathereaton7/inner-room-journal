@@ -1697,6 +1697,10 @@ function AppInner(){
   const [devPremiumOverride,setDevPremiumOverride]= useState(false);
   const [communityTab,      setCommunityTab]      = useState("browse"); // "browse"|"myListings"|"npc"
   const [prayerWallTab,     setPrayerWallTab]     = useState("mine"); // "mine"|"community"
+  const [upperRoomView,     setUpperRoomView]     = useState(null); // null|"scriptures"|"prayer-wall"|"feed"|"notifications"|"find-people"
+  const [userSearch,        setUserSearch]         = useState("");
+  const [userResults,       setUserResults]        = useState([]);
+  const [userSearchLoading, setUserSearchLoading]  = useState(false);
   const [farmerSearch,      setFarmerSearch]       = useState("");
   const [farmerResults,     setFarmerResults]     = useState([]);
   const [communityLoading,  setCommunityLoading]  = useState(false);
@@ -1749,6 +1753,7 @@ function AppInner(){
 
   // ── Close menu drawer on screen change ──
   useEffect(()=>{setMenuOpen(false);},[screen]);
+  useEffect(()=>{if(screen!=="upper-room"){setUpperRoomView(null);setUserSearch("");setUserResults([]);}},[screen]);
 
   // ── AMBIENT SOUND — auto-play / stop per screen ──
   useEffect(()=>{
@@ -2720,6 +2725,21 @@ function AppInner(){
     setCommunityLoading(false);
   }
 
+  async function searchUsers(searchTerm){
+    if(!db) return;
+    setUserSearchLoading(true);
+    try{
+      const q=query(collection(db,"userProfiles"),limit(30));
+      const snap=await getDocs(q);
+      const results=snap.docs
+        .map(d=>({id:d.id,...d.data()}))
+        .filter(p=>p.id!==user?.uid)
+        .filter(p=>!searchTerm||(p.username||"").toLowerCase().includes(searchTerm.toLowerCase()));
+      setUserResults(results);
+    }catch(e){console.warn("searchUsers error:",e);}
+    setUserSearchLoading(false);
+  }
+
   async function visitFarm(userId){
     if(!db) return;
     setCommunityLoading(true);
@@ -3397,14 +3417,14 @@ function AppInner(){
 
           {/* ── FEED + ALERTS + HISTORY + ACCOUNT ROW ── */}
           <div style={{display:"flex",gap:8}}>
-            {/* Feed */}
-            <button onClick={()=>{setMenuOpen(false);setScreen("feed");}} style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:6,background:"rgba(255,255,255,0.04)",border:"1px solid rgba(201,169,110,0.12)",borderRadius:10,padding:"12px 8px",cursor:"pointer",transition:"all 0.2s"}}>
+            {/* Feed → routes to Upper Room */}
+            <button onClick={()=>{setMenuOpen(false);setUpperRoomView("feed");setScreen("upper-room");}} style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:6,background:"rgba(255,255,255,0.04)",border:"1px solid rgba(201,169,110,0.12)",borderRadius:10,padding:"12px 8px",cursor:"pointer",transition:"all 0.2s"}}>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="rgba(201,169,110,0.5)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
               <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.72rem",color:B.goldL}}>Feed</span>
             </button>
-            {/* Alerts */}
+            {/* Alerts → routes to Upper Room */}
             {user&&(
-              <button onClick={()=>{setMenuOpen(false);setPrevScreen(screen);setScreen("notifications");}} style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:6,position:"relative",background:"rgba(255,255,255,0.04)",border:"1px solid rgba(201,169,110,0.12)",borderRadius:10,padding:"12px 8px",cursor:"pointer",transition:"all 0.2s"}}>
+              <button onClick={()=>{setMenuOpen(false);setUpperRoomView("notifications");setScreen("upper-room");}} style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:6,position:"relative",background:"rgba(255,255,255,0.04)",border:"1px solid rgba(201,169,110,0.12)",borderRadius:10,padding:"12px 8px",cursor:"pointer",transition:"all 0.2s"}}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="rgba(201,169,110,0.5)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
                 <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.72rem",color:B.goldL}}>Alerts</span>
                 {unreadCount>0&&<div style={{position:"absolute",top:4,right:6,minWidth:16,height:16,borderRadius:8,background:B.gold,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:SANS,fontSize:"0.55rem",fontWeight:700,color:B.night,lineHeight:1,padding:"0 4px"}}>{unreadCount>99?"99+":unreadCount}</div>}
@@ -5972,7 +5992,7 @@ function AppInner(){
     const bibleBack=()=>{
       if(bibleView==="reading"){setBibleView("chapters");}
       else if(bibleView==="chapters"){setBibleView("books");setBibleSearch("");}
-      else{setBibleView(null);setBibleSearch("");}
+      else{setBibleView(null);setBibleSearch("");setUpperRoomView(null);}
     };
     const openBible=async()=>{
       const data=await loadBible();
@@ -5989,35 +6009,59 @@ function AppInner(){
         <style>{GFONTS}{CSS}</style>
         <ImmersiveUpperRoom/>
 
-        {/* ── LANDING VIEW ── */}
-        {!bibleView&&(
+        {/* ── HUB LANDING VIEW ── */}
+        {!bibleView&&!upperRoomView&&(
           <div style={{position:"relative",zIndex:10,height:"100%",overflowY:"auto",WebkitOverflowScrolling:"touch"}}>
             <div style={{maxWidth:720,margin:"0 auto",padding:"28px 22px 80px"}}>
-              {/* Back to village */}
               <button onClick={()=>setScreen("map")} style={{background:"rgba(26,22,30,0.55)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",border:"1px solid rgba(180,160,210,0.15)",borderRadius:999,padding:"8px 20px",cursor:"pointer",color:"rgba(230,220,248,0.6)",fontFamily:SANS,fontSize:"0.78rem",marginBottom:28,transition:"all 0.2s",display:"inline-flex",alignItems:"center",gap:6,animation:"fadeUp .6s ease both"}}>
                 Back to village
               </button>
-              {/* Title */}
               <div style={{textAlign:"center",marginBottom:32,animation:"fadeUp .6s .1s ease both",opacity:0}}>
                 <h1 style={{fontFamily:DISPLAY,fontSize:"2rem",fontWeight:700,color:"#D8C8F0",margin:"0 0 8px",textShadow:"0 2px 12px rgba(0,0,0,0.5)"}}>The Upper Room</h1>
                 <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"1rem",color:"rgba(200,190,230,0.45)",margin:"0 0 14px"}}>A sacred space for worship and encounter.</p>
                 <div style={{width:60,height:1,background:"rgba(180,160,210,0.3)",margin:"0 auto"}}/>
               </div>
-              {/* Daily Verse */}
               {dailyVerse&&(
-                <div onClick={()=>{setBibleBook(dailyVerse.bookIdx);setBibleChapter(dailyVerse.chapIdx);setBibleView("reading");}} style={{background:"rgba(20,18,32,0.55)",backdropFilter:"blur(14px)",WebkitBackdropFilter:"blur(14px)",border:"1px solid rgba(180,160,210,0.15)",borderRadius:16,padding:"28px 24px",textAlign:"center",marginBottom:24,animation:"fadeUp .8s .25s ease both",opacity:0,cursor:"pointer",transition:"all 0.3s"}}>
+                <div onClick={()=>{setBibleBook(dailyVerse.bookIdx);setBibleChapter(dailyVerse.chapIdx);setBibleView("reading");setUpperRoomView("scriptures");}} style={{background:"rgba(20,18,32,0.55)",backdropFilter:"blur(14px)",WebkitBackdropFilter:"blur(14px)",border:"1px solid rgba(180,160,210,0.15)",borderRadius:16,padding:"28px 24px",textAlign:"center",marginBottom:28,animation:"fadeUp .8s .25s ease both",opacity:0,cursor:"pointer",transition:"all 0.3s"}}>
                   <p style={{fontFamily:SANS,fontSize:"0.65rem",letterSpacing:"0.08em",textTransform:"uppercase",color:"rgba(200,190,230,0.35)",margin:"0 0 14px"}}>Verse of the Day</p>
                   <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"1.05rem",color:"rgba(230,220,248,0.65)",lineHeight:1.7,margin:"0 0 14px"}}>{dailyVerse.text}</p>
                   <p style={{fontFamily:SANS,fontSize:"0.78rem",color:"rgba(180,160,210,0.45)",margin:0}}>-- {dailyVerse.ref}</p>
                 </div>
               )}
-              {/* Open Bible */}
-              <div style={{textAlign:"center",animation:"fadeUp .8s .4s ease both",opacity:0}}>
-                <button onClick={openBible} disabled={bibleLoading} style={{background:"linear-gradient(135deg,rgba(180,160,210,0.20),rgba(180,160,210,0.06))",backdropFilter:"blur(10px)",WebkitBackdropFilter:"blur(10px)",border:"1px solid rgba(180,160,210,0.30)",color:"#E8E0F0",borderRadius:30,padding:"14px 36px",cursor:bibleLoading?"wait":"pointer",fontFamily:SERIF,fontStyle:"italic",fontSize:"1rem",transition:"all 0.3s",boxShadow:"0 4px 24px rgba(0,0,0,0.3)"}}>
-                  {bibleLoading?"Loading Scriptures...":"Open the Scriptures"}
+              {/* ── Navigation Tiles ── */}
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12,animation:"fadeUp .8s .35s ease both",opacity:0}}>
+                {[
+                  {key:"scriptures",label:"The Scriptures",sub:"Read the Word",icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(180,160,210,0.55)" strokeWidth="1.5"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>},
+                  {key:"prayer-wall",label:"Prayer Wall",sub:"Lift up requests",icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(180,160,210,0.55)" strokeWidth="1.5"><path d="M12 2C6.48 2 2 6 2 11c0 3 1.5 5.5 4 7v4l3.5-2c.8.2 1.6.3 2.5.3 5.52 0 10-4 10-9.3C22 6 17.52 2 12 2z"/></svg>},
+                  {key:"feed",label:"Community Feed",sub:"See what others share",icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(180,160,210,0.55)" strokeWidth="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>},
+                  {key:"find-people",label:"Find People",sub:"Search and follow",icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(180,160,210,0.55)" strokeWidth="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>},
+                ].map(tile=>(
+                  <button key={tile.key} onClick={()=>{
+                    if(tile.key==="scriptures"){setUpperRoomView("scriptures");openBible();}
+                    else if((tile.key==="feed"||tile.key==="find-people"||tile.key==="notifications")&&!user){setToast({msg:"Sign in to access the community"});}
+                    else{setUpperRoomView(tile.key);if(tile.key==="prayer-wall"&&prayerWallTab==="community")loadCommunityPrayers();}
+                  }} style={{background:"rgba(20,18,32,0.55)",backdropFilter:"blur(14px)",WebkitBackdropFilter:"blur(14px)",border:"1px solid rgba(180,160,210,0.15)",borderRadius:16,padding:"22px 16px",cursor:"pointer",textAlign:"center",transition:"all 0.3s"}}
+                    onMouseEnter={e=>{e.currentTarget.style.borderColor="rgba(180,160,210,0.3)";e.currentTarget.style.background="rgba(20,18,32,0.7)";}}
+                    onMouseLeave={e=>{e.currentTarget.style.borderColor="rgba(180,160,210,0.15)";e.currentTarget.style.background="rgba(20,18,32,0.55)";}}>
+                    <div style={{marginBottom:10}}>{tile.icon}</div>
+                    <div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.95rem",color:"#D8C8F0",marginBottom:4}}>{tile.label}</div>
+                    <div style={{fontFamily:SANS,fontSize:"0.68rem",color:"rgba(200,190,230,0.4)"}}>{tile.sub}</div>
+                  </button>
+                ))}
+              </div>
+              {/* Notifications tile — full width */}
+              <div style={{animation:"fadeUp .8s .45s ease both",opacity:0}}>
+                <button onClick={()=>{if(!user){setToast({msg:"Sign in to access the community"});return;}setUpperRoomView("notifications");}} style={{width:"100%",background:"rgba(20,18,32,0.55)",backdropFilter:"blur(14px)",WebkitBackdropFilter:"blur(14px)",border:"1px solid rgba(180,160,210,0.15)",borderRadius:16,padding:"18px 16px",cursor:"pointer",textAlign:"center",transition:"all 0.3s",position:"relative"}}
+                  onMouseEnter={e=>{e.currentTarget.style.borderColor="rgba(180,160,210,0.3)";e.currentTarget.style.background="rgba(20,18,32,0.7)";}}
+                  onMouseLeave={e=>{e.currentTarget.style.borderColor="rgba(180,160,210,0.15)";e.currentTarget.style.background="rgba(20,18,32,0.55)";}}>
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(180,160,210,0.55)" strokeWidth="1.5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                    <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.95rem",color:"#D8C8F0"}}>Notifications</span>
+                    {unreadCount>0&&<span style={{background:"rgba(212,168,64,0.8)",color:"#1A1610",fontSize:"0.62rem",fontFamily:SANS,fontWeight:700,padding:"2px 7px",borderRadius:99,minWidth:14,textAlign:"center"}}>{unreadCount}</span>}
+                  </div>
                 </button>
               </div>
-              {/* Saved Verses */}
+              {/* Saved Verses shortcut */}
               {savedVerses.length>0&&(
                 <div style={{textAlign:"center",marginTop:16,animation:"fadeUp .8s .55s ease both",opacity:0}}>
                   <button onClick={()=>setSavedVersesView(true)} style={{background:"rgba(212,168,64,0.08)",border:"1px solid rgba(212,168,64,0.18)",borderRadius:20,padding:"10px 28px",cursor:"pointer",color:"rgba(212,168,64,0.7)",fontFamily:SANS,fontSize:"0.82rem",transition:"all 0.3s"}}>
@@ -6025,6 +6069,144 @@ function AppInner(){
                   </button>
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* ── PRAYER WALL SUB-VIEW ── */}
+        {upperRoomView==="prayer-wall"&&!bibleView&&(
+          <div style={{position:"relative",zIndex:10,height:"100%",overflowY:"auto",WebkitOverflowScrolling:"touch"}}>
+            <div style={{maxWidth:520,margin:"0 auto",padding:"28px 22px 80px"}}>
+              <button onClick={()=>setUpperRoomView(null)} style={{background:"rgba(26,22,30,0.55)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",border:"1px solid rgba(180,160,210,0.15)",borderRadius:999,padding:"8px 20px",cursor:"pointer",color:"rgba(230,220,248,0.6)",fontFamily:SANS,fontSize:"0.78rem",marginBottom:28,transition:"all 0.2s",display:"inline-flex",alignItems:"center",gap:6}}>
+                Back to Upper Room
+              </button>
+              <div style={{textAlign:"center",marginBottom:24}}>
+                <h1 style={{fontFamily:DISPLAY,fontSize:"1.5rem",fontWeight:700,color:"#D8C8F0",margin:"0 0 8px",textShadow:"0 2px 12px rgba(0,0,0,0.5)"}}>Prayer Wall</h1>
+                <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.88rem",color:"rgba(200,190,230,0.45)",margin:0}}>Lift up your requests and stand with others in prayer.</p>
+              </div>
+              {/* Tabs */}
+              <div style={{display:"flex",gap:0,marginBottom:14,borderRadius:10,overflow:"hidden",border:"1px solid rgba(180,160,210,0.15)"}}>
+                {[["mine","My Prayers"],["community","Community"]].map(([k,label])=>(
+                  <button key={k} onClick={()=>{setPrayerWallTab(k);if(k==="community") loadCommunityPrayers();}} style={{flex:1,padding:"9px 0",background:prayerWallTab===k?"rgba(180,160,210,0.1)":"rgba(20,18,32,0.5)",border:"none",color:prayerWallTab===k?"#D8C8F0":"rgba(200,190,230,0.35)",fontSize:"0.74rem",fontFamily:SANS,fontWeight:600,cursor:"pointer",transition:"all 0.2s"}}>{label}</button>
+                ))}
+              </div>
+              {/* My Prayers */}
+              {prayerWallTab==="mine"&&<>
+                <div style={{background:"rgba(20,18,32,0.6)",backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",border:"1px solid rgba(180,160,210,0.12)",borderRadius:12,padding:18,marginBottom:14}}>
+                  <textarea value={newPrayer} onChange={e=>setNewPrayer(e.target.value)} placeholder="Share what's on your heart..." style={{width:"100%",background:"rgba(180,160,210,0.04)",border:"1px solid rgba(180,160,210,0.12)",borderRadius:8,color:"#D8C8F0",fontSize:"0.88rem",fontFamily:SERIF,padding:13,minHeight:70,boxSizing:"border-box",marginBottom:9,lineHeight:1.7,transition:"border-color 0.2s",resize:"vertical"}} onFocus={e=>e.target.style.borderColor="rgba(180,160,210,0.3)"} onBlur={e=>e.target.style.borderColor="rgba(180,160,210,0.12)"}/>
+                  <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                    <select value={prayerTag} onChange={e=>setPrayerTag(e.target.value)} style={{background:"rgba(180,160,210,0.04)",border:"1px solid rgba(180,160,210,0.12)",borderRadius:7,color:"rgba(200,190,230,0.5)",fontSize:"0.8rem",fontFamily:SANS,padding:"7px 11px",flex:1,minWidth:120}}>
+                      <option value="">Tag a topic...</option>
+                      {["Healing","Marriage","Singleness","Motherhood","Grief","Anxiety","Finances","Purpose","Forgiveness","Depression","Faith","Career"].map(t=><option key={t}>{t}</option>)}
+                    </select>
+                    <button onClick={postPrayer} disabled={!newPrayer.trim()} style={{background:newPrayer.trim()?"rgba(90,138,106,0.3)":"transparent",border:`1px solid ${newPrayer.trim()?"rgba(90,138,106,0.4)":"rgba(180,160,210,0.08)"}`,color:newPrayer.trim()?"#BED3C4":"rgba(200,190,230,0.2)",padding:"8px 20px",borderRadius:7,cursor:newPrayer.trim()?"pointer":"default",fontSize:"0.8rem",fontFamily:SANS,fontWeight:600,transition:"all 0.2s"}}>Post</button>
+                  </div>
+                </div>
+                <div style={{display:"flex",gap:6,marginBottom:10}}>
+                  {["active","answered","all"].map(f=>(
+                    <button key={f} onClick={()=>setPrayerFilter(f)} style={{background:prayerFilter===f?"rgba(20,18,32,0.8)":"transparent",border:`1px solid ${prayerFilter===f?"rgba(180,160,210,0.3)":"rgba(180,160,210,0.1)"}`,color:prayerFilter===f?"#D8C8F0":"rgba(200,190,230,0.35)",padding:"4px 12px",borderRadius:99,fontSize:"0.68rem",fontFamily:SANS,fontWeight:600,cursor:"pointer",textTransform:"capitalize"}}>{f}</button>
+                  ))}
+                </div>
+                <div style={{display:"flex",flexDirection:"column",gap:9}}>
+                  {filteredPrayers.filter(p=>prayerFilter==="all"?true:prayerFilter==="answered"?p.status==="answered":p.status!=="answered").map(p=>(
+                    <div key={p.id} style={{background:"rgba(20,18,32,0.5)",backdropFilter:"blur(6px)",border:"1px solid "+(p.status==="answered"?"rgba(180,160,210,0.25)":"rgba(180,160,210,0.08)"),borderLeft:p.status==="answered"?"3px solid rgba(180,160,210,0.5)":"3px solid transparent",borderRadius:12,padding:"15px 17px",opacity:p.status==="answered"?0.7:1}}>
+                      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:7}}>
+                        <span style={{fontSize:"0.6rem",background:"rgba(180,160,210,0.1)",color:"rgba(200,190,230,0.6)",border:"1px solid rgba(180,160,210,0.2)",padding:"2px 8px",borderRadius:99,fontFamily:SANS,fontWeight:600}}>{p.tag}</span>
+                        {p.status==="answered"&&<span style={{fontSize:"0.58rem",background:"rgba(180,160,210,0.15)",color:"rgba(200,190,230,0.6)",padding:"2px 8px",borderRadius:99,fontFamily:SANS,fontWeight:600}}>Answered</span>}
+                        <span style={{fontSize:"0.66rem",color:"rgba(200,190,230,0.25)",fontFamily:SANS,marginLeft:"auto"}}>{p.date}</span>
+                      </div>
+                      <p style={{fontFamily:SERIF,fontSize:"0.92rem",color:"rgba(230,220,248,0.7)",margin:"0 0 10px",lineHeight:1.65}}>{p.text}</p>
+                      <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                        {prayedFor.includes(p.id)?(<span style={{background:"rgba(90,138,106,0.08)",border:"1px solid rgba(90,138,106,0.15)",color:"rgba(190,211,196,0.5)",padding:"5px 14px",borderRadius:7,fontSize:"0.74rem",fontFamily:SANS,fontWeight:600}}>Praying ({p.prayers})</span>):(<button onClick={()=>prayFor(p.id)} style={{background:"rgba(90,138,106,0.15)",border:"1px solid rgba(90,138,106,0.25)",color:"#BED3C4",padding:"5px 14px",borderRadius:7,cursor:"pointer",fontSize:"0.74rem",fontFamily:SANS,fontWeight:600,transition:"all 0.15s"}}>Pray ({p.prayers})</button>)}
+                        {p.status==="answered"?
+                          <button onClick={()=>reactivatePrayer(p.id)} style={{background:"transparent",border:"1px solid rgba(180,160,210,0.15)",color:"rgba(200,190,230,0.35)",padding:"5px 12px",borderRadius:7,cursor:"pointer",fontSize:"0.72rem",fontFamily:SANS,fontWeight:600}}>Reactivate</button>
+                        :
+                          <button onClick={()=>markPrayerAnswered(p.id)} style={{background:"rgba(180,160,210,0.1)",border:"1px solid rgba(180,160,210,0.2)",color:"rgba(200,190,230,0.6)",padding:"5px 12px",borderRadius:7,cursor:"pointer",fontSize:"0.72rem",fontFamily:SANS,fontWeight:600,transition:"all 0.15s"}}>Answered</button>
+                        }
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>}
+              {/* Community Prayers */}
+              {prayerWallTab==="community"&&<>
+                {!user&&<div style={{background:"rgba(20,18,32,0.6)",border:"1px solid rgba(180,160,210,0.12)",borderRadius:12,padding:24,textAlign:"center"}}>
+                  <p style={{fontFamily:SERIF,fontStyle:"italic",color:"rgba(200,190,230,0.5)",fontSize:"0.9rem",margin:0}}>Sign in to see community prayers</p>
+                </div>}
+                {user&&<>
+                  <div style={{background:"rgba(20,18,32,0.6)",backdropFilter:"blur(8px)",border:"1px solid rgba(180,160,210,0.12)",borderRadius:12,padding:18,marginBottom:14}}>
+                    <textarea value={newPrayer} onChange={e=>setNewPrayer(e.target.value)} placeholder="Share a prayer request with the community..." style={{width:"100%",background:"rgba(180,160,210,0.04)",border:"1px solid rgba(180,160,210,0.12)",borderRadius:8,color:"#D8C8F0",fontSize:"0.88rem",fontFamily:SERIF,padding:13,minHeight:60,boxSizing:"border-box",marginBottom:9,lineHeight:1.7,transition:"border-color 0.2s",resize:"vertical"}} onFocus={e=>e.target.style.borderColor="rgba(180,160,210,0.3)"} onBlur={e=>e.target.style.borderColor="rgba(180,160,210,0.12)"}/>
+                    <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                      <select value={prayerTag} onChange={e=>setPrayerTag(e.target.value)} style={{background:"rgba(180,160,210,0.04)",border:"1px solid rgba(180,160,210,0.12)",borderRadius:7,color:"rgba(200,190,230,0.5)",fontSize:"0.8rem",fontFamily:SANS,padding:"7px 11px",flex:1,minWidth:120}}>
+                        <option value="">Tag a topic...</option>
+                        {["Healing","Marriage","Singleness","Motherhood","Grief","Anxiety","Finances","Purpose","Forgiveness","Depression","Faith","Career"].map(t=><option key={t}>{t}</option>)}
+                      </select>
+                      <button onClick={postCommunityPrayer} disabled={!newPrayer.trim()||communityLoading} style={{background:newPrayer.trim()?"rgba(90,138,106,0.3)":"transparent",border:`1px solid ${newPrayer.trim()?"rgba(90,138,106,0.4)":"rgba(180,160,210,0.08)"}`,color:newPrayer.trim()?"#BED3C4":"rgba(200,190,230,0.2)",padding:"8px 20px",borderRadius:7,cursor:newPrayer.trim()?"pointer":"default",fontSize:"0.8rem",fontFamily:SANS,fontWeight:600,transition:"all 0.2s"}}>{communityLoading?"Posting...":"Share prayer"}</button>
+                    </div>
+                  </div>
+                  <div style={{display:"flex",justifyContent:"flex-end",marginBottom:10}}>
+                    <button onClick={loadCommunityPrayers} disabled={communityLoading} style={{background:"rgba(180,160,210,0.08)",border:"1px solid rgba(180,160,210,0.15)",borderRadius:8,padding:"4px 12px",cursor:"pointer",color:"rgba(200,190,230,0.6)",fontSize:"0.68rem",fontFamily:SANS,fontWeight:600}}>{communityLoading?"Loading...":"Refresh"}</button>
+                  </div>
+                  {communityPrayers.length===0&&!communityLoading&&<div style={{textAlign:"center",padding:"20px 0"}}>
+                    <p style={{fontFamily:SERIF,fontStyle:"italic",color:"rgba(200,190,230,0.35)",fontSize:"0.88rem",margin:0}}>No community prayers yet. Be the first to share.</p>
+                  </div>}
+                  <div style={{display:"flex",flexDirection:"column",gap:9}}>
+                    {communityPrayers.map((cp,idx)=>(
+                      <PostCard key={cp.id} post={cp} idx={idx} user={user} prayed={prayedPostIds.has(cp.id)} commentsOpen={expandedComments===cp.id} comments={postComments[cp.id]||[]} commentText={expandedComments===cp.id?commentText:""} commentLoading={commentLoading} onTogglePray={()=>togglePrayForPost(cp.id)} onToggleComments={()=>{if(expandedComments===cp.id){setExpandedComments(null);}else{setExpandedComments(cp.id);setCommentText("");if(!postComments[cp.id])loadComments(cp.id);}}} onCommentTextChange={setCommentText} onSubmitComment={()=>submitComment(cp.id)} onAuthorTap={viewProfile}/>
+                    ))}
+                  </div>
+                </>}
+              </>}
+            </div>
+          </div>
+        )}
+
+        {/* ── FEED SUB-VIEW ── */}
+        {upperRoomView==="feed"&&!bibleView&&(
+          <FeedScreen user={user} db={db} functions={functions} setScreen={setScreen} prevScreen="upper-room" setToast={setToast} addCandles={addCandles} viewProfile={viewProfile} trackMission={trackMission} onBack={()=>setUpperRoomView(null)}/>
+        )}
+
+        {/* ── NOTIFICATIONS SUB-VIEW ── */}
+        {upperRoomView==="notifications"&&!bibleView&&user&&(
+          <NotificationsScreen user={user} db={db} functions={functions} setScreen={setScreen} prevScreen="upper-room" setToast={setToast} viewProfile={viewProfile} onBack={()=>setUpperRoomView(null)} onFeedTap={()=>setUpperRoomView("feed")}/>
+        )}
+
+        {/* ── FIND PEOPLE SUB-VIEW ── */}
+        {upperRoomView==="find-people"&&!bibleView&&user&&(
+          <div style={{position:"relative",zIndex:10,height:"100%",overflowY:"auto",WebkitOverflowScrolling:"touch"}}>
+            <div style={{maxWidth:520,margin:"0 auto",padding:"28px 22px 80px"}}>
+              <button onClick={()=>{setUpperRoomView(null);setUserSearch("");setUserResults([]);}} style={{background:"rgba(26,22,30,0.55)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",border:"1px solid rgba(180,160,210,0.15)",borderRadius:999,padding:"8px 20px",cursor:"pointer",color:"rgba(230,220,248,0.6)",fontFamily:SANS,fontSize:"0.78rem",marginBottom:28,transition:"all 0.2s",display:"inline-flex",alignItems:"center",gap:6}}>
+                Back to Upper Room
+              </button>
+              <div style={{textAlign:"center",marginBottom:24}}>
+                <h1 style={{fontFamily:DISPLAY,fontSize:"1.5rem",fontWeight:700,color:"#D8C8F0",margin:"0 0 8px",textShadow:"0 2px 12px rgba(0,0,0,0.5)"}}>Find People</h1>
+                <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.88rem",color:"rgba(200,190,230,0.45)",margin:0}}>Search for fellow travelers to follow.</p>
+              </div>
+              <div style={{display:"flex",gap:8,marginBottom:20}}>
+                <input value={userSearch} onChange={e=>setUserSearch(e.target.value)} placeholder="Search by username..." onKeyDown={e=>{if(e.key==="Enter")searchUsers(userSearch);}} style={{flex:1,background:"rgba(180,160,210,0.08)",border:"1px solid rgba(180,160,210,0.15)",borderRadius:12,color:"#E8E0F0",fontFamily:SANS,fontSize:"0.85rem",padding:"10px 16px",outline:"none",boxSizing:"border-box"}}/>
+                <button onClick={()=>searchUsers(userSearch)} disabled={userSearchLoading} style={{background:"rgba(180,160,210,0.12)",border:"1px solid rgba(180,160,210,0.2)",borderRadius:12,padding:"10px 18px",cursor:"pointer",color:"#D8C8F0",fontFamily:SANS,fontSize:"0.78rem",fontWeight:600,transition:"all 0.2s"}}>{userSearchLoading?"...":"Search"}</button>
+              </div>
+              {userResults.length===0&&!userSearchLoading&&(
+                <div style={{textAlign:"center",padding:"32px 0"}}>
+                  <p style={{fontFamily:SERIF,fontStyle:"italic",color:"rgba(200,190,230,0.3)",fontSize:"0.9rem"}}>Search for someone by name, or browse all community members.</p>
+                  <button onClick={()=>searchUsers("")} style={{marginTop:12,background:"rgba(180,160,210,0.08)",border:"1px solid rgba(180,160,210,0.15)",borderRadius:12,padding:"8px 20px",cursor:"pointer",color:"rgba(200,190,230,0.6)",fontFamily:SANS,fontSize:"0.74rem",transition:"all 0.2s"}}>Browse all</button>
+                </div>
+              )}
+              <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                {userResults.map((person,idx)=>(
+                  <div key={person.id} style={{display:"flex",alignItems:"center",gap:12,background:"rgba(20,18,32,0.55)",border:"1px solid rgba(180,160,210,0.12)",borderRadius:14,padding:"14px 16px",animation:`fadeUp .4s ${idx*0.04}s ease both`,opacity:0}}>
+                    {person.avatarUrl
+                      ?<img src={person.avatarUrl} alt="" referrerPolicy="no-referrer" style={{width:44,height:44,borderRadius:"50%",objectFit:"cover",border:"1.5px solid rgba(180,160,210,0.25)",flexShrink:0}}/>
+                      :<div style={{width:44,height:44,borderRadius:"50%",flexShrink:0,background:"rgba(180,160,210,0.1)",border:"1.5px solid rgba(180,160,210,0.2)",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:DISPLAY,fontSize:"1.1rem",color:"#D8C8F0"}}>{(person.username||"?")[0].toUpperCase()}</div>
+                    }
+                    <div style={{flex:1,cursor:"pointer"}} onClick={()=>viewProfile(person.id)}>
+                      <div style={{fontFamily:SERIF,fontSize:"0.9rem",color:"#D8C8F0"}}>{person.username||"Anonymous Traveler"}</div>
+                      <div style={{fontFamily:SANS,fontSize:"0.66rem",color:"rgba(200,190,230,0.35)",marginTop:2}}>{person.followersCount||0} followers</div>
+                    </div>
+                    <button onClick={()=>viewProfile(person.id)} style={{background:"rgba(180,160,210,0.10)",border:"1px solid rgba(180,160,210,0.18)",borderRadius:10,padding:"7px 14px",cursor:"pointer",color:"rgba(200,190,230,0.7)",fontFamily:SANS,fontSize:"0.74rem",fontWeight:600,flexShrink:0,transition:"all 0.2s"}}>Profile</button>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         )}
