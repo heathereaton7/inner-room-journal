@@ -14,6 +14,7 @@ export default function CheckInScreen({ onBack, onSave, onPrayWith, initialData 
   const [moods, setMoods] = useState(initialData?.mood || []);
   const [symptoms, setSymptoms] = useState(initialData?.symptoms || []);
   const [customSymptom, setCustomSymptom] = useState("");
+  const [customMood, setCustomMood] = useState("");
   const [intensity, setIntensity] = useState(initialData?.intensity ?? 0);
   const [reflection, setReflection] = useState(initialData?.reflection || "");
   const [saveMsg, setSaveMsg] = useState("");
@@ -105,6 +106,32 @@ export default function CheckInScreen({ onBack, onSave, onPrayWith, initialData 
                 </button>
               );
             })}
+            {/* Custom moods already added */}
+            {moods.filter(m => !MOODS.includes(m)).map(m => (
+              <button key={m} onClick={() => toggleMood(m)} style={{
+                background: "rgba(201,169,110,0.15)", border: "1px solid rgba(201,169,110,0.45)",
+                borderRadius: 20, padding: "8px 16px", cursor: "pointer",
+                color: B.goldL, fontFamily: SANS, fontSize: "0.78rem", fontWeight: 500,
+                transition: "all 0.2s",
+              }}>
+                {m}
+              </button>
+            ))}
+          </div>
+          {/* Something else mood input */}
+          <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+            <input value={customMood} onChange={e => setCustomMood(e.target.value)} onKeyDown={e => { if (e.key === "Enter") { const v = customMood.trim(); if (v && !moods.includes(v)) { setMoods(prev => [...prev, v]); setCustomMood(""); } } }} placeholder="Something else..." style={{
+              flex: 1, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(201,169,110,0.10)",
+              borderRadius: 12, padding: "8px 14px", color: B.goldL, fontFamily: SANS, fontSize: "0.78rem",
+              outline: "none", transition: "border-color 0.2s",
+            }} onFocus={e => e.target.style.borderColor = "rgba(201,169,110,0.3)"} onBlur={e => e.target.style.borderColor = "rgba(201,169,110,0.10)"} />
+            {customMood.trim() && (
+              <button onClick={() => { const v = customMood.trim(); if (v && !moods.includes(v)) { setMoods(prev => [...prev, v]); setCustomMood(""); } }} style={{
+                background: "rgba(201,169,110,0.1)", border: "1px solid rgba(201,169,110,0.25)",
+                borderRadius: 12, padding: "8px 14px", cursor: "pointer", color: B.gold,
+                fontFamily: SANS, fontSize: "0.74rem", fontWeight: 600, transition: "all 0.2s",
+              }}>Add</button>
+            )}
           </div>
         </div>
 
