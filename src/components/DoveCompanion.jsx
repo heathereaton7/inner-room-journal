@@ -142,9 +142,10 @@ export default function DoveCompanion({ intensity, active, screen }) {
         transform: hop ? "translateY(-3px)" : "translateY(0)",
         transition: hop ? "transform 0.12s ease-out" : "transform 0.25s ease-in",
       }}>
-        {/* Inner wrapper — handles tilt + blink */}
+        {/* Inner wrapper — handles tilt */}
         <div style={{
-          transform: `rotate(${tilt}deg)${blink ? " scaleY(0.92)" : ""}`,
+          position: "relative",
+          transform: `rotate(${tilt}deg)`,
           transition: "transform 0.6s cubic-bezier(0.25,0.46,0.45,0.94)",
           transformOrigin: "center 60%",
         }}>
@@ -166,6 +167,11 @@ export default function DoveCompanion({ intensity, active, screen }) {
               transition: "opacity 2s ease, filter 2s ease",
             }}
           />
+          {/* Blink overlay — tiny eyelid patches over each eye */}
+          {blink && <>
+            <div style={{ position: "absolute", top: "28%", left: "27%", width: "14%", height: "8%", borderRadius: "50%", background: "#F0E4CC", transition: "opacity 0.05s" }} />
+            <div style={{ position: "absolute", top: "28%", left: "55%", width: "14%", height: "8%", borderRadius: "50%", background: "#F0E4CC", transition: "opacity 0.05s" }} />
+          </>}
         </div>
 
         {/* Ground shadow */}
