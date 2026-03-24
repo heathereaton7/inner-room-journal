@@ -2593,8 +2593,11 @@ function AppInner(){
         setUserProfile({id:uid,...data});
         return;
       }
+      // Returning user with complete profile — update login and go to cabin
       await setDoc(profileRef,{lastLogin:serverTimestamp()},{merge:true});
       setUserProfile({id:uid,...data});
+      setIsOnboarded(true);dbSave("irj-onboarded",true);
+      setScreen("cabin");
     }catch(e){console.warn("ensureUserProfile error:",e);}
   }
 
