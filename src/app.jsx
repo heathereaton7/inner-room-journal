@@ -3975,21 +3975,22 @@ function AppInner(){
                 <div style={{width:"32px",height:"1px",background:"linear-gradient(90deg,rgba(201,169,110,0.4),transparent)"}}/>
               </div>
               <h1 className="fu2" style={{fontFamily:DISPLAY,fontSize:"clamp(1.5rem,6vw,2.2rem)",fontWeight:700,color:"#FFF8E8",margin:"0 0 8px",textAlign:"center",textShadow:"0 2px 24px rgba(0,0,0,0.8)",lineHeight:1.25,maxWidth:"380px",letterSpacing:"0.03em"}}>
-                A place has been prepared for you.
+                There's a place for you here.
               </h1>
               <p className="fu3" style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.82rem,2.8vw,0.95rem)",color:"rgba(255,248,232,0.5)",margin:"0 0 28px",textAlign:"center",maxWidth:"300px",lineHeight:1.65,letterSpacing:"0.02em"}}>
                 Save your journey, or step in as a guest.
               </p>
               {/* Sign in button */}
-              <button className="fu3 door-btn" onClick={async()=>{await handleGoogleSignIn();}} style={{width:"100%",maxWidth:"320px",background:"linear-gradient(135deg,rgba(201,169,110,0.22),rgba(201,169,110,0.06))",backdropFilter:"blur(10px)",WebkitBackdropFilter:"blur(10px)",border:"1px solid rgba(201,169,110,0.45)",color:"#FFF8E8",padding:"15px 0",borderRadius:"16px",cursor:"pointer",fontSize:"0.9rem",fontFamily:SERIF,fontWeight:600,letterSpacing:"0.06em",fontStyle:"italic",marginBottom:"12px",transition:"all 0.3s",boxShadow:"0 4px 24px rgba(0,0,0,0.3)"}}>
-                Save my place
+              <button className="fu3 door-btn" onClick={async()=>{await handleGoogleSignIn();}} style={{width:"100%",maxWidth:"320px",background:"linear-gradient(135deg,rgba(201,169,110,0.22),rgba(201,169,110,0.06))",backdropFilter:"blur(10px)",WebkitBackdropFilter:"blur(10px)",border:"1px solid rgba(201,169,110,0.45)",color:"#FFF8E8",padding:"15px 0",borderRadius:"16px",cursor:"pointer",fontSize:"0.9rem",fontFamily:SERIF,fontWeight:600,letterSpacing:"0.06em",fontStyle:"italic",marginBottom:"4px",transition:"all 0.3s",boxShadow:"0 4px 24px rgba(0,0,0,0.3)"}}>
+                Move in
               </button>
+              <p style={{fontFamily:SANS,fontSize:"0.64rem",color:"rgba(255,248,232,0.28)",textAlign:"center",margin:"0 0 14px",letterSpacing:"0.03em"}}>Save your journal and join the community</p>
               {/* Continue as guest */}
               <button className="fu4" onClick={()=>setOnboardStep(1)} style={{width:"100%",maxWidth:"320px",background:"transparent",border:"1px solid rgba(255,248,232,0.12)",borderRadius:"16px",padding:"13px 0",cursor:"pointer",color:"rgba(255,248,232,0.45)",fontFamily:SERIF,fontStyle:"italic",fontSize:"0.85rem",letterSpacing:"0.05em",marginBottom:"14px",transition:"all 0.3s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor="rgba(255,248,232,0.25)";e.currentTarget.style.color="rgba(255,248,232,0.65)";}} onMouseLeave={e=>{e.currentTarget.style.borderColor="rgba(255,248,232,0.12)";e.currentTarget.style.color="rgba(255,248,232,0.45)";}}>
                 Continue as guest
               </button>
-              <p className="fu4" style={{fontFamily:SANS,fontSize:"0.62rem",color:"rgba(255,248,232,0.18)",textAlign:"center",margin:0,lineHeight:1.5,letterSpacing:"0.03em",maxWidth:"260px"}}>
-                Without signing in, your journal stays on this device only.
+              <p className="fu4" style={{fontFamily:SANS,fontSize:"0.62rem",color:"rgba(255,248,232,0.18)",textAlign:"center",margin:0,lineHeight:1.5,letterSpacing:"0.03em",maxWidth:"280px"}}>
+                Without moving in, your journal stays on this device and community features are unavailable.
               </p>
             </div>
           </div>
