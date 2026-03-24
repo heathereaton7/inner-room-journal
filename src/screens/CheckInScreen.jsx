@@ -10,34 +10,49 @@ const INTENSITY_STOPS = [
   { value: 2, label: "Heavy", icon: "\ud83c\udf27\ufe0f" },
 ];
 
-export default function CheckInScreen({ onBack, onSave, onPrayWith, initialData }) {
-  const [moods, setMoods] = useState(initialData?.mood || []);
-  const [symptoms, setSymptoms] = useState(initialData?.symptoms || []);
+function fmtTime(iso) {
+  try {
+    const d = new Date(iso);
+    const h = d.getHours(), m = d.getMinutes();
+    const ampm = h >= 12 ? "pm" : "am";
+    return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${ampm}`;
+  } catch (e) { return ""; }
+}
+
+export default function CheckInScreen({ onBack, onSave, onPrayWith, todayEntries }) {
+  // Always start with a blank form
+  const [moods, setMoods] = useState([]);
+  const [symptoms, setSymptoms] = useState([]);
   const [customSymptom, setCustomSymptom] = useState("");
   const [customMood, setCustomMood] = useState("");
-  const [intensity, setIntensity] = useState(()=>{
-    const v=initialData?.intensity;
-    if(typeof v==="number"&&v>=0&&v<=2) return v;
-    if(typeof v==="string"){const idx=INTENSITY_STOPS.findIndex(s=>s.label.toLowerCase()===v);return idx>=0?idx:0;}
-    return 0;
-  });
-  const [reflection, setReflection] = useState(initialData?.reflection || "");
+  const [intensity, setIntensity] = useState(0);
+  const [reflection, setReflection] = useState("");
   const [saveMsg, setSaveMsg] = useState("");
   const [showedUp, setShowedUp] = useState(false);
+  const [editingEntry, setEditingEntry] = useState(null); // id of entry being edited
   const debounceRef = useRef(null);
-  const interactionCount = useRef(0);
+  const entryIdRef = useRef(null); // unique id for this check-in
 
   const todayKey = new Date().toISOString().slice(0, 10);
+  const entries = Array.isArray(todayEntries) ? todayEntries : [];
 
   // Count meaningful interactions
   const sectionsUsed = (moods.length > 0 ? 1 : 0) + (symptoms.length > 0 ? 1 : 0) + (reflection.length > 10 ? 1 : 0);
+
+  // Generate a unique entry id on first interaction
+  const getEntryId = () => {
+    if (!entryIdRef.current) entryIdRef.current = todayKey + "_" + Date.now();
+    return entryIdRef.current;
+  };
 
   // Debounced auto-save
   const triggerSave = useCallback(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       const data = {
+        id: getEntryId(),
         date: todayKey,
+        time: new Date().toISOString(),
         mood: moods,
         symptoms: symptoms,
         intensity: INTENSITY_STOPS[intensity].label.toLowerCase(),
@@ -49,7 +64,7 @@ export default function CheckInScreen({ onBack, onSave, onPrayWith, initialData 
     }, 600);
   }, [moods, symptoms, intensity, reflection, onSave, todayKey]);
 
-  // Auto-save on any change
+  // Auto-save on any change (only if there's data)
   useEffect(() => {
     if (moods.length || symptoms.length || reflection) triggerSave();
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
@@ -69,6 +84,22 @@ export default function CheckInScreen({ onBack, onSave, onPrayWith, initialData 
     if (s && !symptoms.includes(s)) { setSymptoms(prev => [...prev, s]); setCustomSymptom(""); }
   };
 
+  // Load a previous entry for editing
+  const loadEntry = (entry) => {
+    setMoods(entry.mood || []);
+    setSymptoms(entry.symptoms || []);
+    const v = entry.intensity;
+    if (typeof v === "number" && v >= 0 && v <= 2) setIntensity(v);
+    else if (typeof v === "string") {
+      const idx = INTENSITY_STOPS.findIndex(s => s.label.toLowerCase() === v);
+      setIntensity(idx >= 0 ? idx : 0);
+    }
+    setReflection(entry.reflection || "");
+    entryIdRef.current = entry.id || todayKey + "_" + Date.now();
+    setEditingEntry(entry.id);
+    setShowedUp(false);
+  };
+
   const hasData = moods.length > 0 || symptoms.length > 0 || reflection.length > 0;
   const isHeavy = INTENSITY_STOPS[intensity].label === "Heavy";
 
@@ -83,11 +114,49 @@ export default function CheckInScreen({ onBack, onSave, onPrayWith, initialData 
         </button>
 
         {/* Header */}
-        <div style={{ textAlign: "center", marginBottom: 32, animation: "fadeUp .6s ease both" }}>
+        <div style={{ textAlign: "center", marginBottom: 24, animation: "fadeUp .6s ease both" }}>
           <h1 style={{ fontFamily: DISPLAY, fontSize: "1.5rem", fontWeight: 700, color: B.goldL, margin: "0 0 8px" }}>Body & Mind Check-In</h1>
           <p style={{ fontFamily: SERIF, fontStyle: "italic", fontSize: "0.88rem", color: "rgba(255,248,232,0.35)", margin: 0 }}>Take a moment to notice what you're carrying today</p>
           <div style={{ width: 50, height: 1, background: "rgba(201,169,110,0.25)", margin: "14px auto 0" }} />
         </div>
+
+        {/* ── PREVIOUS ENTRIES TODAY ── */}
+        {entries.length > 0 && !editingEntry && (
+          <div style={{ marginBottom: 24, animation: "fadeUp .5s ease both" }}>
+            <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(201,169,110,0.08)", borderRadius: 12, padding: "12px 16px" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: entries.length > 1 ? 8 : 0 }}>
+                <p style={{ fontFamily: SANS, fontSize: "0.7rem", color: "rgba(255,248,232,0.3)", margin: 0, letterSpacing: "0.04em" }}>
+                  {entries.length === 1 ? "1 check-in today" : `${entries.length} check-ins today`}
+                </p>
+                <p style={{ fontFamily: SANS, fontSize: "0.65rem", color: "rgba(255,248,232,0.2)", margin: 0 }}>
+                  Last: {fmtTime(entries[entries.length - 1]?.time)}
+                </p>
+              </div>
+              {entries.slice(-3).map((e, i) => (
+                <div key={e.id || i} style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
+                  <div style={{ flex: 1, overflow: "hidden" }}>
+                    <p style={{ fontFamily: SANS, fontSize: "0.68rem", color: "rgba(255,248,232,0.3)", margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {[...(e.mood || []), ...(e.symptoms || [])].slice(0, 4).join(", ") || "Check-in"}
+                    </p>
+                  </div>
+                  <button onClick={() => loadEntry(e)} style={{ background: "rgba(201,169,110,0.06)", border: "1px solid rgba(201,169,110,0.12)", borderRadius: 8, padding: "4px 10px", cursor: "pointer", color: "rgba(201,169,110,0.5)", fontFamily: SANS, fontSize: "0.62rem", fontWeight: 600, transition: "all 0.2s", flexShrink: 0 }}>
+                    Edit
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Editing indicator */}
+        {editingEntry && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+            <p style={{ fontFamily: SANS, fontSize: "0.7rem", color: "rgba(201,169,110,0.45)", margin: 0, flex: 1 }}>Editing previous entry</p>
+            <button onClick={() => { setEditingEntry(null); setMoods([]); setSymptoms([]); setIntensity(0); setReflection(""); entryIdRef.current = null; }} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(201,169,110,0.1)", borderRadius: 8, padding: "4px 12px", cursor: "pointer", color: "rgba(255,248,232,0.35)", fontFamily: SANS, fontSize: "0.65rem", transition: "all 0.2s" }}>
+              New entry
+            </button>
+          </div>
+        )}
 
         {/* ── MOOD SECTION ── */}
         <div style={{ marginBottom: 28, animation: "fadeUp .6s .1s ease both", opacity: 0 }}>
@@ -111,7 +180,6 @@ export default function CheckInScreen({ onBack, onSave, onPrayWith, initialData 
                 </button>
               );
             })}
-            {/* Custom moods already added */}
             {moods.filter(m => !MOODS.includes(m)).map(m => (
               <button key={m} onClick={() => toggleMood(m)} style={{
                 background: "rgba(201,169,110,0.15)", border: "1px solid rgba(201,169,110,0.45)",
@@ -123,7 +191,6 @@ export default function CheckInScreen({ onBack, onSave, onPrayWith, initialData 
               </button>
             ))}
           </div>
-          {/* Something else mood input */}
           <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
             <input value={customMood} onChange={e => setCustomMood(e.target.value)} onKeyDown={e => { if (e.key === "Enter") { const v = customMood.trim(); if (v && !moods.includes(v)) { setMoods(prev => [...prev, v]); setCustomMood(""); } } }} placeholder="Something else..." style={{
               flex: 1, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(201,169,110,0.10)",
@@ -162,7 +229,6 @@ export default function CheckInScreen({ onBack, onSave, onPrayWith, initialData 
                 </button>
               );
             })}
-            {/* Custom symptoms already added */}
             {symptoms.filter(s => !SYMPTOMS.includes(s)).map(s => (
               <button key={s} onClick={() => toggleSymptom(s)} style={{
                 background: "rgba(190,211,196,0.12)", border: "1px solid rgba(190,211,196,0.35)",
@@ -174,7 +240,6 @@ export default function CheckInScreen({ onBack, onSave, onPrayWith, initialData 
               </button>
             ))}
           </div>
-          {/* Something else input */}
           <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
             <input value={customSymptom} onChange={e => setCustomSymptom(e.target.value)} onKeyDown={e => { if (e.key === "Enter") addCustomSymptom(); }} placeholder="Something else..." style={{
               flex: 1, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(201,169,110,0.10)",
@@ -211,7 +276,6 @@ export default function CheckInScreen({ onBack, onSave, onPrayWith, initialData 
               </button>
             ))}
           </div>
-          {/* Heavy day message */}
           {isHeavy && hasData && (
             <div style={{ marginTop: 12, padding: "12px 16px", background: "rgba(201,169,110,0.06)", border: "1px solid rgba(201,169,110,0.12)", borderRadius: 12, animation: "fadeUp .4s ease both" }}>
               <p style={{ fontFamily: SERIF, fontStyle: "italic", fontSize: "0.82rem", color: "rgba(255,248,232,0.45)", margin: 0, lineHeight: 1.6 }}>

@@ -4931,28 +4931,37 @@ function AppInner(){
 
   /* ══ FEED — social feed of posts from followed users ═══════════════ */
   /* ══ BODY & MIND CHECK-IN ═════════════════════════════════════════ */
-  if(screen==="check-in") return(
-    <CheckInScreen
-      onBack={()=>setScreen("cabin")}
-      initialData={(()=>{try{return JSON.parse(localStorage.getItem("irj-checkin-"+new Date().toISOString().slice(0,10)))||null;}catch(e){return null;}})()}
-      onSave={(data)=>{
-        try{
-          localStorage.setItem("irj-checkin-"+data.date,JSON.stringify(data));
-          const hist=JSON.parse(localStorage.getItem("irj-checkin-history")||"[]");
-          const idx=hist.findIndex(h=>h&&h.date===data.date);
-          if(idx>=0) hist[idx]=data; else hist.push(data);
-          localStorage.setItem("irj-checkin-history",JSON.stringify(hist.slice(-90)));
-        }catch(e){}
-        try{
-          if(user&&db){
-            const ref=doc(db,"users",user.uid);
-            setDoc(ref,{["checkin_"+data.date]:data},{merge:true}).catch(()=>{});
-          }
-        }catch(e){}
-      }}
-      onPrayWith={(text)=>{setNewPrayer(text||"");setPrayerWallTab("mine");setScreen("cabin");setToast({msg:"Prayer started from your check-in"});}}
-    />
-  );
+  if(screen==="check-in"){
+    // Load today's entries as an array
+    const todayKey=new Date().toISOString().slice(0,10);
+    let todayEntries=[];
+    try{
+      const raw=localStorage.getItem("irj-checkins-"+todayKey);
+      if(raw) todayEntries=JSON.parse(raw)||[];
+    }catch(e){}
+    return(
+      <CheckInScreen
+        onBack={()=>setScreen("cabin")}
+        todayEntries={todayEntries}
+        onSave={(data)=>{
+          try{
+            const key="irj-checkins-"+data.date;
+            const arr=JSON.parse(localStorage.getItem(key)||"[]");
+            const idx=arr.findIndex(e=>e&&e.id===data.id);
+            if(idx>=0) arr[idx]=data; else arr.push(data);
+            localStorage.setItem(key,JSON.stringify(arr.slice(-20)));
+          }catch(e){}
+          try{
+            if(user&&db){
+              const ref=doc(db,"users",user.uid);
+              setDoc(ref,{["checkin_"+data.id]:data},{merge:true}).catch(()=>{});
+            }
+          }catch(e){}
+        }}
+        onPrayWith={(text)=>{setNewPrayer(text||"");setPrayerWallTab("mine");setScreen("cabin");setToast({msg:"Prayer started from your check-in"});}}
+      />
+    );
+  }
 
   if(screen==="feed") return(
     <FeedScreen
