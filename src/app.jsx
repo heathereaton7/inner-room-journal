@@ -1763,7 +1763,7 @@ function AppInner(){
   useEffect(()=>{setMenuOpen(false);},[screen]);
   useEffect(()=>{if(screen!=="upper-room"){setUpperRoomView(null);setUserSearch("");setUserResults([]);}},[screen]);
   useEffect(()=>{if(screen==="edit-profile"&&userProfile){setSetupUsername(userProfile.username||"");setSetupGender(userProfile.gender||null);setSetupBio(userProfile.bio||"");setUsernameError("");setUsernameAvailable(false);}},[screen]);
-  useEffect(()=>{if(screen!=="profile-onboard"||onboardStep!==4)return;const t=setTimeout(()=>{setIsOnboarded(true);dbSave("irj-onboarded",true);fadeOutAmbient();setScreen("cabin");},3000);return()=>clearTimeout(t);},[screen,onboardStep]);
+  useEffect(()=>{if(screen!=="profile-onboard"||onboardStep!==3)return;const t=setTimeout(()=>{setIsOnboarded(true);dbSave("irj-onboarded",true);fadeOutAmbient();setScreen("cabin");},3500);return()=>clearTimeout(t);},[screen,onboardStep]);
 
   // ── AMBIENT SOUND — auto-play / stop per screen ──
   useEffect(()=>{
@@ -2571,7 +2571,7 @@ function AppInner(){
         // Check if user already filled out onboarding steps in this session
         if(setupUsername&&setupGender){
           await completeProfileSetup(uid);
-          setOnboardStep(4);setScreen("profile-onboard");
+          setOnboardStep(3);setScreen("profile-onboard");
           return;
         }
         setSetupUsername(displayName||"");
@@ -2583,7 +2583,7 @@ function AppInner(){
       if(!data.gender||!data.usernameLower){
         if(setupUsername&&setupGender){
           await completeProfileSetup(uid);
-          setOnboardStep(4);setScreen("profile-onboard");
+          setOnboardStep(3);setScreen("profile-onboard");
           setUserProfile({id:uid,...data});
           return;
         }
@@ -3948,29 +3948,28 @@ function AppInner(){
     );
   }
 
-  /* ══ PROFILE ONBOARDING — Immersive 5-step cabin setup ═════════ */
+  /* ══ PROFILE ONBOARDING — All on the door, then zoom into cabin ═ */
   if(screen==="profile-onboard"){
     const step1Ok=setupUsername.length>=3&&(usernameAvailable||!user)&&!usernameChecking;
-    const CAM={
-      1:{transform:"scale(1.4) translate(15%, 10%)"},
-      2:{transform:"scale(1.3) translate(-10%, -5%)"},
-      3:{transform:"scale(1.1) translate(0%, 0%)"},
-      4:{transform:"scale(1) translate(0%, 0%)"},
-    };
-    const cam=CAM[onboardStep]||CAM[4];
+
+    // Door background shared by steps 0-2
+    const DoorBg=()=>(
+      <>
+        <img src="/door.png" alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",objectPosition:"center center",filter:"brightness(0.8)",animation:onboardStep===0?"sceneFadeIn 1s ease both":"none"}}/>
+        <div style={{position:"absolute",top:"28%",left:"30%",width:"80px",height:"80px",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,180,60,0.25) 0%,transparent 70%)",animation:"candleGlowPulse 3.5s ease-in-out infinite",pointerEvents:"none"}}/>
+        <div style={{position:"absolute",top:"28%",right:"30%",width:"80px",height:"80px",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,180,60,0.25) 0%,transparent 70%)",animation:"candleGlowPulse 3.5s 0.8s ease-in-out infinite",pointerEvents:"none"}}/>
+        <div style={{position:"absolute",inset:0,background:"linear-gradient(to bottom,transparent 0%,transparent 35%,rgba(10,8,6,0.5) 60%,rgba(10,8,6,0.92) 85%,rgba(10,8,6,0.98) 100%)"}}/>
+      </>
+    );
 
     return(
       <div style={{position:"fixed",inset:0,overflow:"hidden",background:"#0A0806"}}>
         <style>{GFONTS}{CSS}</style>
 
-        {/* ── STEP 0: Door page (sign-in gate) ── */}
+        {/* ── STEP 0: Door — sign-in gate ── */}
         {onboardStep===0&&(
-          <div style={{position:"absolute",inset:0,background:"#0A0806"}}>
-            <img src="/door.png" alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",objectPosition:"center center",filter:"brightness(0.8)",animation:"sceneFadeIn 1s ease both"}}/>
-            {/* Warm lantern glows on door */}
-            <div style={{position:"absolute",top:"28%",left:"30%",width:"80px",height:"80px",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,180,60,0.25) 0%,transparent 70%)",animation:"candleGlowPulse 3.5s ease-in-out infinite",pointerEvents:"none"}}/>
-            <div style={{position:"absolute",top:"28%",right:"30%",width:"80px",height:"80px",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,180,60,0.25) 0%,transparent 70%)",animation:"candleGlowPulse 3.5s 0.8s ease-in-out infinite",pointerEvents:"none"}}/>
-            <div style={{position:"absolute",inset:0,background:"linear-gradient(to bottom,transparent 0%,transparent 35%,rgba(10,8,6,0.5) 60%,rgba(10,8,6,0.92) 85%,rgba(10,8,6,0.98) 100%)"}}/>
+          <div style={{position:"absolute",inset:0}}>
+            <DoorBg/>
             <div style={{position:"absolute",bottom:0,left:0,right:0,zIndex:3,display:"flex",flexDirection:"column",alignItems:"center",padding:"0 28px 48px"}}>
               <div className="fu" style={{display:"flex",alignItems:"center",gap:"10px",marginBottom:"14px"}}>
                 <div style={{width:"32px",height:"1px",background:"linear-gradient(90deg,transparent,rgba(201,169,110,0.4))"}}/>
@@ -3983,12 +3982,10 @@ function AppInner(){
               <p className="fu3" style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.82rem,2.8vw,0.95rem)",color:"rgba(255,248,232,0.5)",margin:"0 0 28px",textAlign:"center",maxWidth:"300px",lineHeight:1.65,letterSpacing:"0.02em"}}>
                 Save your journey, or step in as a guest.
               </p>
-              {/* Sign in button */}
               <button className="fu3 door-btn" onClick={async()=>{await handleGoogleSignIn();}} style={{width:"100%",maxWidth:"320px",background:"linear-gradient(135deg,rgba(201,169,110,0.22),rgba(201,169,110,0.06))",backdropFilter:"blur(10px)",WebkitBackdropFilter:"blur(10px)",border:"1px solid rgba(201,169,110,0.45)",color:"#FFF8E8",padding:"15px 0",borderRadius:"16px",cursor:"pointer",fontSize:"0.9rem",fontFamily:SERIF,fontWeight:600,letterSpacing:"0.06em",fontStyle:"italic",marginBottom:"4px",transition:"all 0.3s",boxShadow:"0 4px 24px rgba(0,0,0,0.3)"}}>
                 Move in
               </button>
               <p style={{fontFamily:SANS,fontSize:"0.64rem",color:"rgba(255,248,232,0.28)",textAlign:"center",margin:"0 0 14px",letterSpacing:"0.03em"}}>Save your journal and join the community</p>
-              {/* Continue as guest */}
               <button className="fu4" onClick={()=>setOnboardStep(1)} style={{width:"100%",maxWidth:"320px",background:"transparent",border:"1px solid rgba(255,248,232,0.12)",borderRadius:"16px",padding:"13px 0",cursor:"pointer",color:"rgba(255,248,232,0.45)",fontFamily:SERIF,fontStyle:"italic",fontSize:"0.85rem",letterSpacing:"0.05em",marginBottom:"14px",transition:"all 0.3s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor="rgba(255,248,232,0.25)";e.currentTarget.style.color="rgba(255,248,232,0.65)";}} onMouseLeave={e=>{e.currentTarget.style.borderColor="rgba(255,248,232,0.12)";e.currentTarget.style.color="rgba(255,248,232,0.45)";}}>
                 Continue as guest
               </button>
@@ -3999,117 +3996,92 @@ function AppInner(){
           </div>
         )}
 
-        {/* ── STEPS 1-4: ImmersiveCabin with camera ── */}
-        {onboardStep>=1&&(
-          <div style={{position:"absolute",inset:0,overflow:"hidden"}}>
-            <div style={{position:"absolute",inset:0,transform:cam.transform,transition:"transform 1.2s cubic-bezier(0.25,0.46,0.45,0.94)",willChange:"transform",transformOrigin:"center center"}}>
-              <ImmersiveCabin/>
+        {/* ── STEP 1: Door — username ── */}
+        {onboardStep===1&&(
+          <div style={{position:"absolute",inset:0}}>
+            <DoorBg/>
+            <div style={{position:"absolute",bottom:0,left:0,right:0,zIndex:3,display:"flex",flexDirection:"column",alignItems:"center",padding:"0 28px 48px"}}>
+              <div className="fu" style={{width:"100%",maxWidth:"420px",display:"flex",flexDirection:"column",alignItems:"center"}}>
+                <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.88rem,3vw,1.05rem)",color:"rgba(255,248,232,0.55)",margin:"0 0 10px",textAlign:"center",letterSpacing:"0.04em",lineHeight:1.6}}>
+                  What shall we call you here?
+                </p>
+                <div style={{width:"100%",position:"relative",marginBottom:"8px"}}>
+                  <input value={setupUsername} onChange={e=>{const v=e.target.value.replace(/[^a-zA-Z0-9_]/g,"").slice(0,20);setSetupUsername(v);setUsernameError("");setUsernameAvailable(false);}} onBlur={()=>{if(setupUsername.length>=3){if(!user){setUsernameAvailable(true);return;}validateUsername(setupUsername,user?.uid);}}} autoCapitalize="none" autoCorrect="off" spellCheck={false} placeholder="your name here..." style={{width:"100%",boxSizing:"border-box",background:"transparent",border:"none",borderBottom:`1px solid ${usernameError?"rgba(220,100,100,0.5)":usernameAvailable?"rgba(100,180,100,0.5)":"rgba(201,169,110,0.35)"}`,padding:"10px 36px 10px 4px",color:"#FFF8E8",fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(1.2rem,5vw,1.6rem)",outline:"none",textAlign:"center",letterSpacing:"0.06em",transition:"border-color 0.3s, box-shadow 0.4s",boxShadow:setupUsername.length>=3?"0 2px 12px rgba(201,169,110,0.12)":"none"}}/>
+                  <div style={{position:"absolute",right:4,top:"50%",transform:"translateY(-50%)"}}>
+                    {usernameChecking&&<span style={{color:"rgba(255,248,232,0.3)",fontSize:"0.75rem",fontFamily:SANS}}>...</span>}
+                    {usernameAvailable&&!usernameChecking&&<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(100,180,100,0.8)" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>}
+                    {usernameError&&!usernameChecking&&<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(220,100,100,0.6)" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>}
+                  </div>
+                </div>
+                {usernameError&&<p style={{fontFamily:SANS,fontSize:"0.7rem",color:"rgba(220,120,120,0.75)",margin:"4px 0 0",textAlign:"center"}}>{usernameError}</p>}
+                {!usernameError&&<p style={{fontFamily:SANS,fontSize:"0.62rem",color:"rgba(255,248,232,0.2)",margin:"4px 0 0",textAlign:"center",letterSpacing:"0.04em"}}>Letters, numbers, and underscores</p>}
+                <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.68rem",color:"rgba(255,248,232,0.15)",margin:"8px 0 0",textAlign:"center",letterSpacing:"0.03em"}}>This name will be seen in the community</p>
+                <button onClick={()=>{if(step1Ok)setOnboardStep(2);}} disabled={!step1Ok} className={step1Ok?"door-btn":""} style={{marginTop:"28px",background:step1Ok?"linear-gradient(135deg,rgba(201,169,110,0.22),rgba(201,169,110,0.06))":"transparent",border:`1px solid ${step1Ok?"rgba(201,169,110,0.45)":"rgba(255,248,232,0.08)"}`,borderRadius:"28px",padding:"13px 44px",cursor:step1Ok?"pointer":"default",color:step1Ok?"#FFF8E8":"rgba(255,248,232,0.2)",fontFamily:SERIF,fontStyle:"italic",fontWeight:600,fontSize:"0.88rem",letterSpacing:"0.1em",transition:"all 0.3s"}}>
+                  Continue
+                </button>
+              </div>
             </div>
+          </div>
+        )}
 
-            {/* ── STEP 1: Username (desk) ── */}
-            {onboardStep===1&&(
-              <div style={{position:"absolute",inset:0,zIndex:10,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-end",padding:"0 0 48px"}}>
-                <div style={{position:"absolute",bottom:0,left:0,right:0,height:"65%",background:"linear-gradient(to top,rgba(6,4,2,0.94) 0%,rgba(6,4,2,0.7) 50%,transparent 100%)",pointerEvents:"none"}}/>
-                <div className="fu" style={{position:"relative",zIndex:1,width:"100%",maxWidth:"420px",padding:"0 28px",display:"flex",flexDirection:"column",alignItems:"center"}}>
-                  <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.88rem,3vw,1.05rem)",color:"rgba(255,248,232,0.55)",margin:"0 0 10px",textAlign:"center",letterSpacing:"0.04em",lineHeight:1.6}}>
-                    What shall we call you here?
-                  </p>
-                  <div style={{width:"100%",position:"relative",marginBottom:"8px"}}>
-                    <input value={setupUsername} onChange={e=>{const v=e.target.value.replace(/[^a-zA-Z0-9_]/g,"").slice(0,20);setSetupUsername(v);setUsernameError("");setUsernameAvailable(false);}} onBlur={()=>{if(setupUsername.length>=3){if(!user){setUsernameAvailable(true);return;}validateUsername(setupUsername,user?.uid);}}} autoCapitalize="none" autoCorrect="off" spellCheck={false} placeholder="your name here..." style={{width:"100%",boxSizing:"border-box",background:"transparent",border:"none",borderBottom:`1px solid ${usernameError?"rgba(220,100,100,0.5)":usernameAvailable?"rgba(100,180,100,0.5)":"rgba(201,169,110,0.35)"}`,padding:"10px 36px 10px 4px",color:"#FFF8E8",fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(1.2rem,5vw,1.6rem)",outline:"none",textAlign:"center",letterSpacing:"0.06em",transition:"border-color 0.3s, box-shadow 0.4s",boxShadow:setupUsername.length>=3?"0 2px 12px rgba(201,169,110,0.12)":"none"}}/>
-                    <div style={{position:"absolute",right:4,top:"50%",transform:"translateY(-50%)"}}>
-                      {usernameChecking&&<span style={{color:"rgba(255,248,232,0.3)",fontSize:"0.75rem",fontFamily:SANS}}>...</span>}
-                      {usernameAvailable&&!usernameChecking&&<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(100,180,100,0.8)" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>}
-                      {usernameError&&!usernameChecking&&<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(220,100,100,0.6)" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>}
-                    </div>
-                  </div>
-                  {usernameError&&<p style={{fontFamily:SANS,fontSize:"0.7rem",color:"rgba(220,120,120,0.75)",margin:"4px 0 0",textAlign:"center"}}>{usernameError}</p>}
-                  {!usernameError&&<p style={{fontFamily:SANS,fontSize:"0.62rem",color:"rgba(255,248,232,0.2)",margin:"4px 0 0",textAlign:"center",letterSpacing:"0.04em"}}>Letters, numbers, and underscores</p>}
-                  <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.68rem",color:"rgba(255,248,232,0.15)",margin:"8px 0 0",textAlign:"center",letterSpacing:"0.03em"}}>This name will be seen in the community</p>
-                  <button onClick={()=>{if(step1Ok)setOnboardStep(2);}} disabled={!step1Ok} className={step1Ok?"door-btn":""} style={{marginTop:"28px",background:step1Ok?"linear-gradient(135deg,rgba(201,169,110,0.22),rgba(201,169,110,0.06))":"transparent",border:`1px solid ${step1Ok?"rgba(201,169,110,0.45)":"rgba(255,248,232,0.08)"}`,borderRadius:"28px",padding:"13px 44px",cursor:step1Ok?"pointer":"default",color:step1Ok?"#FFF8E8":"rgba(255,248,232,0.2)",fontFamily:SERIF,fontStyle:"italic",fontWeight:600,fontSize:"0.88rem",letterSpacing:"0.1em",transition:"all 0.3s"}}>
-                    Continue
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* ── STEP 2: Gender (mirror) ── */}
-            {onboardStep===2&&(
-              <div style={{position:"absolute",inset:0,zIndex:10,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-end",padding:"0 0 52px"}}>
-                <div style={{position:"absolute",bottom:0,left:0,right:0,height:"60%",background:"linear-gradient(to top,rgba(6,4,2,0.94) 0%,rgba(6,4,2,0.65) 50%,transparent 100%)",pointerEvents:"none"}}/>
-                <div className="fu" style={{position:"relative",zIndex:1,width:"100%",maxWidth:"380px",padding:"0 28px",display:"flex",flexDirection:"column",alignItems:"center"}}>
-                  <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.88rem,3vw,1.05rem)",color:"rgba(255,248,232,0.55)",margin:"0 0 20px",textAlign:"center",letterSpacing:"0.04em",lineHeight:1.6}}>
-                    How do you wish to be known?
-                  </p>
-                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"14px",width:"100%"}}>
-                    {[["male","Son of God"],["female","Daughter of God"]].map(([val,label])=>(
-                      <button key={val} onClick={()=>{setSetupGender(val);setTimeout(()=>setOnboardStep(3),600);}} style={{background:setupGender===val?"linear-gradient(135deg,rgba(201,169,110,0.18),rgba(201,169,110,0.06))":"rgba(255,248,232,0.04)",border:`1.5px solid ${setupGender===val?"rgba(201,169,110,0.55)":"rgba(255,248,232,0.12)"}`,borderRadius:"16px",padding:"22px 16px",cursor:"pointer",transition:"all 0.25s ease",boxShadow:setupGender===val?"0 0 22px rgba(201,169,110,0.18),inset 0 0 10px rgba(201,169,110,0.04)":"none"}}>
-                        <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"1rem",color:setupGender===val?"#FFF8E8":"rgba(255,248,232,0.45)",transition:"color 0.25s",letterSpacing:"0.04em"}}>{label}</span>
-                      </button>
-                    ))}
-                  </div>
-                  <button onClick={()=>setOnboardStep(1)} style={{marginTop:"20px",background:"transparent",border:"none",cursor:"pointer",color:"rgba(255,248,232,0.22)",fontFamily:SERIF,fontStyle:"italic",fontSize:"0.78rem",letterSpacing:"0.06em",transition:"color 0.2s"}} onMouseEnter={e=>e.target.style.color="rgba(255,248,232,0.45)"} onMouseLeave={e=>e.target.style.color="rgba(255,248,232,0.22)"}>
-                    Back
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* ── STEP 3: Sign-in choice ── */}
-            {onboardStep===3&&(()=>{
-              if(user){completeProfileSetup(user.uid).then(()=>setOnboardStep(4));return null;}
-              return(
-                <div style={{position:"absolute",inset:0,zIndex:10,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-end",padding:"0 0 52px"}}>
-                  <div style={{position:"absolute",bottom:0,left:0,right:0,height:"65%",background:"linear-gradient(to top,rgba(6,4,2,0.94) 0%,rgba(6,4,2,0.65) 50%,transparent 100%)",pointerEvents:"none"}}/>
-                  <div className="fu" style={{position:"relative",zIndex:1,width:"100%",maxWidth:"380px",padding:"0 28px",display:"flex",flexDirection:"column",alignItems:"center"}}>
-                    <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.9rem,3vw,1.1rem)",color:"rgba(255,248,232,0.7)",margin:"0 0 24px",textAlign:"center",letterSpacing:"0.03em",lineHeight:1.65}}>
-                      Would you like to save your place?
-                    </p>
-                    <button className="door-btn" onClick={handleGoogleSignIn} style={{width:"100%",background:"linear-gradient(135deg,rgba(201,169,110,0.22),rgba(201,169,110,0.06))",border:"1px solid rgba(201,169,110,0.45)",borderRadius:"16px",padding:"16px 0",cursor:"pointer",color:"#FFF8E8",fontFamily:SERIF,fontStyle:"italic",fontSize:"0.95rem",fontWeight:600,letterSpacing:"0.06em",marginBottom:"12px",transition:"all 0.3s"}}>
-                      Save my place
+        {/* ── STEP 2: Door — gender ── */}
+        {onboardStep===2&&(
+          <div style={{position:"absolute",inset:0}}>
+            <DoorBg/>
+            <div style={{position:"absolute",bottom:0,left:0,right:0,zIndex:3,display:"flex",flexDirection:"column",alignItems:"center",padding:"0 28px 52px"}}>
+              <div className="fu" style={{width:"100%",maxWidth:"380px",display:"flex",flexDirection:"column",alignItems:"center"}}>
+                <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.88rem,3vw,1.05rem)",color:"rgba(255,248,232,0.55)",margin:"0 0 20px",textAlign:"center",letterSpacing:"0.04em",lineHeight:1.6}}>
+                  How do you wish to be known?
+                </p>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"14px",width:"100%"}}>
+                  {[["male","Son of God"],["female","Daughter of God"]].map(([val,label])=>(
+                    <button key={val} onClick={()=>{
+                      setSetupGender(val);
+                      // After gender → save profile if signed in, then door zoom
+                      setTimeout(()=>{
+                        if(user) completeProfileSetup(user.uid);
+                        else{try{localStorage.setItem("irj-localProfile",JSON.stringify({username:setupUsername,gender:val}));}catch(e){}}
+                        setOnboardStep(3);
+                      },600);
+                    }} style={{background:setupGender===val?"linear-gradient(135deg,rgba(201,169,110,0.18),rgba(201,169,110,0.06))":"rgba(255,248,232,0.04)",border:`1.5px solid ${setupGender===val?"rgba(201,169,110,0.55)":"rgba(255,248,232,0.12)"}`,borderRadius:"16px",padding:"22px 16px",cursor:"pointer",transition:"all 0.25s ease",boxShadow:setupGender===val?"0 0 22px rgba(201,169,110,0.18),inset 0 0 10px rgba(201,169,110,0.04)":"none"}}>
+                      <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"1rem",color:setupGender===val?"#FFF8E8":"rgba(255,248,232,0.45)",transition:"color 0.25s",letterSpacing:"0.04em"}}>{label}</span>
                     </button>
-                    <button onClick={()=>{try{localStorage.setItem("irj-localProfile",JSON.stringify({username:setupUsername,gender:setupGender}));}catch(e){}setIsOnboarded(true);dbSave("irj-onboarded",true);setOnboardStep(4);}} style={{width:"100%",background:"transparent",border:"1px solid rgba(255,248,232,0.12)",borderRadius:"16px",padding:"14px 0",cursor:"pointer",color:"rgba(255,248,232,0.45)",fontFamily:SERIF,fontStyle:"italic",fontSize:"0.88rem",letterSpacing:"0.05em",marginBottom:"16px",transition:"all 0.3s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor="rgba(255,248,232,0.25)";e.currentTarget.style.color="rgba(255,248,232,0.65)";}} onMouseLeave={e=>{e.currentTarget.style.borderColor="rgba(255,248,232,0.12)";e.currentTarget.style.color="rgba(255,248,232,0.45)";}}>
-                      Continue for now
-                    </button>
-                    <p style={{fontFamily:SANS,fontSize:"0.65rem",color:"rgba(255,248,232,0.2)",textAlign:"center",margin:0,lineHeight:1.55,letterSpacing:"0.03em",maxWidth:"280px"}}>
-                      Without signing in, your journal stays on this device only.
-                    </p>
-                    <button onClick={()=>setOnboardStep(2)} style={{marginTop:"16px",background:"transparent",border:"none",cursor:"pointer",color:"rgba(255,248,232,0.2)",fontFamily:SERIF,fontStyle:"italic",fontSize:"0.75rem",letterSpacing:"0.06em"}} onMouseEnter={e=>e.target.style.color="rgba(255,248,232,0.4)"} onMouseLeave={e=>e.target.style.color="rgba(255,248,232,0.2)"}>
-                      Back
-                    </button>
-                  </div>
+                  ))}
                 </div>
-              );
-            })()}
-
-            {/* ── STEP 4: Welcome ── */}
-            {onboardStep===4&&(
-              <div onClick={()=>{setIsOnboarded(true);dbSave("irj-onboarded",true);fadeOutAmbient();setScreen("cabin");}} style={{position:"absolute",inset:0,zIndex:10,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",cursor:"pointer"}}>
-                <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse at center,rgba(255,200,80,0.08) 0%,transparent 70%)",pointerEvents:"none",animation:"candleGlowPulse 3.5s ease-in-out infinite"}}/>
-                <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:"12px",animation:"fadeUp 1s 0.3s ease both"}}>
-                  <div style={{display:"flex",alignItems:"center",gap:"10px",marginBottom:"4px"}}>
-                    <div style={{width:"40px",height:"1px",background:"linear-gradient(90deg,transparent,rgba(201,169,110,0.5))"}}/>
-                    <div style={{width:"5px",height:"5px",borderRadius:"50%",background:"rgba(201,169,110,0.4)"}}/>
-                    <div style={{width:"40px",height:"1px",background:"linear-gradient(90deg,rgba(201,169,110,0.5),transparent)"}}/>
-                  </div>
-                  <h1 style={{fontFamily:DISPLAY,fontSize:"clamp(2rem,8vw,3.2rem)",fontWeight:700,color:"#FFF8E8",margin:0,textAlign:"center",textShadow:"0 2px 24px rgba(0,0,0,0.7),0 0 60px rgba(201,169,110,0.15)",letterSpacing:"0.04em",lineHeight:1.2}}>
-                    Welcome, {setupUsername||"friend"}.
-                  </h1>
-                  <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.9rem,3vw,1.1rem)",color:"rgba(255,248,232,0.5)",margin:0,textAlign:"center",maxWidth:"320px",lineHeight:1.65,letterSpacing:"0.03em",animation:"fadeUp 1s 0.7s ease both"}}>
-                    Your journal is waiting.
-                  </p>
-                  {/* Guided first action — gentle prompt */}
-                  <div style={{marginTop:"24px",animation:"fadeUp 1s 1.6s ease both",opacity:0,display:"flex",flexDirection:"column",alignItems:"center",gap:"8px"}}>
-                    <div style={{width:"30px",height:"1px",background:"rgba(201,169,110,0.25)",marginBottom:"4px"}}/>
-                    <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.82rem",color:"rgba(255,248,232,0.35)",margin:0,textAlign:"center",letterSpacing:"0.03em"}}>
-                      When you're ready, write your first prayer.
-                    </p>
-                  </div>
-                  <p style={{fontFamily:SANS,fontSize:"0.64rem",color:"rgba(255,248,232,0.18)",margin:"16px 0 0",letterSpacing:"0.08em",animation:"fadeUp 1s 2s ease both"}}>
-                    Tap anywhere to enter
-                  </p>
-                </div>
+                <button onClick={()=>setOnboardStep(1)} style={{marginTop:"20px",background:"transparent",border:"none",cursor:"pointer",color:"rgba(255,248,232,0.22)",fontFamily:SERIF,fontStyle:"italic",fontSize:"0.78rem",letterSpacing:"0.06em",transition:"color 0.2s"}} onMouseEnter={e=>e.target.style.color="rgba(255,248,232,0.45)"} onMouseLeave={e=>e.target.style.color="rgba(255,248,232,0.22)"}>
+                  Back
+                </button>
               </div>
-            )}
+            </div>
+          </div>
+        )}
+
+        {/* ── STEP 3: Door zoom open + Welcome ── */}
+        {onboardStep===3&&(
+          <div onClick={()=>{setIsOnboarded(true);dbSave("irj-onboarded",true);fadeOutAmbient();setScreen("cabin");}} style={{position:"absolute",inset:0,cursor:"pointer"}}>
+            {/* Door zooming open */}
+            <img src="/door.png" alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",objectPosition:"center center",animation:"doorEnterZoom 2s ease-out forwards",filter:"brightness(1.2)"}}/>
+            {/* Warm golden flood */}
+            <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse at center,rgba(255,200,80,0.15) 0%,rgba(255,180,60,0.06) 50%,transparent 100%)",animation:"doorEnterFade 1.5s 0.5s ease both",opacity:0}}/>
+            {/* Welcome text over the zoom */}
+            <div style={{position:"absolute",inset:0,zIndex:10,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
+              <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:"12px",animation:"fadeUp 1s 0.8s ease both",opacity:0}}>
+                <div style={{display:"flex",alignItems:"center",gap:"10px",marginBottom:"4px"}}>
+                  <div style={{width:"40px",height:"1px",background:"linear-gradient(90deg,transparent,rgba(201,169,110,0.5))"}}/>
+                  <div style={{width:"5px",height:"5px",borderRadius:"50%",background:"rgba(201,169,110,0.4)"}}/>
+                  <div style={{width:"40px",height:"1px",background:"linear-gradient(90deg,rgba(201,169,110,0.5),transparent)"}}/>
+                </div>
+                <h1 style={{fontFamily:DISPLAY,fontSize:"clamp(2rem,8vw,3.2rem)",fontWeight:700,color:"#FFF8E8",margin:0,textAlign:"center",textShadow:"0 2px 24px rgba(0,0,0,0.7),0 0 60px rgba(201,169,110,0.15)",letterSpacing:"0.04em",lineHeight:1.2}}>
+                  Welcome, {setupUsername||"friend"}.
+                </h1>
+                <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.9rem,3vw,1.1rem)",color:"rgba(255,248,232,0.5)",margin:0,textAlign:"center",maxWidth:"320px",lineHeight:1.65,letterSpacing:"0.03em",animation:"fadeUp 1s 1.2s ease both",opacity:0}}>
+                  Your journal is waiting.
+                </p>
+                <p style={{fontFamily:SANS,fontSize:"0.64rem",color:"rgba(255,248,232,0.18)",margin:"16px 0 0",letterSpacing:"0.08em",animation:"fadeUp 1s 2s ease both",opacity:0}}>
+                  Tap anywhere to enter
+                </p>
+              </div>
+            </div>
           </div>
         )}
       </div>
