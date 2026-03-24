@@ -15,7 +15,12 @@ export default function CheckInScreen({ onBack, onSave, onPrayWith, initialData 
   const [symptoms, setSymptoms] = useState(initialData?.symptoms || []);
   const [customSymptom, setCustomSymptom] = useState("");
   const [customMood, setCustomMood] = useState("");
-  const [intensity, setIntensity] = useState(initialData?.intensity ?? 0);
+  const [intensity, setIntensity] = useState(()=>{
+    const v=initialData?.intensity;
+    if(typeof v==="number"&&v>=0&&v<=2) return v;
+    if(typeof v==="string"){const idx=INTENSITY_STOPS.findIndex(s=>s.label.toLowerCase()===v);return idx>=0?idx:0;}
+    return 0;
+  });
   const [reflection, setReflection] = useState(initialData?.reflection || "");
   const [saveMsg, setSaveMsg] = useState("");
   const [showedUp, setShowedUp] = useState(false);
