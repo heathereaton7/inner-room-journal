@@ -1,19 +1,29 @@
 import { useState, useEffect, useRef } from 'react';
 
 /**
- * DoveCompanion — A soft glowing dove that appears as a gentle presence.
+ * DoveCompanion — A soft, cute dove that sits on the window ledge or desk.
  * Not a pet. Not gamified. Just a quiet companion.
  *
  * Props:
- *   intensity  — "light"|"moderate"|"heavy"|null — affects glow + movement
+ *   intensity  — "light"|"moderate"|"heavy"|null — affects glow + animation
  *   active     — boolean — user has been interacting recently
  *   screen     — "cabin"|"garden"|"check-in" — determines placement
  */
 
-const POSITIONS = {
-  cabin:     [{ top: "18%", right: "22%" }, { top: "32%", left: "8%" }, { top: "14%", right: "34%" }],
-  garden:    [{ top: "12%", left: "20%" }, { top: "22%", right: "15%" }, { top: "8%", left: "40%" }],
-  "check-in": [{ top: "6%", right: "18%" }],
+// Fixed perching spots — window ledge, desk edge, shelf
+const PERCHES = {
+  cabin:      [
+    { bottom: "44%", right: "12%"  }, // window ledge right
+    { bottom: "48%", right: "28%"  }, // window ledge center
+    { bottom: "36%", left: "6%"    }, // near fireplace mantel
+  ],
+  garden:     [
+    { top: "18%", left: "14%"  },
+    { top: "24%", right: "10%" },
+  ],
+  "check-in": [
+    { top: "10%", right: "14%" },
+  ],
 };
 
 const MESSAGES = [
@@ -24,98 +34,124 @@ const MESSAGES = [
   "You are seen.",
 ];
 
+// Warm ivory + golden glow palette
+const IVORY  = "#FFF6E5";
+const BELLY  = "#F5EDD8";
+const WING   = "#E8DCC8";
+const BEAK   = "#E8A860";
+const EYE    = "#3D2B18";
+const CHEEK  = "#FFDCA8";
+const GLOW   = "#FFDCA8";
+
 export default function DoveCompanion({ intensity, active, screen }) {
   const [visible, setVisible] = useState(false);
-  const [posIdx, setPosIdx] = useState(0);
+  const [perchIdx, setPerchIdx] = useState(0);
   const [message, setMessage] = useState(null);
   const timerRef = useRef(null);
-  const msgTimerRef = useRef(null);
+  const msgRef = useRef(null);
 
-  const positions = POSITIONS[screen] || POSITIONS.cabin;
-  const pos = positions[posIdx % positions.length];
+  const perches = PERCHES[screen] || PERCHES.cabin;
+  const perch = perches[perchIdx % perches.length];
 
-  // Decide glow and speed based on intensity
-  const glow = intensity === "heavy" ? 0.25 : intensity === "moderate" ? 0.45 : 0.65;
-  const animSpeed = intensity === "heavy" ? "6s" : intensity === "moderate" ? "4s" : "3s";
-  const doveScale = intensity === "heavy" ? 0.9 : 1;
+  // Intensity affects glow strength and animation speed
+  const glowStrength = intensity === "heavy" ? 0.3 : intensity === "moderate" ? 0.5 : 0.7;
+  const bobSpeed = intensity === "heavy" ? "5s" : intensity === "moderate" ? "3.5s" : "2.5s";
+  const scale = intensity === "heavy" ? 0.92 : 1;
 
-  // Appear/disappear based on activity
+  // Appear after a natural delay
   useEffect(() => {
-    // Show after a short delay (feels like it arrives naturally)
-    const delay = active ? 1500 + Math.random() * 2000 : 4000 + Math.random() * 6000;
-    const showTimer = setTimeout(() => setVisible(true), delay);
-
-    return () => clearTimeout(showTimer);
+    const delay = active ? 1200 + Math.random() * 1500 : 3000 + Math.random() * 5000;
+    const t = setTimeout(() => setVisible(true), delay);
+    return () => clearTimeout(t);
   }, [active, screen]);
 
-  // Occasionally reposition (gentle movement)
+  // Occasionally hop to a new perch
   useEffect(() => {
-    if (!visible || positions.length <= 1) return;
+    if (!visible || perches.length <= 1) return;
     timerRef.current = setInterval(() => {
-      setPosIdx(prev => (prev + 1) % positions.length);
-    }, 12000 + Math.random() * 8000);
+      setPerchIdx(p => (p + 1) % perches.length);
+    }, 14000 + Math.random() * 10000);
     return () => clearInterval(timerRef.current);
-  }, [visible, positions.length]);
+  }, [visible, perches.length]);
 
-  // Rare message (only after check-in or when intensity is heavy)
+  // Rare message on heavy days
   useEffect(() => {
     if (!visible) return;
-    const shouldMsg = intensity === "heavy" || (active && Math.random() < 0.3);
+    const shouldMsg = intensity === "heavy" || (active && Math.random() < 0.25);
     if (!shouldMsg) return;
-
-    msgTimerRef.current = setTimeout(() => {
+    msgRef.current = setTimeout(() => {
       setMessage(MESSAGES[Math.floor(Math.random() * MESSAGES.length)]);
       setTimeout(() => setMessage(null), 4000);
-    }, 5000 + Math.random() * 5000);
-
-    return () => clearTimeout(msgTimerRef.current);
+    }, 6000 + Math.random() * 5000);
+    return () => clearTimeout(msgRef.current);
   }, [visible, intensity, active]);
 
   if (!visible) return null;
 
   return (
     <div style={{
-      position: "fixed",
-      ...pos,
-      zIndex: 50,
-      pointerEvents: "none",
-      transition: "all 2.5s cubic-bezier(0.25,0.46,0.45,0.94)",
-      opacity: glow,
-      transform: `scale(${doveScale})`,
+      position: "fixed", ...perch, zIndex: 50, pointerEvents: "none",
+      transition: "all 2s cubic-bezier(0.25,0.46,0.45,0.94)",
+      transform: `scale(${scale})`,
     }}>
-      {/* Dove body — simple SVG silhouette with glow */}
+      {/* Dove SVG — cute round bird with clear silhouette */}
       <div style={{
-        position: "relative",
-        width: 28,
-        height: 28,
-        animation: `doveFloat ${animSpeed} ease-in-out infinite`,
+        position: "relative", width: 36, height: 36,
+        animation: `doveIdle ${bobSpeed} ease-in-out infinite`,
+        filter: `drop-shadow(0 2px 8px rgba(255,220,168,${glowStrength * 0.5}))`,
       }}>
-        <svg viewBox="0 0 32 32" width="28" height="28" fill="none" style={{ filter: `drop-shadow(0 0 8px rgba(255,240,200,${glow * 0.6}))` }}>
-          {/* Simplified dove shape */}
-          <path d="M16 4c-2 0-4 1-5 3-1 2-1 4 0 6l-5 4c-1 1-1 2 0 2l6-1c1 2 3 3 5 3s4-1 5-3l6 1c1 0 1-1 0-2l-5-4c1-2 1-4 0-6-1-2-3-3-5-3z"
-            fill={`rgba(255,248,232,${0.4 + glow * 0.4})`}
-            stroke={`rgba(255,240,200,${0.15 + glow * 0.2})`}
-            strokeWidth="0.5"
-          />
-          {/* Wing hint */}
-          <path d="M10 13c-2-1-3 0-3 1s2 2 4 2"
-            fill="none" stroke={`rgba(255,248,232,${0.2 + glow * 0.2})`} strokeWidth="0.5"
-          />
-          <path d="M22 13c2-1 3 0 3 1s-2 2-4 2"
-            fill="none" stroke={`rgba(255,248,232,${0.2 + glow * 0.2})`} strokeWidth="0.5"
-          />
+        <svg viewBox="0 0 48 48" width="36" height="36">
+          {/* Outer glow halo */}
+          <circle cx="24" cy="24" r="22" fill="none" stroke={GLOW} strokeWidth="0.3" opacity={glowStrength * 0.3} />
+
+          {/* Body — round, soft, slightly bottom-heavy */}
+          <ellipse cx="24" cy="26" rx="12" ry="11" fill={IVORY} />
+
+          {/* Belly shading */}
+          <ellipse cx="24" cy="29" rx="9" ry="7" fill={BELLY} opacity="0.6" />
+
+          {/* Head — smaller circle overlapping body top */}
+          <circle cx="24" cy="16" r="8" fill={IVORY} />
+
+          {/* Cheek blush */}
+          <circle cx="20" cy="17.5" r="2.5" fill={CHEEK} opacity="0.35" />
+          <circle cx="28" cy="17.5" r="2.5" fill={CHEEK} opacity="0.35" />
+
+          {/* Eye — tiny, warm, expressive */}
+          <circle cx="21.5" cy="15" r="1.3" fill={EYE} />
+          <circle cx="21.8" cy="14.5" r="0.4" fill="#FFF8E8" /> {/* eye highlight */}
+
+          {/* Beak — small orange triangle */}
+          <path d="M25 16.5 L27.5 17.5 L25 18.5 Z" fill={BEAK} />
+
+          {/* Left wing — curved, tucked against body */}
+          <path d="M12 24 C8 22, 7 27, 10 30 C12 32, 14 30, 14 28"
+            fill={WING} stroke={BELLY} strokeWidth="0.3" />
+
+          {/* Right wing — slightly raised */}
+          <path d="M36 24 C40 22, 41 27, 38 30 C36 32, 34 30, 34 28"
+            fill={WING} stroke={BELLY} strokeWidth="0.3" />
+
+          {/* Tail — small, upward */}
+          <path d="M20 36 C18 40, 22 42, 24 38 C26 42, 30 40, 28 36"
+            fill={WING} stroke={BELLY} strokeWidth="0.3" />
+
+          {/* Tiny feet */}
+          <line x1="21" y1="37" x2="20" y2="40" stroke="#C4A882" strokeWidth="0.8" strokeLinecap="round" />
+          <line x1="27" y1="37" x2="28" y2="40" stroke="#C4A882" strokeWidth="0.8" strokeLinecap="round" />
+
+          {/* Head tuft — tiny feather wisps */}
+          <path d="M22 9 C22 7, 24 6, 24 8" fill="none" stroke={IVORY} strokeWidth="0.6" strokeLinecap="round" />
+          <path d="M25 9 C25 6.5, 27 7, 26 9" fill="none" stroke={IVORY} strokeWidth="0.5" strokeLinecap="round" />
         </svg>
 
-        {/* Soft ambient glow behind the dove */}
+        {/* Soft ambient glow behind dove */}
         <div style={{
-          position: "absolute",
-          top: "50%", left: "50%",
+          position: "absolute", top: "50%", left: "50%",
           transform: "translate(-50%,-50%)",
-          width: 40 + glow * 20,
-          height: 40 + glow * 20,
-          borderRadius: "50%",
-          background: `radial-gradient(circle, rgba(255,240,200,${0.06 + glow * 0.08}) 0%, transparent 70%)`,
-          animation: `candleGlowPulse ${animSpeed} ease-in-out infinite`,
+          width: 50, height: 50, borderRadius: "50%",
+          background: `radial-gradient(circle, rgba(255,220,168,${0.05 + glowStrength * 0.06}) 0%, transparent 70%)`,
+          animation: `candleGlowPulse ${bobSpeed} ease-in-out infinite`,
           pointerEvents: "none",
         }} />
       </div>
@@ -123,15 +159,11 @@ export default function DoveCompanion({ intensity, active, screen }) {
       {/* Rare message */}
       {message && (
         <div style={{
-          position: "absolute",
-          top: -20,
-          left: "50%",
-          transform: "translateX(-50%)",
+          position: "absolute", top: -18, left: "50%", transform: "translateX(-50%)",
           whiteSpace: "nowrap",
           fontFamily: "'Cormorant Garamond','Georgia',serif",
-          fontStyle: "italic",
-          fontSize: "0.62rem",
-          color: "rgba(255,248,232,0.3)",
+          fontStyle: "italic", fontSize: "0.64rem",
+          color: "rgba(255,248,232,0.35)",
           textShadow: "0 1px 6px rgba(0,0,0,0.5)",
           animation: "fadeUp .8s ease both",
           letterSpacing: "0.03em",
@@ -140,12 +172,12 @@ export default function DoveCompanion({ intensity, active, screen }) {
         </div>
       )}
 
-      {/* Float animation keyframes */}
       <style>{`
-        @keyframes doveFloat {
-          0%, 100% { transform: translateY(0px); }
-          30% { transform: translateY(-3px) rotate(1deg); }
-          70% { transform: translateY(2px) rotate(-0.5deg); }
+        @keyframes doveIdle {
+          0%, 100% { transform: translateY(0px) rotate(0deg); }
+          25% { transform: translateY(-2px) rotate(0.5deg); }
+          50% { transform: translateY(0px) rotate(0deg); }
+          75% { transform: translateY(1px) rotate(-0.3deg); }
         }
       `}</style>
     </div>
