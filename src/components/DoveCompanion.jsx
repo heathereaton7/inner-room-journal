@@ -159,7 +159,7 @@ export default function DoveCompanion({ intensity, active, screen }) {
               filter: [
                 "sepia(0.12)",
                 "saturate(0.8)",
-                `brightness(${0.7 + warmth * 0.18})`,
+                `brightness(${blink ? 0.75 : 0.7 + warmth * 0.18})`,
                 "hue-rotate(-4deg)",
                 "contrast(0.95)",
                 "drop-shadow(0 4px 8px rgba(8,4,0,0.4))",
@@ -167,11 +167,7 @@ export default function DoveCompanion({ intensity, active, screen }) {
               transition: "opacity 2s ease, filter 2s ease",
             }}
           />
-          {/* Blink overlay — tiny eyelid patches over each eye */}
-          {blink && <>
-            <div style={{ position: "absolute", top: "28%", left: "27%", width: "14%", height: "8%", borderRadius: "50%", background: "#F0E4CC", transition: "opacity 0.05s" }} />
-            <div style={{ position: "absolute", top: "28%", left: "55%", width: "14%", height: "8%", borderRadius: "50%", background: "#F0E4CC", transition: "opacity 0.05s" }} />
-          </>}
+          {/* Blink — brief brightness dip on the whole image */}
         </div>
 
         {/* Ground shadow */}
