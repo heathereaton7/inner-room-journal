@@ -4,17 +4,22 @@ import { useState, useEffect, useRef } from 'react';
  * DoveCompanion — A warm, painted dove that perches on cabin surfaces.
  * Uses a hand-painted PNG asset, color-graded to match the cabin scene.
  *
+ * Idle behaviors (all very subtle):
+ *   - Gentle float (1-2px, 7s loop)
+ *   - Random blink (every 5-9s)
+ *   - Occasional head tilt (every 10-20s)
+ *   - Rare micro-hop (every 30-90s)
+ *
  * Props:
  *   intensity  — "light"|"moderate"|"heavy"|null
  *   active     — boolean
  *   screen     — "cabin"|"garden"|"check-in"
  */
 
-// Grounded on real surfaces in the cabin scene
 const PERCHES = {
   cabin: [
-    { bottom: "36%", right: "10%" }, // desk edge near lamp
-    { bottom: "50%", right: "4%"  }, // window sill
+    { bottom: "36%", right: "10%" },
+    { bottom: "50%", right: "4%"  },
   ],
   garden: [
     { top: "20%", left: "12%" },
@@ -36,14 +41,19 @@ export default function DoveCompanion({ intensity, active, screen }) {
   const [visible, setVisible] = useState(false);
   const [perchIdx, setPerchIdx] = useState(0);
   const [message, setMessage] = useState(null);
+  const [tilt, setTilt] = useState(0);
+  const [hop, setHop] = useState(false);
+  const [blink, setBlink] = useState(false);
   const timerRef = useRef(null);
   const msgRef = useRef(null);
+  const tiltRef = useRef(null);
+  const hopRef = useRef(null);
+  const blinkRef = useRef(null);
 
   const perches = PERCHES[screen] || PERCHES.cabin;
   const perch = perches[perchIdx % perches.length];
 
   const warmth = intensity === "heavy" ? 0.75 : intensity === "moderate" ? 0.88 : 1;
-  const breathSpeed = intensity === "heavy" ? "5s" : intensity === "moderate" ? "3.5s" : "2.8s";
 
   // Appear naturally
   useEffect(() => {
@@ -73,6 +83,51 @@ export default function DoveCompanion({ intensity, active, screen }) {
     return () => clearTimeout(msgRef.current);
   }, [visible, intensity, active]);
 
+  // ── IDLE BEHAVIORS ──
+
+  // Random blink (every 5-9s)
+  useEffect(() => {
+    if (!visible) return;
+    const scheduleBlink = () => {
+      blinkRef.current = setTimeout(() => {
+        setBlink(true);
+        setTimeout(() => setBlink(false), 150);
+        scheduleBlink();
+      }, 5000 + Math.random() * 4000);
+    };
+    scheduleBlink();
+    return () => clearTimeout(blinkRef.current);
+  }, [visible]);
+
+  // Occasional head tilt (every 10-20s)
+  useEffect(() => {
+    if (!visible) return;
+    const scheduleTilt = () => {
+      tiltRef.current = setTimeout(() => {
+        const angle = (Math.random() > 0.5 ? 1 : -1) * (2 + Math.random() * 2);
+        setTilt(angle);
+        setTimeout(() => setTilt(0), 1200 + Math.random() * 800);
+        scheduleTilt();
+      }, 10000 + Math.random() * 10000);
+    };
+    scheduleTilt();
+    return () => clearTimeout(tiltRef.current);
+  }, [visible]);
+
+  // Rare micro-hop (every 30-90s)
+  useEffect(() => {
+    if (!visible) return;
+    const scheduleHop = () => {
+      hopRef.current = setTimeout(() => {
+        setHop(true);
+        setTimeout(() => setHop(false), 300);
+        scheduleHop();
+      }, 30000 + Math.random() * 60000);
+    };
+    scheduleHop();
+    return () => clearTimeout(hopRef.current);
+  }, [visible]);
+
   if (!visible) return null;
 
   return (
@@ -80,31 +135,40 @@ export default function DoveCompanion({ intensity, active, screen }) {
       position: "fixed", ...perch, zIndex: 50, pointerEvents: "none",
       transition: "all 3s cubic-bezier(0.25,0.46,0.45,0.94)",
     }}>
+      {/* Outer wrapper — handles float + hop */}
       <div style={{
         position: "relative", width: 120, height: 120,
-        animation: `doveBreath ${breathSpeed} ease-in-out infinite`,
+        animation: "doveFloat 7s ease-in-out infinite",
+        transform: hop ? "translateY(-3px)" : "translateY(0)",
+        transition: hop ? "transform 0.12s ease-out" : "transform 0.25s ease-in",
       }}>
-        {/* The dove — painted asset, color-graded to match cabin */}
-        <img
-          src="/dove-companion.png"
-          alt=""
-          width="120" height="120"
-          style={{
-            display: "block",
-            opacity: warmth,
-            filter: [
-              "sepia(0.12)",
-              "saturate(0.8)",
-              `brightness(${0.7 + warmth * 0.18})`,
-              "hue-rotate(-4deg)",
-              "contrast(0.95)",
-              "drop-shadow(0 4px 8px rgba(8,4,0,0.4))",
-            ].join(" "),
-            transition: "opacity 2s ease, filter 2s ease",
-          }}
-        />
+        {/* Inner wrapper — handles tilt + blink */}
+        <div style={{
+          transform: `rotate(${tilt}deg)${blink ? " scaleY(0.92)" : ""}`,
+          transition: "transform 0.6s cubic-bezier(0.25,0.46,0.45,0.94)",
+          transformOrigin: "center 60%",
+        }}>
+          <img
+            src="/dove-companion.png"
+            alt=""
+            width="120" height="120"
+            style={{
+              display: "block",
+              opacity: warmth,
+              filter: [
+                "sepia(0.12)",
+                "saturate(0.8)",
+                `brightness(${0.7 + warmth * 0.18})`,
+                "hue-rotate(-4deg)",
+                "contrast(0.95)",
+                "drop-shadow(0 4px 8px rgba(8,4,0,0.4))",
+              ].join(" "),
+              transition: "opacity 2s ease, filter 2s ease",
+            }}
+          />
+        </div>
 
-        {/* Ground shadow — soft ellipse beneath the bird */}
+        {/* Ground shadow */}
         <div style={{
           position: "absolute",
           bottom: 2, left: "50%", transform: "translateX(-50%)",
@@ -112,6 +176,8 @@ export default function DoveCompanion({ intensity, active, screen }) {
           borderRadius: "50%",
           background: "radial-gradient(ellipse, rgba(8,4,0,0.25) 0%, transparent 70%)",
           filter: "blur(3px)",
+          opacity: hop ? 0.4 : 1,
+          transition: "opacity 0.15s ease",
           pointerEvents: "none",
         }} />
       </div>
@@ -133,9 +199,9 @@ export default function DoveCompanion({ intensity, active, screen }) {
       )}
 
       <style>{`
-        @keyframes doveBreath {
-          0%, 100% { transform: translateY(0px) scale(1); }
-          50% { transform: translateY(-1.5px) scale(1.015); }
+        @keyframes doveFloat {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-1.5px); }
         }
       `}</style>
     </div>
