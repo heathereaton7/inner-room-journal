@@ -11,6 +11,7 @@ import ProfileScreen from './screens/ProfileScreen.jsx';
 import FeedScreen from './screens/FeedScreen.jsx';
 import NotificationsScreen from './screens/NotificationsScreen.jsx';
 import CheckInScreen from './screens/CheckInScreen.jsx';
+import CheckInCalendar from './screens/CheckInCalendar.jsx';
 import PostCard from './components/PostCard.jsx';
 
 
@@ -4942,6 +4943,7 @@ function AppInner(){
     return(
       <CheckInScreen
         onBack={()=>setScreen("cabin")}
+        onViewHistory={()=>setScreen("check-in-history")}
         todayEntries={todayEntries}
         onSave={(data)=>{
           try{
@@ -4962,6 +4964,11 @@ function AppInner(){
       />
     );
   }
+
+  /* ══ CHECK-IN CALENDAR / HISTORY ══════════════════════════════════ */
+  if(screen==="check-in-history") return(
+    <CheckInCalendar onBack={()=>setScreen("cabin")}/>
+  );
 
   if(screen==="feed") return(
     <FeedScreen

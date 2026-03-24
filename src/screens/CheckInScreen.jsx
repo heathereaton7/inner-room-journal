@@ -19,7 +19,7 @@ function fmtTime(iso) {
   } catch (e) { return ""; }
 }
 
-export default function CheckInScreen({ onBack, onSave, onPrayWith, todayEntries }) {
+export default function CheckInScreen({ onBack, onSave, onPrayWith, todayEntries, onViewHistory }) {
   // Always start with a blank form
   const [moods, setMoods] = useState([]);
   const [symptoms, setSymptoms] = useState([]);
@@ -118,6 +118,11 @@ export default function CheckInScreen({ onBack, onSave, onPrayWith, todayEntries
           <h1 style={{ fontFamily: DISPLAY, fontSize: "1.5rem", fontWeight: 700, color: B.goldL, margin: "0 0 8px" }}>Body & Mind Check-In</h1>
           <p style={{ fontFamily: SERIF, fontStyle: "italic", fontSize: "0.88rem", color: "rgba(255,248,232,0.35)", margin: 0 }}>Take a moment to notice what you're carrying today</p>
           <div style={{ width: 50, height: 1, background: "rgba(201,169,110,0.25)", margin: "14px auto 0" }} />
+          {onViewHistory && (
+            <button onClick={onViewHistory} style={{ marginTop: 12, background: "transparent", border: "none", cursor: "pointer", color: "rgba(201,169,110,0.35)", fontFamily: SANS, fontSize: "0.7rem", letterSpacing: "0.04em", transition: "color 0.2s" }} onMouseEnter={e => e.target.style.color = "rgba(201,169,110,0.6)"} onMouseLeave={e => e.target.style.color = "rgba(201,169,110,0.35)"}>
+              View history
+            </button>
+          )}
         </div>
 
         {/* ── PREVIOUS ENTRIES TODAY ── */}
