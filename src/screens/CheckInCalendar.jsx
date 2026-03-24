@@ -81,14 +81,21 @@ export default function CheckInCalendar({ onBack, onEditEntry }) {
 
     const moodCounts = {};
     const symptomCounts = {};
+    const triggerCounts = {};
     for (const e of allFlat) {
       for (const m of (e.mood || [])) moodCounts[m] = (moodCounts[m] || 0) + 1;
       for (const s of (e.symptoms || [])) symptomCounts[s] = (symptomCounts[s] || 0) + 1;
+      if (e.trigger && e.trigger.trim()) {
+        const t = e.trigger.trim().toLowerCase();
+        triggerCounts[t] = (triggerCounts[t] || 0) + 1;
+      }
     }
     const topMood = Object.entries(moodCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
     const topSymptom = Object.entries(symptomCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+    const topTrigger = Object.entries(triggerCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+    const triggerCount = Object.keys(triggerCounts).length;
 
-    return { total: allFlat.length, topMood, topSymptom, daysTracked: Object.keys(allEntries).length };
+    return { total: allFlat.length, topMood, topSymptom, topTrigger, triggerCount, daysTracked: Object.keys(allEntries).length };
   }, [allEntries]);
 
   // Pattern observations
@@ -102,6 +109,7 @@ export default function CheckInCalendar({ onBack, onEditEntry }) {
     if (heavyDays > 2) obs.push(`You've had ${heavyDays} heavier days. Be patient with yourself.`);
     if (lightDays > heavyDays && stats.daysTracked >= 5) obs.push("More light days than heavy ones. That's something.");
 
+    if (stats.topTrigger && stats.triggerCount >= 2) obs.push(`A recurring trigger: "${stats.topTrigger}." Noticing is the first step.`);
     if (stats.daysTracked >= 7) obs.push(`You've checked in ${stats.daysTracked} days. Consistency is its own kind of courage.`);
     return obs;
   }, [allEntries, stats]);
@@ -121,15 +129,17 @@ export default function CheckInCalendar({ onBack, onEditEntry }) {
     if (!flat.length) return;
 
     // Compute stats for range
-    const moodCounts = {}, symptomCounts = {};
+    const moodCounts = {}, symptomCounts = {}, triggerCnts = {};
     let heavyCount = 0;
     for (const e of flat) {
       for (const m of (e.mood || [])) moodCounts[m] = (moodCounts[m] || 0) + 1;
       for (const s of (e.symptoms || [])) symptomCounts[s] = (symptomCounts[s] || 0) + 1;
+      if (e.trigger?.trim()) triggerCnts[e.trigger.trim()] = (triggerCnts[e.trigger.trim()] || 0) + 1;
       if (e.intensity === "heavy") heavyCount++;
     }
     const topMoods = Object.entries(moodCounts).sort((a, b) => b[1] - a[1]).slice(0, 3);
     const topSymptoms = Object.entries(symptomCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    const topTriggers = Object.entries(triggerCnts).sort((a, b) => b[1] - a[1]).slice(0, 5);
     const rangeLabel = rangeDays === 7 ? "Last 7 Days" : "Last 30 Days";
 
     // Build printable HTML
@@ -169,6 +179,7 @@ h2{font-size:1rem;font-weight:600;margin:24px 0 8px;border-bottom:1px solid #E8E
 
 ${topMoods.length ? `<h2>Most Common Moods</h2><div class="pills">${topMoods.map(([m, c]) => `<span class="pill">${m} (${c})</span>`).join("")}</div>` : ""}
 ${topSymptoms.length ? `<h2>Most Common Symptoms</h2><div class="pills">${topSymptoms.map(([s, c]) => `<span class="pill">${s} (${c})</span>`).join("")}</div>` : ""}
+${topTriggers.length ? `<h2>Identified Triggers</h2><div class="pills">${topTriggers.map(([t, c]) => `<span class="pill">${t} (${c})</span>`).join("")}</div>` : ""}
 
 <h2>Daily Breakdown</h2>
 ${Object.entries(rangeEntries).sort().map(([date, entries]) =>
@@ -227,7 +238,7 @@ ${e.reflection ? `<p class="note">${e.reflection}</p>` : ""}
 
         {/* Summary cards */}
         {stats.total > 0 && (
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 20, animation: "fadeUp .5s .1s ease both", opacity: 0 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 20, animation: "fadeUp .5s .1s ease both", opacity: 0 }}>
             <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(201,169,110,0.08)", borderRadius: 12, padding: "12px 10px", textAlign: "center" }}>
               <div style={{ fontFamily: DISPLAY, fontSize: "1.3rem", color: B.goldL }}>{stats.total}</div>
               <div style={{ fontFamily: SANS, fontSize: "0.6rem", color: "rgba(255,248,232,0.25)", marginTop: 2 }}>entries</div>
@@ -239,6 +250,10 @@ ${e.reflection ? `<p class="note">${e.reflection}</p>` : ""}
             <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(201,169,110,0.08)", borderRadius: 12, padding: "12px 10px", textAlign: "center" }}>
               <div style={{ fontFamily: SERIF, fontStyle: "italic", fontSize: "0.78rem", color: "rgba(220,160,160,0.7)", lineHeight: 1.3 }}>{stats.topSymptom || "..."}</div>
               <div style={{ fontFamily: SANS, fontSize: "0.6rem", color: "rgba(255,248,232,0.25)", marginTop: 4 }}>top signal</div>
+            </div>
+            <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(201,169,110,0.08)", borderRadius: 12, padding: "12px 10px", textAlign: "center" }}>
+              <div style={{ fontFamily: SERIF, fontStyle: "italic", fontSize: "0.78rem", color: "rgba(201,169,110,0.55)", lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{stats.topTrigger || "..."}</div>
+              <div style={{ fontFamily: SANS, fontSize: "0.6rem", color: "rgba(255,248,232,0.25)", marginTop: 4 }}>top trigger</div>
             </div>
           </div>
         )}
