@@ -3108,12 +3108,11 @@ function AppInner(){
     setSceneTransit(true);
     setScenePrev(sceneIdx);
     if(sceneIdx>=SCENES.length-1){
-      // Final scene → enter cabin
-      fadeOutAmbient();
+      // Final scene → go to profile setup (then cabin)
       setTimeout(()=>{
         if(dontShowAgain) dbSave("irj-onboarded",true);
-        setIsOnboarded(true);
-        setScreen("cabin");
+        setOnboardStep(0);
+        setScreen("profile-onboard");
         setSceneTransit(false);
         setScenePrev(-1);
       },800);
@@ -3130,10 +3129,9 @@ function AppInner(){
     setTimeout(()=>{setSceneTransit(false);setScenePrev(-1);},900);
   }
   function skipOnboarding(){
-    fadeOutAmbient();
     if(dontShowAgain) dbSave("irj-onboarded",true);
-    setIsOnboarded(true);
-    setScreen("cabin");
+    setOnboardStep(0);
+    setScreen("profile-onboard");
   }
 
   // ── SPACE TRANSITIONS ──
@@ -3851,7 +3849,7 @@ function AppInner(){
             setTimeout(()=>setDoorPhase("enter"),3300);
             setTimeout(()=>{setDoorOpening(false);setDoorPhase(null);setScreen("cabin");},4000);
           }else{
-            setOnboardStep(0);startAmbient();setScreen("profile-onboard");
+            setDontShowAgain(false);startAmbient();setSceneIdx(0);setScenePrev(-1);setSceneTransit(false);setScreen("onboard");
           }
         }} style={{background:"linear-gradient(135deg, rgba(201,169,110,0.22), rgba(201,169,110,0.06))",backdropFilter:"blur(10px)",WebkitBackdropFilter:"blur(10px)",border:"1px solid rgba(201,169,110,0.45)",color:"#FFF8E8",padding:"16px 52px",borderRadius:"30px",cursor:"pointer",fontSize:"0.92rem",fontFamily:SERIF,fontWeight:600,letterSpacing:"0.14em",textTransform:"none",fontStyle:"italic",boxShadow:"0 4px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,248,232,0.06)"}}>
           {isOnboarded?"Return to the cabin":"Enter the cabin"}
