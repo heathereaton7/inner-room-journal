@@ -299,29 +299,41 @@ export default function CheckInScreen({ onBack, onSave, onPrayWith, todayEntries
           }} onFocus={e => e.target.style.borderColor = "rgba(201,169,110,0.3)"} onBlur={e => e.target.style.borderColor = "rgba(201,169,110,0.10)"} />
         </div>
 
-        {/* ── PRAYER OPTION ── */}
+        {/* ── SAVE + PRAYER ACTIONS ── */}
         {hasData && (
           <div style={{ marginBottom: 28, animation: "fadeUp .5s ease both" }}>
-            <div style={{ textAlign: "center", marginBottom: 10 }}>
-              <p style={{ fontFamily: SERIF, fontStyle: "italic", fontSize: "0.85rem", color: "rgba(255,248,232,0.35)", margin: 0 }}>
-                Would you like to bring this to God?
-              </p>
-            </div>
+            {/* Primary: Save Entry */}
             <button onClick={() => {
-              const text = [
-                moods.length ? `Feeling: ${moods.join(", ")}` : "",
-                symptoms.length ? `Body: ${symptoms.join(", ")}` : "",
-                reflection ? `"${reflection.slice(0, 120)}"` : "",
-              ].filter(Boolean).join(" — ");
-              if (onPrayWith) onPrayWith(text);
+              triggerSave();
+              setSaveMsg("Entry saved");
+              setTimeout(() => setSaveMsg(""), 2500);
             }} style={{
-              width: "100%", background: "rgba(90,138,106,0.1)", border: "1px solid rgba(90,138,106,0.25)",
-              borderRadius: 14, padding: "14px 0", cursor: "pointer", color: B.sage,
-              fontFamily: SERIF, fontStyle: "italic", fontSize: "0.88rem", fontWeight: 600,
-              transition: "all 0.2s", letterSpacing: "0.03em",
-            }} onMouseEnter={e => e.currentTarget.style.background = "rgba(90,138,106,0.2)"} onMouseLeave={e => e.currentTarget.style.background = "rgba(90,138,106,0.1)"}>
-              Pray with this
+              width: "100%", background: "linear-gradient(135deg,rgba(201,169,110,0.18),rgba(201,169,110,0.06))",
+              border: "1px solid rgba(201,169,110,0.35)", borderRadius: 14, padding: "14px 0",
+              cursor: "pointer", color: B.goldL, fontFamily: SERIF, fontStyle: "italic",
+              fontSize: "0.92rem", fontWeight: 600, transition: "all 0.3s", letterSpacing: "0.04em",
+              boxShadow: "0 2px 12px rgba(0,0,0,0.15)",
+            }}>
+              Save Entry
             </button>
+            {/* Secondary: Turn into a prayer */}
+            <div style={{ textAlign: "center", marginTop: 14 }}>
+              <button onClick={() => {
+                const text = [
+                  moods.length ? `Feeling: ${moods.join(", ")}` : "",
+                  symptoms.length ? `Body: ${symptoms.join(", ")}` : "",
+                  reflection ? `"${reflection.slice(0, 120)}"` : "",
+                ].filter(Boolean).join(" — ");
+                if (onPrayWith) onPrayWith(text);
+              }} style={{
+                background: "transparent", border: "none", cursor: "pointer",
+                color: "rgba(190,211,196,0.45)", fontFamily: SERIF, fontStyle: "italic",
+                fontSize: "0.78rem", letterSpacing: "0.03em", transition: "color 0.2s",
+                padding: "4px 0",
+              }} onMouseEnter={e => e.target.style.color = "rgba(190,211,196,0.7)"} onMouseLeave={e => e.target.style.color = "rgba(190,211,196,0.45)"}>
+                Turn this into a prayer
+              </button>
+            </div>
           </div>
         )}
 
