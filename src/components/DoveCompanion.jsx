@@ -10,17 +10,18 @@ import { useState, useEffect, useRef } from 'react';
  *   screen     — "cabin"|"garden"|"check-in"
  */
 
-// Grounded perch positions — window ledge, desk edge (not floating)
+// Grounded on real surfaces — desk edge, chair back, window sill
 const PERCHES = {
   cabin: [
-    { bottom: "42%", right: "18%"  }, // window ledge right side
-    { bottom: "46%", right: "32%"  }, // window ledge left side
+    { bottom: "38%", right: "14%"  }, // desk corner (near lamp)
+    { bottom: "52%", right: "6%"   }, // window sill right
+    { bottom: "44%", left: "4%"    }, // chair back near fireplace
   ],
   garden: [
-    { top: "20%", left: "16%" },
+    { top: "22%", left: "14%" },
   ],
   "check-in": [
-    { top: "8%", right: "16%" },
+    { top: "6%", right: "12%" },
   ],
 };
 
@@ -81,21 +82,22 @@ export default function DoveCompanion({ intensity, active, screen }) {
       position: "fixed", ...perch, zIndex: 50, pointerEvents: "none",
       transition: "all 2.5s cubic-bezier(0.25,0.46,0.45,0.94)",
     }}>
-      {/* Dove image — warm-lit PNG sprite */}
+      {/* Dove image — color-graded to match cabin warmth */}
       <div style={{
         position: "relative",
-        width: 72, height: 72,
+        width: 90, height: 90,
         animation: `doveBreath ${breathSpeed} ease-in-out infinite`,
       }}>
         <img
           src="/dove-companion.png"
           alt=""
-          width="72" height="72"
+          width="90" height="90"
           style={{
             display: "block",
             opacity: warmth,
-            filter: `drop-shadow(0 2px 4px rgba(0,0,0,0.2))`,
-            transition: "opacity 1.5s ease",
+            // Match cabin-interior.png color grading: warm amber, slight desaturation
+            filter: `sepia(0.15) saturate(0.85) brightness(${0.75 + warmth * 0.15}) hue-rotate(-5deg) drop-shadow(0 3px 6px rgba(10,6,2,0.35))`,
+            transition: "opacity 1.5s ease, filter 1.5s ease",
             imageRendering: "auto",
           }}
         />
