@@ -101,16 +101,31 @@ export default function CheckInCalendar({ onBack, onEditEntry }) {
   // Pattern observations
   const patterns = useMemo(() => {
     const obs = [];
-    if (stats.daysTracked >= 3 && stats.topMood) obs.push(`You've felt "${stats.topMood}" most often.`);
-    if (stats.daysTracked >= 3 && stats.topSymptom) obs.push(`"${stats.topSymptom}" has been your most common body signal.`);
-
+    const allFlat = Object.values(allEntries).flat();
     const heavyDays = Object.entries(allEntries).filter(([, arr]) => dominantIntensity(arr) === "heavy").length;
     const lightDays = Object.entries(allEntries).filter(([, arr]) => dominantIntensity(arr) === "light").length;
-    if (heavyDays > 2) obs.push(`You've had ${heavyDays} heavier days. Be patient with yourself.`);
-    if (lightDays > heavyDays && stats.daysTracked >= 5) obs.push("More light days than heavy ones. That's something.");
+    const modDays = Object.entries(allEntries).filter(([, arr]) => dominantIntensity(arr) === "moderate").length;
 
-    if (stats.topTrigger && stats.triggerCount >= 2) obs.push(`A recurring trigger: "${stats.topTrigger}." Noticing is the first step.`);
-    if (stats.daysTracked >= 7) obs.push(`You've checked in ${stats.daysTracked} days. Consistency is its own kind of courage.`);
+    if (stats.daysTracked >= 3 && stats.topMood) obs.push(`Your heart has carried "${stats.topMood}" more than anything else lately.`);
+    if (stats.daysTracked >= 3 && stats.topSymptom) obs.push(`Your body keeps telling you about "${stats.topSymptom}." It might be worth listening.`);
+    if (heavyDays > 2) obs.push(`There have been ${heavyDays} heavier days in this season. That's a lot to carry.`);
+    if (lightDays > heavyDays && stats.daysTracked >= 5) obs.push("You've had more lighter days than heavy ones. That's worth noticing.");
+    if (modDays > lightDays && modDays > heavyDays && stats.daysTracked >= 5) obs.push("Most of your days have landed somewhere in the middle. You're holding steady.");
+    if (stats.topTrigger && stats.triggerCount >= 2) obs.push(`"${stats.topTrigger}" keeps coming up as a trigger. Naming it is the beginning of understanding it.`);
+
+    // Week-to-week comparison
+    const sorted = Object.keys(allEntries).sort();
+    if (sorted.length >= 7) {
+      const mid = sorted[Math.floor(sorted.length / 2)];
+      const firstHalf = sorted.filter(d => d < mid);
+      const secondHalf = sorted.filter(d => d >= mid);
+      const avgFirst = firstHalf.reduce((s, d) => s + (allEntries[d]||[]).reduce((a, e) => a + ({heavy:3,moderate:2,light:1}[e.intensity]||1), 0) / (allEntries[d]||[]).length, 0) / (firstHalf.length || 1);
+      const avgSecond = secondHalf.reduce((s, d) => s + (allEntries[d]||[]).reduce((a, e) => a + ({heavy:3,moderate:2,light:1}[e.intensity]||1), 0) / (allEntries[d]||[]).length, 0) / (secondHalf.length || 1);
+      if (avgSecond < avgFirst - 0.3) obs.push("Your more recent days have been lighter than before. Something may be shifting.");
+      else if (avgSecond > avgFirst + 0.3) obs.push("Things have felt heavier lately compared to earlier. Be gentle with yourself right now.");
+    }
+
+    if (stats.daysTracked >= 5) obs.push("You've still shown up through all of this. That matters.");
     return obs;
   }, [allEntries, stats]);
 
@@ -180,6 +195,35 @@ h2{font-size:1rem;font-weight:600;margin:24px 0 8px;border-bottom:1px solid #E8E
 ${topMoods.length ? `<h2>Most Common Moods</h2><div class="pills">${topMoods.map(([m, c]) => `<span class="pill">${m} (${c})</span>`).join("")}</div>` : ""}
 ${topSymptoms.length ? `<h2>Most Common Symptoms</h2><div class="pills">${topSymptoms.map(([s, c]) => `<span class="pill">${s} (${c})</span>`).join("")}</div>` : ""}
 ${topTriggers.length ? `<h2>Identified Triggers</h2><div class="pills">${topTriggers.map(([t, c]) => `<span class="pill">${t} (${c})</span>`).join("")}</div>` : ""}
+
+${(() => {
+  const allSymptoms = Object.entries(symptomCounts).sort((a,b) => b[1] - a[1]);
+  if (!allSymptoms.length) return "";
+  return `<h2>Symptom Frequency</h2><table style="width:100%;border-collapse:collapse;margin-bottom:8px">${allSymptoms.map(([s,c]) => {
+    const pct = Math.round(c / flat.length * 100);
+    return `<tr><td style="padding:4px 8px;font-size:0.85rem;color:#5A4A42">${s}</td><td style="padding:4px 8px;width:50%"><div style="background:#EDE8DF;border-radius:4px;height:12px;overflow:hidden"><div style="width:${pct}%;height:100%;background:#C9A96E;border-radius:4px"></div></div></td><td style="padding:4px 8px;font-size:0.75rem;color:#8A7A70;text-align:right">${c}x</td></tr>`;
+  }).join("")}</table>`;
+})()}
+
+${(() => {
+  const iLight = flat.filter(e => e.intensity === "light").length;
+  const iMod = flat.filter(e => e.intensity === "moderate").length;
+  const iHeavy = flat.filter(e => e.intensity === "heavy").length;
+  return `<h2>How Days Have Felt</h2><div class="stats"><div class="stat"><div class="stat-val" style="color:#4A8A5A">${iLight}</div><div class="stat-label">Light days</div></div><div class="stat"><div class="stat-val" style="color:#B8860B">${iMod}</div><div class="stat-label">Moderate days</div></div><div class="stat"><div class="stat-val" style="color:#C0392B">${iHeavy}</div><div class="stat-label">Heavy days</div></div></div>`;
+})()}
+
+${(() => {
+  const pObs = [];
+  const topM = topMoods[0];
+  const topS = topSymptoms[0];
+  if (topM) pObs.push(`The most common emotional state was "${topM[0]}" (${topM[1]} times).`);
+  if (topS) pObs.push(`"${topS[0]}" was the most frequently reported symptom (${topS[1]} times).`);
+  if (heavyCount > 2) pObs.push(`There were ${heavyCount} entries marked as heavy during this period.`);
+  if (topTriggers.length) pObs.push(`The most noted trigger was "${topTriggers[0][0]}."`)
+  pObs.push("This person has been showing up and tracking consistently. That takes courage.");
+  if (!pObs.length) return "";
+  return `<h2>Observations</h2>${pObs.map(p => `<p style="font-style:italic;font-size:0.85rem;color:#5A4A42;margin:0 0 6px;line-height:1.55">${p}</p>`).join("")}`;
+})()}
 
 <h2>Daily Breakdown</h2>
 ${Object.entries(rangeEntries).sort().map(([date, entries]) =>
@@ -283,16 +327,20 @@ ${e.reflection ? `<p class="note">${e.reflection}</p>` : ""}
             const isToday = day === today.getDate() && viewMonth === today.getMonth() && viewYear === today.getFullYear();
             const isSelected = day === selectedDate;
 
+            const isHeaviest = intensity === "heavy";
             return (
               <button key={day} onClick={() => setSelectedDate(day === selectedDate ? null : day)} style={{
                 aspectRatio: "1", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-                background: isSelected ? "rgba(201,169,110,0.15)" : colors ? colors.bg : "rgba(255,255,255,0.02)",
-                border: `1.5px solid ${isSelected ? "rgba(201,169,110,0.5)" : isToday ? "rgba(201,169,110,0.3)" : colors ? colors.border : "rgba(255,255,255,0.04)"}`,
+                background: isSelected ? "rgba(201,169,110,0.15)" : colors ? colors.bg : "rgba(255,248,232,0.015)",
+                border: `1.5px solid ${isSelected ? "rgba(201,169,110,0.5)" : isToday ? "rgba(201,169,110,0.3)" : colors ? colors.border : "rgba(255,248,232,0.04)"}`,
                 borderRadius: 10, cursor: "pointer", transition: "all 0.15s", padding: 0,
+                boxShadow: isHeaviest && !isSelected ? "0 0 12px rgba(180,100,100,0.15)" : isToday && !isSelected ? "0 0 10px rgba(201,169,110,0.1)" : "none",
               }}>
-                <span style={{ fontFamily: SANS, fontSize: "0.72rem", fontWeight: isToday ? 700 : 400, color: colors ? "#FFF8E8" : isToday ? B.goldL : "rgba(255,248,232,0.3)" }}>{day}</span>
-                {dayEntries && (
+                <span style={{ fontFamily: SANS, fontSize: "0.72rem", fontWeight: isToday ? 700 : 400, color: colors ? "#FFF8E8" : isToday ? B.goldL : "rgba(255,248,232,0.18)" }}>{day}</span>
+                {dayEntries ? (
                   <div style={{ width: 4, height: 4, borderRadius: 2, background: colors?.dot || "rgba(255,248,232,0.2)", marginTop: 2 }} />
+                ) : (
+                  <div style={{ width: 3, height: 3, borderRadius: 2, background: "rgba(255,248,232,0.06)", marginTop: 2 }} />
                 )}
               </button>
             );
