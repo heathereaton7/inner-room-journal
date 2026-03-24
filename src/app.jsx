@@ -4978,15 +4978,26 @@ function AppInner(){
           setLastCheckinIntensity(intensityLabel);
           // Mission tracking
           trackMission("daily_checkin");trackMission("weekly_checkin_3");
+          // Garden growth — water the newest growing plant
+          setGardenPlots(prev=>{
+            const growing=prev.filter(pl=>pl.stage!=="empty"&&pl.plantedAt);
+            if(!growing.length) return prev;
+            const newest=growing.sort((a,b)=>b.plantedAt-a.plantedAt)[0];
+            const boost=intensityLabel==="heavy"?2:1;
+            const next=prev.map(pl=>pl.id===newest.id?{...pl,prayerCount:(pl.prayerCount||0)+boost}:pl);
+            dbSave("irj-garden",next);
+            return next;
+          });
         }}
       />
     );
   }
 
   /* ══ CHECK-IN CALENDAR / HISTORY ══════════════════════════════════ */
-  if(screen==="check-in-history") return(
+  if(screen==="check-in-history") return(<>
     <CheckInCalendar onBack={()=>setScreen("cabin")} onEditEntry={(entry)=>{editEntryRef.current=entry;setScreen("check-in");}}/>
-  );
+    <DoveCompanion intensity={lastCheckinIntensity} active={false} screen="check-in"/>
+  </>);
 
   if(screen==="feed") return(
     <FeedScreen
