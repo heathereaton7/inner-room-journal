@@ -10,6 +10,7 @@ import CabinScreen from './screens/CabinScreen.jsx';
 import ProfileScreen from './screens/ProfileScreen.jsx';
 import FeedScreen from './screens/FeedScreen.jsx';
 import NotificationsScreen from './screens/NotificationsScreen.jsx';
+import CheckInScreen from './screens/CheckInScreen.jsx';
 import PostCard from './components/PostCard.jsx';
 
 
@@ -4929,6 +4930,30 @@ function AppInner(){
   }
 
   /* ══ FEED — social feed of posts from followed users ═══════════════ */
+  /* ══ BODY & MIND CHECK-IN ═════════════════════════════════════════ */
+  if(screen==="check-in") return(
+    <CheckInScreen
+      onBack={()=>setScreen(prevScreen||"cabin")}
+      initialData={(()=>{try{const d=JSON.parse(localStorage.getItem("irj-checkin-"+new Date().toISOString().slice(0,10)));return d;}catch(e){return null;}})()}
+      onSave={(data)=>{
+        const key="irj-checkin-"+data.date;
+        try{localStorage.setItem(key,JSON.stringify(data));}catch(e){}
+        if(user&&db){
+          const ref=doc(db,"users",user.uid);
+          setDoc(ref,{["checkin_"+data.date]:data},{merge:true}).catch(e=>console.warn("checkin save:",e));
+        }
+        // Save to checkin history array
+        try{
+          const hist=JSON.parse(localStorage.getItem("irj-checkin-history")||"[]");
+          const idx=hist.findIndex(h=>h.date===data.date);
+          if(idx>=0) hist[idx]=data; else hist.push(data);
+          localStorage.setItem("irj-checkin-history",JSON.stringify(hist.slice(-90)));
+        }catch(e){}
+      }}
+      onPrayWith={(text)=>{setPrevScreen("check-in");setNewPrayer(text);setPrayerWallTab("mine");setScreen("cabin");setToast({msg:"Prayer started from your check-in"});}}
+    />
+  );
+
   if(screen==="feed") return(
     <FeedScreen
       user={user} db={db} functions={functions}

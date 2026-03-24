@@ -408,8 +408,9 @@ export default function CabinScreen({
                         {id:"rooms",label:"Reflection Rooms",desc:"Guided daily reflections"},
                         {id:"dreams",label:"Dream Journal",desc:"Record your dreams"},
                         {id:"prayers",label:"Prayer Journal",desc:"Prayers that water your garden"},
+                        {id:"check-in",label:"Body & Mind Check-In",desc:"Notice what you're carrying"},
                       ].map(opt=>(
-                        <button key={opt.id} onClick={()=>{setJournalSection(opt.id);setBookPage(2);setFlipDir("fwd");setBookText("");setBookSaveMsg("");setHistoryMode("list");}} style={{background:"rgba(139,109,69,0.06)",border:"1px solid rgba(139,109,69,0.15)",borderRadius:10,padding:"14px 16px",cursor:"pointer",display:"flex",alignItems:"center",gap:12,transition:"all .2s",textAlign:"left"}} onMouseEnter={e=>e.currentTarget.style.background="rgba(139,109,69,0.12)"} onMouseLeave={e=>e.currentTarget.style.background="rgba(139,109,69,0.06)"}>
+                        <button key={opt.id} onClick={()=>{if(opt.id==="check-in"){setScreen("check-in");return;}setJournalSection(opt.id);setBookPage(2);setFlipDir("fwd");setBookText("");setBookSaveMsg("");setHistoryMode("list");}} style={{background:"rgba(139,109,69,0.06)",border:"1px solid rgba(139,109,69,0.15)",borderRadius:10,padding:"14px 16px",cursor:"pointer",display:"flex",alignItems:"center",gap:12,transition:"all .2s",textAlign:"left"}} onMouseEnter={e=>e.currentTarget.style.background="rgba(139,109,69,0.12)"} onMouseLeave={e=>e.currentTarget.style.background="rgba(139,109,69,0.06)"}>
                           <div>
                             <div style={{fontFamily:DISPLAY,fontSize:"0.92rem",fontWeight:700,color:"#3D2B18",marginBottom:2}}>{opt.label}</div>
                             <div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.76rem",color:"rgba(107,85,58,0.5)"}}>{opt.desc}</div>
