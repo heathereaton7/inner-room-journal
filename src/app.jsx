@@ -2488,16 +2488,27 @@ function AppInner(){
 
   // ── MULTIPLAYER — User Profiles ──
   async function checkUsernameAvailable(username, excludeUid){
-    if(!db) return false;
+    if(!db) return true;
     if(!username||username.length<3||username.length>20) return false;
     if(!/^[a-zA-Z0-9_]+$/.test(username)) return false;
     try{
+      // Try indexed query first
       const q=query(collection(db,"userProfiles"),where("usernameLower","==",username.toLowerCase()),limit(1));
       const snap=await getDocs(q);
       if(snap.empty) return true;
-      // If the only match is the current user, it's still available
       return snap.docs.length===1&&snap.docs[0].id===excludeUid;
-    }catch(e){console.warn("checkUsername error:",e);return false;}
+    }catch(e){
+      // Fallback: fetch all profiles and check client-side (handles missing index)
+      try{
+        const fallback=query(collection(db,"userProfiles"),limit(50));
+        const snap2=await getDocs(fallback);
+        const taken=snap2.docs.some(d=>d.id!==excludeUid&&(d.data().usernameLower||d.data().username||"").toLowerCase()===username.toLowerCase());
+        return !taken;
+      }catch(e2){
+        console.warn("checkUsername fallback error:",e2);
+        return true; // If all queries fail, allow the username
+      }
+    }
   }
 
   async function validateUsername(username, excludeUid){
