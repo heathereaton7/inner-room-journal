@@ -106,34 +106,96 @@ export default function CheckInCalendar({ onBack, onEditEntry }) {
     return obs;
   }, [allEntries, stats]);
 
-  // Export as text
-  const exportText = () => {
-    const lines = [`Body & Mind Check-In Summary`, `${MONTH_NAMES[viewMonth]} ${viewYear}`, `---`, `Total entries: ${stats.total}`, `Days tracked: ${stats.daysTracked}`];
-    if (stats.topMood) lines.push(`Most common mood: ${stats.topMood}`);
-    if (stats.topSymptom) lines.push(`Most common symptom: ${stats.topSymptom}`);
-    lines.push(``, `--- Daily Details ---`);
-    for (const [date, entries] of Object.entries(allEntries).sort()) {
-      for (const e of entries) {
-        lines.push(``, `${date} ${fmtTime(e.time)}`);
-        if (e.mood?.length) lines.push(`  Heart: ${e.mood.join(", ")}`);
-        if (e.symptoms?.length) lines.push(`  Body: ${e.symptoms.join(", ")}`);
-        lines.push(`  Intensity: ${e.intensity || "light"}`);
-        if (e.reflection) lines.push(`  Reflection: ${e.reflection}`);
-      }
-    }
-    return lines.join("\n");
-  };
+  // Export — generate printable HTML for a date range
+  const handleExport = (rangeDays) => {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - rangeDays);
+    const cutoffStr = cutoff.toISOString().slice(0, 10);
 
-  const handleExport = () => {
-    const text = exportText();
-    const blob = new Blob([text], { type: "text/plain" });
+    // Filter entries in range
+    const rangeEntries = {};
+    for (const [date, arr] of Object.entries(allEntries)) {
+      if (date >= cutoffStr) rangeEntries[date] = arr;
+    }
+    const flat = Object.values(rangeEntries).flat();
+    if (!flat.length) return;
+
+    // Compute stats for range
+    const moodCounts = {}, symptomCounts = {};
+    let heavyCount = 0;
+    for (const e of flat) {
+      for (const m of (e.mood || [])) moodCounts[m] = (moodCounts[m] || 0) + 1;
+      for (const s of (e.symptoms || [])) symptomCounts[s] = (symptomCounts[s] || 0) + 1;
+      if (e.intensity === "heavy") heavyCount++;
+    }
+    const topMoods = Object.entries(moodCounts).sort((a, b) => b[1] - a[1]).slice(0, 3);
+    const topSymptoms = Object.entries(symptomCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    const rangeLabel = rangeDays === 7 ? "Last 7 Days" : "Last 30 Days";
+
+    // Build printable HTML
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Check-In Summary</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:Georgia,serif;color:#2A2420;max-width:680px;margin:0 auto;padding:40px 32px 60px;line-height:1.6}
+h1{font-size:1.5rem;font-weight:700;margin-bottom:4px}
+h2{font-size:1rem;font-weight:600;margin:24px 0 8px;border-bottom:1px solid #E8E0D8;padding-bottom:6px}
+.sub{font-size:0.85rem;color:#8A7A70;font-style:italic;margin-bottom:20px}
+.stats{display:flex;gap:20px;margin-bottom:20px;flex-wrap:wrap}
+.stat{background:#F5F1EA;border-radius:8px;padding:12px 16px;min-width:100px}
+.stat-val{font-size:1.2rem;font-weight:700;color:#2A2420}
+.stat-label{font-size:0.7rem;color:#8A7A70;margin-top:2px}
+.day{margin-bottom:16px;padding:12px 16px;border:1px solid #EDE8DF;border-radius:8px}
+.day-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.day-date{font-weight:600;font-size:0.9rem}
+.badge{font-size:0.7rem;padding:2px 10px;border-radius:99px;font-weight:600}
+.badge-light{background:#E8F5E9;color:#4A8A5A}
+.badge-moderate{background:#FFF3E0;color:#B8860B}
+.badge-heavy{background:#FFEBEE;color:#C0392B}
+.pills{display:flex;flex-wrap:wrap;gap:4px;margin:4px 0}
+.pill{font-size:0.72rem;padding:2px 8px;border-radius:99px;border:1px solid #E0D8D0;color:#5A4A42}
+.note{font-style:italic;font-size:0.85rem;color:#5A4A42;margin-top:4px}
+.trigger{font-size:0.8rem;color:#8A7A70;margin-top:4px}
+.footer{margin-top:32px;padding-top:16px;border-top:1px solid #E8E0D8;font-size:0.72rem;color:#B0A098;text-align:center}
+@media print{body{padding:20px}}
+</style></head><body>
+<h1>Body & Mind Check-In Summary</h1>
+<p class="sub">${rangeLabel} &mdash; ${Object.keys(rangeEntries).length} days, ${flat.length} entries</p>
+
+<div class="stats">
+<div class="stat"><div class="stat-val">${flat.length}</div><div class="stat-label">Total check-ins</div></div>
+<div class="stat"><div class="stat-val">${heavyCount}</div><div class="stat-label">Heavy days</div></div>
+<div class="stat"><div class="stat-val">${Object.keys(rangeEntries).length}</div><div class="stat-label">Days tracked</div></div>
+</div>
+
+${topMoods.length ? `<h2>Most Common Moods</h2><div class="pills">${topMoods.map(([m, c]) => `<span class="pill">${m} (${c})</span>`).join("")}</div>` : ""}
+${topSymptoms.length ? `<h2>Most Common Symptoms</h2><div class="pills">${topSymptoms.map(([s, c]) => `<span class="pill">${s} (${c})</span>`).join("")}</div>` : ""}
+
+<h2>Daily Breakdown</h2>
+${Object.entries(rangeEntries).sort().map(([date, entries]) =>
+  entries.map(e => `<div class="day">
+<div class="day-header">
+<span class="day-date">${date}</span>
+<span class="badge badge-${e.intensity || "light"}">${e.intensity || "light"}</span>
+</div>
+${e.mood?.length ? `<div class="pills">${e.mood.map(m => `<span class="pill">${m}</span>`).join("")}</div>` : ""}
+${e.symptoms?.length ? `<div class="pills">${e.symptoms.map(s => `<span class="pill">${s}</span>`).join("")}</div>` : ""}
+${e.trigger ? `<p class="trigger">Trigger: ${e.trigger}</p>` : ""}
+${e.reflection ? `<p class="note">${e.reflection}</p>` : ""}
+</div>`).join("")
+).join("")}
+
+<div class="footer">Generated from Inner Room Journal</div>
+</body></html>`;
+
+    const blob = new Blob([html], { type: "text/html" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `checkin-summary-${MONTH_NAMES[viewMonth].toLowerCase()}-${viewYear}.txt`;
-    a.click();
+    const w = window.open(url, "_blank");
+    if (w) { w.onload = () => { setTimeout(() => w.print(), 500); }; }
+    else {
+      const a = document.createElement("a");
+      a.href = url; a.download = `checkin-summary-${rangeDays}d.html`; a.click();
+    }
     URL.revokeObjectURL(url);
-    setShowExport(false);
   };
 
   const prevMonth = () => {
@@ -288,15 +350,21 @@ export default function CheckInCalendar({ onBack, onEditEntry }) {
 
         {/* Export */}
         {stats.total > 0 && (
-          <div style={{ textAlign: "center" }}>
-            <button onClick={handleExport} style={{
-              background: "rgba(255,255,255,0.03)", border: "1px solid rgba(201,169,110,0.12)",
-              borderRadius: 12, padding: "10px 24px", cursor: "pointer",
-              color: "rgba(255,248,232,0.35)", fontFamily: SANS, fontSize: "0.74rem",
-              transition: "all 0.2s",
-            }} onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(201,169,110,0.3)"; e.currentTarget.style.color = "rgba(255,248,232,0.55)"; }} onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(201,169,110,0.12)"; e.currentTarget.style.color = "rgba(255,248,232,0.35)"; }}>
-              Export summary
-            </button>
+          <div style={{ marginTop: 8 }}>
+            <p style={{ fontFamily: SANS, fontSize: "0.62rem", letterSpacing: "0.08em", textTransform: "uppercase", color: "rgba(255,248,232,0.2)", margin: "0 0 10px", textAlign: "center" }}>Export for sharing</p>
+            <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
+              {[{ label: "Last 7 days", days: 7 }, { label: "Last 30 days", days: 30 }].map(opt => (
+                <button key={opt.days} onClick={() => handleExport(opt.days)} style={{
+                  background: "rgba(255,255,255,0.03)", border: "1px solid rgba(201,169,110,0.12)",
+                  borderRadius: 12, padding: "10px 20px", cursor: "pointer",
+                  color: "rgba(255,248,232,0.35)", fontFamily: SANS, fontSize: "0.72rem",
+                  transition: "all 0.2s",
+                }} onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(201,169,110,0.3)"; e.currentTarget.style.color = "rgba(255,248,232,0.55)"; }} onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(201,169,110,0.12)"; e.currentTarget.style.color = "rgba(255,248,232,0.35)"; }}>
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            <p style={{ fontFamily: SERIF, fontStyle: "italic", fontSize: "0.65rem", color: "rgba(255,248,232,0.15)", textAlign: "center", margin: "10px 0 0" }}>Opens a printable page you can save as PDF</p>
           </div>
         )}
       </div>
