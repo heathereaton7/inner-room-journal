@@ -4933,24 +4933,24 @@ function AppInner(){
   /* ══ BODY & MIND CHECK-IN ═════════════════════════════════════════ */
   if(screen==="check-in") return(
     <CheckInScreen
-      onBack={()=>setScreen(prevScreen||"cabin")}
-      initialData={(()=>{try{const d=JSON.parse(localStorage.getItem("irj-checkin-"+new Date().toISOString().slice(0,10)));return d;}catch(e){return null;}})()}
+      onBack={()=>setScreen("cabin")}
+      initialData={(()=>{try{return JSON.parse(localStorage.getItem("irj-checkin-"+new Date().toISOString().slice(0,10)))||null;}catch(e){return null;}})()}
       onSave={(data)=>{
-        const key="irj-checkin-"+data.date;
-        try{localStorage.setItem(key,JSON.stringify(data));}catch(e){}
-        if(user&&db){
-          const ref=doc(db,"users",user.uid);
-          setDoc(ref,{["checkin_"+data.date]:data},{merge:true}).catch(e=>console.warn("checkin save:",e));
-        }
-        // Save to checkin history array
         try{
+          localStorage.setItem("irj-checkin-"+data.date,JSON.stringify(data));
           const hist=JSON.parse(localStorage.getItem("irj-checkin-history")||"[]");
-          const idx=hist.findIndex(h=>h.date===data.date);
+          const idx=hist.findIndex(h=>h&&h.date===data.date);
           if(idx>=0) hist[idx]=data; else hist.push(data);
           localStorage.setItem("irj-checkin-history",JSON.stringify(hist.slice(-90)));
         }catch(e){}
+        try{
+          if(user&&db){
+            const ref=doc(db,"users",user.uid);
+            setDoc(ref,{["checkin_"+data.date]:data},{merge:true}).catch(()=>{});
+          }
+        }catch(e){}
       }}
-      onPrayWith={(text)=>{setPrevScreen("check-in");setNewPrayer(text);setPrayerWallTab("mine");setScreen("cabin");setToast({msg:"Prayer started from your check-in"});}}
+      onPrayWith={(text)=>{setNewPrayer(text||"");setPrayerWallTab("mine");setScreen("cabin");setToast({msg:"Prayer started from your check-in"});}}
     />
   );
 
