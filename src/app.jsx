@@ -2568,34 +2568,24 @@ function AppInner(){
       const profileRef=doc(db,"userProfiles",uid);
       const snap=await getDoc(profileRef);
       if(!snap.exists()){
-        // Check if user already filled out onboarding steps in this session
-        if(setupUsername&&setupGender){
-          await completeProfileSetup(uid);
-          setOnboardStep(3);setScreen("profile-onboard");
-          return;
-        }
-        setSetupUsername(displayName||"");
-        setSetupGender(null);setSetupBio("");
-        setOnboardStep(1);setScreen("profile-onboard");
+        // New user — pre-fill display name, let onboarding handle navigation
+        setSetupUsername(prev=>prev||displayName||"");
         return;
       }
       const data=snap.data();
       if(!data.gender||!data.usernameLower){
-        if(setupUsername&&setupGender){
-          await completeProfileSetup(uid);
-          setOnboardStep(3);setScreen("profile-onboard");
-          setUserProfile({id:uid,...data});
-          return;
-        }
-        setSetupUsername(data.username||displayName||"");
-        setSetupGender(data.gender||null);setSetupBio(data.bio||"");
-        setOnboardStep(1);setScreen("profile-onboard");
+        // Incomplete profile — pre-fill from existing data
+        setSetupUsername(prev=>prev||data.username||displayName||"");
+        setSetupGender(prev=>prev||data.gender||null);
+        setSetupBio(prev=>prev||data.bio||"");
         setUserProfile({id:uid,...data});
         return;
       }
-      // Returning user with complete profile — update login and go to cabin
+      // Returning user with complete profile
       await setDoc(profileRef,{lastLogin:serverTimestamp()},{merge:true});
       setUserProfile({id:uid,...data});
+      setSetupUsername(data.username||"");
+      setSetupGender(data.gender||null);
       setIsOnboarded(true);dbSave("irj-onboarded",true);
       setScreen("cabin");
     }catch(e){console.warn("ensureUserProfile error:",e);}
@@ -3982,7 +3972,7 @@ function AppInner(){
               <p className="fu3" style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.82rem,2.8vw,0.95rem)",color:"rgba(255,248,232,0.5)",margin:"0 0 28px",textAlign:"center",maxWidth:"300px",lineHeight:1.65,letterSpacing:"0.02em"}}>
                 Save your journey, or step in as a guest.
               </p>
-              <button className="fu3 door-btn" onClick={async()=>{await handleGoogleSignIn();}} style={{width:"100%",maxWidth:"320px",background:"linear-gradient(135deg,rgba(201,169,110,0.22),rgba(201,169,110,0.06))",backdropFilter:"blur(10px)",WebkitBackdropFilter:"blur(10px)",border:"1px solid rgba(201,169,110,0.45)",color:"#FFF8E8",padding:"15px 0",borderRadius:"16px",cursor:"pointer",fontSize:"0.9rem",fontFamily:SERIF,fontWeight:600,letterSpacing:"0.06em",fontStyle:"italic",marginBottom:"4px",transition:"all 0.3s",boxShadow:"0 4px 24px rgba(0,0,0,0.3)"}}>
+              <button className="fu3 door-btn" onClick={async()=>{await handleGoogleSignIn();setOnboardStep(1);}} style={{width:"100%",maxWidth:"320px",background:"linear-gradient(135deg,rgba(201,169,110,0.22),rgba(201,169,110,0.06))",backdropFilter:"blur(10px)",WebkitBackdropFilter:"blur(10px)",border:"1px solid rgba(201,169,110,0.45)",color:"#FFF8E8",padding:"15px 0",borderRadius:"16px",cursor:"pointer",fontSize:"0.9rem",fontFamily:SERIF,fontWeight:600,letterSpacing:"0.06em",fontStyle:"italic",marginBottom:"4px",transition:"all 0.3s",boxShadow:"0 4px 24px rgba(0,0,0,0.3)"}}>
                 Move in
               </button>
               <p style={{fontFamily:SANS,fontSize:"0.64rem",color:"rgba(255,248,232,0.28)",textAlign:"center",margin:"0 0 14px",letterSpacing:"0.03em"}}>Save your journal and join the community</p>
