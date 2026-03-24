@@ -1669,6 +1669,7 @@ function AppInner(){
   const [bibleLoading,  setBibleLoading]  = useState(false);
   const [bibleSearch,   setBibleSearch]   = useState("");
   const bibleDataRef = useRef(null);
+  const editEntryRef = useRef(null);
   // ── Market stalls ──
   const [marketStall, setMarketStall] = useState(null); // null|"harvest"
   // ── Economy state ──
@@ -4945,6 +4946,8 @@ function AppInner(){
         onBack={()=>setScreen("cabin")}
         onViewHistory={()=>setScreen("check-in-history")}
         todayEntries={todayEntries}
+        editEntry={editEntryRef.current}
+        clearEditEntry={()=>{editEntryRef.current=null;}}
         onSave={(data)=>{
           try{
             const key="irj-checkins-"+data.date;
@@ -4967,7 +4970,7 @@ function AppInner(){
 
   /* ══ CHECK-IN CALENDAR / HISTORY ══════════════════════════════════ */
   if(screen==="check-in-history") return(
-    <CheckInCalendar onBack={()=>setScreen("cabin")}/>
+    <CheckInCalendar onBack={()=>setScreen("cabin")} onEditEntry={(entry)=>{editEntryRef.current=entry;setScreen("check-in");}}/>
   );
 
   if(screen==="feed") return(

@@ -54,7 +54,7 @@ function dominantIntensity(entries) {
   return result;
 }
 
-export default function CheckInCalendar({ onBack, onViewDay }) {
+export default function CheckInCalendar({ onBack, onEditEntry }) {
   const today = new Date();
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
@@ -264,7 +264,13 @@ export default function CheckInCalendar({ onBack, onViewDay }) {
                     {e.symptoms.map(s => <span key={s} style={{ fontFamily: SANS, fontSize: "0.65rem", color: B.sage, background: "rgba(190,211,196,0.06)", border: "1px solid rgba(190,211,196,0.15)", borderRadius: 99, padding: "2px 8px" }}>{s}</span>)}
                   </div>
                 )}
-                {e.reflection && <p style={{ fontFamily: SERIF, fontStyle: "italic", fontSize: "0.8rem", color: "rgba(255,248,232,0.4)", margin: 0, lineHeight: 1.6 }}>{e.reflection}</p>}
+                {e.trigger && <p style={{ fontFamily: SANS, fontSize: "0.72rem", color: "rgba(201,169,110,0.4)", margin: "4px 0 0", lineHeight: 1.5 }}>Trigger: {e.trigger}</p>}
+                {e.reflection && <p style={{ fontFamily: SERIF, fontStyle: "italic", fontSize: "0.8rem", color: "rgba(255,248,232,0.4)", margin: "4px 0 0", lineHeight: 1.6 }}>{e.reflection}</p>}
+                {onEditEntry && (
+                  <button onClick={() => onEditEntry(e)} style={{ marginTop: 8, background: "rgba(201,169,110,0.06)", border: "1px solid rgba(201,169,110,0.12)", borderRadius: 8, padding: "4px 12px", cursor: "pointer", color: "rgba(201,169,110,0.45)", fontFamily: SANS, fontSize: "0.62rem", fontWeight: 600, transition: "all 0.2s" }}>
+                    Edit entry
+                  </button>
+                )}
               </div>
             ))}
           </div>

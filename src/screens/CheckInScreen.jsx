@@ -19,7 +19,7 @@ function fmtTime(iso) {
   } catch (e) { return ""; }
 }
 
-export default function CheckInScreen({ onBack, onSave, onPrayWith, todayEntries, onViewHistory }) {
+export default function CheckInScreen({ onBack, onSave, onPrayWith, todayEntries, onViewHistory, editEntry, clearEditEntry }) {
   // Always start with a blank form
   const [moods, setMoods] = useState([]);
   const [symptoms, setSymptoms] = useState([]);
@@ -27,6 +27,7 @@ export default function CheckInScreen({ onBack, onSave, onPrayWith, todayEntries
   const [customMood, setCustomMood] = useState("");
   const [intensity, setIntensity] = useState(0);
   const [reflection, setReflection] = useState("");
+  const [trigger, setTrigger] = useState("");
   const [saveMsg, setSaveMsg] = useState("");
   const [showedUp, setShowedUp] = useState(false);
   const [editingEntry, setEditingEntry] = useState(null); // id of entry being edited
@@ -57,18 +58,19 @@ export default function CheckInScreen({ onBack, onSave, onPrayWith, todayEntries
         symptoms: symptoms,
         intensity: INTENSITY_STOPS[intensity].label.toLowerCase(),
         reflection: reflection,
+        trigger: trigger,
       };
       if (onSave) onSave(data);
       setSaveMsg("Saved just now");
       setTimeout(() => setSaveMsg(""), 2500);
     }, 600);
-  }, [moods, symptoms, intensity, reflection, onSave, todayKey]);
+  }, [moods, symptoms, intensity, reflection, trigger, onSave, todayKey]);
 
   // Auto-save on any change (only if there's data)
   useEffect(() => {
-    if (moods.length || symptoms.length || reflection) triggerSave();
+    if (moods.length || symptoms.length || reflection || trigger) triggerSave();
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [moods, symptoms, intensity, reflection, triggerSave]);
+  }, [moods, symptoms, intensity, reflection, trigger, triggerSave]);
 
   // "You showed up" micro-feedback
   useEffect(() => {
@@ -95,12 +97,21 @@ export default function CheckInScreen({ onBack, onSave, onPrayWith, todayEntries
       setIntensity(idx >= 0 ? idx : 0);
     }
     setReflection(entry.reflection || "");
+    setTrigger(entry.trigger || "");
     entryIdRef.current = entry.id || todayKey + "_" + Date.now();
     setEditingEntry(entry.id);
     setShowedUp(false);
   };
 
-  const hasData = moods.length > 0 || symptoms.length > 0 || reflection.length > 0;
+  // Load entry from calendar edit on mount
+  useEffect(() => {
+    if (editEntry) {
+      loadEntry(editEntry);
+      if (clearEditEntry) clearEditEntry();
+    }
+  }, []);
+
+  const hasData = moods.length > 0 || symptoms.length > 0 || reflection.length > 0 || trigger.length > 0;
   const isHeavy = INTENSITY_STOPS[intensity].label === "Heavy";
 
   return (
@@ -157,7 +168,7 @@ export default function CheckInScreen({ onBack, onSave, onPrayWith, todayEntries
         {editingEntry && (
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
             <p style={{ fontFamily: SANS, fontSize: "0.7rem", color: "rgba(201,169,110,0.45)", margin: 0, flex: 1 }}>Editing previous entry</p>
-            <button onClick={() => { setEditingEntry(null); setMoods([]); setSymptoms([]); setIntensity(0); setReflection(""); entryIdRef.current = null; }} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(201,169,110,0.1)", borderRadius: 8, padding: "4px 12px", cursor: "pointer", color: "rgba(255,248,232,0.35)", fontFamily: SANS, fontSize: "0.65rem", transition: "all 0.2s" }}>
+            <button onClick={() => { setEditingEntry(null); setMoods([]); setSymptoms([]); setIntensity(0); setReflection(""); setTrigger(""); entryIdRef.current = null; }} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(201,169,110,0.1)", borderRadius: 8, padding: "4px 12px", cursor: "pointer", color: "rgba(255,248,232,0.35)", fontFamily: SANS, fontSize: "0.65rem", transition: "all 0.2s" }}>
               New entry
             </button>
           </div>
@@ -300,6 +311,20 @@ export default function CheckInScreen({ onBack, onSave, onPrayWith, todayEntries
             border: "1px solid rgba(201,169,110,0.10)", borderRadius: 14,
             padding: "14px 16px", color: B.goldL, fontFamily: SERIF, fontSize: "0.9rem",
             minHeight: 90, resize: "vertical", outline: "none", lineHeight: 1.7,
+            transition: "border-color 0.2s",
+          }} onFocus={e => e.target.style.borderColor = "rgba(201,169,110,0.3)"} onBlur={e => e.target.style.borderColor = "rgba(201,169,110,0.10)"} />
+        </div>
+
+        {/* ── TRIGGER ── */}
+        <div style={{ marginBottom: 28, animation: "fadeUp .6s .5s ease both", opacity: 0 }}>
+          <p style={{ fontFamily: SERIF, fontStyle: "italic", fontSize: "0.92rem", color: "rgba(255,248,232,0.55)", margin: "0 0 12px" }}>
+            Is there a trigger you can identify?
+          </p>
+          <textarea value={trigger} onChange={e => setTrigger(e.target.value)} placeholder="A situation, thought, memory, conversation..." style={{
+            width: "100%", boxSizing: "border-box", background: "rgba(255,255,255,0.03)",
+            border: "1px solid rgba(201,169,110,0.10)", borderRadius: 14,
+            padding: "14px 16px", color: B.goldL, fontFamily: SERIF, fontSize: "0.9rem",
+            minHeight: 70, resize: "vertical", outline: "none", lineHeight: 1.7,
             transition: "border-color 0.2s",
           }} onFocus={e => e.target.style.borderColor = "rgba(201,169,110,0.3)"} onBlur={e => e.target.style.borderColor = "rgba(201,169,110,0.10)"} />
         </div>
