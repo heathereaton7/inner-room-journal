@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { B, SERIF, SANS, DISPLAY, GFONTS } from '../constants.js';
 import { CSS } from '../styles.js';
+import DoveCompanion from '../components/DoveCompanion.jsx';
 
 const MOODS = ["Peaceful","Anxious","Overwhelmed","Hopeful","Tired","Grateful","Heavy","Restless"];
 const SYMPTOMS = ["Headache","Migraine","Fatigue","Nausea","Pain","Brain fog","Dizziness","Tension","Weakness","Restless"];
@@ -424,14 +425,8 @@ export default function CheckInScreen({ onBack, onSave, onPrayWith, todayEntries
           </div>
         )}
 
-        {/* ── COMPANION LIGHT — ambient presence that responds to interaction ── */}
-        <div style={{
-          position: "fixed", top: 24, right: 24, width: 8 + companionGlow * 6, height: 8 + companionGlow * 6,
-          borderRadius: "50%", pointerEvents: "none", transition: "all 1.5s ease",
-          background: `radial-gradient(circle, rgba(255,220,140,${0.15 + companionGlow * 0.12}) 0%, transparent 70%)`,
-          boxShadow: companionGlow > 0 ? `0 0 ${8 + companionGlow * 8}px rgba(255,200,100,${0.08 + companionGlow * 0.06})` : "none",
-          opacity: companionGlow > 0 ? 1 : 0,
-        }} />
+        {/* ── DOVE COMPANION ── */}
+        <DoveCompanion intensity={INTENSITY_STOPS[intensity].label.toLowerCase()} active={hasData} screen="check-in"/>
       </div>
     </div>
   );

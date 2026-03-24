@@ -13,6 +13,7 @@ import NotificationsScreen from './screens/NotificationsScreen.jsx';
 import CheckInScreen from './screens/CheckInScreen.jsx';
 import CheckInCalendar from './screens/CheckInCalendar.jsx';
 import PostCard from './components/PostCard.jsx';
+import DoveCompanion from './components/DoveCompanion.jsx';
 
 
 async function dbLoad(k){
@@ -1705,6 +1706,7 @@ function AppInner(){
   const [userSearch,        setUserSearch]         = useState("");
   const [userResults,       setUserResults]        = useState([]);
   const [userSearchLoading, setUserSearchLoading]  = useState(false);
+  const [lastCheckinIntensity, setLastCheckinIntensity] = useState(null);
   const [showProfileSetup,  setShowProfileSetup]   = useState(false);
   const [setupUsername,      setSetupUsername]      = useState("");
   const [setupGender,        setSetupGender]        = useState(null); // "male"|"female"
@@ -4094,7 +4096,7 @@ function AppInner(){
 
 
   /* ══ CABIN (Private Interior — Immersive Hub) ══════ */
-  if(screen==="cabin") return(
+  if(screen==="cabin") return(<>
     <CabinScreen
       spaceTransit={spaceTransit} transitDir={transitDir}
       transitionToMap={transitionToMap} transitionToKitchen={transitionToKitchen}
@@ -4127,7 +4129,8 @@ function AppInner(){
       menuOpen={menuOpen} setMenuOpen={setMenuOpen}
       BottomMenuDrawer={BottomMenuDrawer} goToHistory={goToHistory}
     />
-  );
+    <DoveCompanion intensity={lastCheckinIntensity} active={true} screen="cabin"/>
+  </>);
 
 
   /* ══ JOURNAL ══════════════════════════════════════ */
@@ -4971,6 +4974,8 @@ function AppInner(){
           const amt=rewards[intensityLabel]||3;
           const msgs={light:"A quiet light",moderate:"Steady flame",heavy:"Even in the weight, light grows"};
           addCandles(amt,msgs[intensityLabel]||"Light");
+          // Track intensity for dove companion
+          setLastCheckinIntensity(intensityLabel);
           // Mission tracking
           trackMission("daily_checkin");trackMission("weekly_checkin_3");
         }}
