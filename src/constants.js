@@ -588,12 +588,14 @@ export const DAILY_MISSIONS=[
   {id:"daily_comment",     label:"Encourage someone",  description:"Comment on a community prayer", target:1, reward:{candles:5}},
   {id:"daily_harvest",     label:"Harvest a crop",     description:"Gather from your garden or farm",target:1, reward:{coins:10}},
   {id:"daily_feed_animal", label:"Feed an animal",     description:"Care for one of your animals",  target:1, reward:{candles:5}},
+  {id:"daily_checkin",     label:"Check in with yourself", description:"Complete a body & mind check-in", target:1, reward:{candles:8}},
 ];
 export const WEEKLY_MISSIONS=[
   {id:"weekly_journal_5",    label:"Journal 5 times",   description:"Write 5 reflections this week", target:5,  reward:{candles:25}},
   {id:"weekly_pray_10",      label:"Pray for 10 people",description:"Lift 10 prayers this week",     target:10, reward:{candles:20}},
   {id:"weekly_harvest_5",    label:"Harvest 5 crops",   description:"Gather 5 harvests this week",   target:5,  reward:{coins:25}},
   {id:"weekly_share_prayer", label:"Share a prayer",    description:"Post a prayer to the community", target:1,  reward:{candles:15}},
+  {id:"weekly_checkin_3",    label:"Show up 3 times",   description:"Complete 3 check-ins this week", target:3, reward:{candles:15}},
 ];
 
 export const CABIN_FALLBACK_IMAGE="/cabin-interior.png";

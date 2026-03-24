@@ -4964,6 +4964,16 @@ function AppInner(){
           }catch(e){}
         }}
         onPrayWith={(text)=>{setNewPrayer(text||"");setPrayerWallTab("mine");setScreen("cabin");setToast({msg:"Prayer started from your check-in"});}}
+        lastCheckinDate={(()=>{try{const hist=Object.keys(localStorage).filter(k=>k.startsWith("irj-checkins-")).map(k=>k.replace("irj-checkins-","")).sort();return hist.length?hist[hist.length-1]:null;}catch(e){return null;}})()}
+        onCheckinComplete={(intensityLabel)=>{
+          // Candle reward based on intensity
+          const rewards={light:3,moderate:5,heavy:8};
+          const amt=rewards[intensityLabel]||3;
+          const msgs={light:"A quiet light",moderate:"Steady flame",heavy:"Even in the weight, light grows"};
+          addCandles(amt,msgs[intensityLabel]||"Light");
+          // Mission tracking
+          trackMission("daily_checkin");trackMission("weekly_checkin_3");
+        }}
       />
     );
   }

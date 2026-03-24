@@ -10,6 +10,14 @@ const INTENSITY_STOPS = [
   { value: 2, label: "Heavy", icon: "\ud83c\udf27\ufe0f" },
 ];
 
+const GROWTH_MESSAGES = {
+  light: ["Something small is growing today.", "A quiet day. That matters.", "Light finds its way in."],
+  moderate: ["You're carrying something. You don't have to carry it alone.", "Middle ground is still holy ground.", "Steady days build steady roots."],
+  heavy: ["Even on heavy days, something is growing.", "The deepest roots grow in the hardest soil.", "This weight won't last forever. You're still here."],
+};
+
+const RETURN_MESSAGE = "Welcome back. You can begin again today.";
+
 function fmtTime(iso) {
   try {
     const d = new Date(iso);
@@ -19,7 +27,7 @@ function fmtTime(iso) {
   } catch (e) { return ""; }
 }
 
-export default function CheckInScreen({ onBack, onSave, onPrayWith, todayEntries, onViewHistory, editEntry, clearEditEntry }) {
+export default function CheckInScreen({ onBack, onSave, onPrayWith, todayEntries, onViewHistory, editEntry, clearEditEntry, onCheckinComplete, lastCheckinDate }) {
   // Always start with a blank form
   const [moods, setMoods] = useState([]);
   const [symptoms, setSymptoms] = useState([]);
@@ -30,6 +38,8 @@ export default function CheckInScreen({ onBack, onSave, onPrayWith, todayEntries
   const [trigger, setTrigger] = useState("");
   const [saveMsg, setSaveMsg] = useState("");
   const [showedUp, setShowedUp] = useState(false);
+  const [growthMsg, setGrowthMsg] = useState(null);
+  const [companionGlow, setCompanionGlow] = useState(0); // 0-3 brightness based on interaction
   const [editingEntry, setEditingEntry] = useState(null); // id of entry being edited
   const debounceRef = useRef(null);
   const entryIdRef = useRef(null); // unique id for this check-in
@@ -71,6 +81,9 @@ export default function CheckInScreen({ onBack, onSave, onPrayWith, todayEntries
     if (moods.length || symptoms.length || reflection || trigger) triggerSave();
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [moods, symptoms, intensity, reflection, trigger, triggerSave]);
+
+  // Companion glow responds to interaction depth
+  useEffect(() => { setCompanionGlow(Math.min(3, sectionsUsed)); }, [sectionsUsed]);
 
   // "You showed up" micro-feedback
   useEffect(() => {
@@ -337,6 +350,12 @@ export default function CheckInScreen({ onBack, onSave, onPrayWith, todayEntries
               triggerSave();
               setSaveMsg("Entry saved");
               setTimeout(() => setSaveMsg(""), 2500);
+              // Growth message based on intensity
+              const msgs = GROWTH_MESSAGES[INTENSITY_STOPS[intensity].label.toLowerCase()] || GROWTH_MESSAGES.light;
+              setGrowthMsg(msgs[Math.floor(Math.random() * msgs.length)]);
+              setTimeout(() => setGrowthMsg(null), 4000);
+              // Notify parent for candle reward + mission tracking
+              if (onCheckinComplete) onCheckinComplete(INTENSITY_STOPS[intensity].label.toLowerCase());
             }} style={{
               width: "100%", background: "linear-gradient(135deg,rgba(201,169,110,0.18),rgba(201,169,110,0.06))",
               border: "1px solid rgba(201,169,110,0.35)", borderRadius: 14, padding: "14px 0",
@@ -367,14 +386,36 @@ export default function CheckInScreen({ onBack, onSave, onPrayWith, todayEntries
           </div>
         )}
 
-        {/* ── MICRO-FEEDBACK ── */}
-        {showedUp && (
-          <div style={{ textAlign: "center", padding: "16px 0", animation: "fadeUp .8s ease both" }}>
-            <p style={{ fontFamily: SERIF, fontStyle: "italic", fontSize: "0.85rem", color: "rgba(255,248,232,0.25)", margin: 0 }}>
-              You showed up today
+        {/* ── GROWTH MESSAGE (after save) ── */}
+        {growthMsg && (
+          <div style={{ textAlign: "center", padding: "16px 20px", margin: "0 0 16px", background: "rgba(90,138,106,0.06)", border: "1px solid rgba(90,138,106,0.12)", borderRadius: 14, animation: "fadeUp .6s ease both" }}>
+            <p style={{ fontFamily: SERIF, fontStyle: "italic", fontSize: "0.85rem", color: B.sage, margin: 0, lineHeight: 1.55 }}>
+              {growthMsg}
             </p>
           </div>
         )}
+
+        {/* ── MICRO-FEEDBACK ── */}
+        {showedUp && !growthMsg && (
+          <div style={{ textAlign: "center", padding: "16px 0", animation: "fadeUp .8s ease both" }}>
+            <p style={{ fontFamily: SERIF, fontStyle: "italic", fontSize: "0.85rem", color: "rgba(255,248,232,0.25)", margin: 0 }}>
+              You've been showing up. That matters.
+            </p>
+          </div>
+        )}
+
+        {/* ── RETURN MESSAGE (after inactivity) ── */}
+        {lastCheckinDate && (() => {
+          const daysSince = Math.floor((Date.now() - new Date(lastCheckinDate).getTime()) / 86400000);
+          if (daysSince >= 3 && !hasData) return (
+            <div style={{ textAlign: "center", padding: "16px 0", animation: "fadeUp .8s .6s ease both", opacity: 0 }}>
+              <p style={{ fontFamily: SERIF, fontStyle: "italic", fontSize: "0.85rem", color: "rgba(201,169,110,0.35)", margin: 0, lineHeight: 1.55 }}>
+                {RETURN_MESSAGE}
+              </p>
+            </div>
+          );
+          return null;
+        })()}
 
         {/* ── SAVE FEEDBACK ── */}
         {saveMsg && (
@@ -382,6 +423,15 @@ export default function CheckInScreen({ onBack, onSave, onPrayWith, todayEntries
             <span style={{ fontFamily: SANS, fontSize: "0.68rem", color: "rgba(255,248,232,0.25)", letterSpacing: "0.04em" }}>{saveMsg}</span>
           </div>
         )}
+
+        {/* ── COMPANION LIGHT — ambient presence that responds to interaction ── */}
+        <div style={{
+          position: "fixed", top: 24, right: 24, width: 8 + companionGlow * 6, height: 8 + companionGlow * 6,
+          borderRadius: "50%", pointerEvents: "none", transition: "all 1.5s ease",
+          background: `radial-gradient(circle, rgba(255,220,140,${0.15 + companionGlow * 0.12}) 0%, transparent 70%)`,
+          boxShadow: companionGlow > 0 ? `0 0 ${8 + companionGlow * 8}px rgba(255,200,100,${0.08 + companionGlow * 0.06})` : "none",
+          opacity: companionGlow > 0 ? 1 : 0,
+        }} />
       </div>
     </div>
   );
