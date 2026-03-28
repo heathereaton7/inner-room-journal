@@ -13,6 +13,7 @@ import NotificationsScreen from './screens/NotificationsScreen.jsx';
 import CheckInScreen from './screens/CheckInScreen.jsx';
 import CheckInCalendar from './screens/CheckInCalendar.jsx';
 import PostCard from './components/PostCard.jsx';
+import UpperRoomGatherings from './screens/UpperRoomGatherings.jsx';
 import DoveCompanion from './components/DoveCompanion.jsx';
 
 
@@ -4999,6 +5000,15 @@ function AppInner(){
     <DoveCompanion intensity={lastCheckinIntensity} active={false} screen="check-in"/>
   </>);
 
+  /* ══ GATHERINGS — Upper Room anonymous community ═════════════════ */
+  if(screen==="gatherings") return(
+    <UpperRoomGatherings
+      onBack={()=>setScreen("upper-room")}
+      onOpenSpace={(spaceId)=>{/* Phase 2: navigate to GatheringFeed */setToast({msg:"Coming soon"});}}
+      onSearch={(query)=>{/* Phase 3: navigate to UpperRoomSearch */setToast({msg:"Search coming soon"});}}
+    />
+  );
+
   if(screen==="feed") return(
     <FeedScreen
       user={user} db={db} functions={functions}
@@ -6353,9 +6363,11 @@ function AppInner(){
                   {key:"prayer-wall",label:"Prayer Wall",sub:"Lift up requests",icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(180,160,210,0.55)" strokeWidth="1.5"><path d="M12 2C6.48 2 2 6 2 11c0 3 1.5 5.5 4 7v4l3.5-2c.8.2 1.6.3 2.5.3 5.52 0 10-4 10-9.3C22 6 17.52 2 12 2z"/></svg>},
                   {key:"feed",label:"Community Feed",sub:"See what others share",icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(180,160,210,0.55)" strokeWidth="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>},
                   {key:"find-people",label:"Find People",sub:"Search and follow",icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(180,160,210,0.55)" strokeWidth="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>},
+                  {key:"gatherings",label:"Gatherings",sub:"Anonymous community",icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(180,160,210,0.55)" strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>},
                 ].map(tile=>(
                   <button key={tile.key} onClick={()=>{
                     if(tile.key==="scriptures"){setUpperRoomView("scriptures");openBible();}
+                    else if(tile.key==="gatherings"){setScreen("gatherings");}
                     else if((tile.key==="feed"||tile.key==="find-people"||tile.key==="notifications")&&!user){setToast({msg:"Sign in to access the community"});}
                     else{setUpperRoomView(tile.key);if(tile.key==="prayer-wall"&&prayerWallTab==="community")loadCommunityPrayers();}
                   }} style={{background:"rgba(20,18,32,0.55)",backdropFilter:"blur(14px)",WebkitBackdropFilter:"blur(14px)",border:"1px solid rgba(180,160,210,0.15)",borderRadius:16,padding:"22px 16px",cursor:"pointer",textAlign:"center",transition:"all 0.3s"}}
