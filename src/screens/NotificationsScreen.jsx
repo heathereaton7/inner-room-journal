@@ -73,6 +73,9 @@ export default function NotificationsScreen({
   function handleTap(notif) {
     if (notif.type === "follow") {
       viewProfile(notif.actorId);
+    } else if (notif.type === "gathering_reply" && notif.postId) {
+      // Navigate to the gathering post
+      setScreen("gathering-post");
     } else {
       onFeedTap ? onFeedTap() : setScreen("feed");
     }
@@ -126,6 +129,9 @@ export default function NotificationsScreen({
     if (type === "comment") {
       return <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={B.gold} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>;
     }
+    if (type === "gathering_reply") {
+      return <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={B.gold} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>;
+    }
     return null;
   }
 
@@ -134,6 +140,7 @@ export default function NotificationsScreen({
     if (type === "follow") return "started following you";
     if (type === "like") return "prayed for your prayer";
     if (type === "comment") return "commented on your prayer";
+    if (type === "gathering_reply") return "replied to your post in Gatherings";
     return "";
   }
 

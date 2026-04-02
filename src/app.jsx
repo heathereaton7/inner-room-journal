@@ -2926,6 +2926,21 @@ function AppInner(){
       // Increment reply count on the post
       const postRef=doc(db,"upperRoomPosts",activePost.id);
       await setDoc(postRef,{replyCount:(activePost.replyCount||0)+1,updatedAt:serverTimestamp()},{merge:true});
+      // Notify the post author (if it's not the replier)
+      if(activePost.authorId&&activePost.authorId!==user.uid){
+        try{await addDoc(collection(db,"notifications"),{
+          recipientId:activePost.authorId,
+          actorId:user.uid,
+          actorName:anonName,
+          type:"gathering_reply",
+          postId:activePost.id,
+          postTitle:activePost.title||"",
+          spaceId:activePost.spaceId||"",
+          preview:gatheringReplyText.trim().slice(0,80),
+          read:false,
+          createdAt:serverTimestamp(),
+        });}catch(e){}
+      }
       setGatheringReplyText("");
       loadPostAndReplies(activePost.id);
     }catch(e){console.warn("submitGatheringReply:",e);}
@@ -5186,11 +5201,15 @@ function AppInner(){
   /* ══ GATHERINGS — Upper Room anonymous community ═════════════════ */
   if(screen==="gatherings"){
     if(!gatheringSpaceCounts._loaded&&db){loadSpaceCounts().then(c=>{c._loaded=true;setGatheringSpaceCounts(c);});loadRecentGatheringPosts();}
+    // Load saved posts from localStorage IDs
+    const savedPostIds=(()=>{try{return JSON.parse(localStorage.getItem("irj-saved-posts")||"[]");}catch(e){return [];}})();
+    const savedPostData=gatheringRecentPosts.filter(p=>savedPostIds.includes(p.id));
     return(
       <UpperRoomGatherings
         onBack={()=>setScreen("upper-room")}
         spaceCounts={gatheringSpaceCounts}
         recentPosts={gatheringRecentPosts}
+        savedPosts={savedPostData}
         onOpenSpace={(spaceId)=>{setActiveGatheringSpace(spaceId);loadGatheringPosts(spaceId);setScreen("gathering-feed");}}
         onSearch={(q)=>{setGatheringSearchQuery(q);searchGatherings(q);setScreen("gathering-search");}}
         onOpenPost={(post)=>{setActivePost(post);setActiveGatheringSpace(post.spaceId);loadPostAndReplies(post.id);setGatheringReplyText("");setScreen("gathering-post");}}

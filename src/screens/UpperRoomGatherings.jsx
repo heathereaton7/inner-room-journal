@@ -21,7 +21,7 @@ function SpaceIcon({ icon, size = 22, color = "rgba(201,169,110,0.55)" }) {
   }
 }
 
-export default function UpperRoomGatherings({ onBack, onOpenSpace, onSearch, spaceCounts, recentPosts, onOpenPost }) {
+export default function UpperRoomGatherings({ onBack, onOpenSpace, onSearch, spaceCounts, recentPosts, onOpenPost, savedPosts }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [sensitiveGate, setSensitiveGate] = useState(null);
   const counts = spaceCounts || {};
@@ -128,6 +128,30 @@ export default function UpperRoomGatherings({ onBack, onOpenSpace, onSearch, spa
                 Search all posts
               </button>
             )}
+          </div>
+        )}
+
+        {/* Saved posts */}
+        {(savedPosts||[]).length > 0 && !searchQuery && (
+          <div style={{ marginTop: 20, animation: "fadeUp .5s .35s ease both", opacity: 0 }}>
+            <p style={{ fontFamily: SANS, fontSize: "0.62rem", letterSpacing: "0.06em", textTransform: "uppercase", color: "rgba(200,190,230,0.2)", margin: "0 0 10px" }}>Saved</p>
+            {(savedPosts||[]).slice(0, 3).map((post, idx) => {
+              const space = GATHERING_SPACES.find(s => s.id === post.spaceId);
+              return (
+                <button key={post.id} onClick={() => onOpenPost && onOpenPost(post)} style={{
+                  display: "block", width: "100%", textAlign: "left",
+                  background: "rgba(201,169,110,0.04)", border: "1px solid rgba(201,169,110,0.08)",
+                  borderRadius: 12, padding: "12px 14px", marginBottom: 6, cursor: "pointer",
+                  transition: "all 0.15s",
+                }} onMouseEnter={e => e.currentTarget.style.borderColor = "rgba(201,169,110,0.2)"} onMouseLeave={e => e.currentTarget.style.borderColor = "rgba(201,169,110,0.08)"}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
+                    <span style={{ fontFamily: SANS, fontSize: "0.62rem", color: "rgba(201,169,110,0.35)" }}>{post.anonymousName}</span>
+                    {space && <span style={{ fontFamily: SANS, fontSize: "0.55rem", color: "rgba(200,190,230,0.18)" }}>in {space.name}</span>}
+                  </div>
+                  <p style={{ fontFamily: SERIF, fontSize: "0.82rem", color: "rgba(200,190,230,0.5)", margin: 0, lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{post.title}</p>
+                </button>
+              );
+            })}
           </div>
         )}
 

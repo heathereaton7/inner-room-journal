@@ -101,8 +101,19 @@ export default function GatheringPost({
           {/* Reactions */}
           <ReactionBar counts={post.reactionCounts} userReaction={userReaction} onReact={onReact} />
 
-          {/* Report */}
-          <div style={{ marginTop: 10, display: "flex", justifyContent: "flex-end" }}>
+          {/* Save + Report */}
+          <div style={{ marginTop: 10, display: "flex", justifyContent: "flex-end", gap: 12 }}>
+            <button onClick={() => {
+              try {
+                const saved = JSON.parse(localStorage.getItem("irj-saved-posts") || "[]");
+                const exists = saved.includes(post.id);
+                const next = exists ? saved.filter(id => id !== post.id) : [...saved, post.id];
+                localStorage.setItem("irj-saved-posts", JSON.stringify(next.slice(-50)));
+              } catch (e) {}
+              // Force re-render by toggling a class or similar
+            }} style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(200,190,230,0.25)", fontFamily: SANS, fontSize: "0.6rem", transition: "color 0.15s" }} onMouseEnter={e => e.target.style.color = "rgba(200,190,230,0.45)"} onMouseLeave={e => e.target.style.color = "rgba(200,190,230,0.25)"}>
+              {(() => { try { return JSON.parse(localStorage.getItem("irj-saved-posts") || "[]").includes(post.id) ? "Saved" : "Save"; } catch (e) { return "Save"; } })()}
+            </button>
             <button onClick={() => setShowReportMenu(!showReportMenu)} style={{ background: "transparent", border: "none", cursor: "pointer", color: "rgba(200,190,230,0.15)", fontFamily: SANS, fontSize: "0.6rem", transition: "color 0.15s" }} onMouseEnter={e => e.target.style.color = "rgba(200,190,230,0.35)"} onMouseLeave={e => e.target.style.color = "rgba(200,190,230,0.15)"}>
               Report
             </button>
