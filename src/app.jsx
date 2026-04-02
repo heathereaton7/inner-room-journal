@@ -1725,6 +1725,7 @@ function AppInner(){
   const [gatheringSearchResults, setGatheringSearchResults] = useState(null);
   const [gatheringSearchLoading, setGatheringSearchLoading] = useState(false);
   const [gatheringSearchQuery, setGatheringSearchQuery] = useState("");
+  const [gatheringSpaceCounts, setGatheringSpaceCounts] = useState({});
   const [showProfileSetup,  setShowProfileSetup]   = useState(false);
   const [setupUsername,      setSetupUsername]      = useState("");
   const [setupGender,        setSetupGender]        = useState(null); // "male"|"female"
@@ -2962,8 +2963,28 @@ function AppInner(){
         reporterId:user.uid, targetType, targetId, reason,
         createdAt:serverTimestamp(), status:"pending",
       });
+      // Auto-flag: check if 3+ reports exist for this target
+      try{
+        const rq=query(collection(db,"upperRoomReports"),where("targetId","==",targetId),where("status","==","pending"),limit(3));
+        const rSnap=await getDocs(rq);
+        if(rSnap.size>=3){
+          const ref=doc(db,targetType==="reply"?"upperRoomReplies":"upperRoomPosts",targetId);
+          await setDoc(ref,{status:"flagged"},{merge:true});
+        }
+      }catch(e){}
       setToast({msg:"Report submitted. Thank you."});
     }catch(e){console.warn("reportGatheringContent:",e);}
+  }
+
+  async function loadSpaceCounts(){
+    if(!db) return {};
+    try{
+      const q=query(collection(db,"upperRoomPosts"),where("status","==","active"),limit(500));
+      const snap=await getDocs(q);
+      const counts={};
+      snap.docs.forEach(d=>{const s=d.data().spaceId;counts[s]=(counts[s]||0)+1;});
+      return counts;
+    }catch(e){return {};}
   }
 
   async function searchGatherings(searchQuery){
@@ -5148,13 +5169,18 @@ function AppInner(){
   </>);
 
   /* ══ GATHERINGS — Upper Room anonymous community ═════════════════ */
-  if(screen==="gatherings") return(
-    <UpperRoomGatherings
-      onBack={()=>setScreen("upper-room")}
-      onOpenSpace={(spaceId)=>{setActiveGatheringSpace(spaceId);loadGatheringPosts(spaceId);setScreen("gathering-feed");}}
-      onSearch={(q)=>{setGatheringSearchQuery(q);searchGatherings(q);setScreen("gathering-search");}}
-    />
-  );
+  if(screen==="gatherings"){
+    // Load space counts on first render of gatherings
+    if(!gatheringSpaceCounts._loaded&&db){loadSpaceCounts().then(c=>{c._loaded=true;setGatheringSpaceCounts(c);});}
+    return(
+      <UpperRoomGatherings
+        onBack={()=>setScreen("upper-room")}
+        spaceCounts={gatheringSpaceCounts}
+        onOpenSpace={(spaceId)=>{setActiveGatheringSpace(spaceId);loadGatheringPosts(spaceId);setScreen("gathering-feed");}}
+        onSearch={(q)=>{setGatheringSearchQuery(q);searchGatherings(q);setScreen("gathering-search");}}
+      />
+    );
+  }
 
   if(screen==="gathering-feed"&&activeGatheringSpace) return(
     <GatheringFeed

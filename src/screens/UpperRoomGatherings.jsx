@@ -21,8 +21,16 @@ function SpaceIcon({ icon, size = 22, color = "rgba(201,169,110,0.55)" }) {
   }
 }
 
-export default function UpperRoomGatherings({ onBack, onOpenSpace, onSearch }) {
+export default function UpperRoomGatherings({ onBack, onOpenSpace, onSearch, spaceCounts }) {
   const [searchQuery, setSearchQuery] = useState("");
+  const [sensitiveGate, setSensitiveGate] = useState(null); // spaceId waiting for confirmation
+  const counts = spaceCounts || {};
+
+  const handleOpenSpace = (space) => {
+    if (space.isSensitive) { setSensitiveGate(space.id); return; }
+    if (onOpenSpace) onOpenSpace(space.id);
+  };
+  const confirmSensitive = () => { if (onOpenSpace) onOpenSpace(sensitiveGate); setSensitiveGate(null); };
 
   const filtered = searchQuery
     ? GATHERING_SPACES.filter(s =>
@@ -73,7 +81,7 @@ export default function UpperRoomGatherings({ onBack, onOpenSpace, onSearch }) {
           {filtered.map((space, idx) => (
             <button
               key={space.id}
-              onClick={() => onOpenSpace && onOpenSpace(space.id)}
+              onClick={() => handleOpenSpace(space)}
               style={{
                 display: "flex", alignItems: "center", gap: 14,
                 background: "rgba(20,18,32,0.55)",
@@ -97,7 +105,12 @@ export default function UpperRoomGatherings({ onBack, onOpenSpace, onSearch }) {
                     <span style={{ fontFamily: SANS, fontSize: "0.52rem", color: "rgba(200,190,230,0.35)", background: "rgba(180,160,210,0.08)", border: "1px solid rgba(180,160,210,0.12)", borderRadius: 99, padding: "1px 6px", letterSpacing: "0.04em" }}>sensitive</span>
                   )}
                 </div>
-                <p style={{ fontFamily: SANS, fontSize: "0.72rem", color: "rgba(200,190,230,0.35)", margin: 0, lineHeight: 1.4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{space.description}</p>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <p style={{ fontFamily: SANS, fontSize: "0.72rem", color: "rgba(200,190,230,0.35)", margin: 0, lineHeight: 1.4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{space.description}</p>
+                  {counts[space.id] > 0 && (
+                    <span style={{ fontFamily: SANS, fontSize: "0.58rem", color: "rgba(200,190,230,0.2)", flexShrink: 0 }}>{counts[space.id]} posts</span>
+                  )}
+                </div>
               </div>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(180,160,210,0.25)" strokeWidth="2" style={{ flexShrink: 0 }}><polyline points="9 18 15 12 9 6"/></svg>
             </button>
@@ -124,6 +137,30 @@ export default function UpperRoomGatherings({ onBack, onOpenSpace, onSearch }) {
           </p>
         </div>
       </div>
+
+      {/* Sensitive space content warning */}
+      {sensitiveGate && (
+        <div onClick={() => setSensitiveGate(null)} style={{ position: "fixed", inset: 0, zIndex: 500, background: "rgba(6,4,12,0.85)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", animation: "fadeUp .2s ease both" }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: "#14111E", border: "1px solid rgba(180,160,210,0.15)", borderRadius: 18, padding: "28px 24px", maxWidth: 360, width: "88%", textAlign: "center" }}>
+            <div style={{ width: 40, height: 1, background: "rgba(180,160,210,0.2)", margin: "0 auto 16px" }} />
+            <h2 style={{ fontFamily: DISPLAY, fontSize: "1.1rem", fontWeight: 700, color: "#D8C8F0", margin: "0 0 10px" }}>A gentle notice</h2>
+            <p style={{ fontFamily: SERIF, fontStyle: "italic", fontSize: "0.85rem", color: "rgba(200,190,230,0.45)", margin: "0 0 8px", lineHeight: 1.6 }}>
+              This gathering may contain sensitive topics including pain, illness, grief, or emotional struggle.
+            </p>
+            <p style={{ fontFamily: SANS, fontSize: "0.72rem", color: "rgba(200,190,230,0.3)", margin: "0 0 20px", lineHeight: 1.5 }}>
+              Please be gentle with yourself and others.
+            </p>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button onClick={() => setSensitiveGate(null)} style={{ flex: 1, background: "transparent", border: "1px solid rgba(180,160,210,0.12)", borderRadius: 12, padding: "11px 0", cursor: "pointer", color: "rgba(200,190,230,0.4)", fontFamily: SANS, fontSize: "0.78rem" }}>
+                Go back
+              </button>
+              <button onClick={confirmSensitive} style={{ flex: 1, background: "rgba(180,160,210,0.1)", border: "1px solid rgba(180,160,210,0.25)", borderRadius: 12, padding: "11px 0", cursor: "pointer", color: "#D8C8F0", fontFamily: SANS, fontSize: "0.78rem", fontWeight: 600 }}>
+                I understand
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
