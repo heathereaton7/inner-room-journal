@@ -4221,7 +4221,7 @@ function AppInner(){
             <div style={{position:"absolute",bottom:0,left:0,right:0,zIndex:3,display:"flex",flexDirection:"column",alignItems:"center",padding:"0 28px 52px"}}>
               <div className="fu" style={{width:"100%",maxWidth:"380px",display:"flex",flexDirection:"column",alignItems:"center"}}>
                 <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.88rem,3vw,1.05rem)",color:"rgba(255,248,232,0.55)",margin:"0 0 20px",textAlign:"center",letterSpacing:"0.04em",lineHeight:1.6}}>
-                  How do you wish to be known?
+                  Are you a Daughter of God or a Son of God?
                 </p>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"14px",width:"100%"}}>
                   {[["male","Son of God"],["female","Daughter of God"]].map(([val,label])=>(
