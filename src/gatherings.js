@@ -5,15 +5,15 @@
 
 // ── Gathering Spaces (MVP — hardcoded, no Firestore collection needed yet) ──
 export const GATHERING_SPACES = [
-  { id: "prayer-requests",  name: "Prayer Requests",     icon: "pray",     description: "Lift up what's on your heart",              isSensitive: false },
-  { id: "chronic-illness",  name: "Chronic Illness",      icon: "heart",    description: "For those carrying invisible weight",       isSensitive: true  },
-  { id: "marriage-family",  name: "Marriage & Family",     icon: "home",     description: "Love, struggle, and growing together",      isSensitive: false },
-  { id: "anxiety",          name: "Anxiety",               icon: "cloud",    description: "A safe place for anxious hearts",           isSensitive: true  },
-  { id: "bible-questions",  name: "Bible Questions",       icon: "book",     description: "Ask, wonder, and learn together",           isSensitive: false },
-  { id: "motherhood",       name: "Motherhood",            icon: "seedling", description: "The joys and weight of raising little ones",isSensitive: false },
-  { id: "homestead-life",   name: "Homestead Life",        icon: "leaf",     description: "Simple living, rooted faith",               isSensitive: false },
-  { id: "creative-corner",  name: "Creative Corner",       icon: "feather",  description: "Art, writing, music, and making",           isSensitive: false },
-  { id: "testimonies",      name: "Testimonies",           icon: "flame",    description: "What God has done",                         isSensitive: false },
+  { id: "prayer-requests",  name: "Prayer Requests",     icon: "pray",     description: "Lift up what's on your heart",              isSensitive: false, rules: "Share your heart honestly. Pray for others when you can. No judgment here." },
+  { id: "chronic-illness",  name: "Chronic Illness",      icon: "heart",    description: "For those carrying invisible weight",       isSensitive: true,  rules: "Be gentle. Don't offer unsolicited medical advice. Validate, don't fix. This is a space for being seen." },
+  { id: "marriage-family",  name: "Marriage & Family",     icon: "home",     description: "Love, struggle, and growing together",      isSensitive: false, rules: "Respect the complexity of every family. What's shared here stays here. No blame." },
+  { id: "anxiety",          name: "Anxiety",               icon: "cloud",    description: "A safe place for anxious hearts",           isSensitive: true,  rules: "No toxic positivity. Sit with people in their anxiety. You don't need to fix it." },
+  { id: "bible-questions",  name: "Bible Questions",       icon: "book",     description: "Ask, wonder, and learn together",           isSensitive: false, rules: "All questions are welcome. No question is too simple. Be kind in disagreement." },
+  { id: "motherhood",       name: "Motherhood",            icon: "seedling", description: "The joys and weight of raising little ones",isSensitive: false, rules: "No mom-shaming. Every journey is different. Celebrate and mourn together." },
+  { id: "homestead-life",   name: "Homestead Life",        icon: "leaf",     description: "Simple living, rooted faith",               isSensitive: false, rules: "Share freely. Ask anything. Encourage the small steps." },
+  { id: "creative-corner",  name: "Creative Corner",       icon: "feather",  description: "Art, writing, music, and making",           isSensitive: false, rules: "Share your work without fear. Encourage more than critique. Making is worship." },
+  { id: "testimonies",      name: "Testimonies",           icon: "flame",    description: "What God has done",                         isSensitive: false, rules: "Share what God has done in your life. Encourage others. No comparison." },
 ];
 
 // ── Post Types ──

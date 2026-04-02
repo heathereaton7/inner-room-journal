@@ -21,10 +21,11 @@ function SpaceIcon({ icon, size = 22, color = "rgba(201,169,110,0.55)" }) {
   }
 }
 
-export default function UpperRoomGatherings({ onBack, onOpenSpace, onSearch, spaceCounts }) {
+export default function UpperRoomGatherings({ onBack, onOpenSpace, onSearch, spaceCounts, recentPosts, onOpenPost }) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [sensitiveGate, setSensitiveGate] = useState(null); // spaceId waiting for confirmation
+  const [sensitiveGate, setSensitiveGate] = useState(null);
   const counts = spaceCounts || {};
+  const recent = (recentPosts || []).slice(0, 3);
 
   const handleOpenSpace = (space) => {
     if (space.isSensitive) { setSensitiveGate(space.id); return; }
@@ -130,8 +131,32 @@ export default function UpperRoomGatherings({ onBack, onOpenSpace, onSearch, spa
           </div>
         )}
 
+        {/* Recent activity */}
+        {recent.length > 0 && !searchQuery && (
+          <div style={{ marginTop: 24, animation: "fadeUp .5s .4s ease both", opacity: 0 }}>
+            <p style={{ fontFamily: SANS, fontSize: "0.62rem", letterSpacing: "0.06em", textTransform: "uppercase", color: "rgba(200,190,230,0.2)", margin: "0 0 10px" }}>Recent voices</p>
+            {recent.map((post, idx) => {
+              const space = GATHERING_SPACES.find(s => s.id === post.spaceId);
+              return (
+                <button key={post.id} onClick={() => onOpenPost && onOpenPost(post)} style={{
+                  display: "block", width: "100%", textAlign: "left",
+                  background: "rgba(20,18,32,0.35)", border: "1px solid rgba(180,160,210,0.06)",
+                  borderRadius: 12, padding: "12px 14px", marginBottom: 6, cursor: "pointer",
+                  transition: "all 0.15s",
+                }} onMouseEnter={e => e.currentTarget.style.borderColor = "rgba(180,160,210,0.15)"} onMouseLeave={e => e.currentTarget.style.borderColor = "rgba(180,160,210,0.06)"}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
+                    <span style={{ fontFamily: SANS, fontSize: "0.62rem", color: "rgba(180,160,210,0.35)" }}>{post.anonymousName}</span>
+                    {space && <span style={{ fontFamily: SANS, fontSize: "0.55rem", color: "rgba(200,190,230,0.18)" }}>in {space.name}</span>}
+                  </div>
+                  <p style={{ fontFamily: SERIF, fontSize: "0.82rem", color: "rgba(200,190,230,0.5)", margin: 0, lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{post.title}</p>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         {/* Footer note */}
-        <div style={{ textAlign: "center", marginTop: 28, animation: "fadeUp .5s .5s ease both", opacity: 0 }}>
+        <div style={{ textAlign: "center", marginTop: 24, animation: "fadeUp .5s .5s ease both", opacity: 0 }}>
           <p style={{ fontFamily: SERIF, fontStyle: "italic", fontSize: "0.72rem", color: "rgba(200,190,230,0.18)", margin: 0, lineHeight: 1.5 }}>
             Everything shared here is anonymous. You are known by a name given to you, not the one you carry outside.
           </p>

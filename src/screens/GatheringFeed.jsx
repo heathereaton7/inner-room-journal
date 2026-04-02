@@ -52,8 +52,13 @@ export default function GatheringFeed({ spaceId, posts, loading, onBack, onOpenP
         <div style={{ textAlign: "center", marginBottom: 24, animation: "fadeUp .6s ease both" }}>
           <h1 style={{ fontFamily: DISPLAY, fontSize: "1.4rem", fontWeight: 700, color: "#D8C8F0", margin: "0 0 6px" }}>{space?.name || "Gathering"}</h1>
           <p style={{ fontFamily: SERIF, fontStyle: "italic", fontSize: "0.82rem", color: "rgba(200,190,230,0.35)", margin: 0 }}>{space?.description || ""}</p>
+          {space?.rules && (
+            <div style={{ marginTop: 10, padding: "8px 14px", background: "rgba(180,160,210,0.03)", border: "1px solid rgba(180,160,210,0.06)", borderRadius: 10, display: "inline-block" }}>
+              <p style={{ fontFamily: SERIF, fontStyle: "italic", fontSize: "0.7rem", color: "rgba(200,190,230,0.25)", margin: 0, lineHeight: 1.5 }}>{space.rules}</p>
+            </div>
+          )}
           {space?.isSensitive && (
-            <div style={{ marginTop: 10, padding: "8px 14px", background: "rgba(180,160,210,0.04)", border: "1px solid rgba(180,160,210,0.08)", borderRadius: 10, display: "inline-block" }}>
+            <div style={{ marginTop: 6, padding: "6px 14px", background: "rgba(180,160,210,0.04)", border: "1px solid rgba(180,160,210,0.08)", borderRadius: 10, display: "inline-block" }}>
               <p style={{ fontFamily: SANS, fontSize: "0.65rem", color: "rgba(200,190,230,0.3)", margin: 0 }}>This is a sensitive space. Please be gentle.</p>
             </div>
           )}

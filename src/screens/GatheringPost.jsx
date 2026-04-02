@@ -43,8 +43,26 @@ export default function GatheringPost({
   replyText, setReplyText, replySubmitting, anonName,
 }) {
   const [showReportMenu, setShowReportMenu] = useState(false);
+  const [replyingTo, setReplyingTo] = useState(null); // reply id for nested reply
   const space = GATHERING_SPACES.find(s => s.id === post?.spaceId);
   const pt = POST_TYPES.find(p => p.id === post?.postType);
+
+  // Blocked names (localStorage)
+  const [blocked, setBlocked] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("irj-blocked-anon") || "[]"); } catch (e) { return []; }
+  });
+  const blockName = (name) => {
+    const next = [...new Set([...blocked, name])];
+    setBlocked(next);
+    try { localStorage.setItem("irj-blocked-anon", JSON.stringify(next)); } catch (e) {}
+  };
+
+  // Filter blocked replies
+  const visibleReplies = (replies || []).filter(r => !blocked.includes(r.anonymousName));
+
+  // Organize into top-level + nested
+  const topLevel = visibleReplies.filter(r => !r.parentReplyId);
+  const nested = visibleReplies.filter(r => r.parentReplyId);
 
   if (!post) return null;
 
@@ -106,7 +124,10 @@ export default function GatheringPost({
 
         {/* Reply input */}
         <div style={{ marginBottom: 20, animation: "fadeUp .5s .1s ease both", opacity: 0 }}>
-          <p style={{ fontFamily: SANS, fontSize: "0.65rem", color: "rgba(200,190,230,0.25)", margin: "0 0 8px" }}>Replying as <span style={{ color: "rgba(200,190,230,0.4)" }}>{anonName || "Anonymous"}</span></p>
+          <p style={{ fontFamily: SANS, fontSize: "0.65rem", color: "rgba(200,190,230,0.25)", margin: "0 0 8px" }}>
+            Replying as <span style={{ color: "rgba(200,190,230,0.4)" }}>{anonName || "Anonymous"}</span>
+            {replyingTo && <span> to a reply <button onClick={() => setReplyingTo(null)} style={{ background: "none", border: "none", color: "rgba(200,190,230,0.3)", cursor: "pointer", fontSize: "0.6rem", fontFamily: SANS }}>(cancel)</button></span>}
+          </p>
           <div style={{ display: "flex", gap: 8 }}>
             <textarea value={replyText} onChange={e => setReplyText(e.target.value)} placeholder="Say something gentle..." style={{
               flex: 1, background: "rgba(180,160,210,0.06)", border: "1px solid rgba(180,160,210,0.1)",
@@ -116,7 +137,7 @@ export default function GatheringPost({
             }} onFocus={e => e.target.style.borderColor = "rgba(180,160,210,0.25)"} onBlur={e => e.target.style.borderColor = "rgba(180,160,210,0.1)"} />
           </div>
           {replyText.trim() && (
-            <button onClick={onReply} disabled={replySubmitting || !replyText.trim()} style={{
+            <button onClick={() => { if (onReply) onReply(replyingTo); setReplyingTo(null); }} disabled={replySubmitting || !replyText.trim()} style={{
               marginTop: 8, background: "rgba(180,160,210,0.1)", border: "1px solid rgba(180,160,210,0.2)",
               borderRadius: 10, padding: "8px 20px", cursor: "pointer", color: "#D8C8F0",
               fontFamily: SANS, fontSize: "0.74rem", fontWeight: 600, transition: "all 0.2s",
@@ -127,27 +148,47 @@ export default function GatheringPost({
         {/* Replies */}
         <div style={{ animation: "fadeUp .5s .15s ease both", opacity: 0 }}>
           <p style={{ fontFamily: SANS, fontSize: "0.62rem", letterSpacing: "0.06em", textTransform: "uppercase", color: "rgba(200,190,230,0.2)", margin: "0 0 12px" }}>
-            {(replies || []).length} {(replies || []).length === 1 ? "reply" : "replies"}
+            {visibleReplies.length} {visibleReplies.length === 1 ? "reply" : "replies"}
           </p>
 
           {loading && <p style={{ fontFamily: SERIF, fontStyle: "italic", fontSize: "0.82rem", color: "rgba(200,190,230,0.25)" }}>Loading...</p>}
 
-          {!loading && (replies || []).length === 0 && (
+          {!loading && visibleReplies.length === 0 && (
             <p style={{ fontFamily: SERIF, fontStyle: "italic", fontSize: "0.82rem", color: "rgba(200,190,230,0.2)" }}>No replies yet. Be the first to respond.</p>
           )}
 
-          {(replies || []).map((reply, idx) => (
-            <div key={reply.id || idx} style={{
-              background: "rgba(20,18,32,0.4)", border: "1px solid rgba(180,160,210,0.06)",
-              borderRadius: 12, padding: "12px 16px", marginBottom: 8,
-              borderLeft: reply.parentReplyId ? "2px solid rgba(180,160,210,0.1)" : "none",
-              marginLeft: reply.parentReplyId ? 16 : 0,
-            }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
-                <span style={{ fontFamily: SANS, fontSize: "0.68rem", color: "rgba(180,160,210,0.4)", fontWeight: 500 }}>{reply.anonymousName || "Anonymous"}</span>
-                <span style={{ fontFamily: SANS, fontSize: "0.58rem", color: "rgba(200,190,230,0.18)", marginLeft: "auto" }}>{fmtAgo(reply.createdAt)}</span>
+          {topLevel.map((reply, idx) => (
+            <div key={reply.id || idx}>
+              <div style={{
+                background: "rgba(20,18,32,0.4)", border: "1px solid rgba(180,160,210,0.06)",
+                borderRadius: 12, padding: "12px 16px", marginBottom: 4,
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+                  <span style={{ fontFamily: SANS, fontSize: "0.68rem", color: "rgba(180,160,210,0.4)", fontWeight: 500 }}>{reply.anonymousName || "Anonymous"}</span>
+                  <span style={{ fontFamily: SANS, fontSize: "0.58rem", color: "rgba(200,190,230,0.18)", marginLeft: "auto" }}>{fmtAgo(reply.createdAt)}</span>
+                </div>
+                <p style={{ fontFamily: SANS, fontSize: "0.8rem", color: "rgba(220,210,240,0.5)", margin: "0 0 6px", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{reply.body}</p>
+                <div style={{ display: "flex", gap: 10 }}>
+                  <button onClick={() => setReplyingTo(reply.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(200,190,230,0.2)", fontFamily: SANS, fontSize: "0.6rem" }}>Reply</button>
+                  {reply.anonymousName !== anonName && (
+                    <button onClick={() => blockName(reply.anonymousName)} style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(200,190,230,0.12)", fontFamily: SANS, fontSize: "0.6rem" }}>Block</button>
+                  )}
+                </div>
               </div>
-              <p style={{ fontFamily: SANS, fontSize: "0.8rem", color: "rgba(220,210,240,0.5)", margin: 0, lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{reply.body}</p>
+              {/* Nested replies (one level) */}
+              {nested.filter(n => n.parentReplyId === reply.id).map((nr, ni) => (
+                <div key={nr.id || ni} style={{
+                  background: "rgba(20,18,32,0.3)", border: "1px solid rgba(180,160,210,0.04)",
+                  borderLeft: "2px solid rgba(180,160,210,0.1)",
+                  borderRadius: "0 12px 12px 0", padding: "10px 14px", marginLeft: 20, marginBottom: 4,
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                    <span style={{ fontFamily: SANS, fontSize: "0.64rem", color: "rgba(180,160,210,0.35)" }}>{nr.anonymousName || "Anonymous"}</span>
+                    <span style={{ fontFamily: SANS, fontSize: "0.55rem", color: "rgba(200,190,230,0.15)", marginLeft: "auto" }}>{fmtAgo(nr.createdAt)}</span>
+                  </div>
+                  <p style={{ fontFamily: SANS, fontSize: "0.76rem", color: "rgba(220,210,240,0.45)", margin: 0, lineHeight: 1.55, whiteSpace: "pre-wrap" }}>{nr.body}</p>
+                </div>
+              ))}
             </div>
           ))}
         </div>

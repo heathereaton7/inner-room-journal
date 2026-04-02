@@ -2912,7 +2912,7 @@ function AppInner(){
     setPostRepliesLoading(false);
   }
 
-  async function submitGatheringReply(){
+  async function submitGatheringReply(parentReplyId){
     if(!db||!user||!activePost||!gatheringReplyText.trim()) return;
     setGatheringReplySubmitting(true);
     try{
@@ -2920,7 +2920,7 @@ function AppInner(){
       await addDoc(collection(db,"upperRoomReplies"),{
         postId:activePost.id, spaceId:activePost.spaceId,
         authorId:user.uid, anonymousName:anonName,
-        body:gatheringReplyText.trim(), parentReplyId:null,
+        body:gatheringReplyText.trim(), parentReplyId:parentReplyId||null,
         createdAt:serverTimestamp(), status:"active",
       });
       // Increment reply count on the post
@@ -2974,6 +2974,17 @@ function AppInner(){
       }catch(e){}
       setToast({msg:"Report submitted. Thank you."});
     }catch(e){console.warn("reportGatheringContent:",e);}
+  }
+
+  const [gatheringRecentPosts, setGatheringRecentPosts] = useState([]);
+
+  async function loadRecentGatheringPosts(){
+    if(!db) return;
+    try{
+      const q=query(collection(db,"upperRoomPosts"),where("status","==","active"),orderBy("createdAt","desc"),limit(5));
+      const snap=await getDocs(q);
+      setGatheringRecentPosts(snap.docs.map(d=>({id:d.id,...d.data()})));
+    }catch(e){}
   }
 
   async function loadSpaceCounts(){
@@ -5170,14 +5181,15 @@ function AppInner(){
 
   /* ══ GATHERINGS — Upper Room anonymous community ═════════════════ */
   if(screen==="gatherings"){
-    // Load space counts on first render of gatherings
-    if(!gatheringSpaceCounts._loaded&&db){loadSpaceCounts().then(c=>{c._loaded=true;setGatheringSpaceCounts(c);});}
+    if(!gatheringSpaceCounts._loaded&&db){loadSpaceCounts().then(c=>{c._loaded=true;setGatheringSpaceCounts(c);});loadRecentGatheringPosts();}
     return(
       <UpperRoomGatherings
         onBack={()=>setScreen("upper-room")}
         spaceCounts={gatheringSpaceCounts}
+        recentPosts={gatheringRecentPosts}
         onOpenSpace={(spaceId)=>{setActiveGatheringSpace(spaceId);loadGatheringPosts(spaceId);setScreen("gathering-feed");}}
         onSearch={(q)=>{setGatheringSearchQuery(q);searchGatherings(q);setScreen("gathering-search");}}
+        onOpenPost={(post)=>{setActivePost(post);setActiveGatheringSpace(post.spaceId);loadPostAndReplies(post.id);setGatheringReplyText("");setScreen("gathering-post");}}
       />
     );
   }
@@ -5205,7 +5217,7 @@ function AppInner(){
       anonName={user?generateAnonName(user.uid):"Anonymous"}
       onBack={()=>{setScreen("gathering-feed");setActivePost(null);setPostReplies([]);}}
       onReact={(type)=>{if(!user){setToast({msg:"Sign in to react"});return;}reactToGatheringPost(type);}}
-      onReply={()=>{if(!user){setToast({msg:"Sign in to reply"});return;}submitGatheringReply();}}
+      onReply={(parentId)=>{if(!user){setToast({msg:"Sign in to reply"});return;}submitGatheringReply(parentId);}}
       onReport={reportGatheringContent}
     />
   );
