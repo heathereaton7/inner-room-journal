@@ -4032,11 +4032,15 @@ function AppInner(){
         <p className="fu3" style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.92rem,3.2vw,1.12rem)",color:"rgba(255,248,232,0.72)",margin:"0 0 18px",letterSpacing:"0.04em",textAlign:"center",textShadow:"0 2px 12px rgba(0,0,0,0.6)",lineHeight:1.7,maxWidth:"340px"}}>A quiet place to face the questions that matter.</p>
         {/* Door button */}
         <button className="fu4 door-btn" onClick={()=>{
-          if(isOnboarded){
+          if(isOnboarded&&user){
+            // Signed in + onboarded → door animation → cabin
             setDoorOpening(true);setDoorPhase("walk");
             setTimeout(()=>setDoorPhase("door"),1300);
             setTimeout(()=>setDoorPhase("enter"),3300);
             setTimeout(()=>{setDoorOpening(false);setDoorPhase(null);setScreen("cabin");},4000);
+          }else if(isOnboarded&&!user){
+            // Onboarded but not signed in → show door sign-in page
+            setOnboardStep(0);setScreen("profile-onboard");
           }else{
             setDontShowAgain(false);startAmbient();setSceneIdx(0);setScenePrev(-1);setSceneTransit(false);setScreen("onboard");
           }
