@@ -14,6 +14,9 @@ import CheckInScreen from './screens/CheckInScreen.jsx';
 import CheckInCalendar from './screens/CheckInCalendar.jsx';
 import PostCard from './components/PostCard.jsx';
 import UpperRoomGatherings from './screens/UpperRoomGatherings.jsx';
+import GatheringFeed from './screens/GatheringFeed.jsx';
+import CreateGatheringPost from './screens/CreateGatheringPost.jsx';
+import { generateAnonName, makeSearchTokens, GATHERING_SPACES } from './gatherings.js';
 import DoveCompanion from './components/DoveCompanion.jsx';
 
 
@@ -1708,6 +1711,9 @@ function AppInner(){
   const [userResults,       setUserResults]        = useState([]);
   const [userSearchLoading, setUserSearchLoading]  = useState(false);
   const [lastCheckinIntensity, setLastCheckinIntensity] = useState(null);
+  const [activeGatheringSpace, setActiveGatheringSpace] = useState(null);
+  const [gatheringPosts, setGatheringPosts] = useState([]);
+  const [gatheringLoading, setGatheringLoading] = useState(false);
   const [showProfileSetup,  setShowProfileSetup]   = useState(false);
   const [setupUsername,      setSetupUsername]      = useState("");
   const [setupGender,        setSetupGender]        = useState(null); // "male"|"female"
@@ -2839,6 +2845,42 @@ function AppInner(){
       setFarmerResults(results);
     }catch(e){console.warn("searchFarmers error:",e);}
     setCommunityLoading(false);
+  }
+
+  // ── GATHERINGS ──
+  async function loadGatheringPosts(spaceId){
+    if(!db) return;
+    setGatheringLoading(true);
+    try{
+      const q=query(collection(db,"upperRoomPosts"),where("spaceId","==",spaceId),where("status","==","active"),orderBy("createdAt","desc"),limit(50));
+      const snap=await getDocs(q);
+      setGatheringPosts(snap.docs.map(d=>({id:d.id,...d.data()})));
+    }catch(e){console.warn("loadGatheringPosts:",e);setGatheringPosts([]);}
+    setGatheringLoading(false);
+  }
+
+  async function createGatheringPost(postData){
+    if(!db||!user) return;
+    const anonName=generateAnonName(user.uid);
+    const spaceName=(GATHERING_SPACES.find(s=>s.id===postData.spaceId)||{}).name||"";
+    const tokens=makeSearchTokens(postData.title,postData.body,postData.tags,postData.postType,spaceName);
+    try{
+      await addDoc(collection(db,"upperRoomPosts"),{
+        ...postData,
+        authorId:user.uid,
+        anonymousName:anonName,
+        createdAt:serverTimestamp(),
+        updatedAt:serverTimestamp(),
+        replyCount:0,
+        reactionCounts:{relate:0,praying:0,helpful:0,encouraged:0,metoo:0},
+        status:"active",
+        searchTokens:tokens,
+      });
+      setToast({msg:"Shared with the gathering"});
+      // Reload the feed
+      if(activeGatheringSpace) loadGatheringPosts(activeGatheringSpace);
+      setScreen("gathering-feed");
+    }catch(e){console.warn("createGatheringPost:",e);setToast({msg:"Something went wrong"});}
   }
 
   async function searchUsers(searchTerm){
@@ -5004,8 +5046,28 @@ function AppInner(){
   if(screen==="gatherings") return(
     <UpperRoomGatherings
       onBack={()=>setScreen("upper-room")}
-      onOpenSpace={(spaceId)=>{/* Phase 2: navigate to GatheringFeed */setToast({msg:"Coming soon"});}}
+      onOpenSpace={(spaceId)=>{setActiveGatheringSpace(spaceId);loadGatheringPosts(spaceId);setScreen("gathering-feed");}}
       onSearch={(query)=>{/* Phase 3: navigate to UpperRoomSearch */setToast({msg:"Search coming soon"});}}
+    />
+  );
+
+  if(screen==="gathering-feed"&&activeGatheringSpace) return(
+    <GatheringFeed
+      spaceId={activeGatheringSpace}
+      posts={gatheringPosts}
+      loading={gatheringLoading}
+      onBack={()=>{setScreen("gatherings");setGatheringPosts([]);}}
+      onOpenPost={(postId)=>{/* Phase 3: navigate to GatheringPost */setToast({msg:"Post detail coming soon"});}}
+      onCreatePost={()=>{if(!user){setToast({msg:"Sign in to post"});return;}setScreen("create-gathering-post");}}
+    />
+  );
+
+  if(screen==="create-gathering-post"&&user) return(
+    <CreateGatheringPost
+      spaceId={activeGatheringSpace}
+      anonName={generateAnonName(user.uid)}
+      onBack={()=>setScreen(activeGatheringSpace?"gathering-feed":"gatherings")}
+      onSubmit={createGatheringPost}
     />
   );
 
