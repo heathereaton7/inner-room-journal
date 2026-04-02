@@ -4224,7 +4224,7 @@ function AppInner(){
                   Are you a Daughter of God or a Son of God?
                 </p>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"14px",width:"100%"}}>
-                  {[["male","Son of God"],["female","Daughter of God"]].map(([val,label])=>(
+                  {[["female","Daughter of God"],["male","Son of God"]].map(([val,label])=>(
                     <button key={val} onClick={()=>{
                       setSetupGender(val);
                       // After gender → save profile if signed in, then door zoom
@@ -7007,7 +7007,7 @@ function AppInner(){
           <div style={{marginBottom:20}}>
             <label style={{fontFamily:SANS,fontSize:"0.68rem",letterSpacing:"0.08em",textTransform:"uppercase",color:"rgba(200,190,230,0.35)",display:"block",marginBottom:8}}>Gender</label>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-              {[["male","Son of God"],["female","Daughter of God"]].map(([val,label])=>(
+              {[["female","Daughter of God"],["male","Son of God"]].map(([val,label])=>(
                 <button key={val} onClick={()=>setEditG(val)} style={{background:editG===val?"rgba(180,160,210,0.15)":"rgba(180,160,210,0.04)",border:`1.5px solid ${editG===val?"rgba(180,160,210,0.45)":"rgba(180,160,210,0.12)"}`,borderRadius:14,padding:"14px 16px",cursor:"pointer",textAlign:"center",transition:"all 0.2s"}}>
                   <div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.92rem",color:editG===val?"#D8C8F0":"rgba(200,190,230,0.45)"}}>{label}</div>
                 </button>
