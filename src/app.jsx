@@ -15,7 +15,9 @@ import CheckInCalendar from './screens/CheckInCalendar.jsx';
 import PostCard from './components/PostCard.jsx';
 import UpperRoomGatherings from './screens/UpperRoomGatherings.jsx';
 import GatheringFeed from './screens/GatheringFeed.jsx';
+import GatheringPost from './screens/GatheringPost.jsx';
 import CreateGatheringPost from './screens/CreateGatheringPost.jsx';
+import UpperRoomSearch from './screens/UpperRoomSearch.jsx';
 import { generateAnonName, makeSearchTokens, GATHERING_SPACES } from './gatherings.js';
 import DoveCompanion from './components/DoveCompanion.jsx';
 
@@ -1714,6 +1716,15 @@ function AppInner(){
   const [activeGatheringSpace, setActiveGatheringSpace] = useState(null);
   const [gatheringPosts, setGatheringPosts] = useState([]);
   const [gatheringLoading, setGatheringLoading] = useState(false);
+  const [activePost, setActivePost] = useState(null);
+  const [postReplies, setPostReplies] = useState([]);
+  const [postRepliesLoading, setPostRepliesLoading] = useState(false);
+  const [gatheringReplyText, setGatheringReplyText] = useState("");
+  const [gatheringReplySubmitting, setGatheringReplySubmitting] = useState(false);
+  const [gatheringUserReaction, setGatheringUserReaction] = useState(null);
+  const [gatheringSearchResults, setGatheringSearchResults] = useState(null);
+  const [gatheringSearchLoading, setGatheringSearchLoading] = useState(false);
+  const [gatheringSearchQuery, setGatheringSearchQuery] = useState("");
   const [showProfileSetup,  setShowProfileSetup]   = useState(false);
   const [setupUsername,      setSetupUsername]      = useState("");
   const [setupGender,        setSetupGender]        = useState(null); // "male"|"female"
@@ -2881,6 +2892,100 @@ function AppInner(){
       if(activeGatheringSpace) loadGatheringPosts(activeGatheringSpace);
       setScreen("gathering-feed");
     }catch(e){console.warn("createGatheringPost:",e);setToast({msg:"Something went wrong"});}
+  }
+
+  async function loadPostAndReplies(postId){
+    if(!db) return;
+    setPostRepliesLoading(true);
+    try{
+      const postDoc=await getDoc(doc(db,"upperRoomPosts",postId));
+      if(postDoc.exists()) setActivePost({id:postDoc.id,...postDoc.data()});
+      const q=query(collection(db,"upperRoomReplies"),where("postId","==",postId),orderBy("createdAt","asc"),limit(100));
+      const snap=await getDocs(q);
+      setPostReplies(snap.docs.map(d=>({id:d.id,...d.data()})));
+      // Load user's reaction
+      if(user){
+        try{const rDoc=await getDoc(doc(db,"upperRoomReactions",user.uid+"_"+postId));setGatheringUserReaction(rDoc.exists()?rDoc.data().type:null);}catch(e){}
+      }
+    }catch(e){console.warn("loadPostAndReplies:",e);}
+    setPostRepliesLoading(false);
+  }
+
+  async function submitGatheringReply(){
+    if(!db||!user||!activePost||!gatheringReplyText.trim()) return;
+    setGatheringReplySubmitting(true);
+    try{
+      const anonName=generateAnonName(user.uid);
+      await addDoc(collection(db,"upperRoomReplies"),{
+        postId:activePost.id, spaceId:activePost.spaceId,
+        authorId:user.uid, anonymousName:anonName,
+        body:gatheringReplyText.trim(), parentReplyId:null,
+        createdAt:serverTimestamp(), status:"active",
+      });
+      // Increment reply count on the post
+      const postRef=doc(db,"upperRoomPosts",activePost.id);
+      await setDoc(postRef,{replyCount:(activePost.replyCount||0)+1,updatedAt:serverTimestamp()},{merge:true});
+      setGatheringReplyText("");
+      loadPostAndReplies(activePost.id);
+    }catch(e){console.warn("submitGatheringReply:",e);}
+    setGatheringReplySubmitting(false);
+  }
+
+  async function reactToGatheringPost(reactionType){
+    if(!db||!user||!activePost) return;
+    const reactionId=user.uid+"_"+activePost.id;
+    try{
+      const existing=gatheringUserReaction;
+      const postRef=doc(db,"upperRoomPosts",activePost.id);
+      if(existing===reactionType){
+        // Remove reaction
+        await deleteDoc(doc(db,"upperRoomReactions",reactionId));
+        await setDoc(postRef,{reactionCounts:{...activePost.reactionCounts,[reactionType]:Math.max(0,(activePost.reactionCounts?.[reactionType]||1)-1)}},{merge:true});
+        setGatheringUserReaction(null);
+      } else {
+        // Add/change reaction
+        if(existing) await setDoc(postRef,{reactionCounts:{...activePost.reactionCounts,[existing]:Math.max(0,(activePost.reactionCounts?.[existing]||1)-1)}},{merge:true});
+        await setDoc(doc(db,"upperRoomReactions",reactionId),{type:reactionType,targetType:"post",targetId:activePost.id,userId:user.uid,createdAt:serverTimestamp()});
+        await setDoc(postRef,{reactionCounts:{...activePost.reactionCounts,[reactionType]:(activePost.reactionCounts?.[reactionType]||0)+1}},{merge:true});
+        setGatheringUserReaction(reactionType);
+      }
+      // Refresh post
+      const updated=await getDoc(postRef);
+      if(updated.exists()) setActivePost({id:updated.id,...updated.data()});
+    }catch(e){console.warn("reactToGatheringPost:",e);}
+  }
+
+  async function reportGatheringContent(targetId,targetType,reason){
+    if(!db||!user) return;
+    try{
+      await addDoc(collection(db,"upperRoomReports"),{
+        reporterId:user.uid, targetType, targetId, reason,
+        createdAt:serverTimestamp(), status:"pending",
+      });
+      setToast({msg:"Report submitted. Thank you."});
+    }catch(e){console.warn("reportGatheringContent:",e);}
+  }
+
+  async function searchGatherings(searchQuery){
+    if(!db) return;
+    setGatheringSearchLoading(true);setGatheringSearchQuery(searchQuery);
+    try{
+      const q=query(collection(db,"upperRoomPosts"),where("status","==","active"),limit(100));
+      const snap=await getDocs(q);
+      const words=searchQuery.toLowerCase().split(/\s+/).filter(w=>w.length>2);
+      const results=snap.docs.map(d=>({id:d.id,...d.data()})).filter(p=>{
+        const tokens=p.searchTokens||[];
+        const text=(p.title+" "+p.body+" "+(p.tags||[]).join(" ")).toLowerCase();
+        return words.some(w=>tokens.includes(w)||text.includes(w));
+      }).sort((a,b)=>{
+        // Rank by match count
+        const scoreA=words.filter(w=>(a.title+" "+a.body).toLowerCase().includes(w)).length;
+        const scoreB=words.filter(w=>(b.title+" "+b.body).toLowerCase().includes(w)).length;
+        return scoreB-scoreA;
+      });
+      setGatheringSearchResults(results);
+    }catch(e){console.warn("searchGatherings:",e);setGatheringSearchResults([]);}
+    setGatheringSearchLoading(false);
   }
 
   async function searchUsers(searchTerm){
@@ -5047,7 +5152,7 @@ function AppInner(){
     <UpperRoomGatherings
       onBack={()=>setScreen("upper-room")}
       onOpenSpace={(spaceId)=>{setActiveGatheringSpace(spaceId);loadGatheringPosts(spaceId);setScreen("gathering-feed");}}
-      onSearch={(query)=>{/* Phase 3: navigate to UpperRoomSearch */setToast({msg:"Search coming soon"});}}
+      onSearch={(q)=>{setGatheringSearchQuery(q);searchGatherings(q);setScreen("gathering-search");}}
     />
   );
 
@@ -5057,8 +5162,37 @@ function AppInner(){
       posts={gatheringPosts}
       loading={gatheringLoading}
       onBack={()=>{setScreen("gatherings");setGatheringPosts([]);}}
-      onOpenPost={(postId)=>{/* Phase 3: navigate to GatheringPost */setToast({msg:"Post detail coming soon"});}}
+      onOpenPost={(postId)=>{loadPostAndReplies(postId);setGatheringReplyText("");setScreen("gathering-post");}}
       onCreatePost={()=>{if(!user){setToast({msg:"Sign in to post"});return;}setScreen("create-gathering-post");}}
+    />
+  );
+
+  if(screen==="gathering-post"&&activePost) return(
+    <GatheringPost
+      post={activePost}
+      replies={postReplies}
+      loading={postRepliesLoading}
+      userReaction={gatheringUserReaction}
+      replyText={gatheringReplyText}
+      setReplyText={setGatheringReplyText}
+      replySubmitting={gatheringReplySubmitting}
+      anonName={user?generateAnonName(user.uid):"Anonymous"}
+      onBack={()=>{setScreen("gathering-feed");setActivePost(null);setPostReplies([]);}}
+      onReact={(type)=>{if(!user){setToast({msg:"Sign in to react"});return;}reactToGatheringPost(type);}}
+      onReply={()=>{if(!user){setToast({msg:"Sign in to reply"});return;}submitGatheringReply();}}
+      onReport={reportGatheringContent}
+    />
+  );
+
+  if(screen==="gathering-search") return(
+    <UpperRoomSearch
+      initialQuery={gatheringSearchQuery}
+      results={gatheringSearchResults}
+      loading={gatheringSearchLoading}
+      onBack={()=>{setScreen("gatherings");setGatheringSearchResults(null);}}
+      onSearch={searchGatherings}
+      onOpenPost={(post)=>{setActivePost(post);setActiveGatheringSpace(post.spaceId);loadPostAndReplies(post.id);setGatheringReplyText("");setScreen("gathering-post");}}
+      onOpenSpace={(spaceId)=>{setActiveGatheringSpace(spaceId);loadGatheringPosts(spaceId);setScreen("gathering-feed");}}
     />
   );
 
