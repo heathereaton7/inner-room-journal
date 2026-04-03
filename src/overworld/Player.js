@@ -61,11 +61,11 @@ export class Player {
     this.x = Math.max(half, Math.min(WORLD_COLS * TILE - half, this.x));
     this.y = Math.max(half, Math.min(WORLD_ROWS * TILE - half, this.y));
 
-    // Walk animation toggle
+    // Walk animation — 4-frame cycle (0→1→2→3→0…)
     if (this.moving) {
       this.animTimer += dt;
-      if (this.animTimer > 0.2) {
-        this.animFrame = 1 - this.animFrame;
+      if (this.animTimer > 0.15) {
+        this.animFrame = (this.animFrame + 1) % 4;
         this.animTimer = 0;
       }
     } else {

@@ -1,4 +1,4 @@
-import { WORLD_W, WORLD_H, MAP_SCALE } from './constants.js';
+import { WORLD_W, WORLD_H, MAP_SCALE, PLAYER_SPRITE_W, PLAYER_SPRITE_H } from './constants.js';
 
 // ─── Map Background Layers ─────────────────────────────────────────
 // Multiple map images stacked vertically to form one seamless world.
@@ -40,6 +40,38 @@ export function loadMapImages(sources) {
     }
     console.log(`[Renderer] Loaded ${_mapLayers.length} map layers, total world height: ${yOffset}px`);
     return _mapLayers;
+  });
+}
+
+// ─── Player Sprite ────────────────────────────────────────────────
+let _playerSprite = null;
+let _spriteFrameW = 0;
+let _spriteFrameH = 0;
+const SPRITE_COLS = 4;
+const SPRITE_ROWS = 4;
+// Row mapping: row 0 = down, row 1 = left, row 2 = right, row 3 = up
+const SPRITE_DIR_ROW = { down: 0, left: 1, right: 2, up: 3 };
+
+/**
+ * Load the player character spritesheet.
+ * @param {string} src — path to spritesheet PNG
+ * @returns {Promise<HTMLImageElement|null>}
+ */
+export function loadPlayerSprite(src) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      _playerSprite = img;
+      _spriteFrameW = img.width / SPRITE_COLS;
+      _spriteFrameH = img.height / SPRITE_ROWS;
+      console.log(`[Renderer] Player sprite loaded: ${_spriteFrameW}x${_spriteFrameH} per frame`);
+      resolve(img);
+    };
+    img.onerror = () => {
+      console.warn('[Renderer] Failed to load player sprite:', src);
+      resolve(null);
+    };
+    img.src = src;
   });
 }
 
@@ -154,52 +186,74 @@ function _drawFireflies(ctx, camera, dt) {
 
 function _drawPlayer(ctx, camera, player) {
   const { sx, sy } = camera.worldToScreen(player.x, player.y);
-  const bob = player.moving ? Math.sin(player.animTimer * 15) * 2 : 0;
 
-  ctx.fillStyle = 'rgba(0,0,0,0.18)';
-  ctx.beginPath();
-  ctx.ellipse(sx, sy + 20, 14, 5, 0, 0, Math.PI * 2);
-  ctx.fill();
+  if (_playerSprite) {
+    // ── Sprite-based rendering ──
+    const row = SPRITE_DIR_ROW[player.facing] ?? 0;
+    const col = player.animFrame % SPRITE_COLS;
 
-  ctx.fillStyle = '#8B6B4A';
-  ctx.fillRect(sx - 10, sy - 2 + bob, 20, 22);
+    // Source rectangle in spritesheet
+    const srcX = col * _spriteFrameW;
+    const srcY = row * _spriteFrameH;
 
-  ctx.fillStyle = '#F5E8D0';
-  ctx.beginPath();
-  ctx.arc(sx, sy - 12 + bob, 12, 0, Math.PI * 2);
-  ctx.fill();
+    // Draw size on canvas — large enough to be visible at CAM_ZOOM 0.38
+    const drawW = 160;
+    const drawH = 160;
 
-  ctx.fillStyle = '#5a3a2a';
-  ctx.beginPath();
-  ctx.arc(sx, sy - 16 + bob, 10, Math.PI, Math.PI * 2);
-  ctx.fill();
+    // Warm lantern glow beneath character
+    const glowGrd = ctx.createRadialGradient(sx, sy + 10, 4, sx, sy + 10, drawW * 0.5);
+    glowGrd.addColorStop(0, 'rgba(255,220,140,0.12)');
+    glowGrd.addColorStop(1, 'rgba(255,220,140,0)');
+    ctx.fillStyle = glowGrd;
+    ctx.beginPath();
+    ctx.arc(sx, sy + 10, drawW * 0.5, 0, Math.PI * 2);
+    ctx.fill();
 
-  ctx.fillStyle = '#C9A96E';
-  ctx.beginPath();
-  const ad = 22;
-  switch (player.facing) {
-    case 'down':
-      ctx.moveTo(sx, sy + ad + bob);
-      ctx.lineTo(sx - 5, sy + ad - 6 + bob);
-      ctx.lineTo(sx + 5, sy + ad - 6 + bob);
-      break;
-    case 'up':
-      ctx.moveTo(sx, sy - ad - 8 + bob);
-      ctx.lineTo(sx - 5, sy - ad - 2 + bob);
-      ctx.lineTo(sx + 5, sy - ad - 2 + bob);
-      break;
-    case 'left':
-      ctx.moveTo(sx - ad, sy + 4 + bob);
-      ctx.lineTo(sx - ad + 6, sy - 1 + bob);
-      ctx.lineTo(sx - ad + 6, sy + 9 + bob);
-      break;
-    case 'right':
-      ctx.moveTo(sx + ad, sy + 4 + bob);
-      ctx.lineTo(sx + ad - 6, sy - 1 + bob);
-      ctx.lineTo(sx + ad - 6, sy + 9 + bob);
-      break;
+    // Subtle shadow beneath feet
+    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+    ctx.beginPath();
+    ctx.ellipse(sx, sy + drawH * 0.22, drawW * 0.22, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Draw the sprite frame — centered horizontally, feet anchored at player y
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(
+      _playerSprite,
+      srcX, srcY, _spriteFrameW, _spriteFrameH,   // source
+      sx - drawW / 2, sy - drawH * 0.58, drawW, drawH  // dest (offset up so feet sit near y)
+    );
+  } else {
+    // ── Fallback: bright visible placeholder while sprite loads ──
+    const bob = player.moving ? Math.sin(player.animTimer * 15) * 2 : 0;
+
+    // Glow
+    ctx.fillStyle = 'rgba(255,220,140,0.15)';
+    ctx.beginPath();
+    ctx.arc(sx, sy + bob, 40, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+    ctx.beginPath();
+    ctx.ellipse(sx, sy + 24, 18, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Body
+    ctx.fillStyle = '#8B6B4A';
+    ctx.fillRect(sx - 12, sy - 4 + bob, 24, 28);
+
+    // Head
+    ctx.fillStyle = '#F5E8D0';
+    ctx.beginPath();
+    ctx.arc(sx, sy - 14 + bob, 14, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Hair
+    ctx.fillStyle = '#5a3a2a';
+    ctx.beginPath();
+    ctx.arc(sx, sy - 18 + bob, 12, Math.PI, Math.PI * 2);
+    ctx.fill();
   }
-  ctx.fill();
 }
 
 // ─── Rounded rect helper ───────────────────────────────────────────

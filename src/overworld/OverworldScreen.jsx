@@ -4,7 +4,7 @@ import { Camera } from './Camera.js';
 import { Player } from './Player.js';
 import { Input } from './Input.js';
 import { InteractionZones } from './InteractionZones.js';
-import { loadMapImages, render, initFireflies } from './Renderer.js';
+import { loadMapImages, loadPlayerSprite, render, initFireflies } from './Renderer.js';
 import { buildWorldGrid, SPAWN_X, SPAWN_Y } from './worldMap.js';
 import { MAP_IMAGES, CAM_ZOOM } from './constants.js';
 import Joystick from './Joystick.jsx';
@@ -33,6 +33,8 @@ export default function OverworldScreen({ onEnterLocation, playerPos, onPosChang
 
     // Start loading the illustrated map backgrounds (renders dark until loaded)
     loadMapImages(MAP_IMAGES);
+    // Load player character sprite
+    loadPlayerSprite('/character-sprite.png');
 
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
