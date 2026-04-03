@@ -2,7 +2,8 @@ import { useState, useEffect, useMemo, useRef, useCallback, Component } from "re
 import { auth, db, functions, googleProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged, doc, getDoc, setDoc, collection, getDocs, query, where, orderBy, limit, addDoc, deleteDoc, serverTimestamp, Timestamp, onSnapshot, httpsCallable } from "./firebase.js";
 import { OverworldScreen } from './overworld/index.js';
 import { resolveSprite } from './overworld/sprites.js';
-import { ROOM_ITEMS, DEFAULT_ROOM, hasItem, unlockItem, migrateRoom } from './roomDecor.js';
+import { DEFAULT_ROOM, migrateRoom, placeItem, isPlacedInRoom } from './roomDecor.js';
+import { ITEMS, isOwned } from './items.js';
 /* R3F imports removed — ImmersiveCabin uses pure DOM/Canvas2D for performance */
 import { GFONTS, B, SERIF, SANS, DISPLAY, RT, th, REFLECTION_ROOMS, COMMUNITY_ROOMS, LOCKED_ROOM, JESUS_QUESTIONS, QUESTION_SETS, ALL_CARD_QS, CARD_THEMES, CARD_RATIOS, VERSE_THEMES, VIRAL_QS, SAMPLE_PRAYERS, SHELF_BOOKS, BOOK_COVERS, BOOK_CONTENT, getBookPageCount, todayStr, nowTime, entryTime, isoDate, wc, shuffle, THEME_WORDS, aggregateThemes, EMOTION_WORDS, LIFE_THEMES, FAITH_WORDS, SCRIPTURE_PATTERN, IDENTITY_NEG, IDENTITY_POS, GROWTH_MARKERS, STOP_WORDS, EMOTION_COLORS, computeInsights, computeWeeklyDigest, computeSeasonalSummary, computeFutureYou, SHOP_ITEMS, GARDEN_PLANTS, GROWTH_STAGES, PRAYER_BONUS_MINS, CRAFTING_STATIONS, ITEM_CATALOG, KITCHEN_RECIPES, NPC_TRADES, FARM_PLANTS, ANIMAL_TYPES, MAX_ANIMALS, DAILY_MISSIONS, WEEKLY_MISSIONS, getWeekStart, CABIN_FALLBACK_IMAGE, PREMIUM_DAILY_MISSIONS, PREMIUM_WEEKLY_MISSIONS, PREMIUM_GARDEN_PLANTS, PREMIUM_FARM_PLANTS, PREMIUM_ANIMALS, PREMIUM_PROMPTS, PREMIUM_SHOP_ITEMS, PLUS_BENEFITS } from './constants.js';
 import { CSS } from './styles.js';
@@ -1933,11 +1934,20 @@ function AppInner(){
         return p;
       });
       if(migrated) dbSave("irj-prayer",mpp);
+      // Migrate old ownedItems → inventory (furniture as qty 1)
+      if(oi.length>0){
+        oi.forEach(id=>{inv[id]=(inv[id]||0)+1;});
+        dbSave("irj-inventory",inv);
+      }
+      // Migrate room bag → inventory
+      const migratedRoom=rm?migrateRoom(rm,(id,qty)=>{inv[id]=(inv[id]||0)+qty;}):DEFAULT_ROOM;
+      if(rm?.bag?.length>0) dbSave("irj-inventory",inv);
       setEntries(ens); setPrayerPosts(mpp); setSavedCards(sc);
-      setCandles(cn); setPrayedFor(pf); setOwnedItems(oi); setGardenPlots(gp); setInventory(inv); setSavedVerses(sv);
+      setCandles(cn); setPrayedFor(pf); setGardenPlots(gp); setInventory(inv); setSavedVerses(sv);
       setBank(bnk); setSellBasket(sb); setFarmPlots(fp); setAnimals(an); setMissions(ms); setIsPremium(!!pm);
       if(pa) setPlayerAppearance(pa);
-      if(rm) setPlayerRoom(migrateRoom(rm));
+      setPlayerRoom(migratedRoom);
+      if(rm?.bag?.length>0||oi.length>0) dbSave("irj-room",migratedRoom);
       let s=0,d=new Date(),map={};
       ens.forEach(e=>{map[e.date]=true;});
       while(map[isoDate(d)]){s++;d.setDate(d.getDate()-1);} setStreak(s);
@@ -4352,6 +4362,7 @@ function AppInner(){
       BottomMenuDrawer={BottomMenuDrawer} goToHistory={goToHistory}
       playerRoom={playerRoom}
       onRoomChange={(next)=>{setPlayerRoom(next);dbSave("irj-room",next);if(user&&db){try{setDoc(doc(db,"userProfiles",user.uid),{room:next},{merge:true});}catch(e){}}}}
+      inventory={inventory} addToInventory={addToInventory} removeFromInventory={removeFromInventory}
     />
     <DoveCompanion intensity={lastCheckinIntensity} active={true} screen="cabin"/>
   </>);
@@ -5204,13 +5215,11 @@ function AppInner(){
           // Mission tracking
           trackMission("daily_checkin");trackMission("weekly_checkin_3");
           // Room decor — unlock candle on first check-in
-          if(!hasItem(playerRoom,"candle")){
-            const next=unlockItem(playerRoom,"candle");
-            if(next){
-              setPlayerRoom(next);dbSave("irj-room",next);
-              if(user&&db){try{setDoc(doc(db,"userProfiles",user.uid),{room:next},{merge:true});}catch(e){}}
-              setTimeout(()=>setToast({msg:"Something new has been placed in your room."}),1800);
-            }
+          if(!isOwned("candle",inventory,playerRoom)){
+            const next=placeItem(playerRoom,"candle");
+            setPlayerRoom(next);dbSave("irj-room",next);
+            if(user&&db){try{setDoc(doc(db,"userProfiles",user.uid),{room:next},{merge:true});}catch(e){}}
+            setTimeout(()=>setToast({msg:"Something new has been placed in your room."}),1800);
           }
           // Garden growth — water the newest growing plant
           setGardenPlots(prev=>{

@@ -417,23 +417,8 @@ export function computeFutureYou(entries){
 /* ═══════════════════════════════════════════════════
    CANDLE ECONOMY — SHOP ITEMS
 ═══════════════════════════════════════════════════ */
-export const SHOP_ITEMS=[
-  // Furniture
-  {id:"prayer_chair",name:"Wooden Prayer Chair",emoji:"\u{1FA91}",cost:15,category:"furniture",asset:"/assets/furniture/prayer-chair.png",pos:{top:"62%",left:"8%",width:"12%"}},
-  {id:"prayer_rug",name:"Woven Prayer Rug",emoji:"🪷",cost:10,category:"furniture",asset:"/assets/furniture/prayer-rug.png",pos:{top:"78%",left:"22%",width:"18%"}},
-  {id:"side_table",name:"Rustic Side Table",emoji:"\u{1FAB5}",cost:12,category:"furniture",asset:"/assets/furniture/side-table.png",pos:{top:"60%",left:"60%",width:"10%"}},
-  // Candles & Light
-  {id:"candle_cluster",name:"Candle Cluster",emoji:"\uD83D\uDD6F\uFE0F",cost:8,category:"candles",asset:"/assets/furniture/candle-cluster.png",pos:{top:"58%",left:"62%",width:"8%"}},
-  {id:"lantern",name:"Brass Lantern",emoji:"\uD83C\uDFEE",cost:12,category:"candles",asset:"/assets/furniture/brass-lantern.png",pos:{top:"35%",left:"5%",width:"6%"}},
-  {id:"string_lights",name:"String Lights",emoji:"\u2728",cost:20,category:"candles",asset:"/assets/furniture/string-lights.png",pos:{top:"15%",left:"10%",width:"50%"}},
-  // Decor
-  {id:"cross_wall",name:"Wooden Cross",emoji:"\u271D\uFE0F",cost:10,category:"decor",asset:"/assets/furniture/wooden-cross.png",pos:{top:"25%",left:"48%",width:"8%"}},
-  {id:"plant_pot",name:"Potted Fern",emoji:"\uD83C\uDF3F",cost:6,category:"decor",asset:"/assets/furniture/potted-fern.png",pos:{top:"65%",left:"72%",width:"9%"}},
-  {id:"bookstack",name:"Stack of Books",emoji:"\uD83D\uDCDA",cost:8,category:"decor",asset:"/assets/furniture/book-stack.png",pos:{top:"63%",left:"56%",width:"7%"}},
-  {id:"bible_open",name:"Open Bible",emoji:"\uD83D\uDCD6",cost:14,category:"decor",asset:"/assets/furniture/open-bible.png",pos:{top:"56%",left:"64%",width:"8%"}},
-  {id:"prayer_beads",name:"Prayer Beads",emoji:"\uD83D\uDCFF",cost:5,category:"decor",asset:"/assets/furniture/prayer-beads.png",pos:{top:"58%",left:"70%",width:"6%"}},
-  {id:"tapestry",name:"Woven Tapestry",emoji:"\uD83D\uDDBC\uFE0F",cost:18,category:"decor",asset:"/assets/furniture/woven-tapestry.png",pos:{top:"22%",left:"15%",width:"14%"}},
-];
+// SHOP_ITEMS — now sourced from items.js (unified item registry)
+export { SHOP_ITEMS } from './items.js';
 
 /* ═══════════════════════════════════════════════════
    PRAYER GARDEN — PLANTS
@@ -477,63 +462,8 @@ export const CRAFTING_STATIONS=[
 /* ═══════════════════════════════════════════════════
    ECONOMY — ITEM CATALOG
 ═══════════════════════════════════════════════════ */
-export const ITEM_CATALOG = {
-  // === Seeds ===
-  herb_seed:    { name:"Herb Seeds",    emoji:"🌿", cat:"seeds",   buyPrice:2,  sellPrice:1  },
-  carrot_seed:  { name:"Carrot Seeds",  emoji:"🥕", cat:"seeds",   buyPrice:3,  sellPrice:1  },
-  onion_seed:   { name:"Onion Seeds",   emoji:"🧅", cat:"seeds",   buyPrice:3,  sellPrice:1  },
-  potato_seed:  { name:"Potato Seeds",  emoji:"🥔", cat:"seeds",   buyPrice:4,  sellPrice:2  },
-  tomato_seed:  { name:"Tomato Seeds",  emoji:"🍅", cat:"seeds",   buyPrice:5,  sellPrice:2  },
-  wheat_seed:   { name:"Wheat Seeds",   emoji:"🌾", cat:"seeds",   buyPrice:4,  sellPrice:2  },
-  // === Garden Crops ===
-  herbs:    { name:"Herbs",    emoji:"🌿", cat:"crops", sellPrice:3  },
-  carrot:   { name:"Carrot",   emoji:"🥕", cat:"crops", sellPrice:5  },
-  onion:    { name:"Onion",    emoji:"🧅", cat:"crops", sellPrice:5  },
-  potato:   { name:"Potato",   emoji:"🥔", cat:"crops", sellPrice:6  },
-  tomato:   { name:"Tomato",   emoji:"🍅", cat:"crops", sellPrice:7  },
-  wheat:    { name:"Wheat",    emoji:"🌾", cat:"crops", sellPrice:4  },
-  barley:   { name:"Barley",   emoji:"🌾", cat:"crops", sellPrice:4  },
-  grapes:   { name:"Grapes",   emoji:"🍇", cat:"crops", sellPrice:6  },
-  figs:     { name:"Figs",     emoji:"🫐", cat:"crops", sellPrice:7  },
-  olives:   { name:"Olives",   emoji:"🫒", cat:"crops", sellPrice:8  },
-  pomegranates:{ name:"Pomegranates", emoji:"🍎", cat:"crops", sellPrice:9 },
-  dates:    { name:"Dates",    emoji:"🌴", cat:"crops", sellPrice:10 },
-  // === Foraged / Ingredients ===
-  mushrooms:{ name:"Mushrooms", emoji:"🍄", cat:"ingredients", buyPrice:4,  sellPrice:3  },
-  berries:  { name:"Berries",   emoji:"🫐", cat:"ingredients", buyPrice:3,  sellPrice:2  },
-  // === Animal Products ===
-  eggs:  { name:"Eggs",  emoji:"🥚", cat:"ingredients", buyPrice:5,  sellPrice:4  },
-  milk:  { name:"Milk",  emoji:"🥛", cat:"ingredients", buyPrice:5,  sellPrice:4  },
-  honey: { name:"Honey", emoji:"🍯", cat:"ingredients", buyPrice:8,  sellPrice:6  },
-  wool:  { name:"Wool",  emoji:"🧶", cat:"ingredients", sellPrice:7  },
-  feed:  { name:"Feed",  emoji:"🌾", cat:"ingredients", buyPrice:3,  sellPrice:1  },
-  // === Crafted Intermediates ===
-  olive_oil:    { name:"Olive Oil",    emoji:"🫗", cat:"ingredients", sellPrice:12 },
-  lamp_oil:     { name:"Lamp Oil",     emoji:"🪔", cat:"ingredients", sellPrice:10 },
-  flour:        { name:"Flour",        emoji:"🌾", cat:"ingredients", sellPrice:6  },
-  barley_flour: { name:"Barley Flour", emoji:"🌾", cat:"ingredients", sellPrice:6  },
-  dried_figs:   { name:"Dried Figs",   emoji:"🫘", cat:"ingredients", sellPrice:10 },
-  dried_dates:  { name:"Dried Dates",  emoji:"🫘", cat:"ingredients", sellPrice:10 },
-  raisins:      { name:"Raisins",      emoji:"🫐", cat:"ingredients", sellPrice:8  },
-  flatbread:    { name:"Flatbread",    emoji:"🫓", cat:"cooked",      sellPrice:12 },
-  // === Cooked Foods ===
-  vegetable_soup:     { name:"Vegetable Soup",     emoji:"🍲", cat:"cooked", sellPrice:15 },
-  bread:              { name:"Bread",              emoji:"🍞", cat:"cooked", sellPrice:12 },
-  roasted_vegetables: { name:"Roasted Vegetables", emoji:"🥘", cat:"cooked", sellPrice:14 },
-  stew:               { name:"Stew",               emoji:"🥘", cat:"cooked", sellPrice:22 },
-  honey_cake:         { name:"Honey Cake",         emoji:"🍰", cat:"cooked", sellPrice:20 },
-  fruit_salad:        { name:"Fruit Salad",        emoji:"🥗", cat:"cooked", sellPrice:16 },
-  // === Premium Items (Inner Room Plus) ===
-  saffron:        { name:"Saffron",        emoji:"✨", cat:"crops", sellPrice:15 },
-  frankincense:   { name:"Frankincense",   emoji:"🌲", cat:"crops", sellPrice:18 },
-  myrrh:          { name:"Myrrh",          emoji:"🪵", cat:"crops", sellPrice:20 },
-  lavender:       { name:"Lavender",       emoji:"💜", cat:"crops", sellPrice:12 },
-  lavender_seed:  { name:"Lavender Seeds", emoji:"💜", cat:"seeds", buyPrice:6, sellPrice:3 },
-  flax_fiber:     { name:"Flax Fiber",     emoji:"🧵", cat:"crops", sellPrice:14 },
-  flax_seed:      { name:"Flax Seeds",     emoji:"🧵", cat:"seeds", buyPrice:7, sellPrice:3 },
-  feathers:       { name:"Feathers",       emoji:"🪶", cat:"ingredients", sellPrice:8 },
-  transport:      { name:"Transport",      emoji:"📦", cat:"ingredients", sellPrice:12 },
-};
+// ITEM_CATALOG — now sourced from items.js (unified item registry)
+export { ITEM_CATALOG } from './items.js';
 
 /* ═══════════════════════════════════════════════════
    ECONOMY — KITCHEN RECIPES
@@ -639,11 +569,8 @@ export const PREMIUM_PROMPTS=[
   {q:"What are you building your identity on that could be taken away?",                  hint:"Name the foundations."},
 ];
 
-export const PREMIUM_SHOP_ITEMS=[
-  {id:"golden_frame",   name:"Golden Frame",   emoji:"🖼️", cost:25, category:"decor",     asset:"/assets/furniture/golden-frame.png",   pos:{top:"28%",left:"40%",width:"10%"}, premium:true},
-  {id:"silk_curtains",  name:"Silk Curtains",   emoji:"🧣", cost:30, category:"furniture", asset:"/assets/furniture/silk-curtains.png",  pos:{top:"10%",left:"30%",width:"20%"}, premium:true},
-  {id:"incense_burner", name:"Incense Burner",  emoji:"🫕", cost:20, category:"candles",   asset:"/assets/furniture/incense-burner.png", pos:{top:"58%",left:"18%",width:"7%"},  premium:true},
-];
+// PREMIUM_SHOP_ITEMS — now sourced from items.js (unified item registry)
+export { PREMIUM_SHOP_ITEMS } from './items.js';
 
 export const PLUS_BENEFITS=[
   {icon:"scroll",   title:"Bonus Missions",  desc:"Extra daily and weekly missions with greater rewards"},
