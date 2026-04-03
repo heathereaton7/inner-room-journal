@@ -1,8 +1,9 @@
+import { useState, useRef, useCallback } from 'react';
 import { GFONTS, B, SERIF, SANS, DISPLAY, SHELF_BOOKS, BOOK_COVERS, BOOK_CONTENT, SHOP_ITEMS, REFLECTION_ROOMS, LOCKED_ROOM, JESUS_QUESTIONS, VIRAL_QS, th, wc, todayStr, nowTime, getBookPageCount, CABIN_FALLBACK_IMAGE } from '../constants.js';
 import { CSS } from '../styles.js';
 import ImmersiveCabin from '../components/ImmersiveCabin.jsx';
 import BookSparkles from '../components/BookSparkles.jsx';
-import { ROOM_ITEMS } from '../roomDecor.js';
+import { ROOM_ITEMS, moveItem, stowItem, placeFromBag } from '../roomDecor.js';
 
 export default function CabinScreen({
   spaceTransit, transitDir, transitionToMap, transitionToKitchen, transitionToJournal,
@@ -22,10 +23,64 @@ export default function CabinScreen({
   setCardQ, setIsCustomCard, setCardCustom,
   menuOpen, setMenuOpen,
   BottomMenuDrawer, goToHistory,
-  playerRoom,
+  playerRoom, onRoomChange,
 }){
+  const [selectedDecor, setSelectedDecor] = useState(null); // item id for context menu
+  const [draggingDecor, setDraggingDecor] = useState(null); // item id being dragged
+  const [dragPos, setDragPos] = useState(null); // {left, top} in % during drag
+  const [showBag, setShowBag] = useState(false);
+  const containerRef = useRef(null);
+
+  const handleDecorTap = useCallback((itemId, e) => {
+    e.stopPropagation();
+    setSelectedDecor(prev => prev === itemId ? null : itemId);
+  }, []);
+
+  const startDrag = useCallback((itemId) => {
+    setSelectedDecor(null);
+    setDraggingDecor(itemId);
+    const item = playerRoom?.placed?.find(p => p.id === itemId);
+    if (item) setDragPos({ left: item.left, top: item.top });
+  }, [playerRoom]);
+
+  const handleDragMove = useCallback((e) => {
+    if (!draggingDecor || !containerRef.current) return;
+    e.preventDefault();
+    const rect = containerRef.current.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    const left = Math.max(2, Math.min(98, ((clientX - rect.left) / rect.width) * 100));
+    const top = Math.max(2, Math.min(98, ((clientY - rect.top) / rect.height) * 100));
+    setDragPos({ left, top });
+  }, [draggingDecor]);
+
+  const endDrag = useCallback(() => {
+    if (!draggingDecor || !dragPos) { setDraggingDecor(null); setDragPos(null); return; }
+    const next = moveItem(playerRoom, draggingDecor, Math.round(dragPos.left * 10) / 10, Math.round(dragPos.top * 10) / 10);
+    if (onRoomChange) onRoomChange(next);
+    setDraggingDecor(null);
+    setDragPos(null);
+  }, [draggingDecor, dragPos, playerRoom, onRoomChange]);
+
+  const handleStow = useCallback((itemId) => {
+    const next = stowItem(playerRoom, itemId);
+    if (onRoomChange) onRoomChange(next);
+    setSelectedDecor(null);
+  }, [playerRoom, onRoomChange]);
+
+  const handlePlaceFromBag = useCallback((itemId) => {
+    const next = placeFromBag(playerRoom, itemId);
+    if (next && onRoomChange) onRoomChange(next);
+  }, [playerRoom, onRoomChange]);
+
   return(
-    <div style={{position:"fixed",inset:0,overflow:"hidden",fontFamily:SANS}}>
+    <div ref={containerRef} style={{position:"fixed",inset:0,overflow:"hidden",fontFamily:SANS}}
+      onMouseMove={draggingDecor?handleDragMove:undefined}
+      onMouseUp={draggingDecor?endDrag:undefined}
+      onTouchMove={draggingDecor?handleDragMove:undefined}
+      onTouchEnd={draggingDecor?endDrag:undefined}
+      onClick={()=>{if(selectedDecor)setSelectedDecor(null);}}
+    >
       <style>{GFONTS}{CSS}</style>
 
       {/* ── Full-screen cabin background ── */}
@@ -51,19 +106,84 @@ export default function CabinScreen({
         );
       })}
 
-      {/* ── Room decor overlays ── */}
-      {playerRoom?.items?.map(itemId=>{
-        const config=ROOM_ITEMS[itemId];
+      {/* ── Room decor overlays (draggable) ── */}
+      {playerRoom?.placed?.map(item=>{
+        const config=ROOM_ITEMS[item.id];
         if(!config) return null;
+        const isDragging=draggingDecor===item.id;
+        const pos=isDragging&&dragPos?dragPos:item;
         return(
-          <div key={itemId} style={{...config.style, animation:"fadeUp 0.8s ease both"}}>
-            {config.glow&&(
+          <div key={item.id} style={{
+            position:"absolute",
+            left:`${pos.left}%`, top:`${pos.top}%`,
+            width:config.width||"8%",
+            transform:"translate(-50%,-50%)",
+            zIndex:isDragging?200:6,
+            filter:config.filter||(isDragging?"brightness(1.3)":"none"),
+            cursor:isDragging?"grabbing":"pointer",
+            transition:isDragging?"none":"left 0.15s ease, top 0.15s ease",
+            animation:isDragging?"none":"fadeUp 0.8s ease both",
+            touchAction:"none",
+          }}
+            onClick={(e)=>handleDecorTap(item.id,e)}
+            onTouchStart={(e)=>{if(draggingDecor)return;e.stopPropagation();handleDecorTap(item.id,e);}}
+          >
+            {config.glow&&!isDragging&&(
               <div style={{position:"absolute",left:"50%",top:"60%",width:config.glow.size,paddingBottom:config.glow.size,transform:"translate(-50%,-50%)",borderRadius:"50%",background:`radial-gradient(circle,${config.glow.color},transparent 70%)`,pointerEvents:"none",filter:"blur(4px)"}}/>
             )}
-            <img src={config.src} alt={config.label||itemId} style={{width:"100%",height:"auto",display:"block",position:"relative"}} onError={e=>{e.target.parentNode.style.display="none";}}/>
+            <img src={config.src} alt={config.label||item.id} draggable={false} style={{width:"100%",height:"auto",display:"block",position:"relative",pointerEvents:"none"}} onError={e=>{e.target.parentNode.style.display="none";}}/>
+            {/* Context menu */}
+            {selectedDecor===item.id&&!isDragging&&(
+              <div onClick={e=>e.stopPropagation()} style={{position:"absolute",left:"50%",bottom:"105%",transform:"translateX(-50%)",zIndex:210,display:"flex",gap:6,animation:"fadeUp 0.2s ease both"}}>
+                <button onClick={(e)=>{e.stopPropagation();startDrag(item.id);}} style={{background:"rgba(26,22,18,0.92)",backdropFilter:"blur(10px)",WebkitBackdropFilter:"blur(10px)",border:"1px solid rgba(201,169,110,0.25)",borderRadius:10,padding:"7px 14px",cursor:"pointer",color:"rgba(255,248,232,0.8)",fontFamily:SANS,fontSize:"0.68rem",fontWeight:600,whiteSpace:"nowrap",boxShadow:"0 4px 16px rgba(0,0,0,0.4)"}}>Move</button>
+                <button onClick={(e)=>{e.stopPropagation();handleStow(item.id);}} style={{background:"rgba(26,22,18,0.92)",backdropFilter:"blur(10px)",WebkitBackdropFilter:"blur(10px)",border:"1px solid rgba(201,169,110,0.25)",borderRadius:10,padding:"7px 14px",cursor:"pointer",color:"rgba(255,248,232,0.8)",fontFamily:SANS,fontSize:"0.68rem",fontWeight:600,whiteSpace:"nowrap",boxShadow:"0 4px 16px rgba(0,0,0,0.4)"}}>Put away</button>
+              </div>
+            )}
           </div>
         );
       })}
+
+      {/* Drag mode indicator */}
+      {draggingDecor&&(
+        <div style={{position:"fixed",top:16,left:"50%",transform:"translateX(-50%)",zIndex:300,background:"rgba(26,22,18,0.9)",backdropFilter:"blur(10px)",WebkitBackdropFilter:"blur(10px)",border:"1px solid rgba(201,169,110,0.3)",borderRadius:12,padding:"8px 20px",pointerEvents:"none"}}>
+          <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.78rem",color:"rgba(255,248,232,0.7)"}}>Drag to reposition, then release</span>
+        </div>
+      )}
+
+      {/* Bag button — only show if bag has items */}
+      {playerRoom?.bag?.length>0&&!bookOpen&&!showBag&&!windowPanel&&(
+        <button onClick={()=>setShowBag(true)} style={{position:"absolute",left:"3%",bottom:"18%",zIndex:12,width:38,height:38,borderRadius:"50%",background:"rgba(26,22,18,0.75)",backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",border:"1px solid rgba(201,169,110,0.2)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 2px 12px rgba(0,0,0,0.3)",animation:"fadeUp 1s 1.5s ease both"}}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,248,232,0.6)" strokeWidth="1.8"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+        </button>
+      )}
+
+      {/* Bag drawer */}
+      {showBag&&(
+        <div style={{position:"fixed",inset:0,zIndex:80}}>
+          <div onClick={()=>setShowBag(false)} style={{position:"absolute",inset:0,background:"rgba(10,8,6,0.5)",animation:"spaceFadeIn .2s ease"}}/>
+          <div style={{position:"absolute",bottom:0,left:0,right:0,background:"rgba(26,22,18,0.96)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderTop:"1px solid rgba(201,169,110,0.2)",borderRadius:"20px 20px 0 0",padding:"20px 24px 32px",animation:"insightsSlideUp .3s ease both",maxHeight:"40vh",overflowY:"auto"}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
+              <h3 style={{fontFamily:DISPLAY,fontSize:"1rem",fontWeight:700,color:B.goldL,margin:0}}>Stored Items</h3>
+              <button onClick={()=>setShowBag(false)} style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(201,169,110,0.15)",borderRadius:"50%",width:28,height:28,cursor:"pointer",color:"rgba(255,248,232,0.5)",fontSize:"0.7rem",display:"flex",alignItems:"center",justifyContent:"center"}}>&#10005;</button>
+            </div>
+            {playerRoom.bag.length===0&&(
+              <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.82rem",color:"rgba(255,248,232,0.3)",textAlign:"center",padding:"16px 0"}}>No stored items</p>
+            )}
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(80px,1fr))",gap:12}}>
+              {playerRoom.bag.map(itemId=>{
+                const config=ROOM_ITEMS[itemId];
+                if(!config) return null;
+                return(
+                  <button key={itemId} onClick={()=>{handlePlaceFromBag(itemId);setShowBag(false);}} style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(201,169,110,0.15)",borderRadius:12,padding:"12px 8px",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:6,transition:"all .2s"}}>
+                    <img src={config.src} alt={config.label||itemId} style={{width:40,height:"auto"}} draggable={false}/>
+                    <span style={{fontFamily:SANS,fontSize:"0.6rem",color:"rgba(255,248,232,0.6)",textAlign:"center"}}>{config.label||itemId}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ═══ INTERACTIVE HOTSPOTS ═══ */}
       {/* Positions mapped to cabin-interior.png: sunken great room — fireplace LEFT, window CENTER,
