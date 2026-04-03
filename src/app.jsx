@@ -2877,7 +2877,7 @@ function AppInner(){
     const spaceName=(GATHERING_SPACES.find(s=>s.id===postData.spaceId)||{}).name||"";
     const tokens=makeSearchTokens(postData.title,postData.body,postData.tags,postData.postType,spaceName);
     try{
-      await addDoc(collection(db,"upperRoomPosts"),{
+      const docRef=await addDoc(collection(db,"upperRoomPosts"),{
         ...postData,
         authorId:user.uid,
         anonymousName:anonName,
@@ -2888,11 +2888,13 @@ function AppInner(){
         status:"active",
         searchTokens:tokens,
       });
-      setToast({msg:"Shared with the gathering"});
-      // Reload the feed
-      if(activeGatheringSpace) loadGatheringPosts(activeGatheringSpace);
-      setScreen("gathering-feed");
-    }catch(e){console.warn("createGatheringPost:",e);setToast({msg:"Something went wrong"});}
+      setToast({msg:"Your post is live"});
+      // Navigate to the published post
+      setActiveGatheringSpace(postData.spaceId);
+      loadPostAndReplies(docRef.id);
+      setGatheringReplyText("");
+      setScreen("gathering-post");
+    }catch(e){console.warn("createGatheringPost:",e);setToast({msg:"Something went wrong — check your connection"});}
   }
 
   async function loadPostAndReplies(postId){
