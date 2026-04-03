@@ -4,9 +4,10 @@ import { Camera } from './Camera.js';
 import { Player } from './Player.js';
 import { Input } from './Input.js';
 import { InteractionZones } from './InteractionZones.js';
-import { loadMapImages, loadPlayerSprite, render, initFireflies } from './Renderer.js';
+import { loadMapImages, loadPlayerSprite, preloadSprite, render, initFireflies } from './Renderer.js';
 import { buildWorldGrid, SPAWN_X, SPAWN_Y } from './worldMap.js';
 import { MAP_IMAGES, CAM_ZOOM } from './constants.js';
+import { resolveSprite, SPRITES } from './sprites.js';
 import Joystick from './Joystick.jsx';
 
 // Build the grid once (singleton, reused across mounts)
@@ -21,7 +22,7 @@ let worldGrid = null;
  *   playerPos  — { x, y } | null — restored position (remembers where player was)
  *   onPosChange(x, y)  — called when player moves (so app.jsx can save position)
  */
-export default function OverworldScreen({ onEnterLocation, playerPos, onPosChange }) {
+export default function OverworldScreen({ onEnterLocation, playerPos, onPosChange, spriteConfig }) {
   const canvasRef = useRef(null);
   const gameRef = useRef(null);
   const inputRef = useRef(null);
@@ -33,8 +34,12 @@ export default function OverworldScreen({ onEnterLocation, playerPos, onPosChang
 
     // Start loading the illustrated map backgrounds (renders dark until loaded)
     loadMapImages(MAP_IMAGES);
-    // Load player character sprite
-    loadPlayerSprite('/character-sprite.png');
+    // Load active player sprite + preload others for instant switching
+    const config = spriteConfig || resolveSprite(null);
+    loadPlayerSprite(config);
+    Object.values(SPRITES).forEach(s => {
+      if (s.src !== config.src) preloadSprite(s);
+    });
 
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
@@ -110,6 +115,11 @@ export default function OverworldScreen({ onEnterLocation, playerPos, onPosChang
       window.removeEventListener('resize', resize);
     };
   }, []); // runs once on mount
+
+  // React to sprite config changes (e.g. user switches character in edit-profile)
+  useEffect(() => {
+    if (spriteConfig) loadPlayerSprite(spriteConfig);
+  }, [spriteConfig?.src]);
 
   // Save position and trigger zone entry
   const enterZone = useCallback((screen) => {

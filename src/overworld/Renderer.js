@@ -1,4 +1,5 @@
-import { WORLD_W, WORLD_H, MAP_SCALE, PLAYER_SPRITE_W, PLAYER_SPRITE_H } from './constants.js';
+import { WORLD_W, WORLD_H, MAP_SCALE } from './constants.js';
+import { resolveSprite, SPRITES } from './sprites.js';
 
 // ─── Map Background Layers ─────────────────────────────────────────
 // Multiple map images stacked vertically to form one seamless world.
@@ -43,34 +44,67 @@ export function loadMapImages(sources) {
   });
 }
 
-// ─── Player Sprite ────────────────────────────────────────────────
-let _playerSprite = null;
-let _spriteFrameW = 0;
-let _spriteFrameH = 0;
-const SPRITE_COLS = 4;
-const SPRITE_ROWS = 4;
-// Row mapping: row 0 = down, row 1 = right, row 2 = left, row 3 = up
-const SPRITE_DIR_ROW = { down: 0, left: 2, right: 1, up: 3 };
+// ─── Player Sprite Cache ──────────────────────────────────────────
+// Cache: { '/character-sprite.png': { img, frameW, frameH, cols, rows, dirRow } }
+const _spriteCache = {};
+let _activeSprite = null;  // current cache entry being drawn
 
 /**
- * Load the player character spritesheet.
- * @param {string} src — path to spritesheet PNG
+ * Load (or retrieve from cache) a player spritesheet and set it active.
+ * @param {object} spriteConfig — from sprites.js resolveSprite()
  * @returns {Promise<HTMLImageElement|null>}
  */
-export function loadPlayerSprite(src) {
+export function loadPlayerSprite(spriteConfig) {
+  const { src, cols = 4, rows = 4, dirRow } = spriteConfig;
+
+  // Already cached — activate instantly (no flicker)
+  if (_spriteCache[src]) {
+    _activeSprite = _spriteCache[src];
+    return Promise.resolve(_activeSprite.img);
+  }
+
   return new Promise(resolve => {
     const img = new Image();
     img.onload = () => {
-      _playerSprite = img;
-      _spriteFrameW = img.width / SPRITE_COLS;
-      _spriteFrameH = img.height / SPRITE_ROWS;
-      console.log(`[Renderer] Player sprite loaded: ${_spriteFrameW}x${_spriteFrameH} per frame`);
+      const entry = {
+        img,
+        frameW: img.width / cols,
+        frameH: img.height / rows,
+        cols, rows,
+        dirRow: dirRow || { down: 0, left: 2, right: 1, up: 3 },
+      };
+      _spriteCache[src] = entry;
+      _activeSprite = entry;
+      console.log(`[Renderer] Sprite loaded: ${src} (${entry.frameW}x${entry.frameH} per frame)`);
       resolve(img);
     };
     img.onerror = () => {
-      console.warn('[Renderer] Failed to load player sprite:', src);
+      console.warn('[Renderer] Failed to load sprite:', src);
       resolve(null);
     };
+    img.src = src;
+  });
+}
+
+/**
+ * Preload a spritesheet into cache without activating it.
+ */
+export function preloadSprite(spriteConfig) {
+  const { src, cols = 4, rows = 4, dirRow } = spriteConfig;
+  if (_spriteCache[src]) return Promise.resolve();
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      _spriteCache[src] = {
+        img,
+        frameW: img.width / cols,
+        frameH: img.height / rows,
+        cols, rows,
+        dirRow: dirRow || { down: 0, left: 2, right: 1, up: 3 },
+      };
+      resolve();
+    };
+    img.onerror = () => resolve();
     img.src = src;
   });
 }
@@ -187,14 +221,15 @@ function _drawFireflies(ctx, camera, dt) {
 function _drawPlayer(ctx, camera, player) {
   const { sx, sy } = camera.worldToScreen(player.x, player.y);
 
-  if (_playerSprite) {
+  if (_activeSprite) {
     // ── Sprite-based rendering ──
-    const row = SPRITE_DIR_ROW[player.facing] ?? 0;
-    const col = player.animFrame % SPRITE_COLS;
+    const sprite = _activeSprite;
+    const row = (sprite.dirRow[player.facing]) ?? 0;
+    const col = player.animFrame % sprite.cols;
 
     // Source rectangle in spritesheet
-    const srcX = col * _spriteFrameW;
-    const srcY = row * _spriteFrameH;
+    const srcX = col * sprite.frameW;
+    const srcY = row * sprite.frameH;
 
     // Draw size on canvas — large enough to be visible at CAM_ZOOM 0.38
     const drawW = 160;
@@ -218,8 +253,8 @@ function _drawPlayer(ctx, camera, player) {
     // Draw the sprite frame — centered horizontally, feet anchored at player y
     ctx.imageSmoothingEnabled = true;
     ctx.drawImage(
-      _playerSprite,
-      srcX, srcY, _spriteFrameW, _spriteFrameH,   // source
+      sprite.img,
+      srcX, srcY, sprite.frameW, sprite.frameH,   // source
       sx - drawW / 2, sy - drawH * 0.58, drawW, drawH  // dest (offset up so feet sit near y)
     );
   } else {

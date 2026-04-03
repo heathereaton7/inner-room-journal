@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback, Component } from "react";
 import { auth, db, functions, googleProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged, doc, getDoc, setDoc, collection, getDocs, query, where, orderBy, limit, addDoc, deleteDoc, serverTimestamp, Timestamp, onSnapshot, httpsCallable } from "./firebase.js";
 import { OverworldScreen } from './overworld/index.js';
+import { resolveSprite } from './overworld/sprites.js';
 /* R3F imports removed — ImmersiveCabin uses pure DOM/Canvas2D for performance */
 import { GFONTS, B, SERIF, SANS, DISPLAY, RT, th, REFLECTION_ROOMS, COMMUNITY_ROOMS, LOCKED_ROOM, JESUS_QUESTIONS, QUESTION_SETS, ALL_CARD_QS, CARD_THEMES, CARD_RATIOS, VERSE_THEMES, VIRAL_QS, SAMPLE_PRAYERS, SHELF_BOOKS, BOOK_COVERS, BOOK_CONTENT, getBookPageCount, todayStr, nowTime, entryTime, isoDate, wc, shuffle, THEME_WORDS, aggregateThemes, EMOTION_WORDS, LIFE_THEMES, FAITH_WORDS, SCRIPTURE_PATTERN, IDENTITY_NEG, IDENTITY_POS, GROWTH_MARKERS, STOP_WORDS, EMOTION_COLORS, computeInsights, computeWeeklyDigest, computeSeasonalSummary, computeFutureYou, SHOP_ITEMS, GARDEN_PLANTS, GROWTH_STAGES, PRAYER_BONUS_MINS, CRAFTING_STATIONS, ITEM_CATALOG, KITCHEN_RECIPES, NPC_TRADES, FARM_PLANTS, ANIMAL_TYPES, MAX_ANIMALS, DAILY_MISSIONS, WEEKLY_MISSIONS, getWeekStart, CABIN_FALLBACK_IMAGE, PREMIUM_DAILY_MISSIONS, PREMIUM_WEEKLY_MISSIONS, PREMIUM_GARDEN_PLANTS, PREMIUM_FARM_PLANTS, PREMIUM_ANIMALS, PREMIUM_PROMPTS, PREMIUM_SHOP_ITEMS, PLUS_BENEFITS } from './constants.js';
 import { CSS } from './styles.js';
@@ -1579,6 +1580,7 @@ function AppInner(){
   const [transitDir,    setTransitDir]    = useState(null);
   const [onboardStep,   setOnboardStep]   = useState(0);
   const [overworldPos,  setOverworldPos]  = useState(null);
+  const [playerAppearance, setPlayerAppearance] = useState(null);
   const [stoveZoom,     setStoveZoom]     = useState(false);
   const [windowZoom,    setWindowZoom]    = useState(false);
   const [journalZoom,   setJournalZoom]   = useState(false);
@@ -1920,6 +1922,7 @@ function AppInner(){
       const an   = await dbLoad("irj-animals") || [];
       const ms   = await dbLoad("irj-missions") || null;
       const pm   = await dbLoad("irj-premium") || false;
+      const pa   = await dbLoad("irj-appearance") || null;
       // Migrate prayers: add status/answeredDate/category if missing
       let migrated=false;
       const mpp=pp.map(p=>{
@@ -1930,6 +1933,7 @@ function AppInner(){
       setEntries(ens); setPrayerPosts(mpp); setSavedCards(sc);
       setCandles(cn); setPrayedFor(pf); setOwnedItems(oi); setGardenPlots(gp); setInventory(inv); setSavedVerses(sv);
       setBank(bnk); setSellBasket(sb); setFarmPlots(fp); setAnimals(an); setMissions(ms); setIsPremium(!!pm);
+      if(pa) setPlayerAppearance(pa);
       let s=0,d=new Date(),map={};
       ens.forEach(e=>{map[e.date]=true;});
       while(map[isoDate(d)]){s++;d.setDate(d.getDate()-1);} setStreak(s);
@@ -2572,6 +2576,8 @@ function AppInner(){
       }
       const updated=await getDoc(profileRef);
       setUserProfile({id:uid,...updated.data()});
+      const app={base:setupGender,outfit:"default"};
+      setPlayerAppearance(app);dbSave("irj-appearance",app);
       setShowProfileSetup(false);
       setToast({msg:"Profile created"});
     }catch(e){console.warn("completeProfileSetup error:",e);setToast({msg:"Error saving profile"});}
@@ -2592,6 +2598,8 @@ function AppInner(){
       },{merge:true});
       const updated=await getDoc(profileRef);
       setUserProfile({id:uid,...updated.data()});
+      const app={base:newGender,outfit:playerAppearance?.outfit||"default"};
+      setPlayerAppearance(app);dbSave("irj-appearance",app);
       setToast({msg:"Profile updated"});
       return true;
     }catch(e){console.warn("saveProfileEdits error:",e);return false;}
@@ -2621,6 +2629,8 @@ function AppInner(){
       setUserProfile({id:uid,...data});
       setSetupUsername(data.username||"");
       setSetupGender(data.gender||null);
+      const app=data.appearance||{base:data.gender||"male",outfit:"default"};
+      setPlayerAppearance(app);dbSave("irj-appearance",app);
       setIsOnboarded(true);dbSave("irj-onboarded",true);
       setScreen("cabin");
     }catch(e){console.warn("ensureUserProfile error:",e);}
@@ -4248,6 +4258,8 @@ function AppInner(){
                   {[["female","Daughter of God"],["male","Son of God"]].map(([val,label])=>(
                     <button key={val} onClick={()=>{
                       setSetupGender(val);
+                      const app={base:val,outfit:"default"};
+                      setPlayerAppearance(app);dbSave("irj-appearance",app);
                       // After gender → save profile if signed in, then door zoom
                       setTimeout(()=>{
                         if(user) completeProfileSetup(user.uid);
@@ -5088,6 +5100,7 @@ function AppInner(){
           onEnterLocation={handleEnterLocation}
           playerPos={overworldPos}
           onPosChange={(x,y)=>setOverworldPos({x,y})}
+          spriteConfig={resolveSprite(playerAppearance)}
         />
         {spaceTransit&&<div style={{position:"fixed",inset:0,zIndex:9999,background:"#0A0806",animation:"spaceFadeIn .6s ease both",pointerEvents:"all"}}/>}
       </div>
