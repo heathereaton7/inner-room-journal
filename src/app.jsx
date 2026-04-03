@@ -2864,9 +2864,12 @@ function AppInner(){
     if(!db) return;
     setGatheringLoading(true);
     try{
-      const q=query(collection(db,"upperRoomPosts"),where("spaceId","==",spaceId),where("status","==","active"),orderBy("createdAt","desc"),limit(50));
+      // Simple query without orderBy to avoid needing composite index
+      const q=query(collection(db,"upperRoomPosts"),where("spaceId","==",spaceId),limit(100));
       const snap=await getDocs(q);
-      setGatheringPosts(snap.docs.map(d=>({id:d.id,...d.data()})));
+      // Filter active and sort client-side
+      const posts=snap.docs.map(d=>({id:d.id,...d.data()})).filter(p=>p.status==="active").sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
+      setGatheringPosts(posts);
     }catch(e){console.warn("loadGatheringPosts:",e);setGatheringPosts([]);}
     setGatheringLoading(false);
   }
@@ -2998,19 +3001,20 @@ function AppInner(){
   async function loadRecentGatheringPosts(){
     if(!db) return;
     try{
-      const q=query(collection(db,"upperRoomPosts"),where("status","==","active"),orderBy("createdAt","desc"),limit(5));
+      const q=query(collection(db,"upperRoomPosts"),limit(50));
       const snap=await getDocs(q);
-      setGatheringRecentPosts(snap.docs.map(d=>({id:d.id,...d.data()})));
+      const posts=snap.docs.map(d=>({id:d.id,...d.data()})).filter(p=>p.status==="active").sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0)).slice(0,5);
+      setGatheringRecentPosts(posts);
     }catch(e){}
   }
 
   async function loadSpaceCounts(){
     if(!db) return {};
     try{
-      const q=query(collection(db,"upperRoomPosts"),where("status","==","active"),limit(500));
+      const q=query(collection(db,"upperRoomPosts"),limit(500));
       const snap=await getDocs(q);
       const counts={};
-      snap.docs.forEach(d=>{const s=d.data().spaceId;counts[s]=(counts[s]||0)+1;});
+      snap.docs.forEach(d=>{const data=d.data();if(data.status==="active")counts[data.spaceId]=(counts[data.spaceId]||0)+1;});
       return counts;
     }catch(e){return {};}
   }
@@ -3019,10 +3023,10 @@ function AppInner(){
     if(!db) return;
     setGatheringSearchLoading(true);setGatheringSearchQuery(searchQuery);
     try{
-      const q=query(collection(db,"upperRoomPosts"),where("status","==","active"),limit(100));
+      const q=query(collection(db,"upperRoomPosts"),limit(200));
       const snap=await getDocs(q);
       const words=searchQuery.toLowerCase().split(/\s+/).filter(w=>w.length>2);
-      const results=snap.docs.map(d=>({id:d.id,...d.data()})).filter(p=>{
+      const results=snap.docs.map(d=>({id:d.id,...d.data()})).filter(p=>p.status==="active").filter(p=>{
         const tokens=p.searchTokens||[];
         const text=(p.title+" "+p.body+" "+(p.tags||[]).join(" ")).toLowerCase();
         return words.some(w=>tokens.includes(w)||text.includes(w));
