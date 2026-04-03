@@ -49,8 +49,8 @@ let _spriteFrameW = 0;
 let _spriteFrameH = 0;
 const SPRITE_COLS = 4;
 const SPRITE_ROWS = 4;
-// Row mapping: row 0 = down, row 1 = left, row 2 = right, row 3 = up
-const SPRITE_DIR_ROW = { down: 0, left: 1, right: 2, up: 3 };
+// Row mapping: row 0 = down, row 1 = right, row 2 = left, row 3 = up
+const SPRITE_DIR_ROW = { down: 0, left: 2, right: 1, up: 3 };
 
 /**
  * Load the player character spritesheet.
