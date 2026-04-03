@@ -139,7 +139,7 @@ export default function CheckInScreen({ onBack, onSave, onPrayWith, todayEntries
         </button>
 
         {/* Header */}
-        <div style={{ textAlign: "center", marginBottom: 24, animation: "fadeUp .6s ease both" }}>
+        <div style={{ textAlign: "center", marginBottom: 24, animation: "fadeUp .3s ease both" }}>
           <h1 style={{ fontFamily: DISPLAY, fontSize: "1.5rem", fontWeight: 700, color: B.goldL, margin: "0 0 8px" }}>Body & Mind Check-In</h1>
           <p style={{ fontFamily: SERIF, fontStyle: "italic", fontSize: "0.88rem", color: "rgba(255,248,232,0.35)", margin: 0 }}>Take a moment to notice what you're carrying today</p>
           <div style={{ width: 50, height: 1, background: "rgba(201,169,110,0.25)", margin: "14px auto 0" }} />
@@ -152,7 +152,7 @@ export default function CheckInScreen({ onBack, onSave, onPrayWith, todayEntries
 
         {/* ── PREVIOUS ENTRIES TODAY ── */}
         {entries.length > 0 && !editingEntry && (
-          <div style={{ marginBottom: 24, animation: "fadeUp .5s ease both" }}>
+          <div style={{ marginBottom: 24, animation: "fadeUp .25s ease both" }}>
             <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(201,169,110,0.08)", borderRadius: 12, padding: "12px 16px" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: entries.length > 1 ? 8 : 0 }}>
                 <p style={{ fontFamily: SANS, fontSize: "0.7rem", color: "rgba(255,248,232,0.3)", margin: 0, letterSpacing: "0.04em" }}>
@@ -189,7 +189,7 @@ export default function CheckInScreen({ onBack, onSave, onPrayWith, todayEntries
         )}
 
         {/* ── MOOD SECTION ── */}
-        <div style={{ marginBottom: 28, animation: "fadeUp .6s .1s ease both", opacity: 0 }}>
+        <div style={{ marginBottom: 28, animation: "fadeUp .3s ease both", opacity: 0 }}>
           <p style={{ fontFamily: SERIF, fontStyle: "italic", fontSize: "0.92rem", color: "rgba(255,248,232,0.55)", margin: "0 0 12px" }}>
             How does your heart feel today?
           </p>
@@ -238,7 +238,7 @@ export default function CheckInScreen({ onBack, onSave, onPrayWith, todayEntries
         </div>
 
         {/* ── BODY SECTION ── */}
-        <div style={{ marginBottom: 28, animation: "fadeUp .6s .2s ease both", opacity: 0 }}>
+        <div style={{ marginBottom: 28, animation: "fadeUp .3s .05s ease both", opacity: 0 }}>
           <p style={{ fontFamily: SERIF, fontStyle: "italic", fontSize: "0.92rem", color: "rgba(255,248,232,0.55)", margin: "0 0 12px" }}>
             What is your body feeling?
           </p>
@@ -287,7 +287,7 @@ export default function CheckInScreen({ onBack, onSave, onPrayWith, todayEntries
         </div>
 
         {/* ── INTENSITY ── */}
-        <div style={{ marginBottom: 28, animation: "fadeUp .6s .3s ease both", opacity: 0 }}>
+        <div style={{ marginBottom: 28, animation: "fadeUp .3s .08s ease both", opacity: 0 }}>
           <p style={{ fontFamily: SERIF, fontStyle: "italic", fontSize: "0.92rem", color: "rgba(255,248,232,0.55)", margin: "0 0 14px" }}>
             How heavy does it feel today?
           </p>
@@ -316,7 +316,7 @@ export default function CheckInScreen({ onBack, onSave, onPrayWith, todayEntries
         </div>
 
         {/* ── REFLECTION ── */}
-        <div style={{ marginBottom: 28, animation: "fadeUp .6s .4s ease both", opacity: 0 }}>
+        <div style={{ marginBottom: 28, animation: "fadeUp .3s .1s ease both", opacity: 0 }}>
           <p style={{ fontFamily: SERIF, fontStyle: "italic", fontSize: "0.92rem", color: "rgba(255,248,232,0.55)", margin: "0 0 12px" }}>
             Would you like to put words to this?
           </p>
@@ -330,7 +330,7 @@ export default function CheckInScreen({ onBack, onSave, onPrayWith, todayEntries
         </div>
 
         {/* ── TRIGGER ── */}
-        <div style={{ marginBottom: 28, animation: "fadeUp .6s .5s ease both", opacity: 0 }}>
+        <div style={{ marginBottom: 28, animation: "fadeUp .3s .12s ease both", opacity: 0 }}>
           <p style={{ fontFamily: SERIF, fontStyle: "italic", fontSize: "0.92rem", color: "rgba(255,248,232,0.55)", margin: "0 0 12px" }}>
             Is there a trigger you can identify?
           </p>
@@ -345,7 +345,7 @@ export default function CheckInScreen({ onBack, onSave, onPrayWith, todayEntries
 
         {/* ── SAVE + PRAYER ACTIONS ── */}
         {hasData && (
-          <div style={{ marginBottom: 28, animation: "fadeUp .5s ease both" }}>
+          <div style={{ marginBottom: 28, animation: "fadeUp .25s ease both" }}>
             {/* Primary: Save Entry */}
             <button onClick={() => {
               triggerSave();
@@ -389,7 +389,7 @@ export default function CheckInScreen({ onBack, onSave, onPrayWith, todayEntries
 
         {/* ── GROWTH MESSAGE (after save) ── */}
         {growthMsg && (
-          <div style={{ textAlign: "center", padding: "16px 20px", margin: "0 0 16px", background: "rgba(90,138,106,0.06)", border: "1px solid rgba(90,138,106,0.12)", borderRadius: 14, animation: "fadeUp .6s ease both" }}>
+          <div style={{ textAlign: "center", padding: "16px 20px", margin: "0 0 16px", background: "rgba(90,138,106,0.06)", border: "1px solid rgba(90,138,106,0.12)", borderRadius: 14, animation: "fadeUp .3s ease both" }}>
             <p style={{ fontFamily: SERIF, fontStyle: "italic", fontSize: "0.85rem", color: B.sage, margin: 0, lineHeight: 1.55 }}>
               {growthMsg}
             </p>
@@ -398,7 +398,7 @@ export default function CheckInScreen({ onBack, onSave, onPrayWith, todayEntries
 
         {/* ── MICRO-FEEDBACK ── */}
         {showedUp && !growthMsg && (
-          <div style={{ textAlign: "center", padding: "16px 0", animation: "fadeUp .8s ease both" }}>
+          <div style={{ textAlign: "center", padding: "16px 0", animation: "fadeUp .35s ease both" }}>
             <p style={{ fontFamily: SERIF, fontStyle: "italic", fontSize: "0.85rem", color: "rgba(255,248,232,0.25)", margin: 0 }}>
               You've been showing up. That matters.
             </p>

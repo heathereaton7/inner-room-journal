@@ -1,6 +1,6 @@
 export const CSS = `
     @keyframes flicker{0%,100%{opacity:1;transform:scaleY(1)}50%{opacity:.85;transform:scaleY(.95)}}
-    @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
     @keyframes twinkle{0%,100%{opacity:.3;transform:scale(1)}50%{opacity:1;transform:scale(1.4)}}
     @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
     @keyframes firefly{0%{opacity:0;transform:translate(0,0) scale(0.5)}15%{opacity:1;transform:translate(8px,-12px) scale(1)}50%{opacity:0.6;transform:translate(-6px,-28px) scale(0.8)}85%{opacity:1;transform:translate(10px,-16px) scale(1.1)}100%{opacity:0;transform:translate(2px,-40px) scale(0.4)}}
@@ -11,20 +11,20 @@ export const CSS = `
     @keyframes smokeDrift{0%{opacity:0;transform:translate(0,0) scale(0.3)}20%{opacity:0.4}60%{opacity:0.2;transform:translate(-12px,-40px) scale(0.7)}100%{opacity:0;transform:translate(-20px,-70px) scale(1)}}
     @keyframes windowGlow{0%,100%{opacity:0.4;box-shadow:0 0 15px rgba(255,200,80,0.3)}50%{opacity:0.7;box-shadow:0 0 30px rgba(255,200,80,0.5)}}
     @keyframes waterShimmer{0%{background-position:0% 50%}100%{background-position:200% 50%}}
-    @keyframes textFloat{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
-    .scene-text{animation:textFloat .6s .15s ease both}
-    .scene-text2{animation:textFloat .6s .35s ease both}
-    .scene-text3{animation:textFloat .6s .55s ease both}
+    @keyframes textFloat{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+    .scene-text{animation:textFloat .35s .08s ease both}
+    .scene-text2{animation:textFloat .35s .16s ease both}
+    .scene-text3{animation:textFloat .35s .24s ease both}
     @keyframes lightRayShift{0%{opacity:0.5;transform:rotate(-3deg)}100%{opacity:0.8;transform:rotate(3deg)}}
     @keyframes dustFloat{0%{opacity:0;transform:translate(0,0)}25%{opacity:0.6;transform:translate(5px,-8px)}50%{opacity:0.3;transform:translate(-3px,-16px)}75%{opacity:0.5;transform:translate(7px,-10px)}100%{opacity:0;transform:translate(2px,-20px)}}
     @keyframes bookSlideUp{from{transform:translateY(100%);opacity:0.5}to{transform:translateY(0);opacity:1}}
     @keyframes spaceFadeIn{from{opacity:0}to{opacity:1}}
     @keyframes spaceFadeOut{from{opacity:1}to{opacity:0}}
     button{touch-action:manipulation}
-    .fu{animation:fadeUp .55s ease both}
-    .fu2{animation:fadeUp .55s .12s ease both}
-    .fu3{animation:fadeUp .55s .24s ease both}
-    .fu4{animation:fadeUp .55s .36s ease both}
+    .fu{animation:fadeUp .3s ease both}
+    .fu2{animation:fadeUp .3s .06s ease both}
+    .fu3{animation:fadeUp .3s .12s ease both}
+    .fu4{animation:fadeUp .3s .18s ease both}
     .room-c:hover{transform:translateY(-3px)!important;box-shadow:0 12px 36px rgba(0,0,0,0.12)!important;}
     textarea::placeholder{font-style:italic;opacity:0.45}
     textarea:focus,input:focus{outline:none}

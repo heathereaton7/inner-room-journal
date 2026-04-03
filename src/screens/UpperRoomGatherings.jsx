@@ -51,14 +51,14 @@ export default function UpperRoomGatherings({ onBack, onOpenSpace, onSearch, spa
         </button>
 
         {/* Header */}
-        <div style={{ textAlign: "center", marginBottom: 28, animation: "fadeUp .6s ease both" }}>
+        <div style={{ textAlign: "center", marginBottom: 28, animation: "fadeUp .3s ease both" }}>
           <h1 style={{ fontFamily: DISPLAY, fontSize: "1.6rem", fontWeight: 700, color: "#D8C8F0", margin: "0 0 8px", textShadow: "0 2px 12px rgba(0,0,0,0.5)" }}>Gatherings</h1>
           <p style={{ fontFamily: SERIF, fontStyle: "italic", fontSize: "0.88rem", color: "rgba(200,190,230,0.4)", margin: "0 0 6px" }}>A place to be heard, without being seen.</p>
           <div style={{ width: 50, height: 1, background: "rgba(180,160,210,0.25)", margin: "12px auto 0" }} />
         </div>
 
         {/* Search */}
-        <div style={{ position: "relative", marginBottom: 24, animation: "fadeUp .6s .1s ease both", opacity: 0 }}>
+        <div style={{ position: "relative", marginBottom: 24, animation: "fadeUp .3s ease both", opacity: 0 }}>
           <svg style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", opacity: 0.3 }} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D8C8F0" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           <input
             value={searchQuery}
@@ -133,7 +133,7 @@ export default function UpperRoomGatherings({ onBack, onOpenSpace, onSearch, spa
 
         {/* Saved posts */}
         {(savedPosts||[]).length > 0 && !searchQuery && (
-          <div style={{ marginTop: 20, animation: "fadeUp .5s .35s ease both", opacity: 0 }}>
+          <div style={{ marginTop: 20, animation: "fadeUp .3s .08s ease both", opacity: 0 }}>
             <p style={{ fontFamily: SANS, fontSize: "0.62rem", letterSpacing: "0.06em", textTransform: "uppercase", color: "rgba(200,190,230,0.2)", margin: "0 0 10px" }}>Saved</p>
             {(savedPosts||[]).slice(0, 3).map((post, idx) => {
               const space = GATHERING_SPACES.find(s => s.id === post.spaceId);
@@ -157,7 +157,7 @@ export default function UpperRoomGatherings({ onBack, onOpenSpace, onSearch, spa
 
         {/* Recent activity */}
         {recent.length > 0 && !searchQuery && (
-          <div style={{ marginTop: 24, animation: "fadeUp .5s .4s ease both", opacity: 0 }}>
+          <div style={{ marginTop: 24, animation: "fadeUp .3s .1s ease both", opacity: 0 }}>
             <p style={{ fontFamily: SANS, fontSize: "0.62rem", letterSpacing: "0.06em", textTransform: "uppercase", color: "rgba(200,190,230,0.2)", margin: "0 0 10px" }}>Recent voices</p>
             {recent.map((post, idx) => {
               const space = GATHERING_SPACES.find(s => s.id === post.spaceId);
@@ -180,7 +180,7 @@ export default function UpperRoomGatherings({ onBack, onOpenSpace, onSearch, spa
         )}
 
         {/* Footer note */}
-        <div style={{ textAlign: "center", marginTop: 24, animation: "fadeUp .5s .5s ease both", opacity: 0 }}>
+        <div style={{ textAlign: "center", marginTop: 24, animation: "fadeUp .3s .12s ease both", opacity: 0 }}>
           <p style={{ fontFamily: SERIF, fontStyle: "italic", fontSize: "0.72rem", color: "rgba(200,190,230,0.18)", margin: 0, lineHeight: 1.5 }}>
             Everything shared here is anonymous. You are known by a name given to you, not the one you carry outside.
           </p>

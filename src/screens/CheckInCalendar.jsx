@@ -275,14 +275,14 @@ ${e.reflection ? `<p class="note">${e.reflection}</p>` : ""}
         </button>
 
         {/* Header */}
-        <div style={{ textAlign: "center", marginBottom: 24, animation: "fadeUp .6s ease both" }}>
+        <div style={{ textAlign: "center", marginBottom: 24, animation: "fadeUp .3s ease both" }}>
           <h1 style={{ fontFamily: DISPLAY, fontSize: "1.4rem", fontWeight: 700, color: B.goldL, margin: "0 0 6px" }}>Check-In History</h1>
           <p style={{ fontFamily: SERIF, fontStyle: "italic", fontSize: "0.82rem", color: "rgba(255,248,232,0.3)", margin: 0 }}>See your patterns over time</p>
         </div>
 
         {/* Summary cards */}
         {stats.total > 0 && (
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 20, animation: "fadeUp .5s .1s ease both", opacity: 0 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 20, animation: "fadeUp .3s .04s ease both", opacity: 0 }}>
             <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(201,169,110,0.08)", borderRadius: 12, padding: "12px 10px", textAlign: "center" }}>
               <div style={{ fontFamily: DISPLAY, fontSize: "1.3rem", color: B.goldL }}>{stats.total}</div>
               <div style={{ fontFamily: SANS, fontSize: "0.6rem", color: "rgba(255,248,232,0.25)", marginTop: 2 }}>entries</div>
@@ -303,7 +303,7 @@ ${e.reflection ? `<p class="note">${e.reflection}</p>` : ""}
         )}
 
         {/* Month nav */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14, animation: "fadeUp .5s .15s ease both", opacity: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14, animation: "fadeUp .3s .06s ease both", opacity: 0 }}>
           <button onClick={prevMonth} style={{ background: "transparent", border: "none", cursor: "pointer", color: "rgba(255,248,232,0.35)", fontSize: "1.2rem", padding: "4px 12px" }}>&lsaquo;</button>
           <span style={{ fontFamily: SERIF, fontStyle: "italic", fontSize: "1rem", color: B.goldL }}>{MONTH_NAMES[viewMonth]} {viewYear}</span>
           <button onClick={nextMonth} style={{ background: "transparent", border: "none", cursor: "pointer", color: "rgba(255,248,232,0.35)", fontSize: "1.2rem", padding: "4px 12px" }}>&rsaquo;</button>
@@ -317,7 +317,7 @@ ${e.reflection ? `<p class="note">${e.reflection}</p>` : ""}
         </div>
 
         {/* Calendar grid */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 3, marginBottom: 20, animation: "fadeUp .5s .2s ease both", opacity: 0 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 3, marginBottom: 20, animation: "fadeUp .3s .06s ease both", opacity: 0 }}>
           {cells.map((day, i) => {
             if (day === null) return <div key={`e${i}`} />;
             const dateKey = `${viewYear}-${String(viewMonth + 1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
@@ -403,7 +403,7 @@ ${e.reflection ? `<p class="note">${e.reflection}</p>` : ""}
 
         {/* Patterns */}
         {patterns.length > 0 && (
-          <div style={{ marginBottom: 24, animation: "fadeUp .5s .3s ease both", opacity: 0 }}>
+          <div style={{ marginBottom: 24, animation: "fadeUp .3s .08s ease both", opacity: 0 }}>
             <p style={{ fontFamily: SANS, fontSize: "0.62rem", letterSpacing: "0.08em", textTransform: "uppercase", color: "rgba(255,248,232,0.2)", margin: "0 0 10px" }}>Patterns</p>
             {patterns.map((p, i) => (
               <p key={i} style={{ fontFamily: SERIF, fontStyle: "italic", fontSize: "0.82rem", color: "rgba(255,248,232,0.35)", margin: "0 0 8px", lineHeight: 1.55 }}>{p}</p>

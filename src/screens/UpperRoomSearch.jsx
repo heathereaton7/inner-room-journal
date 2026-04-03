@@ -41,7 +41,7 @@ export default function UpperRoomSearch({ onBack, onOpenPost, onOpenSpace, resul
         </button>
 
         {/* Search bar */}
-        <div style={{ position: "relative", marginBottom: 16, animation: "fadeUp .5s ease both" }}>
+        <div style={{ position: "relative", marginBottom: 16, animation: "fadeUp .25s ease both" }}>
           <svg style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", opacity: 0.3 }} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D8C8F0" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           <input
             value={query}

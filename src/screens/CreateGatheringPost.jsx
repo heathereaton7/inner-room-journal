@@ -38,13 +38,13 @@ export default function CreateGatheringPost({ onBack, onSubmit, spaceId, anonNam
         </button>
 
         {/* Header */}
-        <div style={{ textAlign: "center", marginBottom: 28, animation: "fadeUp .6s ease both" }}>
+        <div style={{ textAlign: "center", marginBottom: 28, animation: "fadeUp .3s ease both" }}>
           <h1 style={{ fontFamily: DISPLAY, fontSize: "1.3rem", fontWeight: 700, color: "#D8C8F0", margin: "0 0 6px" }}>Share what's on your heart</h1>
           <p style={{ fontFamily: SERIF, fontStyle: "italic", fontSize: "0.82rem", color: "rgba(200,190,230,0.35)", margin: 0 }}>You'll appear as <span style={{ color: "rgba(200,190,230,0.55)" }}>{anonName || "Anonymous"}</span></p>
         </div>
 
         {/* Space selector */}
-        <div style={{ marginBottom: 20, animation: "fadeUp .5s .1s ease both", opacity: 0 }}>
+        <div style={{ marginBottom: 20, animation: "fadeUp .3s .04s ease both", opacity: 0 }}>
           <label style={{ fontFamily: SANS, fontSize: "0.68rem", letterSpacing: "0.06em", textTransform: "uppercase", color: "rgba(200,190,230,0.3)", display: "block", marginBottom: 8 }}>Gathering</label>
           <select value={selectedSpace} onChange={e => setSelectedSpace(e.target.value)} style={{
             width: "100%", boxSizing: "border-box",
@@ -66,7 +66,7 @@ export default function CreateGatheringPost({ onBack, onSubmit, spaceId, anonNam
         )}
 
         {/* Post type */}
-        <div style={{ marginBottom: 20, animation: "fadeUp .5s .15s ease both", opacity: 0 }}>
+        <div style={{ marginBottom: 20, animation: "fadeUp .3s .06s ease both", opacity: 0 }}>
           <label style={{ fontFamily: SANS, fontSize: "0.68rem", letterSpacing: "0.06em", textTransform: "uppercase", color: "rgba(200,190,230,0.3)", display: "block", marginBottom: 8 }}>What kind of post?</label>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
             {POST_TYPES.map(pt => (
@@ -84,7 +84,7 @@ export default function CreateGatheringPost({ onBack, onSubmit, spaceId, anonNam
         </div>
 
         {/* Title */}
-        <div style={{ marginBottom: 20, animation: "fadeUp .5s .2s ease both", opacity: 0 }}>
+        <div style={{ marginBottom: 20, animation: "fadeUp .3s .06s ease both", opacity: 0 }}>
           <label style={{ fontFamily: SANS, fontSize: "0.68rem", letterSpacing: "0.06em", textTransform: "uppercase", color: "rgba(200,190,230,0.3)", display: "block", marginBottom: 8 }}>Title</label>
           <input value={title} onChange={e => setTitle(e.target.value.slice(0, 120))} placeholder="What's this about?" style={{
             width: "100%", boxSizing: "border-box",
@@ -109,7 +109,7 @@ export default function CreateGatheringPost({ onBack, onSubmit, spaceId, anonNam
         </div>
 
         {/* Tags */}
-        <div style={{ marginBottom: 28, animation: "fadeUp .5s .3s ease both", opacity: 0 }}>
+        <div style={{ marginBottom: 28, animation: "fadeUp .3s .08s ease both", opacity: 0 }}>
           <label style={{ fontFamily: SANS, fontSize: "0.68rem", letterSpacing: "0.06em", textTransform: "uppercase", color: "rgba(200,190,230,0.3)", display: "block", marginBottom: 8 }}>Tags <span style={{ textTransform: "none", fontWeight: 400 }}>(optional, comma-separated)</span></label>
           <input value={tags} onChange={e => setTags(e.target.value)} placeholder="healing, boundaries, faith" style={{
             width: "100%", boxSizing: "border-box",

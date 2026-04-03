@@ -76,7 +76,7 @@ export default function GatheringPost({
         </button>
 
         {/* Post */}
-        <div style={{ animation: "fadeUp .5s ease both" }}>
+        <div style={{ animation: "fadeUp .25s ease both" }}>
           {/* Meta */}
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10, flexWrap: "wrap" }}>
             <span style={{ fontFamily: SANS, fontSize: "0.72rem", color: "rgba(180,160,210,0.45)", fontWeight: 500 }}>{post.anonymousName || "Anonymous"}</span>
@@ -134,7 +134,7 @@ export default function GatheringPost({
         <div style={{ height: 1, background: "rgba(180,160,210,0.08)", margin: "24px 0 20px" }} />
 
         {/* Reply input */}
-        <div style={{ marginBottom: 20, animation: "fadeUp .5s .1s ease both", opacity: 0 }}>
+        <div style={{ marginBottom: 20, animation: "fadeUp .3s .04s ease both", opacity: 0 }}>
           <p style={{ fontFamily: SANS, fontSize: "0.65rem", color: "rgba(200,190,230,0.25)", margin: "0 0 8px" }}>
             Replying as <span style={{ color: "rgba(200,190,230,0.4)" }}>{anonName || "Anonymous"}</span>
             {replyingTo && <span> to a reply <button onClick={() => setReplyingTo(null)} style={{ background: "none", border: "none", color: "rgba(200,190,230,0.3)", cursor: "pointer", fontSize: "0.6rem", fontFamily: SANS }}>(cancel)</button></span>}
@@ -157,7 +157,7 @@ export default function GatheringPost({
         </div>
 
         {/* Replies */}
-        <div style={{ animation: "fadeUp .5s .15s ease both", opacity: 0 }}>
+        <div style={{ animation: "fadeUp .3s .06s ease both", opacity: 0 }}>
           <p style={{ fontFamily: SANS, fontSize: "0.62rem", letterSpacing: "0.06em", textTransform: "uppercase", color: "rgba(200,190,230,0.2)", margin: "0 0 12px" }}>
             {visibleReplies.length} {visibleReplies.length === 1 ? "reply" : "replies"}
           </p>

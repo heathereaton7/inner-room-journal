@@ -4276,7 +4276,7 @@ function AppInner(){
             <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse at center,rgba(255,200,80,0.15) 0%,rgba(255,180,60,0.06) 50%,transparent 100%)",animation:"doorEnterFade 1.5s 0.5s ease both",opacity:0}}/>
             {/* Welcome text over the zoom */}
             <div style={{position:"absolute",inset:0,zIndex:10,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
-              <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:"12px",animation:"fadeUp 1s 0.8s ease both",opacity:0}}>
+              <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:"12px",animation:"fadeUp .4s .2s ease both",opacity:0}}>
                 <div style={{display:"flex",alignItems:"center",gap:"10px",marginBottom:"4px"}}>
                   <div style={{width:"40px",height:"1px",background:"linear-gradient(90deg,transparent,rgba(201,169,110,0.5))"}}/>
                   <div style={{width:"5px",height:"5px",borderRadius:"50%",background:"rgba(201,169,110,0.4)"}}/>
@@ -4285,10 +4285,10 @@ function AppInner(){
                 <h1 style={{fontFamily:DISPLAY,fontSize:"clamp(2rem,8vw,3.2rem)",fontWeight:700,color:"#FFF8E8",margin:0,textAlign:"center",textShadow:"0 2px 24px rgba(0,0,0,0.7),0 0 60px rgba(201,169,110,0.15)",letterSpacing:"0.04em",lineHeight:1.2}}>
                   Welcome, {setupUsername||"friend"}.
                 </h1>
-                <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.9rem,3vw,1.1rem)",color:"rgba(255,248,232,0.5)",margin:0,textAlign:"center",maxWidth:"320px",lineHeight:1.65,letterSpacing:"0.03em",animation:"fadeUp 1s 1.2s ease both",opacity:0}}>
+                <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.9rem,3vw,1.1rem)",color:"rgba(255,248,232,0.5)",margin:0,textAlign:"center",maxWidth:"320px",lineHeight:1.65,letterSpacing:"0.03em",animation:"fadeUp .4s .3s ease both",opacity:0}}>
                   Your journal is waiting.
                 </p>
-                <p style={{fontFamily:SANS,fontSize:"0.64rem",color:"rgba(255,248,232,0.18)",margin:"16px 0 0",letterSpacing:"0.08em",animation:"fadeUp 1s 2s ease both",opacity:0}}>
+                <p style={{fontFamily:SANS,fontSize:"0.64rem",color:"rgba(255,248,232,0.18)",margin:"16px 0 0",letterSpacing:"0.08em",animation:"fadeUp .4s .5s ease both",opacity:0}}>
                   Tap anywhere to enter
                 </p>
               </div>
@@ -4625,7 +4625,7 @@ function AppInner(){
           </button>
 
           {/* Title */}
-          <div style={{textAlign:"center",marginBottom:32,animation:"fadeUp .6s ease both"}}>
+          <div style={{textAlign:"center",marginBottom:32,animation:"fadeUp .3s ease both"}}>
             <h1 style={{fontFamily:DISPLAY,fontSize:"2rem",fontWeight:700,color:B.goldL,margin:"0 0 8px",textShadow:"0 2px 12px rgba(0,0,0,0.5)",letterSpacing:"0.02em"}}>The Upper Room Hall</h1>
             <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"1rem",color:"rgba(255,248,232,0.45)",margin:"0 0 14px"}}>Where we walk together.</p>
             <div style={{width:60,height:1,background:"rgba(201,169,110,0.3)",margin:"0 auto"}}/>
@@ -5115,7 +5115,7 @@ function AppInner(){
             color:"rgba(255,240,200,0.7)",fontFamily:SANS,fontSize:"0.82rem",
             display:"flex",alignItems:"center",gap:6,
             transition:"all 0.2s",zIndex:20,
-            animation:"fadeUp .6s ease both"
+            animation:"fadeUp .3s ease both"
           }}>
             <span style={{fontSize:"1.1em",lineHeight:1}}>&#10094;</span> Back to map
           </button>
@@ -5334,11 +5334,11 @@ function AppInner(){
         <div style={{position:"relative",zIndex:10,height:"100%",overflowY:"auto",WebkitOverflowScrolling:"touch"}}>
           <div style={{maxWidth:720,margin:"0 auto",padding:"28px 22px 80px"}}>
             {/* Back button */}
-            <button onClick={()=>{setVisitingFarm(null);setScreen("hall");}} style={{background:"rgba(12,22,8,0.55)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",border:"1px solid rgba(90,138,106,0.15)",borderRadius:999,padding:"8px 20px",cursor:"pointer",color:"rgba(190,211,196,0.6)",fontFamily:SANS,fontSize:"0.78rem",marginBottom:28,transition:"all 0.2s",display:"inline-flex",alignItems:"center",gap:6,animation:"fadeUp .6s ease both"}}>
+            <button onClick={()=>{setVisitingFarm(null);setScreen("hall");}} style={{background:"rgba(12,22,8,0.55)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",border:"1px solid rgba(90,138,106,0.15)",borderRadius:999,padding:"8px 20px",cursor:"pointer",color:"rgba(190,211,196,0.6)",fontFamily:SANS,fontSize:"0.78rem",marginBottom:28,transition:"all 0.2s",display:"inline-flex",alignItems:"center",gap:6,animation:"fadeUp .3s ease both"}}>
               Back to hall
             </button>
             {/* Title */}
-            <div style={{textAlign:"center",marginBottom:28,animation:"fadeUp .6s .1s ease both",opacity:0}}>
+            <div style={{textAlign:"center",marginBottom:28,animation:"fadeUp .3s ease both",opacity:0}}>
               <h1 style={{fontFamily:DISPLAY,fontSize:"1.6rem",fontWeight:700,color:"rgba(190,211,196,0.9)",margin:"0 0 8px",textShadow:"0 2px 12px rgba(0,0,0,0.5)"}}>Visiting {visitingFarm.username||"Anonymous"}'s Farm</h1>
               <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.88rem",color:"rgba(190,211,196,0.4)",margin:0}}>A peaceful walk through their garden</p>
             </div>
@@ -5599,13 +5599,13 @@ function AppInner(){
 
         {/* ═══ TOP HUD — mode toggle + currency + garden status ═══ */}
         {/* Farm / Prayers tab toggle */}
-        <div style={{position:"absolute",top:"3%",left:"50%",transform:"translateX(-50%)",zIndex:22,display:"flex",background:"rgba(10,8,6,0.7)",backdropFilter:"blur(10px)",WebkitBackdropFilter:"blur(10px)",border:"1px solid rgba(190,211,196,0.12)",borderRadius:12,overflow:"hidden",animation:"fadeUp .5s ease both"}}>
+        <div style={{position:"absolute",top:"3%",left:"50%",transform:"translateX(-50%)",zIndex:22,display:"flex",background:"rgba(10,8,6,0.7)",backdropFilter:"blur(10px)",WebkitBackdropFilter:"blur(10px)",border:"1px solid rgba(190,211,196,0.12)",borderRadius:12,overflow:"hidden",animation:"fadeUp .25s ease both"}}>
           {[{id:"farm",label:"Farm"},{id:"prayers",label:"Prayers"}].map(tab=>(
             <button key={tab.id} onClick={()=>{setGardenMode(tab.id);setSelectedPlot(null);setPlantModal(null);}} style={{background:gardenMode===tab.id?"rgba(90,138,106,0.25)":"transparent",border:"none",padding:"6px 16px",cursor:"pointer",fontFamily:SERIF,fontStyle:"italic",fontSize:"0.72rem",fontWeight:gardenMode===tab.id?600:400,color:gardenMode===tab.id?"#BED3C4":"rgba(190,211,196,0.4)",transition:"all .15s"}}>{tab.label}</button>
           ))}
         </div>
 
-        <div style={{position:"absolute",left:"3%",top:"3%",zIndex:20,display:"flex",alignItems:"center",gap:8,animation:"fadeUp .6s ease both"}}>
+        <div style={{position:"absolute",left:"3%",top:"3%",zIndex:20,display:"flex",alignItems:"center",gap:8,animation:"fadeUp .3s ease both"}}>
           {isFarmMode ? (
             <div style={{background:"rgba(10,8,6,0.65)",backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",border:"1px solid rgba(212,180,100,0.15)",borderRadius:10,padding:"5px 12px",display:"flex",alignItems:"center",gap:6}}>
               <span style={{fontSize:"0.75rem"}}>🪙</span>
@@ -6100,7 +6100,7 @@ function AppInner(){
             {KITCHEN_RECIPES.map(recipe=>{
               const canCook=hasIngredients(recipe.inputs);
               return(
-                <div key={recipe.id} style={{background:"rgba(18,14,8,0.85)",backdropFilter:"blur(10px)",WebkitBackdropFilter:"blur(10px)",border:`1px solid ${canCook?"rgba(212,180,100,0.2)":"rgba(201,169,110,0.08)"}`,borderRadius:14,padding:"14px 12px",display:"flex",flexDirection:"column",gap:8,animation:"fadeUp .5s ease both"}}>
+                <div key={recipe.id} style={{background:"rgba(18,14,8,0.85)",backdropFilter:"blur(10px)",WebkitBackdropFilter:"blur(10px)",border:`1px solid ${canCook?"rgba(212,180,100,0.2)":"rgba(201,169,110,0.08)"}`,borderRadius:14,padding:"14px 12px",display:"flex",flexDirection:"column",gap:8,animation:"fadeUp .25s ease both"}}>
                   <div style={{display:"flex",alignItems:"center",gap:8}}>
                     <span style={{fontSize:"1.4rem"}}>{recipe.emoji}</span>
                     <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.82rem",color:"rgba(255,240,210,0.8)",flex:1}}>{recipe.name}</span>
@@ -6168,7 +6168,7 @@ function AppInner(){
             </svg>
           </button>
           {/* Prayer spot — centered atmospheric text */}
-          <div style={{position:"absolute",bottom:"12%",left:"50%",transform:"translateX(-50%)",pointerEvents:"none",textAlign:"center",animation:"fadeUp 1s ease both .5s",opacity:0,width:"80%",maxWidth:360}}>
+          <div style={{position:"absolute",bottom:"12%",left:"50%",transform:"translateX(-50%)",pointerEvents:"none",textAlign:"center",animation:"fadeUp .4s ease both .5s",opacity:0,width:"80%",maxWidth:360}}>
             <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"1.1rem",color:"rgba(220,230,240,0.35)",textShadow:"0 2px 12px rgba(0,0,0,0.9)",margin:0,lineHeight:1.6}}>Be still, and know...</p>
             <p style={{fontFamily:SANS,fontSize:"0.72rem",color:"rgba(200,210,220,0.22)",marginTop:10,letterSpacing:"0.04em"}}>guided prayer coming soon</p>
           </div>
@@ -6186,7 +6186,7 @@ function AppInner(){
         <ImmersiveMarket/>
 
         {/* ── Back to village ── */}
-        <button onClick={()=>{setMarketStall(null);setShopStall(null);setScreen("map");}} style={{position:"absolute",top:20,left:16,zIndex:14,background:"rgba(10,8,16,0.55)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",border:"1px solid rgba(201,169,110,0.15)",borderRadius:999,padding:"8px 20px",cursor:"pointer",color:"rgba(255,248,232,0.6)",fontFamily:SANS,fontSize:"0.78rem",transition:"all 0.2s",display:"inline-flex",alignItems:"center",gap:6,animation:"fadeUp .6s ease both"}}>
+        <button onClick={()=>{setMarketStall(null);setShopStall(null);setScreen("map");}} style={{position:"absolute",top:20,left:16,zIndex:14,background:"rgba(10,8,16,0.55)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",border:"1px solid rgba(201,169,110,0.15)",borderRadius:999,padding:"8px 20px",cursor:"pointer",color:"rgba(255,248,232,0.6)",fontFamily:SANS,fontSize:"0.78rem",transition:"all 0.2s",display:"inline-flex",alignItems:"center",gap:6,animation:"fadeUp .3s ease both"}}>
           Back to village
         </button>
 
@@ -6211,7 +6211,7 @@ function AppInner(){
 
         {/* ── Coming soon overlay — bottom of path ── */}
         {!marketStall&&!shopStall&&(
-          <div style={{position:"absolute",bottom:24,left:"50%",transform:"translateX(-50%)",zIndex:14,background:"rgba(10,8,16,0.55)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",border:"1px solid rgba(201,169,110,0.15)",borderRadius:14,padding:"12px 28px",textAlign:"center",animation:"fadeUp .8s .4s ease both"}}>
+          <div style={{position:"absolute",bottom:24,left:"50%",transform:"translateX(-50%)",zIndex:14,background:"rgba(10,8,16,0.55)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",border:"1px solid rgba(201,169,110,0.15)",borderRadius:14,padding:"12px 28px",textAlign:"center",animation:"fadeUp .35s .1s ease both"}}>
             <p style={{fontFamily:SERIF,fontStyle:"italic",color:"rgba(255,248,232,0.4)",fontSize:"0.85rem",margin:0}}>Tap a stall to browse...</p>
           </div>
         )}
@@ -6604,23 +6604,23 @@ function AppInner(){
         {!bibleView&&!upperRoomView&&(
           <div style={{position:"relative",zIndex:10,height:"100%",overflowY:"auto",WebkitOverflowScrolling:"touch"}}>
             <div style={{maxWidth:720,margin:"0 auto",padding:"28px 22px 80px"}}>
-              <button onClick={()=>setScreen("map")} style={{background:"rgba(26,22,30,0.55)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",border:"1px solid rgba(180,160,210,0.15)",borderRadius:999,padding:"8px 20px",cursor:"pointer",color:"rgba(230,220,248,0.6)",fontFamily:SANS,fontSize:"0.78rem",marginBottom:28,transition:"all 0.2s",display:"inline-flex",alignItems:"center",gap:6,animation:"fadeUp .6s ease both"}}>
+              <button onClick={()=>setScreen("map")} style={{background:"rgba(26,22,30,0.55)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",border:"1px solid rgba(180,160,210,0.15)",borderRadius:999,padding:"8px 20px",cursor:"pointer",color:"rgba(230,220,248,0.6)",fontFamily:SANS,fontSize:"0.78rem",marginBottom:28,transition:"all 0.2s",display:"inline-flex",alignItems:"center",gap:6,animation:"fadeUp .3s ease both"}}>
                 Back to village
               </button>
-              <div style={{textAlign:"center",marginBottom:32,animation:"fadeUp .6s .1s ease both",opacity:0}}>
+              <div style={{textAlign:"center",marginBottom:32,animation:"fadeUp .3s ease both",opacity:0}}>
                 <h1 style={{fontFamily:DISPLAY,fontSize:"2rem",fontWeight:700,color:"#D8C8F0",margin:"0 0 8px",textShadow:"0 2px 12px rgba(0,0,0,0.5)"}}>The Upper Room</h1>
                 <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"1rem",color:"rgba(200,190,230,0.45)",margin:"0 0 14px"}}>A sacred space for worship and encounter.</p>
                 <div style={{width:60,height:1,background:"rgba(180,160,210,0.3)",margin:"0 auto"}}/>
               </div>
               {dailyVerse&&(
-                <div onClick={()=>{setBibleBook(dailyVerse.bookIdx);setBibleChapter(dailyVerse.chapIdx);setBibleView("reading");setUpperRoomView("scriptures");}} style={{background:"rgba(20,18,32,0.55)",backdropFilter:"blur(14px)",WebkitBackdropFilter:"blur(14px)",border:"1px solid rgba(180,160,210,0.15)",borderRadius:16,padding:"28px 24px",textAlign:"center",marginBottom:28,animation:"fadeUp .8s .25s ease both",opacity:0,cursor:"pointer",transition:"all 0.3s"}}>
+                <div onClick={()=>{setBibleBook(dailyVerse.bookIdx);setBibleChapter(dailyVerse.chapIdx);setBibleView("reading");setUpperRoomView("scriptures");}} style={{background:"rgba(20,18,32,0.55)",backdropFilter:"blur(14px)",WebkitBackdropFilter:"blur(14px)",border:"1px solid rgba(180,160,210,0.15)",borderRadius:16,padding:"28px 24px",textAlign:"center",marginBottom:28,animation:"fadeUp .35s .06s ease both",opacity:0,cursor:"pointer",transition:"all 0.3s"}}>
                   <p style={{fontFamily:SANS,fontSize:"0.65rem",letterSpacing:"0.08em",textTransform:"uppercase",color:"rgba(200,190,230,0.35)",margin:"0 0 14px"}}>Verse of the Day</p>
                   <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"1.05rem",color:"rgba(230,220,248,0.65)",lineHeight:1.7,margin:"0 0 14px"}}>{dailyVerse.text}</p>
                   <p style={{fontFamily:SANS,fontSize:"0.78rem",color:"rgba(180,160,210,0.45)",margin:0}}>-- {dailyVerse.ref}</p>
                 </div>
               )}
               {/* ── Navigation Tiles ── */}
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12,animation:"fadeUp .8s .35s ease both",opacity:0}}>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12,animation:"fadeUp .35s .08s ease both",opacity:0}}>
                 {[
                   {key:"scriptures",label:"The Scriptures",sub:"Read the Word",icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(180,160,210,0.55)" strokeWidth="1.5"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>},
                   {key:"prayer-wall",label:"Prayer Wall",sub:"Lift up requests",icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(180,160,210,0.55)" strokeWidth="1.5"><path d="M12 2C6.48 2 2 6 2 11c0 3 1.5 5.5 4 7v4l3.5-2c.8.2 1.6.3 2.5.3 5.52 0 10-4 10-9.3C22 6 17.52 2 12 2z"/></svg>},
@@ -6643,7 +6643,7 @@ function AppInner(){
                 ))}
               </div>
               {/* Notifications tile — full width */}
-              <div style={{animation:"fadeUp .8s .45s ease both",opacity:0}}>
+              <div style={{animation:"fadeUp .35s .12s ease both",opacity:0}}>
                 <button onClick={()=>{if(!user){setToast({msg:"Sign in to access the community"});return;}setUpperRoomView("notifications");}} style={{width:"100%",background:"rgba(20,18,32,0.55)",backdropFilter:"blur(14px)",WebkitBackdropFilter:"blur(14px)",border:"1px solid rgba(180,160,210,0.15)",borderRadius:16,padding:"18px 16px",cursor:"pointer",textAlign:"center",transition:"all 0.3s",position:"relative"}}
                   onMouseEnter={e=>{e.currentTarget.style.borderColor="rgba(180,160,210,0.3)";e.currentTarget.style.background="rgba(20,18,32,0.7)";}}
                   onMouseLeave={e=>{e.currentTarget.style.borderColor="rgba(180,160,210,0.15)";e.currentTarget.style.background="rgba(20,18,32,0.55)";}}>
@@ -6656,7 +6656,7 @@ function AppInner(){
               </div>
               {/* Saved Verses shortcut */}
               {savedVerses.length>0&&(
-                <div style={{textAlign:"center",marginTop:16,animation:"fadeUp .8s .55s ease both",opacity:0}}>
+                <div style={{textAlign:"center",marginTop:16,animation:"fadeUp .35s .15s ease both",opacity:0}}>
                   <button onClick={()=>setSavedVersesView(true)} style={{background:"rgba(212,168,64,0.08)",border:"1px solid rgba(212,168,64,0.18)",borderRadius:20,padding:"10px 28px",cursor:"pointer",color:"rgba(212,168,64,0.7)",fontFamily:SANS,fontSize:"0.82rem",transition:"all 0.3s"}}>
                     Saved Verses ({savedVerses.length})
                   </button>

@@ -49,7 +49,7 @@ export default function GatheringFeed({ spaceId, posts, loading, onBack, onOpenP
         </button>
 
         {/* Space header */}
-        <div style={{ textAlign: "center", marginBottom: 24, animation: "fadeUp .6s ease both" }}>
+        <div style={{ textAlign: "center", marginBottom: 24, animation: "fadeUp .3s ease both" }}>
           <h1 style={{ fontFamily: DISPLAY, fontSize: "1.4rem", fontWeight: 700, color: "#D8C8F0", margin: "0 0 6px" }}>{space?.name || "Gathering"}</h1>
           <p style={{ fontFamily: SERIF, fontStyle: "italic", fontSize: "0.82rem", color: "rgba(200,190,230,0.35)", margin: 0 }}>{space?.description || ""}</p>
           {space?.rules && (
@@ -65,7 +65,7 @@ export default function GatheringFeed({ spaceId, posts, loading, onBack, onOpenP
         </div>
 
         {/* Sort + Create */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 18, animation: "fadeUp .5s .1s ease both", opacity: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 18, animation: "fadeUp .3s .04s ease both", opacity: 0 }}>
           <div style={{ display: "flex", gap: 4, flex: 1 }}>
             {[["newest", "Newest"], ["helpful", "Most Helpful"], ["unanswered", "Unanswered"]].map(([k, label]) => (
               <button key={k} onClick={() => setSort(k)} style={{
@@ -96,7 +96,7 @@ export default function GatheringFeed({ spaceId, posts, loading, onBack, onOpenP
 
         {/* Posts */}
         {!loading && sorted.length === 0 && (
-          <div style={{ textAlign: "center", padding: "32px 0", animation: "fadeUp .5s ease both" }}>
+          <div style={{ textAlign: "center", padding: "32px 0", animation: "fadeUp .25s ease both" }}>
             <p style={{ fontFamily: SERIF, fontStyle: "italic", fontSize: "0.88rem", color: "rgba(200,190,230,0.3)", margin: "0 0 12px" }}>This gathering is waiting for its first voice.</p>
             <button onClick={onCreatePost} style={{
               background: "rgba(180,160,210,0.08)", border: "1px solid rgba(180,160,210,0.15)",
