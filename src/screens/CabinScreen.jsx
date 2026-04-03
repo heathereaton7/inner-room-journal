@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { GFONTS, B, SERIF, SANS, DISPLAY, SHELF_BOOKS, BOOK_COVERS, BOOK_CONTENT, REFLECTION_ROOMS, LOCKED_ROOM, JESUS_QUESTIONS, VIRAL_QS, th, wc, todayStr, nowTime, getBookPageCount, CABIN_FALLBACK_IMAGE } from '../constants.js';
 import { SHOP_ITEMS } from '../items.js';
 import { ITEMS, isPlaceable } from '../items.js';
@@ -82,6 +82,13 @@ export default function CabinScreen({
   // Placeable items in inventory (the "bag")
   const placeableInInventory = Object.entries(inventory || {})
     .filter(([id, qty]) => qty > 0 && isPlaceable(id));
+
+  // Listen for menu "Stored Items" button
+  useEffect(() => {
+    const handler = () => setShowBag(true);
+    window.addEventListener('open-bag', handler);
+    return () => window.removeEventListener('open-bag', handler);
+  }, []);
 
   return(
     <div ref={containerRef} style={{position:"fixed",inset:0,overflow:"hidden",fontFamily:SANS}}

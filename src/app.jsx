@@ -3742,6 +3742,17 @@ function AppInner(){
             {totalUnclaimed>0&&<div style={{minWidth:18,height:18,borderRadius:9,background:B.gold,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:SANS,fontSize:"0.55rem",fontWeight:700,color:B.night,padding:"0 5px"}}>{totalUnclaimed}</div>}
           </button>
 
+          {/* ── INVENTORY BUTTON (placeable items) ── */}
+          {screen==="cabin"&&(
+            <button onClick={()=>{setMenuOpen(false);
+              // Trigger the bag drawer in CabinScreen by dispatching a custom event
+              window.dispatchEvent(new CustomEvent('open-bag'));
+            }} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"rgba(255,255,255,0.03)",border:"1px solid rgba(201,169,110,0.08)",borderRadius:10,padding:"11px 14px",cursor:"pointer",transition:"all 0.2s",marginBottom:14}}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="rgba(201,169,110,0.5)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+              <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.78rem",color:"rgba(255,248,232,0.5)",flex:1,textAlign:"left"}}>Stored Items</span>
+            </button>
+          )}
+
           {/* ── INNER ROOM PLUS CTA ── */}
           {!hasPremium&&(
             <button onClick={()=>{setMenuOpen(false);setPrevScreen(screen);setScreen("upgrade");}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"rgba(201,169,110,0.05)",border:"1px solid rgba(201,169,110,0.14)",borderRadius:10,padding:"11px 14px",cursor:"pointer",transition:"all 0.2s",marginBottom:14}}>
