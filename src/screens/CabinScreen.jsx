@@ -116,7 +116,7 @@ export default function CabinScreen({
           <div key={item.id} style={{
             position:"absolute",
             left:`${pos.left}%`, top:`${pos.top}%`,
-            width:config.width||"8%",
+            width:`clamp(40px, ${config.width||"8%"}, 120px)`,
             transform:"translate(-50%,-50%)",
             zIndex:isDragging?200:6,
             filter:config.filter||(isDragging?"brightness(1.3)":"none"),
@@ -124,6 +124,7 @@ export default function CabinScreen({
             transition:isDragging?"none":"left 0.15s ease, top 0.15s ease",
             animation:isDragging?"none":"fadeUp 0.8s ease both",
             touchAction:"none",
+            padding:8,
           }}
             onClick={(e)=>handleDecorTap(item.id,e)}
             onTouchStart={(e)=>{if(draggingDecor)return;e.stopPropagation();handleDecorTap(item.id,e);}}
