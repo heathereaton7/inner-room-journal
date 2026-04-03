@@ -2,6 +2,7 @@ import { GFONTS, B, SERIF, SANS, DISPLAY, SHELF_BOOKS, BOOK_COVERS, BOOK_CONTENT
 import { CSS } from '../styles.js';
 import ImmersiveCabin from '../components/ImmersiveCabin.jsx';
 import BookSparkles from '../components/BookSparkles.jsx';
+import { ROOM_ITEMS } from '../roomDecor.js';
 
 export default function CabinScreen({
   spaceTransit, transitDir, transitionToMap, transitionToKitchen, transitionToJournal,
@@ -21,6 +22,7 @@ export default function CabinScreen({
   setCardQ, setIsCustomCard, setCardCustom,
   menuOpen, setMenuOpen,
   BottomMenuDrawer, goToHistory,
+  playerRoom,
 }){
   return(
     <div style={{position:"fixed",inset:0,overflow:"hidden",fontFamily:SANS}}>
@@ -45,6 +47,20 @@ export default function CabinScreen({
         return(
           <div key={item.id} style={{position:"absolute",top:item.pos.top,left:item.pos.left,width:item.pos.width,zIndex:5,pointerEvents:"none",animation:"fadeUp 0.6s ease both"}}>
             <img src={item.asset} alt={item.name} onError={e=>{e.target.parentNode.style.display="none";}} style={{width:"100%",height:"auto",display:"block"}}/>
+          </div>
+        );
+      })}
+
+      {/* ── Room decor overlays ── */}
+      {playerRoom?.items?.map(itemId=>{
+        const config=ROOM_ITEMS[itemId];
+        if(!config) return null;
+        return(
+          <div key={itemId} style={{...config.style, animation:"fadeUp 0.8s ease both"}}>
+            {config.glow&&(
+              <div style={{position:"absolute",left:"50%",top:"60%",width:config.glow.size,paddingBottom:config.glow.size,transform:"translate(-50%,-50%)",borderRadius:"50%",background:`radial-gradient(circle,${config.glow.color},transparent 70%)`,pointerEvents:"none",filter:"blur(4px)"}}/>
+            )}
+            <img src={config.src} alt={config.label||itemId} style={{width:"100%",height:"auto",display:"block",position:"relative"}} onError={e=>{e.target.parentNode.style.display="none";}}/>
           </div>
         );
       })}
