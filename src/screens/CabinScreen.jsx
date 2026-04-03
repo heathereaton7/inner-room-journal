@@ -118,7 +118,7 @@ export default function CabinScreen({
             left:`${pos.left}%`, top:`${pos.top}%`,
             width:config.width||"18%",
             transform:"translate(-50%,-50%)",
-            zIndex:isDragging?200:6,
+            zIndex:isDragging?200:15,
             filter:config.filter||(isDragging?"brightness(1.3)":"none"),
             cursor:isDragging?"grabbing":"pointer",
             transition:isDragging?"none":"left 0.15s ease, top 0.15s ease",
@@ -217,16 +217,7 @@ export default function CabinScreen({
         <div style={{position:"absolute",left:"22%",top:"18%",width:"56%",height:"65%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,245,180,0.20) 0%,transparent 55%)",pointerEvents:"none",animation:"hotspotPulse 3.3s ease-in-out infinite",animationDelay:"1s"}}/>
       </button>
 
-      {/* 4. LEFT WINDOW — left half of the large picture window (forest + starry sky) */}
-      <button className="window-hotspot" onClick={()=>setWindowPanel("left")} style={{position:"absolute",left:"18%",top:"6%",width:"25%",height:"32%",zIndex:10,background:"transparent",border:"none",cursor:"pointer",borderRadius:"8px"}}/>
-
-      {/* 5. RIGHT WINDOW — right half of the large picture window */}
-      <button className="window-hotspot" onClick={()=>setWindowPanel("right")} style={{position:"absolute",left:"44%",top:"6%",width:"25%",height:"32%",zIndex:10,background:"transparent",border:"none",cursor:"pointer",borderRadius:"8px"}}/>
-
-      {/* 6. CANDLE / STREAK — over the fireplace mantel candles (LEFT side) */}
-      <button onClick={tapCandle} style={{position:"absolute",left:"2%",top:"20%",width:"16%",height:"20%",zIndex:10,background:"transparent",border:"none",cursor:"pointer",borderRadius:"50%",animation:"candlePulse 3s ease-in-out infinite"}}>
-        <div style={{position:"absolute",inset:"-20%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,200,80,0.06),transparent 65%)",pointerEvents:"none"}}/>
-      </button>
+      {/* 4-6 REMOVED — Window panels + fireplace candle hotspot now accessed via menu only */}
 
       {/* 7. INSIGHTS — center area on the fluffy rug/carpet */}
       <button onClick={()=>setShowInsights(true)} style={{position:"absolute",left:"30%",right:"30%",top:"58%",height:"14%",zIndex:10,background:"transparent",border:"none",cursor:"pointer",borderRadius:"8px"}}>
@@ -281,12 +272,7 @@ export default function CabinScreen({
         <div style={{position:"absolute",right:"0%",top:"42%",width:"20%",height:"42%",zIndex:900,background:"rgba(100,255,100,0.25)",border:"2px solid rgba(100,255,100,0.7)",borderRadius:8,pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.5rem",fontWeight:700,color:"#fff",background:"rgba(60,180,60,0.85)",padding:"2px 6px",borderRadius:8}}>STAIRS → Kitchen</span></div>
         {/* 3. Open book on desk */}
         <div style={{position:"absolute",right:"6%",top:"20%",width:"18%",height:"16%",zIndex:900,background:"rgba(100,100,255,0.25)",border:"2px solid rgba(100,100,255,0.7)",borderRadius:8,pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.5rem",fontWeight:700,color:"#fff",background:"rgba(60,60,255,0.75)",padding:"2px 6px",borderRadius:8}}>BOOK → Journal</span></div>
-        {/* 4. Left Window */}
-        <div style={{position:"absolute",left:"18%",top:"6%",width:"25%",height:"32%",zIndex:900,background:"rgba(255,255,100,0.2)",border:"2px solid rgba(255,255,100,0.7)",borderRadius:8,pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.5rem",fontWeight:700,color:"#fff",background:"rgba(180,180,0,0.85)",padding:"2px 6px",borderRadius:8}}>L-WIN</span></div>
-        {/* 5. Right Window */}
-        <div style={{position:"absolute",left:"44%",top:"6%",width:"25%",height:"32%",zIndex:900,background:"rgba(255,165,0,0.2)",border:"2px solid rgba(255,165,0,0.7)",borderRadius:8,pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.5rem",fontWeight:700,color:"#fff",background:"rgba(200,120,0,0.85)",padding:"2px 6px",borderRadius:8}}>R-WIN</span></div>
-        {/* 6. Candle (fireplace) */}
-        <div style={{position:"absolute",left:"2%",top:"20%",width:"16%",height:"20%",zIndex:900,background:"rgba(255,100,255,0.25)",border:"2px solid rgba(255,100,255,0.7)",borderRadius:"50%",pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.5rem",fontWeight:700,color:"#fff",background:"rgba(200,60,200,0.85)",padding:"2px 6px",borderRadius:8}}>CANDLE</span></div>
+        {/* 4-6 removed — accessed via menu now */}
         {/* 7. Insights (rug) */}
         <div style={{position:"absolute",left:"30%",right:"30%",top:"58%",height:"14%",zIndex:900,background:"rgba(0,200,200,0.2)",border:"2px solid rgba(0,200,200,0.7)",borderRadius:8,pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.5rem",fontWeight:700,color:"#fff",background:"rgba(0,150,150,0.85)",padding:"2px 6px",borderRadius:8}}>INSIGHTS</span></div>
       </>}
