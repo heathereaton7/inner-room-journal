@@ -14,10 +14,10 @@ export const ROOM_ITEMS = {
     id: 'candle',
     src: '/decor/candle.png',
     label: 'A quiet flame',
-    width: '8%',
+    width: '18%',
     filter: 'brightness(1.15) saturate(1.2)',
     defaultPos: { left: 12, top: 28 },
-    glow: { size: '14%', color: 'rgba(255,200,100,0.18)' },
+    glow: { size: '28%', color: 'rgba(255,200,100,0.18)' },
   },
 };
 

@@ -116,7 +116,7 @@ export default function CabinScreen({
           <div key={item.id} style={{
             position:"absolute",
             left:`${pos.left}%`, top:`${pos.top}%`,
-            width:`clamp(40px, ${config.width||"8%"}, 120px)`,
+            width:config.width||"18%",
             transform:"translate(-50%,-50%)",
             zIndex:isDragging?200:6,
             filter:config.filter||(isDragging?"brightness(1.3)":"none"),
