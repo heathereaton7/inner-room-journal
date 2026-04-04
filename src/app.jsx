@@ -1946,6 +1946,14 @@ function AppInner(){
       setCandles(cn); setPrayedFor(pf); setGardenPlots(gp); setInventory(inv); setSavedVerses(sv);
       setBank(bnk); setSellBasket(sb); setFarmPlots(fp); setAnimals(an); setMissions(ms); setIsPremium(!!pm);
       if(pa) setPlayerAppearance(pa);
+      // Safety: if user has done check-ins but candle was lost in migration, restore it
+      const hasCheckins=Object.keys(localStorage).some(k=>k.startsWith("irj-checkins-"));
+      const candlePlaced=migratedRoom.placed?.some(p=>p.id==="candle");
+      const candleInInv=(inv.candle||0)>0;
+      if(hasCheckins&&!candlePlaced&&!candleInInv){
+        inv.candle=(inv.candle||0)+1;
+        dbSave("irj-inventory",inv);
+      }
       setPlayerRoom(migratedRoom);
       if(rm?.bag?.length>0||oi.length>0) dbSave("irj-room",migratedRoom);
       let s=0,d=new Date(),map={};
@@ -2645,7 +2653,10 @@ function AppInner(){
       setSetupGender(data.gender||null);
       const app=data.appearance||{base:data.gender||"male",outfit:"default"};
       setPlayerAppearance(app);dbSave("irj-appearance",app);
-      if(data.room){const mr=migrateRoom(data.room);setPlayerRoom(mr);dbSave("irj-room",mr);}
+      if(data.room){
+        const mr=migrateRoom(data.room,(id,qty)=>addToInventory(id,qty));
+        setPlayerRoom(mr);dbSave("irj-room",mr);
+      }
       setIsOnboarded(true);dbSave("irj-onboarded",true);
       setScreen("cabin");
     }catch(e){console.warn("ensureUserProfile error:",e);}
