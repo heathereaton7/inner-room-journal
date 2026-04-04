@@ -1,7 +1,7 @@
 // ─── Map Images ───────────────────────────────────────────────────
 // Illustrated map artwork stacked vertically as the world background.
 // The tile grid is invisible — used only for collision and positioning.
-export const MAP_IMAGES = ['/newmap.png', '/farmmap.png'];
+export const MAP_IMAGES = ['/newmap.webp', '/farmmap.webp'];
 export const MAP_SCALE = 3;  // each image (1024x1536) scaled 3x
 
 // ─── Tile & World Dimensions ──────────────────────────────────────

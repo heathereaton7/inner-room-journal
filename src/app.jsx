@@ -305,11 +305,11 @@ function RoomGlow({id}){
    CENTER opening to waterfall view, prep table CENTER,
    stairs going UP on RIGHT, baskets of produce, copper pans.
 ═══════════════════════════════════════════════════ */
-const KITCHEN_BG_IMAGE="/kitchen.png";
-const STOVE_BG_IMAGE="/stove.png";
-const MARKET_BG_IMAGE="/market.png";
-const KITCHEN_WINDOW_BG_IMAGE="/kitchen-window.png";
-const UPPER_ROOM_BG_IMAGE="/upper-room-hall.png";
+const KITCHEN_BG_IMAGE="/kitchen.webp";
+const STOVE_BG_IMAGE="/stove.webp";
+const MARKET_BG_IMAGE="/market.webp";
+const KITCHEN_WINDOW_BG_IMAGE="/kitchen-window.webp";
+const UPPER_ROOM_BG_IMAGE="/upper-room-hall.webp";
 
 /* ═══════════════════════════════════════════════════
    AMBIENT SOUND MANAGER — Global singleton
@@ -1021,7 +1021,7 @@ function ImmersiveKitchenWindow(){
    dirt plots on either side, lanterns, string lights,
    lush plants and lavender throughout.
 ═══════════════════════════════════════════════════ */
-const GARDEN_BG_IMAGE="/garden.png";
+const GARDEN_BG_IMAGE="/garden.webp";
 
 // 12 plots mapped to the circular dirt patches in garden.png
 // Arranged in 6 rows of 2 (left + right of stone path), scaling down with perspective
@@ -1955,7 +1955,7 @@ function AppInner(){
       setScreen("welcome");
       setCardQ(shuffle(ALL_CARD_QS)[0]);
       // preload spatial world backgrounds
-      ["cabin-interior.png","upper-room-hall.png","harvest-market.png"].forEach(src=>{const img=new Image();img.src="/"+src;});
+      ["cabin-interior.webp","upper-room-hall.webp","harvest-market.webp"].forEach(src=>{const img=new Image();img.src="/"+src;});
     })();
   },[]);
 
@@ -3327,9 +3327,9 @@ function AppInner(){
 
   // ── SCENE NAVIGATION ──
   const SCENES = [
-    {bgImage:"/scene-bridge.png",title:"Most people avoid the real questions.",body:"We fill our days to escape the silence. Inner Room Journal slows you down — and asks the ones that matter.",btn:"Continue",effects:["fireflies","water"]},
-    {bgImage:"/scene-path.png",title:"You won't journal alone.",body:"Guided prompts take you deeper — from surface to root. Plus community rooms where others walk beside you.",btn:"Continue",effects:["fireflies"]},
-    {bgImage:"/scene-porch.png",title:"Growth becomes visible.",body:"Over time, patterns emerge from your words. Themes surface. Transformation becomes something you can see.",btn:"Step inside",effects:["fireflies","smoke","glow"]},
+    {bgImage:"/scene-bridge.webp",title:"Most people avoid the real questions.",body:"We fill our days to escape the silence. Inner Room Journal slows you down — and asks the ones that matter.",btn:"Continue",effects:["fireflies","water"]},
+    {bgImage:"/scene-path.webp",title:"You won't journal alone.",body:"Guided prompts take you deeper — from surface to root. Plus community rooms where others walk beside you.",btn:"Continue",effects:["fireflies"]},
+    {bgImage:"/scene-porch.webp",title:"Growth becomes visible.",body:"Over time, patterns emerge from your words. Themes surface. Transformation becomes something you can see.",btn:"Step inside",effects:["fireflies","smoke","glow"]},
   ];
 
   function startAmbient(){
@@ -4027,7 +4027,7 @@ function AppInner(){
     <div style={{minHeight:"100vh",width:"100%",position:"relative",overflow:"hidden",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-end"}}>
       <style>{GFONTS}{CSS}</style>
       {/* Cabin background image — now an <img> so we can calculate rendered rect */}
-      <img ref={outdoorImgRef} src="/outdoor.png" onLoad={recalcOutdoorRect} alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",objectPosition:"center 30%",zIndex:0,filter:"brightness(1.25)",transformOrigin:"50% 42%",animation:doorOpening?"walkToDoor 1.3s ease-in forwards":"none"}}/>
+      <img ref={outdoorImgRef} src="/outdoor.webp" onLoad={recalcOutdoorRect} alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",objectPosition:"center 30%",zIndex:0,filter:"brightness(1.25)",transformOrigin:"50% 42%",animation:doorOpening?"walkToDoor 1.3s ease-in forwards":"none"}}/>
 
       {/* ── Glow overlays — positioned relative to actual rendered image rectangle ── */}
       {/* This container is sized/positioned to match the real image rect, so child */}
@@ -4114,7 +4114,7 @@ function AppInner(){
         {doorPhase==="walk"&&<div style={{position:"absolute",inset:0,background:"radial-gradient(circle at 50% 42%, transparent 10%, rgba(0,0,0,0.9) 75%)",animation:"walkVignette 1.3s ease-in forwards"}}/>}
 
         {/* Door close-up photo — shown during "door" and "enter" phases */}
-        {(doorPhase==="door"||doorPhase==="enter")&&<img src="/door.png" alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",animation:doorPhase==="enter"?"doorEnterZoom 0.7s ease-in forwards":"doorReveal 0.4s ease-out forwards, doorHoldZoom 2s linear 0.4s forwards"}}/>}
+        {(doorPhase==="door"||doorPhase==="enter")&&<img src="/door.webp" alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",animation:doorPhase==="enter"?"doorEnterZoom 0.7s ease-in forwards":"doorReveal 0.4s ease-out forwards, doorHoldZoom 2s linear 0.4s forwards"}}/>}
 
         {/* Flickering lantern glow on the door photo */}
         {doorPhase==="door"&&<>
@@ -4202,7 +4202,7 @@ function AppInner(){
     // Door background shared by steps 0-2
     const DoorBg=()=>(
       <>
-        <img src="/door.png" alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",objectPosition:"center center",filter:"brightness(0.8)",animation:onboardStep===0?"sceneFadeIn 1s ease both":"none"}}/>
+        <img src="/door.webp" alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",objectPosition:"center center",filter:"brightness(0.8)",animation:onboardStep===0?"sceneFadeIn 1s ease both":"none"}}/>
         <div style={{position:"absolute",top:"28%",left:"30%",width:"80px",height:"80px",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,180,60,0.25) 0%,transparent 70%)",animation:"candleGlowPulse 3.5s ease-in-out infinite",pointerEvents:"none"}}/>
         <div style={{position:"absolute",top:"28%",right:"30%",width:"80px",height:"80px",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,180,60,0.25) 0%,transparent 70%)",animation:"candleGlowPulse 3.5s 0.8s ease-in-out infinite",pointerEvents:"none"}}/>
         <div style={{position:"absolute",inset:0,background:"linear-gradient(to bottom,transparent 0%,transparent 35%,rgba(10,8,6,0.5) 60%,rgba(10,8,6,0.92) 85%,rgba(10,8,6,0.98) 100%)"}}/>
@@ -4309,7 +4309,7 @@ function AppInner(){
         {onboardStep===3&&(
           <div onClick={()=>{setIsOnboarded(true);dbSave("irj-onboarded",true);fadeOutAmbient();setScreen("cabin");}} style={{position:"absolute",inset:0,cursor:"pointer"}}>
             {/* Door zooming open */}
-            <img src="/door.png" alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",objectPosition:"center center",animation:"doorEnterZoom 2s ease-out forwards",filter:"brightness(1.2)"}}/>
+            <img src="/door.webp" alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",objectPosition:"center center",animation:"doorEnterZoom 2s ease-out forwards",filter:"brightness(1.2)"}}/>
             {/* Warm golden flood */}
             <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse at center,rgba(255,200,80,0.15) 0%,rgba(255,180,60,0.06) 50%,transparent 100%)",animation:"doorEnterFade 1.5s 0.5s ease both",opacity:0}}/>
             {/* Welcome text over the zoom */}
@@ -4648,7 +4648,7 @@ function AppInner(){
       {/* BG fallback */}
       <div style={{position:"absolute",inset:0,background:"linear-gradient(160deg,#1A1208 0%,#2C1F14 40%,#1A1208 100%)",zIndex:0}}/>
       {/* BG image */}
-      <div style={{position:"absolute",inset:0,backgroundImage:"url(/upper-room-hall.png)",backgroundSize:"cover",backgroundPosition:"center top",zIndex:1}}/>
+      <div style={{position:"absolute",inset:0,backgroundImage:"url(/upper-room-hall.webp)",backgroundSize:"cover",backgroundPosition:"center top",zIndex:1}}/>
       {/* Dark overlay */}
       <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,rgba(10,8,6,0.7) 0%,rgba(10,8,6,0.35) 30%,rgba(10,8,6,0.5) 70%,rgba(10,8,6,0.85) 100%)",zIndex:2,pointerEvents:"none"}}/>
       {/* Ambient */}
@@ -6282,7 +6282,7 @@ function AppInner(){
             </header>
             <div style={{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch"}}>
               <div style={{position:"relative",width:"100%",maxHeight:"40vh",overflow:"hidden"}}>
-                <img src="/harvest-market.png" alt="Harvest Market stall" style={{width:"100%",height:"100%",objectFit:"cover",objectPosition:"center 30%",display:"block"}}/>
+                <img src="/harvest-market.webp" alt="Harvest Market stall" style={{width:"100%",height:"100%",objectFit:"cover",objectPosition:"center 30%",display:"block"}}/>
                 <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse at 50% 40%, rgba(255,190,80,0.08) 0%, transparent 60%)",mixBlendMode:"screen",pointerEvents:"none"}}/>
                 <div style={{position:"absolute",bottom:0,left:0,right:0,height:"40%",background:"linear-gradient(to top, #0A0810 0%, rgba(10,8,16,0.6) 50%, transparent 100%)",pointerEvents:"none"}}/>
               </div>
