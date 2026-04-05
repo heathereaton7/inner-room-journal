@@ -15,19 +15,24 @@ export default {
 
   buildGrid: buildWorldGrid,
 
-  zones: INTERACTION_ZONES.map(z => ({
-    ...z,
-    // Override cabin zone to use door transition instead of screen switch
-  })).filter(z => z.id !== 'cabin'),
+  // Filter out buildings that now have walkable interiors (use door transitions instead)
+  zones: INTERACTION_ZONES.filter(z => z.id !== 'cabin' && z.id !== 'upper-room'),
 
-  // Cabin uses a door transition instead of a zone prompt
   transitions: [
     {
       id: 'cabin-door',
-      cx: 14 * TILE + TILE / 2,    // center of cabin building
-      cy: 56 * TILE + TILE / 2,    // porch area (south of cabin)
+      cx: 14 * TILE + TILE / 2,
+      cy: 56 * TILE + TILE / 2,
       radius: 80,
       targetMap: 'cabin-interior',
+      spawnId: 'from-exterior',
+    },
+    {
+      id: 'upper-room-door',
+      cx: 32 * TILE + TILE / 2,   // center of upper room building
+      cy: 12 * TILE + TILE / 2,   // south porch area
+      radius: 80,
+      targetMap: 'upper-room',
       spawnId: 'from-exterior',
     },
   ],
@@ -35,5 +40,6 @@ export default {
   spawnPoints: {
     default: { x: SPAWN_X, y: SPAWN_Y },
     'from-cabin': { x: 14 * TILE + TILE / 2, y: 57 * TILE + TILE / 2 },
+    'from-upper-room': { x: 32 * TILE + TILE / 2, y: 13 * TILE + TILE / 2 },
   },
 };

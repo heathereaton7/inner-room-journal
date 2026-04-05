@@ -5141,6 +5141,19 @@ function AppInner(){
         setTimeout(()=>{setScreen("cabin");setWindowPanel("left");setSpaceTransit(false);setTransitDir(null);},700);
         return;
       }
+      // Upper Room interactions
+      if(dest==="interact:prayer-wall"){
+        setTimeout(()=>{setUpperRoomView("prayer");setScreen("upper-room");setSpaceTransit(false);setTransitDir(null);},700);
+        return;
+      }
+      if(dest==="interact:bible"){
+        setTimeout(()=>{setUpperRoomView("bible");setScreen("upper-room");setSpaceTransit(false);setTransitDir(null);},700);
+        return;
+      }
+      if(dest==="interact:feed"){
+        setTimeout(()=>{setUpperRoomView("feed");setScreen("upper-room");setSpaceTransit(false);setTransitDir(null);},700);
+        return;
+      }
 
       setTimeout(()=>{
         // Farm uses the garden screen with gardenMode="farm"
