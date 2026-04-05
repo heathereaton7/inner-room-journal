@@ -63,8 +63,10 @@ function buildGrid() {
   // 6. Desk + open book (northeast area)
   rect(15, 2, 17, 3, FURNITURE);
 
-  // 7. Stairs railing (east wall, narrow)
-  rect(18, 4, 18, 8, FURNITURE);
+  // 7. Stairs railing (east wall — rows 6-8 solid, rows 4-5 walkable for transition)
+  rect(18, 6, 18, 8, FURNITURE);
+  set(18, 4, T.DOOR);  // stairs entry → kitchen
+  set(18, 5, T.DOOR);
 
   // 8. Sofa (L-shaped — left arm thinner for better flow)
   rect(2, 7, 3, 9, FURNITURE);   // sofa back (starts at row 7 not 6)
@@ -76,7 +78,11 @@ function buildGrid() {
   // 10. Candle table (west wall)
   rect(1, 5, 2, 5, FURNITURE);
 
-  // 11. Door opening (wider for easier exit)
+  // 11. West wall archway → aquarium/conservatory
+  set(0, 9, T.DOOR);
+  set(0, 10, T.DOOR);
+
+  // 12. Front door opening (wider for easier exit)
   set(8, ROWS - 1, T.DOOR);
   set(9, ROWS - 1, T.DOOR);
   set(10, ROWS - 1, T.DOOR);
@@ -143,11 +149,29 @@ export default {
       targetMap: 'cabin-exterior',
       spawnId: 'from-cabin',
     },
+    {
+      id: 'stairs-down',
+      cx: 18 * TILE + TILE / 2,
+      cy: 4.5 * TILE + TILE / 2,
+      radius: 56,
+      targetMap: 'cabin-kitchen',
+      spawnId: 'from-upstairs',
+    },
+    {
+      id: 'west-passage',
+      cx: 0.3 * TILE,
+      cy: 9.5 * TILE + TILE / 2,
+      radius: 56,
+      targetMap: 'aquarium-room',
+      spawnId: 'from-cabin',
+    },
   ],
 
   spawnPoints: {
     default: { x: 9.5 * TILE + TILE / 2, y: 12 * TILE + TILE / 2 },
     'from-exterior': { x: 9.5 * TILE + TILE / 2, y: 12 * TILE + TILE / 2 },
+    'from-kitchen': { x: 17 * TILE + TILE / 2, y: 6 * TILE + TILE / 2 },
+    'from-aquarium': { x: 1.5 * TILE, y: 9.5 * TILE + TILE / 2 },
   },
 
   /**
@@ -166,8 +190,10 @@ export default {
     { src: '/assets/objects/window-bench.png', x: 7*TILE, y: 0.8*TILE, w: 7*TILE, h: 1*TILE, zBase: 1.8*TILE },
     // Desk — player can walk behind (zBase at desk bottom)
     { src: '/assets/objects/desk.png', x: 15*TILE, y: 1.5*TILE, w: 3*TILE, h: 2.5*TILE, zBase: 4*TILE },
-    // Stairs railing — tall, runs along east wall
-    { src: '/assets/objects/stairs.png', x: 18*TILE, y: 4*TILE, w: 1*TILE, h: 5*TILE, zBase: 9*TILE },
+    // Stairs railing — shortened (rows 6-8 only, rows 4-5 are walkable entry)
+    { src: '/assets/objects/stairs.png', x: 18*TILE, y: 5.5*TILE, w: 1*TILE, h: 3.5*TILE, zBase: 9*TILE },
+    // Archway on west wall → aquarium passage
+    { src: '/assets/objects/archway.png', x: -0.2*TILE, y: 8.3*TILE, w: 1.5*TILE, h: 2.8*TILE, zBase: 11.2*TILE },
     // Sofa back arm — player walks behind
     { src: '/assets/objects/sofa-back.png', x: 2*TILE, y: 6.5*TILE, w: 2*TILE, h: 3.5*TILE, zBase: 10*TILE },
     // Sofa seat — bottom of L

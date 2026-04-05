@@ -5167,6 +5167,11 @@ function AppInner(){
         setTimeout(()=>{setShopStall("barter");setScreen("market");setSpaceTransit(false);setTransitDir(null);},700);
         return;
       }
+      // Aquarium — placeholder (stays on map for now, future dedicated screen)
+      if(dest==="interact:aquarium"){
+        setTimeout(()=>{setToast({msg:"The fish are swimming peacefully."});setSpaceTransit(false);setTransitDir(null);},700);
+        return;
+      }
 
       setTimeout(()=>{
         // Farm uses the garden screen with gardenMode="farm"
