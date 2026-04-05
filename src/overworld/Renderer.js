@@ -127,6 +127,15 @@ export function setRendererWorldSize(w, h) {
   _worldH = h;
 }
 
+// Pre-computed color strings for firefly rendering (avoids per-frame string allocation)
+const _ffGlowColors = [];
+const _ffCoreColors = [];
+for (let i = 0; i <= 100; i++) {
+  const a = i / 100;
+  _ffGlowColors[i] = `rgba(255,220,100,${(a * 0.08).toFixed(3)})`;
+  _ffCoreColors[i] = `rgba(255,235,150,${a.toFixed(2)})`;
+}
+
 export function initFireflies(count = 50) {
   fireflies = [];
   for (let i = 0; i < count; i++) {
@@ -260,26 +269,29 @@ export function render(ctx, grid, camera, player, zones, dt) {
 // ─── Fireflies ─────────────────────────────────────────────────────
 
 function _drawFireflies(ctx, camera, dt) {
-  for (const ff of fireflies) {
+  const vw = camera.viewW, vh = camera.viewH;
+  for (let i = 0, len = fireflies.length; i < len; i++) {
+    const ff = fireflies[i];
     ff.wx += ff.sx;
     ff.wy += ff.sy;
     if (ff.wx < 64 || ff.wx > _worldW - 64) ff.sx *= -1;
     if (ff.wy < 64 || ff.wy > _worldH - 64) ff.sy *= -1;
 
-    const { sx, sy } = camera.worldToScreen(ff.wx, ff.wy);
-    if (sx < -20 || sx > camera.viewW + 20 || sy < -20 || sy > camera.viewH + 20) continue;
+    const sx = ff.wx - camera.x;
+    const sy = ff.wy - camera.y;
+    if (sx < -20 || sx > vw + 20 || sy < -20 || sy > vh + 20) continue;
 
     const blink = Math.sin(ffTime * ff.speed * 1000 + ff.phase);
-    const alpha = Math.max(0, blink * 0.5 + 0.3) * 0.6;
+    const idx = Math.max(0, Math.min(100, ((blink * 0.5 + 0.3) * 60) | 0));
 
     ctx.beginPath();
     ctx.arc(sx, sy, ff.size * 4, 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(255,220,100,${alpha * 0.08})`;
+    ctx.fillStyle = _ffGlowColors[idx];
     ctx.fill();
 
     ctx.beginPath();
     ctx.arc(sx, sy, ff.size, 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(255,235,150,${alpha})`;
+    ctx.fillStyle = _ffCoreColors[idx];
     ctx.fill();
   }
 }
@@ -303,17 +315,8 @@ function _drawPlayer(ctx, camera, player) {
     const drawW = 160;
     const drawH = 160;
 
-    // Warm lantern glow beneath character
-    const glowGrd = ctx.createRadialGradient(sx, sy + 10, 4, sx, sy + 10, drawW * 0.5);
-    glowGrd.addColorStop(0, 'rgba(255,220,140,0.12)');
-    glowGrd.addColorStop(1, 'rgba(255,220,140,0)');
-    ctx.fillStyle = glowGrd;
-    ctx.beginPath();
-    ctx.arc(sx, sy + 10, drawW * 0.5, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Subtle shadow beneath feet
-    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+    // Subtle shadow beneath feet (simple ellipse, no gradient)
+    ctx.fillStyle = 'rgba(0,0,0,0.18)';
     ctx.beginPath();
     ctx.ellipse(sx, sy + drawH * 0.22, drawW * 0.22, 8, 0, 0, Math.PI * 2);
     ctx.fill();
