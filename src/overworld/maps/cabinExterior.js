@@ -22,8 +22,8 @@ export default {
     {
       id: 'cabin-door',
       cx: 14 * TILE + TILE / 2,
-      cy: 56 * TILE + TILE / 2,
-      radius: 80,
+      cy: 57 * TILE,              // moved to porch edge where player actually walks
+      radius: 160,                // wider to catch player approaching from any angle
       targetMap: 'cabin-interior',
       spawnId: 'from-exterior',
     },
@@ -31,15 +31,15 @@ export default {
       id: 'upper-room-door',
       cx: 32 * TILE + TILE / 2,
       cy: 12 * TILE + TILE / 2,
-      radius: 80,
+      radius: 160,
       targetMap: 'upper-room',
       spawnId: 'from-exterior',
     },
     {
       id: 'market-door',
-      cx: 22 * TILE + TILE / 2,   // west face of market (door side)
-      cy: 32 * TILE + TILE / 2,   // center of market building
-      radius: 80,
+      cx: 22 * TILE + TILE / 2,
+      cy: 32 * TILE + TILE / 2,
+      radius: 160,
       targetMap: 'market-interior',
       spawnId: 'from-exterior',
     },
