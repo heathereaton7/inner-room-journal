@@ -21,12 +21,12 @@ export default {
   transitions: [
     {
       id: 'cabin-door',
-      // Centered on porch (col 14, row 56.5 — between the two porch rows).
-      // Radius 100px covers the full porch width (cols 12-16).
-      // The path at col 11 (x=736) is 192px away — safely outside trigger.
-      cx: 14 * TILE + TILE / 2,   // col 14 center = 928
+      // Aligned with the visual door in the artwork (slightly left of center).
+      // Radius 120px covers the full porch. Path at col 11 (x=736) is
+      // 128px away — just outside trigger, won't auto-enter from path.
+      cx: 13.5 * TILE,            // col 13.5 = 864, aligned with visual door
       cy: 56.5 * TILE,            // between porch rows 56-57
-      radius: 100,
+      radius: 120,
       targetMap: 'cabin-interior',
       spawnId: 'from-exterior',
     },
