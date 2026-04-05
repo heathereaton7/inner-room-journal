@@ -4,7 +4,7 @@ import { Camera } from './Camera.js';
 import { Player } from './Player.js';
 import { Input } from './Input.js';
 import { InteractionZones } from './InteractionZones.js';
-import { loadPlayerSprite, preloadSprite, render, initFireflies, setRendererWorldSize } from './Renderer.js';
+import { loadPlayerSprite, preloadSprite, render, initFireflies, setRendererWorldSize, setMapObjects } from './Renderer.js';
 import { MapManager } from './MapManager.js';
 import { ALL_MAPS } from './maps/index.js';
 import { TILE } from './constants.js';
@@ -49,7 +49,8 @@ export default function OverworldScreen({ onEnterLocation, playerPos, onPosChang
 
     // Update renderer world size for fireflies
     setRendererWorldSize(w, h);
-    initFireflies(mapManager.current.cols < 30 ? 15 : 50); // fewer fireflies indoors
+    initFireflies(mapManager.current.cols < 30 ? 15 : 50);
+    setMapObjects(mapManager.current.objects || []);
 
     // Update canvas zoom
     const canvas = canvasRef.current;
@@ -131,6 +132,7 @@ export default function OverworldScreen({ onEnterLocation, playerPos, onPosChang
     camera.snapTo(player.x, player.y);
     setRendererWorldSize(w, h);
     initFireflies(mapManager.current.cols < 30 ? 15 : 50);
+    setMapObjects(mapManager.current.objects || []);
     input.attach();
     inputRef.current = input;
 

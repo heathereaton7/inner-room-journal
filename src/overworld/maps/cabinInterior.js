@@ -99,37 +99,37 @@ export default {
       id: 'desk',
       label: 'Journal',
       description: 'Write in your journal',
-      screen: 'journal',
+      screen: 'cabin',   // opens cabin screen (journal accessed from cabin menu)
       cx: 16 * TILE + TILE / 2,
-      cy: 3 * TILE + TILE / 2,
-      radius: 80,
+      cy: 4 * TILE,
+      radius: 96,
     },
     {
       id: 'bookshelf',
       label: 'Bookshelf',
       description: 'Read and reflect',
-      screen: 'cabin-bookshelf',
+      screen: 'cabin',
       cx: 5 * TILE + TILE / 2,
       cy: 2 * TILE + TILE / 2,
-      radius: 80,
+      radius: 96,
     },
     {
       id: 'candle-table',
-      label: 'Candle',
-      description: 'Light a candle',
-      screen: 'cabin-candle',
+      label: 'Check In',
+      description: 'How are you feeling?',
+      screen: 'check-in',
       cx: 1.5 * TILE + TILE / 2,
-      cy: 5 * TILE + TILE / 2,
-      radius: 72,
+      cy: 6 * TILE,
+      radius: 80,
     },
     {
       id: 'fireplace',
-      label: 'Fireplace',
+      label: 'Rest',
       description: 'Warmth and rest',
-      screen: 'cabin-fireplace',
+      screen: 'cabin',
       cx: 2 * TILE + TILE / 2,
-      cy: 3 * TILE + TILE / 2,
-      radius: 72,
+      cy: 4 * TILE,
+      radius: 80,
     },
   ],
 
@@ -148,4 +148,32 @@ export default {
     default: { x: 9.5 * TILE + TILE / 2, y: 12 * TILE + TILE / 2 },
     'from-exterior': { x: 9.5 * TILE + TILE / 2, y: 12 * TILE + TILE / 2 },
   },
+
+  /**
+   * Objects — furniture sprites rendered with z-sorting.
+   * zBase = bottom edge of the object (y + h). When player.y < zBase,
+   * the object draws AFTER the player (player is behind it).
+   *
+   * Positions are in world pixels (col * TILE, row * TILE).
+   */
+  objects: [
+    // Fireplace (cols 1-3, rows 1-3)
+    { src: '/assets/objects/fireplace.png', x: 1*TILE, y: 1*TILE, w: 3*TILE, h: 3*TILE, zBase: 4*TILE, label: 'Fireplace', color: 'rgba(140,70,30,0.7)' },
+    // Bookshelf (cols 4-6, row 1)
+    { src: '/assets/objects/bookshelf.png', x: 4*TILE, y: 0.5*TILE, w: 3*TILE, h: 2*TILE, zBase: 2.5*TILE, label: 'Books', color: 'rgba(90,55,30,0.7)' },
+    // Window bench (cols 7-13, row 1)
+    { src: '/assets/objects/window-bench.png', x: 7*TILE, y: 1*TILE, w: 7*TILE, h: 1*TILE, zBase: 2*TILE, label: 'Window', color: 'rgba(80,100,120,0.5)' },
+    // Desk (cols 15-17, rows 2-3)
+    { src: '/assets/objects/desk.png', x: 15*TILE, y: 2*TILE, w: 3*TILE, h: 2*TILE, zBase: 4*TILE, label: 'Desk', color: 'rgba(120,80,45,0.7)' },
+    // Stairs railing (col 18, rows 4-8)
+    { src: '/assets/objects/stairs.png', x: 18*TILE, y: 4*TILE, w: 1*TILE, h: 5*TILE, zBase: 9*TILE, label: 'Stairs', color: 'rgba(90,60,35,0.6)' },
+    // Sofa back (cols 2-3, rows 6-9)
+    { src: '/assets/objects/sofa-back.png', x: 2*TILE, y: 6*TILE, w: 2*TILE, h: 4*TILE, zBase: 10*TILE, label: 'Sofa', color: 'rgba(160,140,120,0.6)' },
+    // Sofa bottom (cols 4-8, rows 9-10)
+    { src: '/assets/objects/sofa-bottom.png', x: 4*TILE, y: 9*TILE, w: 5*TILE, h: 2*TILE, zBase: 11*TILE, label: 'Sofa', color: 'rgba(160,140,120,0.6)' },
+    // Map table (cols 7-12, rows 11-12)
+    { src: '/assets/objects/map-table.png', x: 7*TILE, y: 11*TILE, w: 6*TILE, h: 2*TILE, zBase: 13*TILE, label: 'Map', color: 'rgba(110,75,40,0.7)' },
+    // Candle table (cols 1-2, row 5)
+    { src: '/assets/objects/candle-table.png', x: 1*TILE, y: 5*TILE, w: 2*TILE, h: 1*TILE, zBase: 6*TILE, label: 'Candle', color: 'rgba(100,65,35,0.7)' },
+  ],
 };

@@ -142,11 +142,55 @@ export function initFireflies(count = 50) {
   }
 }
 
+// ─── Object Image Cache ───────────────────────────────────────────
+const _objCache = {}; // { src → Image }
+
+function _getObjImage(src) {
+  if (_objCache[src]) return _objCache[src];
+  const img = new Image();
+  img.src = src;
+  img.onload = () => { _objCache[src] = img; };
+  _objCache[src] = img; // store immediately (draws once loaded)
+  return img;
+}
+
+// Active objects list (set when map changes)
+let _mapObjects = [];
+
+/** Set the current map's object list (called by MapManager/OverworldScreen). */
+export function setMapObjects(objects) {
+  _mapObjects = objects || [];
+  // Pre-cache all object images
+  for (const obj of _mapObjects) {
+    if (obj.src) _getObjImage(obj.src);
+  }
+}
+
+function _drawObject(ctx, camera, obj) {
+  const img = _objCache[obj.src];
+  if (!img || !img.complete || !img.naturalWidth) {
+    // Fallback: draw a tinted rectangle placeholder
+    const { sx, sy } = camera.worldToScreen(obj.x, obj.y);
+    ctx.fillStyle = obj.color || 'rgba(80,60,40,0.6)';
+    ctx.fillRect(sx, sy, obj.w, obj.h);
+    // Label
+    if (obj.label) {
+      ctx.fillStyle = 'rgba(255,240,200,0.5)';
+      ctx.font = "600 10px 'DM Sans', sans-serif";
+      ctx.textAlign = 'center';
+      ctx.fillText(obj.label, sx + obj.w / 2, sy + obj.h / 2 + 4);
+    }
+    return;
+  }
+  const { sx, sy } = camera.worldToScreen(obj.x, obj.y);
+  ctx.drawImage(img, sx, sy, obj.w, obj.h);
+}
+
 // ─── Main Render Function ──────────────────────────────────────────
 
 /**
  * Draw the entire scene to the canvas.
- * Stacked map artwork layers are the background; the tile grid is invisible.
+ * Render order: map bg → fireflies → objects behind player → player → objects in front → prompts
  */
 export function render(ctx, grid, camera, player, zones, dt) {
   const { viewW, viewH } = camera;
@@ -161,11 +205,9 @@ export function render(ctx, grid, camera, player, zones, dt) {
     const camBottom = camera.y + viewH;
 
     for (const layer of _mapLayers) {
-      // Skip layers entirely outside viewport
       if (camTop >= layer.worldYEnd || camBottom <= layer.worldYStart) continue;
 
-      // Source rect in image coordinates
-      const relY = camTop - layer.worldYStart;  // may be negative
+      const relY = camTop - layer.worldYStart;
       const sx = Math.max(0, camera.x / _mapScale);
       const sy = Math.max(0, relY / _mapScale);
       const sw = Math.min(viewW / _mapScale, layer.imgW - sx);
@@ -176,7 +218,6 @@ export function render(ctx, grid, camera, player, zones, dt) {
 
       if (sw <= 0 || sh <= 0) continue;
 
-      // Destination rect on screen
       const dx = Math.max(0, (sx * _mapScale - camera.x));
       const dy = Math.max(0, layer.worldYStart - camTop);
       const dw = sw * _mapScale;
@@ -185,7 +226,6 @@ export function render(ctx, grid, camera, player, zones, dt) {
       ctx.drawImage(layer.img, sx, sy, sw, sh, dx, dy, dw, dh);
     }
   } else {
-    // Fallback: dark background while images load
     ctx.fillStyle = '#0A0806';
     ctx.fillRect(0, 0, viewW, viewH);
   }
@@ -194,10 +234,24 @@ export function render(ctx, grid, camera, player, zones, dt) {
   ffTime += dt;
   _drawFireflies(ctx, camera, dt);
 
-  // ── Player avatar ──
+  // ── Z-sorted rendering: objects + player ──
+  // Player's z-base is their feet position (y)
+  const playerZ = player.y;
+
+  // Draw objects BEHIND the player (player is in front of them)
+  for (const obj of _mapObjects) {
+    if (obj.zBase > playerZ) _drawObject(ctx, camera, obj);
+  }
+
+  // Draw player
   _drawPlayer(ctx, camera, player);
 
-  // ── Interaction prompt (canvas version; DOM version also exists) ──
+  // Draw objects IN FRONT of the player (player is behind them)
+  for (const obj of _mapObjects) {
+    if (obj.zBase <= playerZ) _drawObject(ctx, camera, obj);
+  }
+
+  // ── Interaction prompt ──
   if (zones.nearbyZone) {
     _drawInteractionPrompt(ctx, camera, zones.nearbyZone);
   }
