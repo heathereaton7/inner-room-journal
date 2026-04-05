@@ -235,20 +235,23 @@ export default function OverworldScreen({ onEnterLocation, playerPos, onPosChang
         <button
           onClick={handleEnterZone}
           style={{
-            position: 'fixed', top: '15%', left: '50%',
+            position: 'fixed', top: '12%', left: '50%',
             transform: 'translateX(-50%)', zIndex: 55,
-            background: 'rgba(26,22,18,0.88)',
-            backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)',
-            border: '1px solid rgba(201,169,110,0.25)',
-            borderRadius: 14, padding: '10px 26px', cursor: 'pointer',
-            color: 'rgba(255,240,200,0.85)',
+            background: 'rgba(26,22,18,0.92)',
+            backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
+            border: '1px solid rgba(201,169,110,0.3)',
+            borderRadius: 14, padding: '11px 28px', cursor: 'pointer',
+            color: 'rgba(255,240,200,0.9)',
             fontFamily: "'Cormorant Garamond','Georgia',serif",
-            fontStyle: 'italic', fontSize: '0.92rem',
+            fontStyle: 'italic', fontSize: '0.95rem',
             letterSpacing: '0.02em',
-            boxShadow: '0 4px 24px rgba(0,0,0,0.45)',
+            boxShadow: '0 4px 24px rgba(0,0,0,0.5), 0 0 12px rgba(201,169,110,0.08)',
+            animation: 'fadeUp 0.25s ease both',
           }}
         >
-          {promptZone.label}
+          {promptZone.screen?.startsWith('interact:') || promptZone.screen === 'check-in'
+            ? promptZone.label
+            : `Enter ${promptZone.label}`}
         </button>
       )}
 

@@ -5127,6 +5127,21 @@ function AppInner(){
       // Set garden mode before transitioning
       if(dest==="garden"){setGardenMode("prayers");setSelectedPlot(null);}
       if(dest==="farm"){setGardenMode("farm");setSelectedPlot(null);}
+
+      // Cabin interior interactions (interact: prefix)
+      if(dest==="interact:journal"){
+        setTimeout(()=>{setScreen("cabin");setBookOpen(true);setJournalSection("blank");setSpaceTransit(false);setTransitDir(null);},700);
+        return;
+      }
+      if(dest==="interact:bookshelf"){
+        setTimeout(()=>{setScreen("cabin");setBookOpen(true);setSpaceTransit(false);setTransitDir(null);},700);
+        return;
+      }
+      if(dest==="interact:fireplace"){
+        setTimeout(()=>{setScreen("cabin");setWindowPanel("left");setSpaceTransit(false);setTransitDir(null);},700);
+        return;
+      }
+
       setTimeout(()=>{
         // Farm uses the garden screen with gardenMode="farm"
         setScreen(dest==="farm"?"garden":dest);

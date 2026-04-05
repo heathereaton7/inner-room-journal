@@ -383,26 +383,31 @@ function _roundRect(ctx, x, y, w, h, r) {
 function _drawInteractionPrompt(ctx, camera, zone) {
   const { sx, sy } = camera.worldToScreen(zone.cx, zone.cy - 60);
 
-  const text = `Enter ${zone.label}`;
+  // Interior interactions show just the label; exterior zones show "Enter {label}"
+  const isInteract = zone.screen?.startsWith('interact:') || zone.screen === 'check-in';
+  const text = isInteract ? zone.label : `Enter ${zone.label}`;
   ctx.font = "600 13px 'DM Sans', sans-serif";
   const metrics = ctx.measureText(text);
-  const pw = metrics.width + 32;
-  const ph = 32;
+  const pw = metrics.width + 36;
+  const ph = 34;
   const px = sx - pw / 2;
   const py = sy - ph / 2;
 
-  ctx.fillStyle = 'rgba(26,22,18,0.85)';
+  // Background pill
+  ctx.fillStyle = 'rgba(26,22,18,0.88)';
   ctx.beginPath();
-  _roundRect(ctx, px, py, pw, ph, 12);
+  _roundRect(ctx, px, py, pw, ph, 14);
   ctx.fill();
 
-  ctx.strokeStyle = 'rgba(201,169,110,0.3)';
-  ctx.lineWidth = 1;
+  // Gold border
+  ctx.strokeStyle = 'rgba(201,169,110,0.35)';
+  ctx.lineWidth = 1.5;
   ctx.beginPath();
-  _roundRect(ctx, px, py, pw, ph, 12);
+  _roundRect(ctx, px, py, pw, ph, 14);
   ctx.stroke();
 
-  ctx.fillStyle = 'rgba(255,240,200,0.85)';
+  // Text
+  ctx.fillStyle = 'rgba(255,240,200,0.9)';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(text, sx, sy);

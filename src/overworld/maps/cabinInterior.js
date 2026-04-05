@@ -51,35 +51,36 @@ function buildGrid() {
   rect(0, 0, 0, ROWS - 1, WALL);      // west wall
   rect(COLS - 1, 0, COLS - 1, ROWS - 1, WALL); // east wall
 
-  // 3. Fireplace (northwest corner)
-  rect(1, 1, 3, 3, FURNITURE);  // stone fireplace
+  // 3. Fireplace (northwest corner — player can walk in front)
+  rect(1, 1, 3, 2, FURNITURE);  // stone fireplace (shorter collision)
 
-  // 4. Bookshelf (north wall, behind fireplace)
-  rect(4, 1, 6, 1, FURNITURE);  // bookshelf along wall
+  // 4. Bookshelf (north wall, beside fireplace)
+  rect(4, 1, 6, 1, FURNITURE);  // bookshelf (1 row deep, player walks in front)
 
-  // 5. Window seat area (north center — can't walk on windowsill)
-  rect(7, 1, 13, 1, FURNITURE); // window/bench area
+  // 5. Window bench (north center — narrow collision)
+  rect(7, 1, 13, 1, FURNITURE);
 
-  // 6. Desk + chair (northeast area)
-  rect(15, 2, 17, 3, FURNITURE); // desk with journal
-  // Chair is walkable (player sits by approaching)
+  // 6. Desk + open book (northeast area)
+  rect(15, 2, 17, 3, FURNITURE);
 
-  // 7. Stairs (east wall)
-  rect(18, 4, 18, 8, FURNITURE); // stairs railing
+  // 7. Stairs railing (east wall, narrow)
+  rect(18, 4, 18, 8, FURNITURE);
 
-  // 8. Sofa (center-left — large L-shaped)
-  rect(2, 6, 3, 9, FURNITURE);   // sofa left arm
-  rect(4, 9, 8, 10, FURNITURE);  // sofa bottom
+  // 8. Sofa (L-shaped — left arm thinner for better flow)
+  rect(2, 7, 3, 9, FURNITURE);   // sofa back (starts at row 7 not 6)
+  rect(4, 9, 7, 10, FURNITURE);  // sofa seat (1 tile narrower)
 
-  // 9. Map table (bottom center)
-  rect(7, 11, 12, 12, FURNITURE); // map/crafting table
+  // 9. Map table (bottom center — slight gap from walls)
+  rect(8, 11, 11, 12, FURNITURE);
 
-  // 10. Candle table (left side of room)
+  // 10. Candle table (west wall)
   rect(1, 5, 2, 5, FURNITURE);
 
-  // 11. Door opening (south wall center)
+  // 11. Door opening (wider for easier exit)
+  set(8, ROWS - 1, T.DOOR);
   set(9, ROWS - 1, T.DOOR);
   set(10, ROWS - 1, T.DOOR);
+  set(11, ROWS - 1, T.DOOR);
 
   return grid;
 }
@@ -97,25 +98,25 @@ export default {
   zones: [
     {
       id: 'desk',
-      label: 'Journal',
-      description: 'Write in your journal',
-      screen: 'cabin',   // opens cabin screen (journal accessed from cabin menu)
+      label: 'Write in Journal',
+      description: 'Open your journal',
+      screen: 'interact:journal',
       cx: 16 * TILE + TILE / 2,
       cy: 4 * TILE,
       radius: 96,
     },
     {
       id: 'bookshelf',
-      label: 'Bookshelf',
-      description: 'Read and reflect',
-      screen: 'cabin',
+      label: 'Read',
+      description: 'Browse the bookshelf',
+      screen: 'interact:bookshelf',
       cx: 5 * TILE + TILE / 2,
       cy: 2 * TILE + TILE / 2,
       radius: 96,
     },
     {
       id: 'candle-table',
-      label: 'Check In',
+      label: 'Body and Mind Check-In',
       description: 'How are you feeling?',
       screen: 'check-in',
       cx: 1.5 * TILE + TILE / 2,
@@ -124,9 +125,9 @@ export default {
     },
     {
       id: 'fireplace',
-      label: 'Rest',
-      description: 'Warmth and rest',
-      screen: 'cabin',
+      label: 'Sit by the Fire',
+      description: 'Rest and reflect',
+      screen: 'interact:fireplace',
       cx: 2 * TILE + TILE / 2,
       cy: 4 * TILE,
       radius: 80,
@@ -138,7 +139,7 @@ export default {
       id: 'front-door',
       cx: 9.5 * TILE + TILE / 2,
       cy: (ROWS - 1) * TILE + TILE / 2,
-      radius: 56,
+      radius: 72,
       targetMap: 'cabin-exterior',
       spawnId: 'from-cabin',
     },
@@ -157,23 +158,23 @@ export default {
    * Positions are in world pixels (col * TILE, row * TILE).
    */
   objects: [
-    // Fireplace (cols 1-3, rows 1-3)
-    { src: '/assets/objects/fireplace.png', x: 1*TILE, y: 1*TILE, w: 3*TILE, h: 3*TILE, zBase: 4*TILE, label: 'Fireplace', color: 'rgba(140,70,30,0.7)' },
-    // Bookshelf (cols 4-6, row 1)
-    { src: '/assets/objects/bookshelf.png', x: 4*TILE, y: 0.5*TILE, w: 3*TILE, h: 2*TILE, zBase: 2.5*TILE, label: 'Books', color: 'rgba(90,55,30,0.7)' },
-    // Window bench (cols 7-13, row 1)
-    { src: '/assets/objects/window-bench.png', x: 7*TILE, y: 1*TILE, w: 7*TILE, h: 1*TILE, zBase: 2*TILE, label: 'Window', color: 'rgba(80,100,120,0.5)' },
-    // Desk (cols 15-17, rows 2-3)
-    { src: '/assets/objects/desk.png', x: 15*TILE, y: 2*TILE, w: 3*TILE, h: 2*TILE, zBase: 4*TILE, label: 'Desk', color: 'rgba(120,80,45,0.7)' },
-    // Stairs railing (col 18, rows 4-8)
-    { src: '/assets/objects/stairs.png', x: 18*TILE, y: 4*TILE, w: 1*TILE, h: 5*TILE, zBase: 9*TILE, label: 'Stairs', color: 'rgba(90,60,35,0.6)' },
-    // Sofa back (cols 2-3, rows 6-9)
-    { src: '/assets/objects/sofa-back.png', x: 2*TILE, y: 6*TILE, w: 2*TILE, h: 4*TILE, zBase: 10*TILE, label: 'Sofa', color: 'rgba(160,140,120,0.6)' },
-    // Sofa bottom (cols 4-8, rows 9-10)
-    { src: '/assets/objects/sofa-bottom.png', x: 4*TILE, y: 9*TILE, w: 5*TILE, h: 2*TILE, zBase: 11*TILE, label: 'Sofa', color: 'rgba(160,140,120,0.6)' },
-    // Map table (cols 7-12, rows 11-12)
-    { src: '/assets/objects/map-table.png', x: 7*TILE, y: 11*TILE, w: 6*TILE, h: 2*TILE, zBase: 13*TILE, label: 'Map', color: 'rgba(110,75,40,0.7)' },
-    // Candle table (cols 1-2, row 5)
-    { src: '/assets/objects/candle-table.png', x: 1*TILE, y: 5*TILE, w: 2*TILE, h: 1*TILE, zBase: 6*TILE, label: 'Candle', color: 'rgba(100,65,35,0.7)' },
+    // Fireplace — tall, player walks in front of it
+    { src: '/assets/objects/fireplace.png', x: 1*TILE, y: 0.5*TILE, w: 3*TILE, h: 3*TILE, zBase: 3.5*TILE },
+    // Bookshelf — against north wall, player walks in front
+    { src: '/assets/objects/bookshelf.png', x: 4*TILE, y: 0.5*TILE, w: 3*TILE, h: 2*TILE, zBase: 2.5*TILE },
+    // Window — north wall center
+    { src: '/assets/objects/window-bench.png', x: 7*TILE, y: 0.8*TILE, w: 7*TILE, h: 1*TILE, zBase: 1.8*TILE },
+    // Desk — player can walk behind (zBase at desk bottom)
+    { src: '/assets/objects/desk.png', x: 15*TILE, y: 1.5*TILE, w: 3*TILE, h: 2.5*TILE, zBase: 4*TILE },
+    // Stairs railing — tall, runs along east wall
+    { src: '/assets/objects/stairs.png', x: 18*TILE, y: 4*TILE, w: 1*TILE, h: 5*TILE, zBase: 9*TILE },
+    // Sofa back arm — player walks behind
+    { src: '/assets/objects/sofa-back.png', x: 2*TILE, y: 6.5*TILE, w: 2*TILE, h: 3.5*TILE, zBase: 10*TILE },
+    // Sofa seat — bottom of L
+    { src: '/assets/objects/sofa-bottom.png', x: 4*TILE, y: 8.5*TILE, w: 4*TILE, h: 2.5*TILE, zBase: 11*TILE },
+    // Map table — player walks behind
+    { src: '/assets/objects/map-table.png', x: 7.5*TILE, y: 10.5*TILE, w: 5*TILE, h: 2.5*TILE, zBase: 13*TILE },
+    // Candle table — small, player walks behind
+    { src: '/assets/objects/candle-table.png', x: 1*TILE, y: 4.5*TILE, w: 2*TILE, h: 1.5*TILE, zBase: 6*TILE },
   ],
 };
