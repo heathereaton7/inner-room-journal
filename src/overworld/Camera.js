@@ -10,6 +10,15 @@ export class Camera {
     this.y = 0;
     this.viewW = viewW; // viewport width (canvas pixel size)
     this.viewH = viewH;
+    // Dynamic world size (can be updated when switching maps)
+    this.worldW = WORLD_COLS * TILE;
+    this.worldH = WORLD_ROWS * TILE;
+  }
+
+  /** Set the world bounds for the current map. */
+  setWorldSize(w, h) {
+    this.worldW = w;
+    this.worldH = h;
   }
 
   /** Update viewport dimensions (on window resize). */
@@ -28,8 +37,8 @@ export class Camera {
     let desiredY = targetY - this.viewH / 2;
 
     // Clamp to world edges
-    const maxX = WORLD_COLS * TILE - this.viewW;
-    const maxY = WORLD_ROWS * TILE - this.viewH;
+    const maxX = this.worldW - this.viewW;
+    const maxY = this.worldH - this.viewH;
     desiredX = Math.max(0, Math.min(maxX, desiredX));
     desiredY = Math.max(0, Math.min(maxY, desiredY));
 
@@ -45,11 +54,11 @@ export class Camera {
   /** Snap camera instantly (used on first frame or teleport). */
   snapTo(targetX, targetY) {
     this.x = Math.max(0, Math.min(
-      WORLD_COLS * TILE - this.viewW,
+      this.worldW - this.viewW,
       targetX - this.viewW / 2
     ));
     this.y = Math.max(0, Math.min(
-      WORLD_ROWS * TILE - this.viewH,
+      this.worldH - this.viewH,
       targetY - this.viewH / 2
     ));
   }

@@ -1,13 +1,18 @@
-import { INTERACTION_ZONES } from './worldMap.js';
-
 /**
  * InteractionZones — Proximity detection for enterable locations.
  * Checks player distance to zone centers each frame.
- * Uses each zone's own `radius` for detection range.
+ * Zones can be swapped when maps change.
  */
 export class InteractionZones {
-  constructor() {
+  constructor(zones) {
+    this.zones = zones || [];
     this.nearbyZone = null; // closest zone within prompt range, or null
+  }
+
+  /** Replace zones (called when map changes). */
+  setZones(zones) {
+    this.zones = zones || [];
+    this.nearbyZone = null;
   }
 
   /**
@@ -19,7 +24,7 @@ export class InteractionZones {
     let closest = null;
     let closestDist = Infinity;
 
-    for (const zone of INTERACTION_ZONES) {
+    for (const zone of this.zones) {
       const dx = playerX - zone.cx;
       const dy = playerY - zone.cy;
       const dist = Math.sqrt(dx * dx + dy * dy);

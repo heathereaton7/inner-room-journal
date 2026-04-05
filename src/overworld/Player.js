@@ -13,7 +13,27 @@ export class Player {
     this.facing = 'down'; // 'up' | 'down' | 'left' | 'right'
     this.moving = false;
     this.animTimer = 0;   // accumulates dt for walk cycle
-    this.animFrame = 0;   // 0 or 1 (two-frame walk toggle)
+    this.animFrame = 0;   // 0-3 (four-frame walk cycle)
+    // Dynamic world dimensions (can be updated when switching maps)
+    this.worldCols = WORLD_COLS;
+    this.worldRows = WORLD_ROWS;
+  }
+
+  /** Set world dimensions for the current map. */
+  setWorldSize(cols, rows) {
+    this.worldCols = cols;
+    this.worldRows = rows;
+  }
+
+  /** Teleport player to a specific position. */
+  teleport(x, y) {
+    this.x = x;
+    this.y = y;
+    this.vx = 0;
+    this.vy = 0;
+    this.moving = false;
+    this.animFrame = 0;
+    this.animTimer = 0;
   }
 
   /**
@@ -58,8 +78,8 @@ export class Player {
 
     // Clamp to world bounds
     const half = PLAYER_SIZE / 2;
-    this.x = Math.max(half, Math.min(WORLD_COLS * TILE - half, this.x));
-    this.y = Math.max(half, Math.min(WORLD_ROWS * TILE - half, this.y));
+    this.x = Math.max(half, Math.min(this.worldCols * TILE - half, this.x));
+    this.y = Math.max(half, Math.min(this.worldRows * TILE - half, this.y));
 
     // Walk animation — 4-frame cycle (0→1→2→3→0…)
     if (this.moving) {
@@ -89,8 +109,8 @@ export class Player {
     for (const [px, py] of corners) {
       const col = Math.floor(px / TILE);
       const row = Math.floor(py / TILE);
-      if (col < 0 || col >= WORLD_COLS || row < 0 || row >= WORLD_ROWS) return true;
-      const tileType = grid[row * WORLD_COLS + col];
+      if (col < 0 || col >= this.worldCols || row < 0 || row >= this.worldRows) return true;
+      const tileType = grid[row * this.worldCols + col];
       if (SOLID.has(tileType)) return true;
     }
     return false;

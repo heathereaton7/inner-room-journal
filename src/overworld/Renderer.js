@@ -1,17 +1,21 @@
-import { WORLD_W, WORLD_H, MAP_SCALE } from './constants.js';
+import { WORLD_W, WORLD_H } from './constants.js';
 import { resolveSprite, SPRITES } from './sprites.js';
 
 // ─── Map Background Layers ─────────────────────────────────────────
 // Multiple map images stacked vertically to form one seamless world.
 const _mapLayers = []; // [{img, worldYStart, worldYEnd, imgH}]
 
+// Current map scale (updated when map changes)
+let _mapScale = 3;
+
 /**
  * Load an array of map artwork images and stack them vertically.
- * Each image is positioned so they form a continuous vertical world.
  * @param {string[]} sources — array of image URLs, top to bottom
+ * @param {number} [scale=3] — how much to scale each image
  * @returns {Promise<object[]>} resolved layer data
  */
-export function loadMapImages(sources) {
+export function loadMapImages(sources, scale) {
+  if (scale != null) _mapScale = scale;
   return Promise.all(
     sources.map(src =>
       new Promise(resolve => {
@@ -29,7 +33,7 @@ export function loadMapImages(sources) {
     let yOffset = 0;
     for (const img of images) {
       if (!img) continue;
-      const worldH = img.height * MAP_SCALE;
+      const worldH = img.height * _mapScale;
       _mapLayers.push({
         img,
         worldYStart: yOffset,
@@ -39,7 +43,7 @@ export function loadMapImages(sources) {
       });
       yOffset += worldH;
     }
-    console.log(`[Renderer] Loaded ${_mapLayers.length} map layers, total world height: ${yOffset}px`);
+    console.log(`[Renderer] Loaded ${_mapLayers.length} map layers (scale ${_mapScale}), total height: ${yOffset}px`);
     return _mapLayers;
   });
 }
@@ -113,12 +117,22 @@ export function preloadSprite(spriteConfig) {
 let fireflies = [];
 let ffTime = 0;
 
+// Current world bounds for fireflies
+let _worldW = WORLD_W;
+let _worldH = WORLD_H;
+
+/** Update renderer world bounds (called when map changes). */
+export function setRendererWorldSize(w, h) {
+  _worldW = w;
+  _worldH = h;
+}
+
 export function initFireflies(count = 50) {
   fireflies = [];
   for (let i = 0; i < count; i++) {
     fireflies.push({
-      wx: Math.random() * WORLD_W,
-      wy: Math.random() * WORLD_H,
+      wx: Math.random() * _worldW,
+      wy: Math.random() * _worldH,
       size: Math.random() * 1.5 + 0.8,
       phase: Math.random() * Math.PI * 2,
       speed: Math.random() * 0.003 + 0.001,
@@ -152,21 +166,21 @@ export function render(ctx, grid, camera, player, zones, dt) {
 
       // Source rect in image coordinates
       const relY = camTop - layer.worldYStart;  // may be negative
-      const sx = Math.max(0, camera.x / MAP_SCALE);
-      const sy = Math.max(0, relY / MAP_SCALE);
-      const sw = Math.min(viewW / MAP_SCALE, layer.imgW - sx);
+      const sx = Math.max(0, camera.x / _mapScale);
+      const sy = Math.max(0, relY / _mapScale);
+      const sw = Math.min(viewW / _mapScale, layer.imgW - sx);
       const sh = Math.min(
-        (viewH - Math.max(0, layer.worldYStart - camTop)) / MAP_SCALE,
+        (viewH - Math.max(0, layer.worldYStart - camTop)) / _mapScale,
         layer.imgH - sy
       );
 
       if (sw <= 0 || sh <= 0) continue;
 
       // Destination rect on screen
-      const dx = Math.max(0, (sx * MAP_SCALE - camera.x));
+      const dx = Math.max(0, (sx * _mapScale - camera.x));
       const dy = Math.max(0, layer.worldYStart - camTop);
-      const dw = sw * MAP_SCALE;
-      const dh = sh * MAP_SCALE;
+      const dw = sw * _mapScale;
+      const dh = sh * _mapScale;
 
       ctx.drawImage(layer.img, sx, sy, sw, sh, dx, dy, dw, dh);
     }
@@ -195,8 +209,8 @@ function _drawFireflies(ctx, camera, dt) {
   for (const ff of fireflies) {
     ff.wx += ff.sx;
     ff.wy += ff.sy;
-    if (ff.wx < 64 || ff.wx > WORLD_W - 64) ff.sx *= -1;
-    if (ff.wy < 64 || ff.wy > WORLD_H - 64) ff.sy *= -1;
+    if (ff.wx < 64 || ff.wx > _worldW - 64) ff.sx *= -1;
+    if (ff.wy < 64 || ff.wy > _worldH - 64) ff.sy *= -1;
 
     const { sx, sy } = camera.worldToScreen(ff.wx, ff.wy);
     if (sx < -20 || sx > camera.viewW + 20 || sy < -20 || sy > camera.viewH + 20) continue;
