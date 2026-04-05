@@ -3,35 +3,41 @@ import { TILE, T } from '../constants.js';
 /**
  * Cabin Interior — Walkable cozy cabin room.
  *
- * Layout (20 cols × 15 rows = 1280×960 px):
+ * Background: cabin-interior.webp (1024×1536 portrait)
+ * All furniture is painted into the background image — NO object sprites needed.
+ * The collision grid defines where the player can/can't walk.
  *
- *   Row 0-1:   North wall (bookshelf, fireplace)
- *   Row 2:     Shelf/mantle level
- *   Row 3-4:   Window area + desk
- *   Row 5-10:  Open floor (rug, sofa, candle table)
- *   Row 11-12: Map table / lower area
+ * At mapScale=1.25: image fills 1280×1920 px. Grid is 20×15 = 1280×960.
+ * The image's top 50% (ceiling + main room) maps to the grid.
+ *
+ * Image layout (approximate % from top):
+ *   0-20%:   Ceiling / skylight / string lights (not walkable)
+ *   20-35%:  Upper wall — fireplace, window, bookshelf, desk (not walkable)
+ *   35-55%:  Floor — rug area between sofa and furniture (WALKABLE)
+ *   55-70%:  Sofa + lower floor (partially walkable)
+ *   70-85%:  Map table + ledge (collision)
+ *   85-100%: Below grid — not visible
+ *
+ * Grid mapping (20 cols × 15 rows):
+ *   Row 0-3:   Ceiling + upper walls (blocked)
+ *   Row 4-5:   Fireplace/window/desk edge (blocked, furniture collision)
+ *   Row 6-10:  Main floor — rug area (WALKABLE)
+ *   Row 11:    Sofa bottom edge (blocked)
+ *   Row 12:    Map table / ledge (blocked)
  *   Row 13:    South wall
- *   Row 14:    Door area (exit)
- *
- *   Col 0-2:   West wall (fireplace)
- *   Col 3-5:   Bookshelf area
- *   Col 6-13:  Main open floor / window
- *   Col 14-17: Desk / stairs area
- *   Col 18-19: East wall
+ *   Row 14:    Door exit
  */
 
 const COLS = 20;
 const ROWS = 15;
 
-// Interior tile types (reuse existing + add specifics)
 const WALL = T.BUILDING;
-const FLOOR = T.GRASS;       // walkable floor
-const FURNITURE = T.BUILDING; // solid furniture (can't walk through)
+const FLOOR = T.GRASS;
+const FURNITURE = T.BUILDING;
 
 function buildGrid() {
   const grid = new Uint8Array(COLS * ROWS);
 
-  // Helper to set tiles
   const set = (c, r, type) => {
     if (r >= 0 && r < ROWS && c >= 0 && c < COLS)
       grid[r * COLS + c] = type;
@@ -42,47 +48,46 @@ function buildGrid() {
         set(c, r, type);
   };
 
-  // 1. Fill entire room with walkable floor
+  // Start with everything walkable
   grid.fill(FLOOR);
 
-  // 2. Walls (room border)
-  rect(0, 0, COLS - 1, 0, WALL);      // north wall
-  rect(0, ROWS - 1, COLS - 1, ROWS - 1, WALL); // south wall
-  rect(0, 0, 0, ROWS - 1, WALL);      // west wall
-  rect(COLS - 1, 0, COLS - 1, ROWS - 1, WALL); // east wall
+  // === WALLS (room border) ===
+  rect(0, 0, COLS - 1, 0, WALL);      // north
+  rect(0, ROWS - 1, COLS - 1, ROWS - 1, WALL); // south
+  rect(0, 0, 0, ROWS - 1, WALL);      // west
+  rect(COLS - 1, 0, COLS - 1, ROWS - 1, WALL); // east
 
-  // 3. Fireplace (northwest corner — player can walk in front)
-  rect(1, 1, 3, 2, FURNITURE);  // stone fireplace (shorter collision)
+  // === CEILING + UPPER WALLS (rows 1-4) — can't walk up here ===
+  rect(1, 1, COLS - 2, 4, WALL);
 
-  // 4. Bookshelf (north wall, beside fireplace)
-  rect(4, 1, 6, 1, FURNITURE);  // bookshelf (1 row deep, player walks in front)
+  // === FURNITURE EDGES (row 5) — thin collision along furniture ===
+  // Fireplace base
+  rect(1, 5, 3, 5, FURNITURE);
+  // Desk area (right side)
+  rect(15, 5, 17, 5, FURNITURE);
 
-  // 5. Window bench (north center — narrow collision)
-  rect(7, 1, 13, 1, FURNITURE);
+  // === OPEN FLOOR (rows 6-10) — the rug area, fully walkable ===
+  // (already FLOOR from the fill)
 
-  // 6. Desk + open book (northeast area)
-  rect(15, 2, 17, 3, FURNITURE);
+  // === SOFA (left side, rows 7-10) — player walks around ===
+  rect(1, 7, 2, 10, FURNITURE);   // sofa back
+  rect(3, 10, 6, 11, FURNITURE);  // sofa seat bottom
 
-  // 7. Stairs railing (east wall — rows 6-8 solid, rows 4-5 walkable for transition)
-  rect(18, 6, 18, 8, FURNITURE);
-  set(18, 4, T.DOOR);  // stairs entry → kitchen
-  set(18, 5, T.DOOR);
+  // === MAP TABLE / LEDGE (row 12) ===
+  rect(5, 12, 14, 12, FURNITURE);
 
-  // 8. Sofa (L-shaped — left arm thinner for better flow)
-  rect(2, 7, 3, 9, FURNITURE);   // sofa back (starts at row 7 not 6)
-  rect(4, 9, 7, 10, FURNITURE);  // sofa seat (1 tile narrower)
+  // === STAIRS — walkable entry at east wall (rows 6-7) ===
+  // The stairs are visible on the right side of the background image
+  set(COLS - 1, 6, T.DOOR);  // open east wall for stairs
+  set(COLS - 1, 7, T.DOOR);
 
-  // 9. Map table (bottom center — slight gap from walls)
-  rect(8, 11, 11, 12, FURNITURE);
-
-  // 10. Candle table (west wall)
-  rect(1, 5, 2, 5, FURNITURE);
-
-  // 11. Front door opening (wider for easier exit)
+  // === FRONT DOOR (south wall, center) ===
+  set(7, ROWS - 1, T.DOOR);
   set(8, ROWS - 1, T.DOOR);
   set(9, ROWS - 1, T.DOOR);
   set(10, ROWS - 1, T.DOOR);
   set(11, ROWS - 1, T.DOOR);
+  set(12, ROWS - 1, T.DOOR);
 
   return grid;
 }
@@ -92,8 +97,8 @@ export default {
   cols: COLS,
   rows: ROWS,
   mapImages: ['/cabin-interior.webp'],
-  mapScale: 1,      // interior image maps 1:1 to world pixels
-  camZoom: 0.85,    // zoomed in closer for interior
+  mapScale: 1.25,    // 1024 * 1.25 = 1280 = 20 * 64 (matches grid width)
+  camZoom: 0.75,     // wider view to see more of the room
 
   buildGrid,
 
@@ -104,7 +109,7 @@ export default {
       description: 'Open your journal',
       screen: 'interact:journal',
       cx: 16 * TILE + TILE / 2,
-      cy: 4 * TILE,
+      cy: 6 * TILE,
       radius: 96,
     },
     {
@@ -112,16 +117,7 @@ export default {
       label: 'Read',
       description: 'Browse the bookshelf',
       screen: 'interact:bookshelf',
-      cx: 5 * TILE + TILE / 2,
-      cy: 2 * TILE + TILE / 2,
-      radius: 96,
-    },
-    {
-      id: 'candle-table',
-      label: 'Body and Mind Check-In',
-      description: 'How are you feeling?',
-      screen: 'check-in',
-      cx: 1.5 * TILE + TILE / 2,
+      cx: 2 * TILE,
       cy: 6 * TILE,
       radius: 80,
     },
@@ -131,7 +127,16 @@ export default {
       description: 'Rest and reflect',
       screen: 'interact:fireplace',
       cx: 2 * TILE + TILE / 2,
-      cy: 4 * TILE,
+      cy: 6 * TILE,
+      radius: 80,
+    },
+    {
+      id: 'candle-table',
+      label: 'Body and Mind Check-In',
+      description: 'How are you feeling?',
+      screen: 'check-in',
+      cx: 10 * TILE,
+      cy: 8 * TILE,
       radius: 80,
     },
   ],
@@ -147,8 +152,8 @@ export default {
     },
     {
       id: 'stairs-down',
-      cx: 18 * TILE + TILE / 2,
-      cy: 4.5 * TILE + TILE / 2,
+      cx: (COLS - 1) * TILE + TILE / 2,
+      cy: 6.5 * TILE + TILE / 2,
       radius: 56,
       targetMap: 'cabin-downstairs',
       spawnId: 'from-upstairs',
@@ -156,37 +161,12 @@ export default {
   ],
 
   spawnPoints: {
-    default: { x: 9.5 * TILE + TILE / 2, y: 12 * TILE + TILE / 2 },
-    'from-exterior': { x: 9.5 * TILE + TILE / 2, y: 12 * TILE + TILE / 2 },
-    'from-kitchen': { x: 17 * TILE + TILE / 2, y: 6 * TILE + TILE / 2 },
+    default: { x: 10 * TILE, y: 9 * TILE },
+    'from-exterior': { x: 10 * TILE, y: 12 * TILE },
+    'from-kitchen': { x: 17 * TILE, y: 7 * TILE },
   },
 
-  /**
-   * Objects — furniture sprites rendered with z-sorting.
-   * zBase = bottom edge of the object (y + h). When player.y < zBase,
-   * the object draws AFTER the player (player is behind it).
-   *
-   * Positions are in world pixels (col * TILE, row * TILE).
-   */
-  objects: [
-    // Fireplace — tall, player walks in front of it
-    { src: '/assets/objects/fireplace.png', x: 1*TILE, y: 0.5*TILE, w: 3*TILE, h: 3*TILE, zBase: 3.5*TILE },
-    // Bookshelf — against north wall, player walks in front
-    { src: '/assets/objects/bookshelf.png', x: 4*TILE, y: 0.5*TILE, w: 3*TILE, h: 2*TILE, zBase: 2.5*TILE },
-    // Window — north wall center
-    { src: '/assets/objects/window-bench.png', x: 7*TILE, y: 0.8*TILE, w: 7*TILE, h: 1*TILE, zBase: 1.8*TILE },
-    // Desk — player can walk behind (zBase at desk bottom)
-    { src: '/assets/objects/desk.png', x: 15*TILE, y: 1.5*TILE, w: 3*TILE, h: 2.5*TILE, zBase: 4*TILE },
-    // Stairs railing — shortened (rows 6-8 only, rows 4-5 are walkable entry)
-    { src: '/assets/objects/stairs.png', x: 18*TILE, y: 5.5*TILE, w: 1*TILE, h: 3.5*TILE, zBase: 9*TILE },
-    // (Archway removed — aquarium accessed from downstairs hallway)
-    // Sofa back arm — player walks behind
-    { src: '/assets/objects/sofa-back.png', x: 2*TILE, y: 6.5*TILE, w: 2*TILE, h: 3.5*TILE, zBase: 10*TILE },
-    // Sofa seat — bottom of L
-    { src: '/assets/objects/sofa-bottom.png', x: 4*TILE, y: 8.5*TILE, w: 4*TILE, h: 2.5*TILE, zBase: 11*TILE },
-    // Map table — player walks behind
-    { src: '/assets/objects/map-table.png', x: 7.5*TILE, y: 10.5*TILE, w: 5*TILE, h: 2.5*TILE, zBase: 13*TILE },
-    // Candle table — small, player walks behind
-    { src: '/assets/objects/candle-table.png', x: 1*TILE, y: 4.5*TILE, w: 2*TILE, h: 1.5*TILE, zBase: 6*TILE },
-  ],
+  // NO objects — the background image has all furniture painted in.
+  // Collision grid handles gameplay; the art handles visuals.
+  objects: [],
 };

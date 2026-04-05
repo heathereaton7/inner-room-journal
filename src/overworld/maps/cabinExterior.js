@@ -21,13 +21,12 @@ export default {
   transitions: [
     {
       id: 'cabin-door',
-      // Centered on the porch door steps (col 14, row 56).
-      // Radius 72px = ~1 tile. Player must walk ONTO the porch to trigger.
-      // The walkable path alongside the cabin (cols 11-17, rows 58+) is
-      // 128+ px away, so walking past the cabin won't trigger entry.
+      // Centered on porch (col 14, row 56.5 — between the two porch rows).
+      // Radius 100px covers the full porch width (cols 12-16).
+      // The path at col 11 (x=736) is 192px away — safely outside trigger.
       cx: 14 * TILE + TILE / 2,   // col 14 center = 928
-      cy: 56 * TILE + TILE / 2,   // row 56 center = 3616
-      radius: 72,
+      cy: 56.5 * TILE,            // between porch rows 56-57
+      radius: 100,
       targetMap: 'cabin-interior',
       spawnId: 'from-exterior',
     },
@@ -35,7 +34,7 @@ export default {
       id: 'upper-room-door',
       cx: 32 * TILE + TILE / 2,
       cy: 12 * TILE,
-      radius: 72,
+      radius: 100,
       targetMap: 'upper-room',
       spawnId: 'from-exterior',
     },
@@ -43,7 +42,7 @@ export default {
       id: 'market-door',
       cx: 22 * TILE + TILE / 2,
       cy: 32 * TILE,
-      radius: 72,
+      radius: 100,
       targetMap: 'market-interior',
       spawnId: 'from-exterior',
     },
