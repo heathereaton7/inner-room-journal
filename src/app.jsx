@@ -5167,9 +5167,14 @@ function AppInner(){
         setTimeout(()=>{setShopStall("barter");setScreen("market");setSpaceTransit(false);setTransitDir(null);},700);
         return;
       }
-      // Aquarium — placeholder (stays on map for now, future dedicated screen)
+      // Aquarium — placeholder
       if(dest==="interact:aquarium"){
         setTimeout(()=>{setToast({msg:"The fish are swimming peacefully."});setSpaceTransit(false);setTransitDir(null);},700);
+        return;
+      }
+      // Front door view — placeholder
+      if(dest==="interact:front-door-view"){
+        setTimeout(()=>{setToast({msg:"The moonlight filters through the glass."});setSpaceTransit(false);setTransitDir(null);},700);
         return;
       }
 

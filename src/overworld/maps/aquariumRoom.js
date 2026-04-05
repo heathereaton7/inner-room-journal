@@ -103,7 +103,7 @@ export default {
       cx: (COLS - 1) * TILE + TILE / 2,
       cy: 4.5 * TILE + TILE / 2,
       radius: 56,
-      targetMap: 'cabin-interior',
+      targetMap: 'cabin-downstairs',
       spawnId: 'from-aquarium',
     },
   ],
