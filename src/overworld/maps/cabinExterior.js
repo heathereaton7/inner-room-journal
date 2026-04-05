@@ -16,7 +16,7 @@ export default {
   buildGrid: buildWorldGrid,
 
   // Filter out buildings that now have walkable interiors (use door transitions instead)
-  zones: INTERACTION_ZONES.filter(z => z.id !== 'cabin' && z.id !== 'upper-room'),
+  zones: INTERACTION_ZONES.filter(z => z.id !== 'cabin' && z.id !== 'upper-room' && z.id !== 'market'),
 
   transitions: [
     {
@@ -29,10 +29,18 @@ export default {
     },
     {
       id: 'upper-room-door',
-      cx: 32 * TILE + TILE / 2,   // center of upper room building
-      cy: 12 * TILE + TILE / 2,   // south porch area
+      cx: 32 * TILE + TILE / 2,
+      cy: 12 * TILE + TILE / 2,
       radius: 80,
       targetMap: 'upper-room',
+      spawnId: 'from-exterior',
+    },
+    {
+      id: 'market-door',
+      cx: 22 * TILE + TILE / 2,   // west face of market (door side)
+      cy: 32 * TILE + TILE / 2,   // center of market building
+      radius: 80,
+      targetMap: 'market-interior',
       spawnId: 'from-exterior',
     },
   ],
@@ -41,5 +49,6 @@ export default {
     default: { x: SPAWN_X, y: SPAWN_Y },
     'from-cabin': { x: 14 * TILE + TILE / 2, y: 57 * TILE + TILE / 2 },
     'from-upper-room': { x: 32 * TILE + TILE / 2, y: 13 * TILE + TILE / 2 },
+    'from-market': { x: 21 * TILE + TILE / 2, y: 32 * TILE + TILE / 2 },
   },
 };

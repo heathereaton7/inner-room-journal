@@ -5154,6 +5154,19 @@ function AppInner(){
         setTimeout(()=>{setUpperRoomView("feed");setScreen("upper-room");setSpaceTransit(false);setTransitDir(null);},700);
         return;
       }
+      // Market interactions
+      if(dest==="interact:harvest"){
+        setTimeout(()=>{setMarketStall("harvest");setScreen("market");setSpaceTransit(false);setTransitDir(null);},700);
+        return;
+      }
+      if(dest==="interact:general"){
+        setTimeout(()=>{setShopStall("general");setScreen("market");setSpaceTransit(false);setTransitDir(null);},700);
+        return;
+      }
+      if(dest==="interact:barter"){
+        setTimeout(()=>{setShopStall("barter");setScreen("market");setSpaceTransit(false);setTransitDir(null);},700);
+        return;
+      }
 
       setTimeout(()=>{
         // Farm uses the garden screen with gardenMode="farm"
