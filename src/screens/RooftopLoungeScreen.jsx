@@ -21,9 +21,9 @@ export default function RooftopLoungeScreen({
 
   const climbCSS = `
     @keyframes skylightClimb {
-      0%   { transform: scale(1);   opacity: 1; }
-      70%  { transform: scale(1.4); opacity: 1; }
-      100% { transform: scale(1.8); opacity: 0; }
+      0%   { transform: scale(1) translateY(0);     opacity: 1; }
+      60%  { transform: scale(1.8) translateY(-12%); opacity: 1; }
+      100% { transform: scale(2.6) translateY(-20%); opacity: 0; }
     }
     @keyframes rooftopReveal {
       0%   { opacity: 0; }
@@ -60,7 +60,7 @@ export default function RooftopLoungeScreen({
               width:"100%",height:"100%",
               objectFit:"cover",
               animation:"skylightClimb 3.2s cubic-bezier(0.3,0,0.2,1) forwards",
-              transformOrigin:"50% 35%", /* zoom toward the top of the staircase */
+              transformOrigin:"55% 15%", /* zoom toward the walkway/path at the top */
             }}
             draggable={false}
           />
