@@ -1,8 +1,11 @@
 import { useRef, useEffect } from 'react';
 import { ROOFTOP_LOUNGE_IMAGE } from '../constants.js';
 
-// Rooftop lounge — open-air terrace above the cabin, reached via spiral staircase.
-// Night sky with stars overhead, string lights, cozy seating, panoramic forest/mountain view.
+// Rooftop terrace — open-air lounge above the cabin, reached via spiral staircase.
+// Purple-pink twilight sky, string lights draped across scene, pergola with drapes LEFT,
+// large sectional sofa CENTER-LEFT, coffee table with candles + food CENTER,
+// spiral staircase RIGHT, stone path FOREGROUND, lanterns scattered throughout,
+// ocean/water view + mountains in BACKGROUND, lush greenery everywhere.
 
 export default function ImmersiveRooftop(){
   const containerRef=useRef(null);
@@ -14,17 +17,17 @@ export default function ImmersiveRooftop(){
   const dragStart=useRef(null);
   const animFrame=useRef(null);
   const particles=useRef([]);
-  const stars=useRef([]);
+  const fireflies=useRef([]);
   const time=useRef(0);
   const imgRef=useRef(null);
 
   const PARALLAX=35;
   const SENSITIVITY=0.5;
 
-  // Initialize floating particles + twinkling stars
+  // Initialize warm floating particles + fireflies in the garden
   useEffect(()=>{
     const pts=[];
-    for(let i=0;i<20;i++){
+    for(let i=0;i<25;i++){
       pts.push({
         x:Math.random(),
         y:Math.random(),
@@ -37,19 +40,20 @@ export default function ImmersiveRooftop(){
       });
     }
     particles.current=pts;
-    // Twinkling stars in the open sky area
-    const st=[];
-    for(let i=0;i<40;i++){
-      st.push({
+    // Fireflies — scattered through the greenery and stone path
+    const ffs=[];
+    for(let i=0;i<22;i++){
+      ffs.push({
         x:0.05+Math.random()*0.90,
-        y:0.02+Math.random()*0.35,
-        size:Math.random()*1.5+0.5,
+        y:0.35+Math.random()*0.55,  // lower half — in the garden/path area
+        size:Math.random()*1.8+1,
+        sx:(Math.random()-0.5)*0.0003,
+        sy:(Math.random()-0.5)*0.0002,
         phase:Math.random()*Math.PI*2,
-        twinkle:Math.random()*0.004+0.001,
-        brightness:Math.random()*0.5+0.3,
+        blink:Math.random()*0.003+0.001,
       });
     }
-    stars.current=st;
+    fireflies.current=ffs;
   },[]);
 
   // Gyroscope on mobile
@@ -145,17 +149,23 @@ export default function ImmersiveRooftop(){
             ctx.fillStyle=`rgba(${r},${g},${b},${alpha*0.12})`;ctx.fill();
           }
         });
-        // Twinkling stars
-        stars.current.forEach(s=>{
-          const twinkle=Math.sin(time.current*s.twinkle+s.phase);
-          const a=Math.max(0,twinkle*0.5+0.5)*s.brightness;
-          const px=s.x*w,py=s.y*h;
-          // Star core
-          ctx.beginPath();ctx.arc(px,py,s.size*0.6,0,Math.PI*2);
-          ctx.fillStyle=`rgba(220,230,255,${a})`;ctx.fill();
-          // Star glow
-          ctx.beginPath();ctx.arc(px,py,s.size*2.5,0,Math.PI*2);
-          ctx.fillStyle=`rgba(200,215,255,${a*0.12})`;ctx.fill();
+        // Fireflies in the garden greenery
+        fireflies.current.forEach(ff=>{
+          ff.x+=ff.sx+Math.sin(time.current*0.0005+ff.phase)*0.0001;
+          ff.y+=ff.sy+Math.cos(time.current*0.0007+ff.phase)*0.00008;
+          if(ff.x<0.03||ff.x>0.97)ff.sx*=-1;
+          if(ff.y<0.30||ff.y>0.92)ff.sy*=-1;
+          ff.x=Math.max(0.03,Math.min(0.97,ff.x));
+          ff.y=Math.max(0.30,Math.min(0.92,ff.y));
+          const blink=Math.sin(time.current*ff.blink+ff.phase);
+          const a=Math.max(0,blink*0.7+0.3)*0.55;
+          const px=ff.x*w,py=ff.y*h;
+          ctx.beginPath();ctx.arc(px,py,ff.size*6,0,Math.PI*2);
+          ctx.fillStyle=`rgba(180,255,120,${a*0.07})`;ctx.fill();
+          ctx.beginPath();ctx.arc(px,py,ff.size*3,0,Math.PI*2);
+          ctx.fillStyle=`rgba(200,255,140,${a*0.16})`;ctx.fill();
+          ctx.beginPath();ctx.arc(px,py,ff.size,0,Math.PI*2);
+          ctx.fillStyle=`rgba(220,255,160,${a})`;ctx.fill();
         });
       }
       animFrame.current=requestAnimationFrame(loop);
@@ -178,8 +188,8 @@ export default function ImmersiveRooftop(){
   },[]);
 
   return(
-    <div ref={containerRef} style={{position:"absolute",inset:0,zIndex:0,overflow:"hidden",background:"#050812",cursor:"grab"}} onMouseDown={()=>{if(containerRef.current)containerRef.current.style.cursor="grabbing";}} onMouseUp={()=>{if(containerRef.current)containerRef.current.style.cursor="grab";}}>
-      {/* Rooftop image — oversized for parallax */}
+    <div ref={containerRef} style={{position:"absolute",inset:0,zIndex:0,overflow:"hidden",background:"#120818",cursor:"grab"}} onMouseDown={()=>{if(containerRef.current)containerRef.current.style.cursor="grabbing";}} onMouseUp={()=>{if(containerRef.current)containerRef.current.style.cursor="grab";}}>
+      {/* Rooftop terrace image — oversized for parallax */}
       <img
         ref={imgRef}
         src={ROOFTOP_LOUNGE_IMAGE}
@@ -198,20 +208,29 @@ export default function ImmersiveRooftop(){
         }}
         draggable={false}
       />
-      {/* String light glow — warm lights across the rooftop */}
-      <div style={{position:"absolute",left:"5%",right:"5%",top:"10%",height:"12%",pointerEvents:"none",zIndex:1,background:"linear-gradient(90deg, transparent 0%, rgba(255,210,120,0.06) 15%, rgba(255,200,100,0.08) 30%, rgba(255,210,120,0.05) 50%, rgba(255,200,100,0.08) 70%, rgba(255,210,120,0.06) 85%, transparent 100%)",mixBlendMode:"screen"}}/>
-      {/* Cool night sky ambient — subtle blue from above */}
-      <div style={{position:"absolute",left:0,right:0,top:0,height:"40%",pointerEvents:"none",zIndex:1,background:"linear-gradient(to bottom, rgba(80,100,180,0.06) 0%, transparent 100%)",mixBlendMode:"screen"}}/>
-      {/* Warm ambient from any lamps/candles */}
-      <div style={{position:"absolute",left:"30%",top:"55%",width:"40%",height:"30%",pointerEvents:"none",zIndex:1,borderRadius:"50%",background:"radial-gradient(circle, rgba(255,200,100,0.08) 0%, transparent 65%)",mixBlendMode:"screen"}}/>
-      {/* Particles + stars canvas */}
+      {/* String light glow — warm lights draped across the terrace */}
+      <div style={{position:"absolute",left:"0%",right:"0%",top:"8%",height:"18%",pointerEvents:"none",zIndex:1,background:"linear-gradient(90deg, transparent 0%, rgba(255,210,120,0.06) 10%, rgba(255,200,100,0.09) 25%, rgba(255,210,120,0.05) 40%, rgba(255,200,100,0.09) 55%, rgba(255,210,120,0.06) 70%, rgba(255,200,100,0.09) 85%, transparent 100%)",mixBlendMode:"screen"}}/>
+      {/* Twilight sky wash — purple-pink gradient from above */}
+      <div style={{position:"absolute",left:0,right:0,top:0,height:"35%",pointerEvents:"none",zIndex:1,background:"linear-gradient(to bottom, rgba(140,80,180,0.06) 0%, rgba(180,100,160,0.03) 50%, transparent 100%)",mixBlendMode:"screen"}}/>
+      {/* Pergola warm glow — left side under the drapes */}
+      <div style={{position:"absolute",left:"0%",top:"18%",width:"35%",height:"30%",pointerEvents:"none",zIndex:1,borderRadius:"50%",background:"radial-gradient(ellipse at 40% 50%, rgba(255,180,80,0.10) 0%, transparent 65%)",mixBlendMode:"screen"}}/>
+      {/* Coffee table candle cluster — center */}
+      <div style={{position:"absolute",left:"32%",top:"46%",width:"18%",height:"12%",pointerEvents:"none",zIndex:1,borderRadius:"50%",background:"radial-gradient(circle, rgba(255,200,100,0.14) 0%, transparent 65%)",mixBlendMode:"screen"}}/>
+      {/* Lantern glows — scattered warm points */}
+      <div style={{position:"absolute",left:"2%",top:"55%",width:"8%",height:"8%",pointerEvents:"none",zIndex:1,borderRadius:"50%",background:"radial-gradient(circle, rgba(255,190,80,0.12) 0%, transparent 65%)",mixBlendMode:"screen"}}/>
+      <div style={{position:"absolute",right:"5%",top:"42%",width:"8%",height:"8%",pointerEvents:"none",zIndex:1,borderRadius:"50%",background:"radial-gradient(circle, rgba(255,190,80,0.12) 0%, transparent 65%)",mixBlendMode:"screen"}}/>
+      <div style={{position:"absolute",left:"48%",top:"72%",width:"6%",height:"6%",pointerEvents:"none",zIndex:1,borderRadius:"50%",background:"radial-gradient(circle, rgba(255,190,80,0.10) 0%, transparent 65%)",mixBlendMode:"screen"}}/>
+      <div style={{position:"absolute",right:"15%",top:"65%",width:"7%",height:"7%",pointerEvents:"none",zIndex:1,borderRadius:"50%",background:"radial-gradient(circle, rgba(255,190,80,0.10) 0%, transparent 65%)",mixBlendMode:"screen"}}/>
+      {/* Ocean horizon glow — distant warm light on water */}
+      <div style={{position:"absolute",left:"40%",top:"22%",width:"50%",height:"15%",pointerEvents:"none",zIndex:1,background:"radial-gradient(ellipse at 60% 50%, rgba(200,150,180,0.06) 0%, transparent 70%)",mixBlendMode:"screen"}}/>
+      {/* Particles + fireflies canvas */}
       <canvas ref={canvasRef} style={{position:"absolute",inset:0,pointerEvents:"none",zIndex:2}}/>
-      {/* Cinematic vignette — slightly deeper for night scene */}
-      <div style={{position:"absolute",inset:0,pointerEvents:"none",zIndex:3,background:"radial-gradient(ellipse at center, transparent 30%, rgba(5,8,18,0.60) 100%)"}}/>
-      {/* Top shadow */}
-      <div style={{position:"absolute",top:0,left:0,right:0,height:"20%",pointerEvents:"none",zIndex:3,background:"linear-gradient(to bottom, rgba(5,8,18,0.25), transparent)"}}/>
-      {/* Cool color wash — subtle nighttime blue-purple */}
-      <div style={{position:"absolute",inset:0,pointerEvents:"none",zIndex:1,background:"linear-gradient(180deg, rgba(80,100,160,0.03) 0%, transparent 40%, rgba(60,80,140,0.02) 100%)"}}/>
+      {/* Cinematic vignette */}
+      <div style={{position:"absolute",inset:0,pointerEvents:"none",zIndex:3,background:"radial-gradient(ellipse at center, transparent 30%, rgba(18,8,24,0.55) 100%)"}}/>
+      {/* Bottom shadow — stone path fading */}
+      <div style={{position:"absolute",bottom:0,left:0,right:0,height:"15%",pointerEvents:"none",zIndex:3,background:"linear-gradient(to top, rgba(18,8,24,0.35), transparent)"}}/>
+      {/* Warm-purple color wash */}
+      <div style={{position:"absolute",inset:0,pointerEvents:"none",zIndex:1,background:"linear-gradient(180deg, rgba(140,80,160,0.02) 0%, transparent 40%, rgba(180,120,80,0.02) 100%)"}}/>
     </div>
   );
 }
