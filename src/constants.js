@@ -178,6 +178,7 @@ export const SHELF_BOOKS = [
   {id:"gratitude",label:"Gratitude",          emoji:"🌿"},
   {id:"dreams",   label:"Dreams",             emoji:"✨"},
   {id:"prophecy", label:"Prophecy & Words",   emoji:"🕊️"},
+  {id:"becoming-her", label:"Becoming Her",    emoji:"🌸"},
 ];
 /* Book cover colors for the floating shelf books */
 export const BOOK_COVERS = {
@@ -186,7 +187,8 @@ export const BOOK_COVERS = {
   prayers:  {bg:"linear-gradient(160deg,#1E3D2E,#122818)",accent:"#8AC8A0"},
   gratitude:{bg:"linear-gradient(160deg,#3D3D1E,#282810)",accent:"#D4C87A"},
   dreams:   {bg:"linear-gradient(160deg,#1E2E3D,#101828)",accent:"#7AB8D8"},
-  prophecy: {bg:"linear-gradient(160deg,#3D1E2E,#281018)",accent:"#D490C0"},
+  prophecy:      {bg:"linear-gradient(160deg,#3D1E2E,#281018)",accent:"#D490C0"},
+  'becoming-her':{bg:"linear-gradient(160deg,#3D2E28,#2A1E18)",accent:"#D4A0A0"},
 };
 
 export const BOOK_CONTENT = {
@@ -528,7 +530,8 @@ export const WEEKLY_MISSIONS=[
   {id:"weekly_checkin_3",    label:"Show up 3 times",   description:"Complete 3 check-ins this week", target:3, reward:{candles:15}},
 ];
 
-export const CABIN_FALLBACK_IMAGE="/cabin-interior.webp";
+export const CABIN_FALLBACK_IMAGE="/cabin-interior.png";
+export const ROOFTOP_LOUNGE_IMAGE="/rooftoplounge.png";
 
 /* ══════════════════════════════════════════════════════
    INNER ROOM PLUS — Premium Content

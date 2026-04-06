@@ -14,6 +14,8 @@ import ProfileScreen from './screens/ProfileScreen.jsx';
 import FeedScreen from './screens/FeedScreen.jsx';
 import NotificationsScreen from './screens/NotificationsScreen.jsx';
 import CheckInScreen from './screens/CheckInScreen.jsx';
+import BecomingHerScreen from './screens/BecomingHerScreen.jsx';
+import RooftopLoungeScreen from './screens/RooftopLoungeScreen.jsx';
 import CheckInCalendar from './screens/CheckInCalendar.jsx';
 import PostCard from './components/PostCard.jsx';
 import UpperRoomGatherings from './screens/UpperRoomGatherings.jsx';
@@ -37,7 +39,7 @@ async function dbSave(k,v){
     localStorage.setItem(k,JSON.stringify(v));
     // Dual-write to Firestore when signed in
     if(auth?.currentUser){
-      const fieldMap={"irj-entries":"entries","irj-prayer":"prayerPosts","irj-saved-cards":"savedCards","irj-onboarded":"isOnboarded","irj-candles":"candles","irj-prayed":"prayedFor","irj-owned-items":"ownedItems","irj-garden":"gardenPlots","irj-inventory":"inventory","irj-saved-verses":"savedVerses","irj-bank":"bank","irj-sell-basket":"sellBasket","irj-farm-plots":"farmPlots","irj-animals":"animals","irj-missions":"missions","irj-premium":"isPremium"};
+      const fieldMap={"irj-entries":"entries","irj-prayer":"prayerPosts","irj-saved-cards":"savedCards","irj-onboarded":"isOnboarded","irj-candles":"candles","irj-prayed":"prayedFor","irj-owned-items":"ownedItems","irj-garden":"gardenPlots","irj-inventory":"inventory","irj-saved-verses":"savedVerses","irj-bank":"bank","irj-sell-basket":"sellBasket","irj-farm-plots":"farmPlots","irj-animals":"animals","irj-missions":"missions","irj-premium":"isPremium","irj-becoming-her":"becomingHer"};
       const field=fieldMap[k];
       if(field){
         const userRef=doc(db,"users",auth.currentUser.uid);
@@ -1718,6 +1720,7 @@ function AppInner(){
   const [userResults,       setUserResults]        = useState([]);
   const [userSearchLoading, setUserSearchLoading]  = useState(false);
   const [lastCheckinIntensity, setLastCheckinIntensity] = useState(null);
+  const [becomingHer, setBecomingHer] = useState(null); // Becoming Her journal progress
   const [activeGatheringSpace, setActiveGatheringSpace] = useState(null);
   const [gatheringPosts, setGatheringPosts] = useState([]);
   const [gatheringLoading, setGatheringLoading] = useState(false);
@@ -1927,6 +1930,7 @@ function AppInner(){
       const pm   = await dbLoad("irj-premium") || false;
       const pa   = await dbLoad("irj-appearance") || null;
       const rm   = await dbLoad("irj-room") || null;
+      const bh   = await dbLoad("irj-becoming-her") || null;
       // Migrate prayers: add status/answeredDate/category if missing
       let migrated=false;
       const mpp=pp.map(p=>{
@@ -1946,6 +1950,7 @@ function AppInner(){
       setCandles(cn); setPrayedFor(pf); setGardenPlots(gp); setInventory(inv); setSavedVerses(sv);
       setBank(bnk); setSellBasket(sb); setFarmPlots(fp); setAnimals(an); setMissions(ms); setIsPremium(!!pm);
       if(pa) setPlayerAppearance(pa);
+      if(bh) setBecomingHer(bh);
       // Safety: if user has done check-ins but candle was lost in migration, restore it
       const hasCheckins=Object.keys(localStorage).some(k=>k.startsWith("irj-checkins-"));
       const candlePlaced=migratedRoom.placed?.some(p=>p.id==="candle");
@@ -3322,6 +3327,14 @@ function AppInner(){
     setSpaceTransit(true); setTransitDir("toKitchen");
     setTimeout(()=>{setScreen("kitchen");setSpaceTransit(false);setTransitDir(null);},700);
   }
+  function transitionToRooftop(){
+    setSpaceTransit(true); setTransitDir("toRooftop");
+    setTimeout(()=>{setScreen("rooftop-lounge");setSpaceTransit(false);setTransitDir(null);},700);
+  }
+  function transitionToCabin(){
+    setSpaceTransit(true); setTransitDir("toCabin");
+    setTimeout(()=>{setScreen("cabin");setSpaceTransit(false);setTransitDir(null);},700);
+  }
   function transitionToStove(){
     setStoveZoom(true);
     setTimeout(()=>{setScreen("stove");setStoveZoom(false);},1200);
@@ -3411,6 +3424,8 @@ function AppInner(){
   // ── SHELF BOOK SELECTION (calm multi-phase) ──
   function selectShelfBook(bookId){
     if(shelfAnim||bookId===deskBook) return;
+    // Becoming Her opens its own sanctuary screen instead of desk book
+    if(bookId==="becoming-her"){ setScreen("becoming-her"); return; }
     setShelfAnim(bookId);
     setJournalSection(null);
     // Phase 1: book lifts & arcs to desk (1.2s)
@@ -4354,7 +4369,7 @@ function AppInner(){
     <CabinScreen
       spaceTransit={spaceTransit} transitDir={transitDir}
       transitionToMap={transitionToMap} transitionToKitchen={transitionToKitchen}
-      transitionToJournal={transitionToJournal}
+      transitionToRooftop={transitionToRooftop} transitionToJournal={transitionToJournal}
       cabinMode={cabinMode} cabin3DReady={cabin3DReady}
       debugHotspots={debugHotspots} debugTripleTap={debugTripleTap}
       bookOpen={bookOpen} setBookOpen={setBookOpen} deskBook={deskBook}
@@ -4387,6 +4402,17 @@ function AppInner(){
       inventory={inventory} addToInventory={addToInventory} removeFromInventory={removeFromInventory}
     />
     <DoveCompanion intensity={lastCheckinIntensity} active={true} screen="cabin"/>
+  </>);
+
+
+  /* ══ ROOFTOP LOUNGE (above cabin via spiral staircase) ══ */
+  if(screen==="rooftop-lounge") return(<>
+    <RooftopLoungeScreen
+      spaceTransit={spaceTransit} transitDir={transitDir}
+      transitionToCabin={transitionToCabin}
+      candles={candles} bank={bank}
+    />
+    <DoveCompanion intensity={lastCheckinIntensity} active={true} screen="rooftop-lounge"/>
   </>);
 
 
@@ -7103,6 +7129,19 @@ function AppInner(){
         {spaceTransit&&<div style={{position:"fixed",inset:0,zIndex:9999,background:"#0A0806",animation:"spaceFadeIn .6s ease both",pointerEvents:"all"}}/>}
         <BottomMenuDrawer/>
       </div>
+    );
+  }
+
+  /* ══ BECOMING HER — 90-Day Identity + Habit Journal Sanctuary ══ */
+  if(screen==="becoming-her"){
+    return(
+      <BecomingHerScreen
+        onBack={()=>setScreen("cabin")}
+        progress={becomingHer}
+        onProgressChange={(next)=>{setBecomingHer(next);dbSave("irj-becoming-her",next);}}
+        addCandles={addCandles}
+        setToast={setToast}
+      />
     );
   }
 

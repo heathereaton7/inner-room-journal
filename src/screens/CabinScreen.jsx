@@ -8,7 +8,7 @@ import BookSparkles from '../components/BookSparkles.jsx';
 import { moveItem, removeFromRoom, placeItem } from '../roomDecor.js';
 
 export default function CabinScreen({
-  spaceTransit, transitDir, transitionToMap, transitionToKitchen, transitionToJournal,
+  spaceTransit, transitDir, transitionToMap, transitionToKitchen, transitionToRooftop, transitionToJournal,
   cabinMode, cabin3DReady, debugHotspots, debugTripleTap,
   bookOpen, setBookOpen, deskBook, shelfAnim, bookPage, flipDir, bookText, setBookText,
   bookSaveMsg, setBookSaveMsg, journalSection, setJournalSection, journalZoom,
@@ -193,8 +193,9 @@ export default function CabinScreen({
       )}
 
       {/* ═══ INTERACTIVE HOTSPOTS ═══ */}
-      {/* Positions mapped to cabin-interior.png: sunken great room — fireplace LEFT, window CENTER,
-          stairs RIGHT, desk with open book UPPER-RIGHT, sectional sofa CENTER, rolled map on shelf BOTTOM-CENTER */}
+      {/* Positions mapped to new cabin image: cozy loft — stone fireplace LEFT, large window CENTER,
+          spiral staircase RIGHT, desk with "The Inner Room" book FOREGROUND, rug CENTER FLOOR,
+          window seat with pillows CENTER-BACK, skylight TOP, string lights across ceiling beams */}
       {/* ─── HOW TO EDIT HOTSPOTS ───
           Each hotspot is a <button> with absolute positioning (left/right/top/bottom as %).
           To reposition: change the left/top/width/height percentages.
@@ -202,45 +203,52 @@ export default function CabinScreen({
           Glow class: "magic-hotspot" + animation:"magicGlow ..." for the enchanted look.
           The outer <div> with magicGlowOuter adds the soft radial aura around each hotspot. ─── */}
 
-      {/* 1. MAP ON SHELF — rolled paper map with magnifying glass on the wooden shelf → world map */}
-      <button onClick={()=>transitionToMap()} style={{position:"absolute",left:"28%",top:"82%",width:"44%",height:"14%",zIndex:11,background:"transparent",border:"none",padding:0,cursor:"pointer",borderRadius:"10px",outline:"none",WebkitTapHighlightColor:"transparent"}}>
-        {/* Pulse glow on magnifying glass */}
-        <div style={{position:"absolute",left:"40%",top:"-55%",width:"28%",height:"100%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,220,120,0.32) 0%,rgba(255,190,80,0.12) 40%,transparent 72%)",pointerEvents:"none",animation:"hotspotPulse 2.6s ease-in-out infinite"}}/>
-        <div style={{position:"absolute",left:"45%",top:"-45%",width:"18%",height:"70%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,245,180,0.22) 0%,transparent 55%)",pointerEvents:"none",animation:"hotspotPulse 3s ease-in-out infinite",animationDelay:"0.5s"}}/>
+      {/* 1. THE INNER ROOM BOOK — center of desk foreground → journal */}
+      <button onClick={()=>transitionToJournal()} style={{position:"absolute",left:"28%",top:"74%",width:"38%",height:"14%",zIndex:11,background:"transparent",border:"none",padding:0,cursor:"pointer",borderRadius:"10px",outline:"none",WebkitTapHighlightColor:"transparent"}}>
+        {/* Pulse glow on "The Inner Room" book */}
+        <div style={{position:"absolute",left:"20%",top:"5%",width:"60%",height:"90%",borderRadius:"45%",background:"radial-gradient(ellipse at 50% 50%,rgba(255,215,130,0.30) 0%,rgba(255,190,90,0.10) 45%,transparent 72%)",pointerEvents:"none",animation:"hotspotPulse 2.8s ease-in-out infinite"}}/>
+        <div style={{position:"absolute",left:"30%",top:"15%",width:"40%",height:"70%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,245,180,0.20) 0%,transparent 55%)",pointerEvents:"none",animation:"hotspotPulse 3.3s ease-in-out infinite",animationDelay:"0.8s"}}/>
       </button>
 
-      {/* 2. STAIRS — wooden stairs on the RIGHT → downstairs kitchen */}
-      <button onClick={()=>transitionToKitchen()} style={{position:"absolute",right:"0%",top:"52%",width:"20%",height:"34%",zIndex:12,background:"transparent",border:"none",padding:0,cursor:"pointer",borderRadius:"8px",outline:"none",WebkitTapHighlightColor:"transparent"}}>
-        {/* Pulse glow on staircase */}
-        <div style={{position:"absolute",left:"15%",top:"20%",width:"70%",height:"50%",borderRadius:"45%",background:"radial-gradient(ellipse at 55% 50%,rgba(255,210,120,0.30) 0%,rgba(255,180,80,0.10) 45%,transparent 72%)",pointerEvents:"none",animation:"hotspotPulse 3s ease-in-out infinite"}}/>
-        <div style={{position:"absolute",left:"25%",top:"28%",width:"50%",height:"38%",borderRadius:"50%",background:"radial-gradient(ellipse at 50% 50%,rgba(255,240,170,0.18) 0%,transparent 55%)",pointerEvents:"none",animation:"hotspotPulse 3.5s ease-in-out infinite",animationDelay:"0.7s"}}/>
+      {/* 2. SPIRAL STAIRCASE — right side → rooftop lounge (up the spiral stairs) */}
+      <button onClick={()=>transitionToRooftop()} style={{position:"absolute",right:"0%",top:"12%",width:"28%",height:"58%",zIndex:12,background:"transparent",border:"none",padding:0,cursor:"pointer",borderRadius:"8px",outline:"none",WebkitTapHighlightColor:"transparent"}}>
+        {/* Pulse glow along spiral staircase */}
+        <div style={{position:"absolute",left:"20%",top:"30%",width:"60%",height:"40%",borderRadius:"45%",background:"radial-gradient(ellipse at 50% 50%,rgba(255,210,120,0.25) 0%,rgba(255,180,80,0.08) 45%,transparent 72%)",pointerEvents:"none",animation:"hotspotPulse 3s ease-in-out infinite"}}/>
+        <div style={{position:"absolute",left:"30%",top:"38%",width:"40%",height:"28%",borderRadius:"50%",background:"radial-gradient(ellipse at 50% 50%,rgba(255,240,170,0.15) 0%,transparent 55%)",pointerEvents:"none",animation:"hotspotPulse 3.5s ease-in-out infinite",animationDelay:"0.7s"}}/>
       </button>
 
-      {/* 3. OPEN BOOK ON DESK — upper-right corner on the desk near lamp → journal */}
-      <button onClick={()=>transitionToJournal()} style={{position:"absolute",right:"6%",top:"30%",width:"18%",height:"16%",zIndex:11,background:"transparent",border:"none",padding:0,cursor:"pointer",borderRadius:"8px",outline:"none",WebkitTapHighlightColor:"transparent"}}>
-        {/* Pulse glow on open book */}
-        <div style={{position:"absolute",left:"10%",top:"10%",width:"80%",height:"85%",borderRadius:"45%",background:"radial-gradient(ellipse at 50% 55%,rgba(255,215,130,0.30) 0%,rgba(255,190,90,0.10) 45%,transparent 72%)",pointerEvents:"none",animation:"hotspotPulse 2.8s ease-in-out infinite",animationDelay:"0.3s"}}/>
-        <div style={{position:"absolute",left:"22%",top:"18%",width:"56%",height:"65%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,245,180,0.20) 0%,transparent 55%)",pointerEvents:"none",animation:"hotspotPulse 3.3s ease-in-out infinite",animationDelay:"1s"}}/>
+      {/* 3. NOTEBOOK ON DESK — left side of desk near lantern → world map */}
+      <button onClick={()=>transitionToMap()} style={{position:"absolute",left:"8%",top:"76%",width:"20%",height:"12%",zIndex:11,background:"transparent",border:"none",padding:0,cursor:"pointer",borderRadius:"8px",outline:"none",WebkitTapHighlightColor:"transparent"}}>
+        {/* Pulse glow on notebook */}
+        <div style={{position:"absolute",left:"15%",top:"5%",width:"70%",height:"90%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,220,120,0.28) 0%,rgba(255,190,80,0.10) 40%,transparent 72%)",pointerEvents:"none",animation:"hotspotPulse 2.6s ease-in-out infinite"}}/>
+        <div style={{position:"absolute",left:"25%",top:"15%",width:"50%",height:"70%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,245,180,0.18) 0%,transparent 55%)",pointerEvents:"none",animation:"hotspotPulse 3s ease-in-out infinite",animationDelay:"0.5s"}}/>
       </button>
 
-      {/* 4-6 REMOVED — Window panels + fireplace candle hotspot now accessed via menu only */}
+      {/* 4. FIREPLACE — stone fireplace on left → ambient sounds */}
+      <button onClick={()=>{if(typeof window!=="undefined")window.dispatchEvent(new Event("toggle-fireplace"));}} style={{position:"absolute",left:"0%",top:"22%",width:"18%",height:"32%",zIndex:10,background:"transparent",border:"none",padding:0,cursor:"pointer",borderRadius:"8px",outline:"none",WebkitTapHighlightColor:"transparent"}}>
+        <div style={{position:"absolute",left:"20%",top:"30%",width:"70%",height:"50%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,160,60,0.08) 0%,transparent 60%)",pointerEvents:"none"}}/>
+      </button>
 
-      {/* 7. INSIGHTS — center area on the fluffy rug/carpet */}
-      <button onClick={()=>setShowInsights(true)} style={{position:"absolute",left:"30%",right:"30%",top:"58%",height:"14%",zIndex:10,background:"transparent",border:"none",cursor:"pointer",borderRadius:"8px"}}>
+      {/* 5. WINDOW SEAT — reading nook with pillows → future expansion */}
+      {/* Currently a subtle interactive zone, can be used for ambient view or Scripture reading */}
+
+      {/* 7. INSIGHTS — center area on the fluffy white rug */}
+      <button onClick={()=>setShowInsights(true)} style={{position:"absolute",left:"20%",right:"28%",top:"48%",height:"17%",zIndex:10,background:"transparent",border:"none",cursor:"pointer",borderRadius:"8px"}}>
         <div style={{position:"absolute",inset:"-10%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,200,80,0.04),transparent 60%)",pointerEvents:"none"}}/>
       </button>
 
-      {/* 10. BOOKSHELF — far left behind fireplace → shelf books */}
+      {/* 10. BOOKSHELF — desk shelves beneath the desktop surface → shelf books */}
       {SHELF_BOOKS.filter(b=>b.id!=="prayers"&&b.id!=="dreams").map((book,i)=>{
         const cv=BOOK_COVERS[book.id]||BOOK_COVERS.journal;
         const isActive=deskBook===book.id;
+        // Books arranged along the desk shelving underneath the desktop
         const bookPositions=[
-          {left:"0%",bottom:"42%",width:"6%",height:"8%"},  // book 1
-          {left:"1%",bottom:"50%",width:"6%",height:"8%"},  // book 2
-          {left:"0%",bottom:"58%",width:"7%",height:"7%"},  // book 3
-          {left:"1%",bottom:"34%",width:"6%",height:"8%"},  // book 4
-          {left:"0%",bottom:"66%",width:"7%",height:"7%"},  // book 5
-          {left:"1%",bottom:"26%",width:"6%",height:"8%"},  // book 6
+          {left:"10%",bottom:"2%",width:"7%",height:"6%"},   // book 1 — far left shelf
+          {left:"18%",bottom:"2%",width:"7%",height:"6%"},   // book 2
+          {left:"26%",bottom:"2%",width:"7%",height:"6%"},   // book 3
+          {left:"64%",bottom:"2%",width:"7%",height:"6%"},   // book 4 — right side shelf
+          {left:"72%",bottom:"2%",width:"7%",height:"6%"},   // book 5
+          {left:"80%",bottom:"2%",width:"7%",height:"6%"},   // book 6
         ];
         const pos=bookPositions[i]||bookPositions[0];
         return(
@@ -272,15 +280,16 @@ export default function CabinScreen({
       {/* ═══ HOTSPOT DEBUG OVERLAY (2D only) ═══ */}
       {debugHotspots&&<>
         <div style={{position:"fixed",top:8,left:"50%",transform:"translateX(-50%)",zIndex:999,background:"rgba(255,60,60,0.85)",color:"#fff",fontFamily:SANS,fontSize:"0.65rem",fontWeight:700,padding:"4px 14px",borderRadius:20,letterSpacing:"0.04em",pointerEvents:"none",backdropFilter:"blur(6px)",WebkitBackdropFilter:"blur(6px)",whiteSpace:"nowrap"}}>DEBUG HOTSPOTS ON</div>
-        {/* 1. Map on shelf */}
-        <div style={{position:"absolute",left:"28%",top:"82%",width:"44%",height:"14%",zIndex:900,background:"rgba(255,100,100,0.25)",border:"2px solid rgba(255,100,100,0.7)",borderRadius:10,pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.5rem",fontWeight:700,color:"#fff",background:"rgba(255,60,60,0.75)",padding:"2px 6px",borderRadius:8}}>MAP → World Map</span></div>
-        {/* 2. Stairs */}
-        <div style={{position:"absolute",right:"0%",top:"42%",width:"20%",height:"42%",zIndex:900,background:"rgba(100,255,100,0.25)",border:"2px solid rgba(100,255,100,0.7)",borderRadius:8,pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.5rem",fontWeight:700,color:"#fff",background:"rgba(60,180,60,0.85)",padding:"2px 6px",borderRadius:8}}>STAIRS → Kitchen</span></div>
-        {/* 3. Open book on desk */}
-        <div style={{position:"absolute",right:"6%",top:"20%",width:"18%",height:"16%",zIndex:900,background:"rgba(100,100,255,0.25)",border:"2px solid rgba(100,100,255,0.7)",borderRadius:8,pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.5rem",fontWeight:700,color:"#fff",background:"rgba(60,60,255,0.75)",padding:"2px 6px",borderRadius:8}}>BOOK → Journal</span></div>
-        {/* 4-6 removed — accessed via menu now */}
+        {/* 1. Inner Room book on desk */}
+        <div style={{position:"absolute",left:"28%",top:"74%",width:"38%",height:"14%",zIndex:900,background:"rgba(100,100,255,0.25)",border:"2px solid rgba(100,100,255,0.7)",borderRadius:10,pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.5rem",fontWeight:700,color:"#fff",background:"rgba(60,60,255,0.75)",padding:"2px 6px",borderRadius:8}}>BOOK → Journal</span></div>
+        {/* 2. Spiral staircase */}
+        <div style={{position:"absolute",right:"0%",top:"12%",width:"28%",height:"58%",zIndex:900,background:"rgba(100,255,100,0.25)",border:"2px solid rgba(100,255,100,0.7)",borderRadius:8,pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.5rem",fontWeight:700,color:"#fff",background:"rgba(60,180,60,0.85)",padding:"2px 6px",borderRadius:8}}>STAIRS → Rooftop Lounge</span></div>
+        {/* 3. Notebook on desk */}
+        <div style={{position:"absolute",left:"8%",top:"76%",width:"20%",height:"12%",zIndex:900,background:"rgba(255,100,100,0.25)",border:"2px solid rgba(255,100,100,0.7)",borderRadius:8,pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.5rem",fontWeight:700,color:"#fff",background:"rgba(255,60,60,0.75)",padding:"2px 6px",borderRadius:8}}>NOTEBOOK → World Map</span></div>
+        {/* 4. Fireplace */}
+        <div style={{position:"absolute",left:"0%",top:"22%",width:"18%",height:"32%",zIndex:900,background:"rgba(255,180,60,0.25)",border:"2px solid rgba(255,180,60,0.7)",borderRadius:8,pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.5rem",fontWeight:700,color:"#fff",background:"rgba(200,120,20,0.85)",padding:"2px 6px",borderRadius:8}}>FIREPLACE</span></div>
         {/* 7. Insights (rug) */}
-        <div style={{position:"absolute",left:"30%",right:"30%",top:"58%",height:"14%",zIndex:900,background:"rgba(0,200,200,0.2)",border:"2px solid rgba(0,200,200,0.7)",borderRadius:8,pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.5rem",fontWeight:700,color:"#fff",background:"rgba(0,150,150,0.85)",padding:"2px 6px",borderRadius:8}}>INSIGHTS</span></div>
+        <div style={{position:"absolute",left:"20%",right:"28%",top:"48%",height:"17%",zIndex:900,background:"rgba(0,200,200,0.2)",border:"2px solid rgba(0,200,200,0.7)",borderRadius:8,pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:SANS,fontSize:"0.5rem",fontWeight:700,color:"#fff",background:"rgba(0,150,150,0.85)",padding:"2px 6px",borderRadius:8}}>INSIGHTS</span></div>
       </>}
 
       {/* ═══ STREAK FLOATING INDICATOR ═══ */}
@@ -816,11 +825,11 @@ export default function CabinScreen({
       {/* ═══ WALK-TO-JOURNAL ZOOM ANIMATION ═══ */}
       {journalZoom&&(
         <div style={{position:"fixed",inset:0,zIndex:9998,overflow:"hidden",pointerEvents:"all"}}>
-          {/* Cabin zooms toward the desk/book area (upper-right) */}
-          <div style={{position:"absolute",inset:0,transformOrigin:"85% 36%",animation:"walkToJournalZoom 1.4s cubic-bezier(0.4,0,0.2,1) forwards"}}>
+          {/* Cabin zooms toward the desk/book area (center-foreground) */}
+          <div style={{position:"absolute",inset:0,transformOrigin:"48% 80%",animation:"walkToJournalZoom 1.4s cubic-bezier(0.4,0,0.2,1) forwards"}}>
             <img src={CABIN_FALLBACK_IMAGE} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}} draggable={false}/>
-            {/* Warm lamp glow intensifies on the desk during zoom */}
-            <div style={{position:"absolute",right:"6%",top:"26%",width:"22%",height:"20%",borderRadius:"45%",background:"radial-gradient(ellipse at 50% 50%,rgba(255,215,130,0.35) 0%,rgba(255,190,90,0.12) 45%,transparent 72%)",mixBlendMode:"screen"}}/>
+            {/* Warm glow intensifies on "The Inner Room" book during zoom */}
+            <div style={{position:"absolute",left:"30%",top:"72%",width:"34%",height:"18%",borderRadius:"45%",background:"radial-gradient(ellipse at 50% 50%,rgba(255,215,130,0.35) 0%,rgba(255,190,90,0.12) 45%,transparent 72%)",mixBlendMode:"screen"}}/>
           </div>
           {/* Journal desk image cross-fades in as cabin darkens */}
           <div style={{position:"fixed",inset:0,animation:"journalDeskReveal 0.6s 0.8s ease both"}}>
@@ -836,7 +845,7 @@ export default function CabinScreen({
       {/* ═══ SPACE TRANSITION OVERLAY ═══ */}
       {spaceTransit&&<div style={{position:"fixed",inset:0,zIndex:9999,background:"#0A0806",display:"flex",alignItems:"center",justifyContent:"center",animation:"spaceFadeIn .5s ease"}}>
         <div style={{textAlign:"center",animation:"fadeUp .6s .15s ease both"}}>
-          <div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"1.05rem",color:"rgba(255,248,232,0.5)",letterSpacing:"0.04em"}}>{transitDir==="toHall"?"Stepping into The Upper Room...":transitDir==="toGarden"?"Walking to the garden...":"Returning to the cabin..."}</div>
+          <div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"1.05rem",color:"rgba(255,248,232,0.5)",letterSpacing:"0.04em"}}>{transitDir==="toHall"?"Stepping into The Upper Room...":transitDir==="toRooftop"?"Climbing to the rooftop...":transitDir==="toGarden"?"Walking to the garden...":"Returning to the cabin..."}</div>
         </div>
       </div>}
       <BottomMenuDrawer/>

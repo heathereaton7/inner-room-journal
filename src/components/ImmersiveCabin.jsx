@@ -1,10 +1,11 @@
 import { useRef, useEffect } from 'react';
 import { CABIN_FALLBACK_IMAGE } from '../constants.js';
 
-// Sunken cabin great room — stone fireplace with roaring fire LEFT, large picture window CENTER
-// with pine forest & starry sky, cathedral skylight TOP, string lights across ceiling beams,
-// wooden stairs going DOWN on RIGHT, desk with open book & lamp UPPER-RIGHT, sectional sofa CENTER,
-// rolled paper map with magnifying glass on wooden shelf BOTTOM-CENTER, bookshelf FAR-LEFT, candles on mantel.
+// Cozy cabin loft — stone fireplace with roaring fire LEFT, large picture window CENTER
+// with pine forest & starry sky, open skylight TOP-CENTER, string lights across ceiling beams,
+// spiral staircase RIGHT (future rooftop access), window seat with pillows CENTER,
+// wooden desk with "The Inner Room" book in FOREGROUND, desk lamp RIGHT, lantern LEFT,
+// notebook & pen LEFT of book, fluffy white rug CENTER FLOOR, candles on mantel + window seat.
 
 export default function ImmersiveCabin(){
   const containerRef=useRef(null);
@@ -41,12 +42,12 @@ export default function ImmersiveCabin(){
       });
     }
     particles.current=pts;
-    // Fireflies — glowing outside the window area
+    // Fireflies — glowing outside the large picture window
     const ffs=[];
     for(let i=0;i<18;i++){
       ffs.push({
-        x:0.28+Math.random()*0.34,   // window glass only ~28-62%
-        y:0.10+Math.random()*0.24,    // window glass only ~10-34%
+        x:0.16+Math.random()*0.56,   // window glass ~16-72% (wider window in new image)
+        y:0.10+Math.random()*0.30,    // window glass ~10-40%
         size:Math.random()*2+1.5,
         sx:(Math.random()-0.5)*0.0003,
         sy:(Math.random()-0.5)*0.0002,
@@ -167,10 +168,10 @@ export default function ImmersiveCabin(){
         fireflies.current.forEach(ff=>{
           ff.x+=ff.sx+Math.sin(time.current*0.0005+ff.phase)*0.0001;
           ff.y+=ff.sy+Math.cos(time.current*0.0007+ff.phase)*0.00008;
-          if(ff.x<0.26||ff.x>0.64)ff.sx*=-1;
-          if(ff.y<0.08||ff.y>0.36)ff.sy*=-1;
-          ff.x=Math.max(0.26,Math.min(0.64,ff.x));
-          ff.y=Math.max(0.08,Math.min(0.36,ff.y));
+          if(ff.x<0.16||ff.x>0.72)ff.sx*=-1;
+          if(ff.y<0.08||ff.y>0.40)ff.sy*=-1;
+          ff.x=Math.max(0.16,Math.min(0.72,ff.x));
+          ff.y=Math.max(0.08,Math.min(0.40,ff.y));
           const blink=Math.sin(time.current*ff.blink+ff.phase);
           const a=Math.max(0,blink*0.7+0.3)*0.6;
           const px=ff.x*w,py=ff.y*h;
@@ -226,20 +227,24 @@ export default function ImmersiveCabin(){
         }}
         draggable={false}
       />
-      {/* Warm firelight flicker overlay — radiates from LEFT fireplace */}
-      <div className="cabin-firelight" style={{position:"absolute",inset:0,pointerEvents:"none",background:"radial-gradient(ellipse at 10% 48%, rgba(255,160,60,0.10) 0%, rgba(255,120,40,0.03) 35%, transparent 60%)",mixBlendMode:"screen"}}/>
+      {/* Warm firelight flicker overlay — radiates from LEFT stone fireplace */}
+      <div className="cabin-firelight" style={{position:"absolute",inset:0,pointerEvents:"none",background:"radial-gradient(ellipse at 8% 40%, rgba(255,160,60,0.12) 0%, rgba(255,120,40,0.04) 30%, transparent 55%)",mixBlendMode:"screen"}}/>
       {/* Fire motion — animated dancing glow from fireplace */}
-      <div className="cabin-fire-motion" style={{position:"absolute",left:0,top:"22%",width:"24%",height:"55%",pointerEvents:"none",zIndex:1,background:"radial-gradient(ellipse at 55% 55%, rgba(255,100,20,0.14) 0%, rgba(255,60,10,0.04) 45%, transparent 70%)",mixBlendMode:"screen",transformOrigin:"center bottom"}}/>
+      <div className="cabin-fire-motion" style={{position:"absolute",left:0,top:"24%",width:"22%",height:"45%",pointerEvents:"none",zIndex:1,background:"radial-gradient(ellipse at 55% 55%, rgba(255,100,20,0.16) 0%, rgba(255,60,10,0.05) 45%, transparent 70%)",mixBlendMode:"screen",transformOrigin:"center bottom"}}/>
       {/* Fire motion secondary — faster flicker layer */}
-      <div className="cabin-fire-flicker" style={{position:"absolute",left:"1%",top:"30%",width:"18%",height:"40%",pointerEvents:"none",zIndex:1,background:"radial-gradient(ellipse at 60% 50%, rgba(255,140,40,0.10) 0%, transparent 60%)",mixBlendMode:"screen",transformOrigin:"center bottom"}}/>
-      {/* String light glow — warm lights across ceiling */}
-      <div className="cabin-string-lights" style={{position:"absolute",left:"8%",right:"8%",top:"6%",height:"14%",pointerEvents:"none",zIndex:1,background:"linear-gradient(90deg, transparent 0%, rgba(255,210,120,0.04) 10%, rgba(255,200,100,0.06) 25%, rgba(255,210,120,0.04) 40%, rgba(255,200,100,0.06) 55%, rgba(255,210,120,0.04) 70%, rgba(255,200,100,0.06) 85%, transparent 100%)",mixBlendMode:"screen"}}/>
-      {/* Candle glow — mantel candles */}
-      <div className="cabin-candle-glow" style={{position:"absolute",left:"8%",top:"26%",width:"8%",height:"8%",pointerEvents:"none",zIndex:1,borderRadius:"50%",background:"radial-gradient(circle, rgba(255,200,80,0.12) 0%, transparent 70%)",mixBlendMode:"screen"}}/>
-      {/* Candle glow — near window */}
-      <div className="cabin-candle-glow2" style={{position:"absolute",left:"32%",top:"34%",width:"6%",height:"6%",pointerEvents:"none",zIndex:1,borderRadius:"50%",background:"radial-gradient(circle, rgba(255,200,80,0.10) 0%, transparent 65%)",mixBlendMode:"screen"}}/>
-      {/* Desk lamp glow — upper right */}
-      <div className="cabin-candle-glow" style={{position:"absolute",right:"8%",top:"20%",width:"10%",height:"10%",pointerEvents:"none",zIndex:1,borderRadius:"50%",background:"radial-gradient(circle, rgba(255,210,120,0.12) 0%, transparent 65%)",mixBlendMode:"screen"}}/>
+      <div className="cabin-fire-flicker" style={{position:"absolute",left:"1%",top:"30%",width:"16%",height:"35%",pointerEvents:"none",zIndex:1,background:"radial-gradient(ellipse at 60% 50%, rgba(255,140,40,0.12) 0%, transparent 60%)",mixBlendMode:"screen",transformOrigin:"center bottom"}}/>
+      {/* String light glow — warm lights strung across ceiling beams */}
+      <div className="cabin-string-lights" style={{position:"absolute",left:"5%",right:"5%",top:"7%",height:"10%",pointerEvents:"none",zIndex:1,background:"linear-gradient(90deg, transparent 0%, rgba(255,210,120,0.05) 10%, rgba(255,200,100,0.07) 25%, rgba(255,210,120,0.04) 40%, rgba(255,200,100,0.07) 55%, rgba(255,210,120,0.05) 70%, rgba(255,200,100,0.07) 85%, transparent 100%)",mixBlendMode:"screen"}}/>
+      {/* Skylight glow — cool starlight from open skylight at top center */}
+      <div className="cabin-skylight" style={{position:"absolute",left:"28%",top:"0%",width:"44%",height:"12%",pointerEvents:"none",zIndex:1,background:"radial-gradient(ellipse at 50% 0%, rgba(140,160,255,0.08) 0%, rgba(100,120,200,0.03) 50%, transparent 80%)",mixBlendMode:"screen"}}/>
+      {/* Candle glow — mantel candles on stone fireplace */}
+      <div className="cabin-candle-glow" style={{position:"absolute",left:"5%",top:"28%",width:"10%",height:"8%",pointerEvents:"none",zIndex:1,borderRadius:"50%",background:"radial-gradient(circle, rgba(255,200,80,0.14) 0%, transparent 70%)",mixBlendMode:"screen"}}/>
+      {/* Candle glow — window seat candles */}
+      <div className="cabin-candle-glow2" style={{position:"absolute",left:"42%",top:"36%",width:"10%",height:"6%",pointerEvents:"none",zIndex:1,borderRadius:"50%",background:"radial-gradient(circle, rgba(255,200,80,0.10) 0%, transparent 65%)",mixBlendMode:"screen"}}/>
+      {/* Lantern glow — desk lantern far left */}
+      <div className="cabin-lantern-glow" style={{position:"absolute",left:"6%",top:"73%",width:"10%",height:"10%",pointerEvents:"none",zIndex:1,borderRadius:"50%",background:"radial-gradient(circle, rgba(255,190,80,0.14) 0%, transparent 65%)",mixBlendMode:"screen"}}/>
+      {/* Desk lamp glow — right side of desk */}
+      <div className="cabin-lamp-glow" style={{position:"absolute",right:"8%",top:"66%",width:"14%",height:"14%",pointerEvents:"none",zIndex:1,borderRadius:"50%",background:"radial-gradient(circle, rgba(255,220,140,0.14) 0%, transparent 60%)",mixBlendMode:"screen"}}/>
       {/* Floating dust particles + fireflies canvas */}
       <canvas ref={canvasRef} style={{position:"absolute",inset:0,pointerEvents:"none",zIndex:2}}/>
       {/* Cinematic vignette */}
