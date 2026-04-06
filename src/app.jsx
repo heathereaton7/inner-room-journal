@@ -24,7 +24,6 @@ import GatheringPost from './screens/GatheringPost.jsx';
 import CreateGatheringPost from './screens/CreateGatheringPost.jsx';
 import UpperRoomSearch from './screens/UpperRoomSearch.jsx';
 import { generateAnonName, makeSearchTokens, GATHERING_SPACES } from './gatherings.js';
-import DoveCompanion from './components/DoveCompanion.jsx';
 
 
 async function dbLoad(k){
@@ -4401,7 +4400,6 @@ function AppInner(){
       onRoomChange={(next)=>{setPlayerRoom(next);dbSave("irj-room",next);if(user&&db){try{setDoc(doc(db,"userProfiles",user.uid),{room:next},{merge:true});}catch(e){}}}}
       inventory={inventory} addToInventory={addToInventory} removeFromInventory={removeFromInventory}
     />
-    <DoveCompanion intensity={lastCheckinIntensity} active={true} screen="cabin"/>
   </>);
 
 
@@ -4412,7 +4410,6 @@ function AppInner(){
       transitionToCabin={transitionToCabin}
       candles={candles} bank={bank}
     />
-    <DoveCompanion intensity={lastCheckinIntensity} active={true} screen="rooftop-lounge"/>
   </>);
 
 
@@ -5338,7 +5335,6 @@ function AppInner(){
   /* ══ CHECK-IN CALENDAR / HISTORY ══════════════════════════════════ */
   if(screen==="check-in-history") return(<>
     <CheckInCalendar onBack={()=>setScreen("cabin")} onEditEntry={(entry)=>{editEntryRef.current=entry;setScreen("check-in");}}/>
-    <DoveCompanion intensity={lastCheckinIntensity} active={false} screen="check-in"/>
   </>);
 
   /* ══ GATHERINGS — Upper Room anonymous community ═════════════════ */
