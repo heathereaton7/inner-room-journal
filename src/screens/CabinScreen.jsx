@@ -4,6 +4,7 @@ import { SHOP_ITEMS } from '../items.js';
 import { ITEMS, isPlaceable } from '../items.js';
 import { CSS } from '../styles.js';
 import ImmersiveCabin from '../components/ImmersiveCabin.jsx';
+import CharacterWalker from '../components/CharacterWalker.jsx';
 import BookSparkles from '../components/BookSparkles.jsx';
 import { moveItem, removeFromRoom, placeItem } from '../roomDecor.js';
 
@@ -26,6 +27,7 @@ export default function CabinScreen({
   menuOpen, setMenuOpen,
   BottomMenuDrawer, goToHistory,
   playerRoom, onRoomChange, inventory, addToInventory, removeFromInventory,
+  playerAppearance,
 }){
   const [selectedDecor, setSelectedDecor] = useState(null);
   const [draggingDecor, setDraggingDecor] = useState(null);
@@ -110,6 +112,18 @@ export default function CabinScreen({
         </div>
       ):(
         <ImmersiveCabin/>
+      )}
+
+      {/* ── Walkable character ── */}
+      {!bookOpen && !showBag && !windowPanel && !showInsights && (
+        <CharacterWalker
+          appearance={playerAppearance}
+          spawnX={75}
+          spawnY={68}
+          speed={10}
+          scale={1.6}
+          zIndex={18}
+        />
       )}
 
       {/* ── All placed decor items (unified) ── */}

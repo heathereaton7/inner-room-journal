@@ -4399,6 +4399,7 @@ function AppInner(){
       playerRoom={playerRoom}
       onRoomChange={(next)=>{setPlayerRoom(next);dbSave("irj-room",next);if(user&&db){try{setDoc(doc(db,"userProfiles",user.uid),{room:next},{merge:true});}catch(e){}}}}
       inventory={inventory} addToInventory={addToInventory} removeFromInventory={removeFromInventory}
+      playerAppearance={playerAppearance}
     />
   </>);
 
@@ -4409,6 +4410,7 @@ function AppInner(){
       spaceTransit={spaceTransit} transitDir={transitDir}
       transitionToCabin={transitionToCabin}
       candles={candles} bank={bank}
+      playerAppearance={playerAppearance}
     />
   </>);
 

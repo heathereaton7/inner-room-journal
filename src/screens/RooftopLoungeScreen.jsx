@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react';
 import { GFONTS, B, SERIF, SANS, DISPLAY, SKYLIGHT_STAIRCASE_IMAGE } from '../constants.js';
 import { CSS } from '../styles.js';
 import ImmersiveRooftop from '../components/ImmersiveRooftop.jsx';
+import CharacterWalker from '../components/CharacterWalker.jsx';
 
 export default function RooftopLoungeScreen({
   spaceTransit, transitDir, transitionToCabin,
-  candles, bank,
+  candles, bank, playerAppearance,
 }){
   // Skylight climb-through transition — plays once on arrival
   const [climbPhase, setClimbPhase] = useState("climbing"); // "climbing" | "emerging" | "done"
@@ -43,6 +44,18 @@ export default function RooftopLoungeScreen({
       }}>
         <ImmersiveRooftop/>
       </div>
+
+      {/* ── Walkable character (appears after climb transition) ── */}
+      {climbPhase==="done" && (
+        <CharacterWalker
+          appearance={playerAppearance}
+          spawnX={78}
+          spawnY={58}
+          speed={10}
+          scale={1.6}
+          zIndex={18}
+        />
+      )}
 
       {/* ── SKYLIGHT CLIMB TRANSITION ── */}
       {climbPhase!=="done"&&(
