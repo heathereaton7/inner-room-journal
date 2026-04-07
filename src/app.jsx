@@ -1574,6 +1574,7 @@ class ErrorBoundary extends Component{
 function AppInner(){
   // ── STATE ──
   const [screen,        setScreen]        = useState("loading");
+  const prevScreenRef = useRef(null);
   const [obStep,        setObStep]        = useState(0);
   const [sceneIdx,      setSceneIdx]      = useState(0);
   const [sceneTransit,  setSceneTransit]  = useState(false);
@@ -3329,6 +3330,7 @@ function AppInner(){
   }
   function transitionToRooftop(){
     setSpaceTransit(true); setTransitDir("toRooftop");
+    prevScreenRef.current=screen;
     setTimeout(()=>{setScreen("rooftop-lounge");setSpaceTransit(false);setTransitDir(null);},700);
   }
   function transitionToCabin(){
@@ -4414,7 +4416,7 @@ function AppInner(){
     <RooftopLoungeScreen
       spaceTransit={spaceTransit} transitDir={transitDir}
       transitionToCabin={transitionToCabin} transitionToGarden={transitionToGarden}
-      skipClimb={transitDir==="toRooftop"}
+      skipClimb={prevScreenRef.current==="rooftop-garden"}
       candles={candles} bank={bank}
       playerAppearance={playerAppearance}
     />
