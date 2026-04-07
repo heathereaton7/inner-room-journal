@@ -141,8 +141,8 @@ export default function RooftopLoungeScreen({
       {climbPhase==="done" && (
         <CharacterWalker
           appearance={playerAppearance}
-          spawnX={78}
-          spawnY={58}
+          spawnX={50}
+          spawnY={95}
           speed={10}
           scale={1.6}
           zIndex={18}
