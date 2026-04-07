@@ -10,16 +10,9 @@ import { ITEMS } from '../items.js';
 /**
  * GardenGridOverlay — renders the tile grid over the garden background.
  *
- * In edit mode: shows grid lines, highlights cells, shows placement toolbar.
+ * In edit mode: shows subtle grid guides, placement toolbar.
  * Outside edit mode: planted cells are tappable for watering / harvesting.
- * Always: renders soil + planted visuals on non-empty cells.
- *
- * Props:
- *   grid          — current grid state object
- *   setGrid       — state setter for grid (auto-saves)
- *   editMode      — boolean, whether placement toolbar is active
- *   inventory     — player inventory { itemId: qty }
- *   setInventory  — state setter for inventory (auto-saves)
+ * Always: renders soil + planted visuals integrated into the terrace.
  */
 
 // Soil tile images
@@ -34,7 +27,7 @@ export default function GardenGridOverlay({
 }) {
   const [selectedTool, setSelectedTool] = useState(null);
   const [tick, setTick] = useState(0);
-  const [toast, setToast] = useState(null); // {msg, key} for harvest/water feedback
+  const [toast, setToast] = useState(null);
   const cfg = grid?.config || DEFAULT_GRID_CONFIG;
 
   // Re-render every 30 seconds so plant stages + watered state update visually.
@@ -131,7 +124,6 @@ export default function GardenGridOverlay({
 
   if (!grid) return null;
 
-  // Does the grid have any interactive planted cells? (for pointer events outside edit mode)
   const hasInteractable = hasPlants;
 
   return (
@@ -144,7 +136,6 @@ export default function GardenGridOverlay({
         width: `${cfg.gridW}%`,
         height: `${cfg.gridH}%`,
         zIndex: editMode ? 15 : 10,
-        // In edit mode: all cells tappable. Outside: only planted cells tappable.
         pointerEvents: (editMode || hasInteractable) ? 'auto' : 'none',
       }}>
         {grid.cells.map((cell, i) => {
@@ -156,13 +147,11 @@ export default function GardenGridOverlay({
           const isSoil = cell.type === CELL_SOIL;
           const isPlanted = cell.type === CELL_PLANTED;
 
-          // Determine watered visual state
           const now = Date.now();
           const watered = isPlanted && isWatered(cell.wateredAt, now);
           const showWateredSoil = (isSoil || isPlanted) && watered;
-
-          // Outside edit mode, only planted cells should capture taps
           const tappableOutsideEdit = !editMode && isPlanted;
+          const hasSoilOrPlant = isSoil || isPlanted;
 
           return (
             <div
@@ -175,46 +164,51 @@ export default function GardenGridOverlay({
                 width: `${w}%`,
                 height: `${h}%`,
                 boxSizing: 'border-box',
+                // Subtle dashed grid guides in edit mode — nearly invisible
                 border: editMode
-                  ? `1px solid rgba(201,169,110,${isEmpty ? 0.25 : 0.4})`
+                  ? `1px dashed rgba(180,150,100,${isEmpty ? 0.10 : 0.18})`
                   : 'none',
-                borderRadius: editMode ? 3 : 0,
+                borderRadius: 0,
+                // Gentle highlight on valid placement targets
                 background: editMode && isEmpty && selectedTool === TOOL_SOIL
-                  ? 'rgba(201,169,110,0.08)'
+                  ? 'rgba(180,150,100,0.05)'
                   : editMode && isSoil && selectedTool && selectedTool !== TOOL_SOIL
-                    ? 'rgba(90,138,106,0.1)'
+                    ? 'rgba(90,138,106,0.06)'
                     : 'transparent',
                 cursor: (editMode || tappableOutsideEdit) ? 'pointer' : 'default',
-                // Pass through taps on non-planted cells outside edit mode
                 pointerEvents: editMode ? 'auto'
                   : isPlanted ? 'auto'
                   : 'none',
-                transition: 'background 0.15s, border-color 0.15s',
+                transition: 'background 0.2s',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
+                // Clip soil edges cleanly at cell boundary
                 overflow: 'hidden',
               }}
             >
-              {/* Soil tile image — switches between dry and watered */}
-              {(isSoil || isPlanted) && (
+              {/* Soil tile — fills nearly the full cell, blended into terrace */}
+              {hasSoilOrPlant && (
                 <img
                   src={showWateredSoil ? WATERED_SOIL_IMG : SOIL_IMG}
                   alt=""
                   draggable={false}
                   style={{
                     position: 'absolute',
-                    inset: '6%',
-                    width: '88%',
-                    height: '88%',
+                    // Fill the entire cell — object-fit:cover crops the natural rough
+                    // edges so soil patches tile seamlessly with no gaps
+                    inset: '-6%',
+                    width: '112%',
+                    height: '112%',
                     objectFit: 'cover',
-                    borderRadius: 4,
-                    opacity: 0.85,
+                    borderRadius: 0,
+                    opacity: 0.88,
                     pointerEvents: 'none',
                     filter: showWateredSoil
-                      ? 'brightness(0.85) saturate(1.3)'
-                      : 'brightness(0.95) saturate(1.1)',
+                      ? 'brightness(0.80) saturate(1.25)'
+                      : 'brightness(0.88) saturate(1.05)',
                     transition: 'filter 0.5s ease',
+                    zIndex: 1,
                   }}
                 />
               )}
@@ -239,22 +233,23 @@ export default function GardenGridOverlay({
           key={toast.key}
           style={{
             position: 'fixed',
-            bottom: editMode ? 160 : 80,
+            bottom: editMode ? 150 : 80,
             left: '50%',
             transform: 'translateX(-50%)',
             zIndex: 70,
-            background: 'rgba(14,8,18,0.85)',
-            backdropFilter: 'blur(8px)',
-            WebkitBackdropFilter: 'blur(8px)',
-            border: '1px solid rgba(201,169,110,0.3)',
-            borderRadius: 12,
-            padding: '8px 20px',
+            background: 'rgba(14,8,18,0.82)',
+            backdropFilter: 'blur(10px)',
+            WebkitBackdropFilter: 'blur(10px)',
+            border: '1px solid rgba(201,169,110,0.2)',
+            borderRadius: 10,
+            padding: '7px 18px',
             fontFamily: SANS,
-            fontSize: '0.75rem',
+            fontSize: '0.73rem',
             fontWeight: 500,
             color: B.goldL,
             animation: 'fadeUp 0.3s ease',
             whiteSpace: 'nowrap',
+            letterSpacing: '0.01em',
           }}
         >
           {toast.msg}
@@ -269,61 +264,67 @@ export default function GardenGridOverlay({
           left: 0,
           right: 0,
           zIndex: 55,
-          background: 'linear-gradient(to top, rgba(14,8,18,0.95), rgba(14,8,18,0.8) 70%, transparent)',
-          padding: '40px 12px 20px',
+          background: 'linear-gradient(to top, rgba(14,8,18,0.88), rgba(14,8,18,0.55) 75%, transparent)',
+          padding: '32px 16px 22px',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          gap: 8,
+          gap: 10,
           animation: 'fadeUp 0.3s ease',
         }}>
+          {/* Hint label */}
           <div style={{
-            fontFamily: DISPLAY,
-            fontSize: '0.72rem',
-            color: 'rgba(220,200,255,0.4)',
-            letterSpacing: '0.08em',
-            textTransform: 'uppercase',
+            fontFamily: SANS,
+            fontSize: '0.65rem',
+            fontWeight: 400,
+            color: 'rgba(220,200,255,0.3)',
+            letterSpacing: '0.06em',
           }}>
-            Select and tap a tile to place
+            Tap a tile to place
           </div>
 
+          {/* Tool slots */}
           <div style={{
             display: 'flex',
-            gap: 10,
-            flexWrap: 'wrap',
+            gap: 8,
             justifyContent: 'center',
-            maxWidth: 360,
           }}>
+            {/* Soil tool */}
             <ToolSlot
               label="Soil"
-              icon={<div style={{ width: 28, height: 28, borderRadius: 4, background: '#6B4E2E', border: '2px solid #8B6E4E' }} />}
+              icon={<div style={{
+                width: 26, height: 26, borderRadius: 5,
+                background: 'linear-gradient(135deg, #8B6E4E, #5A3E1E)',
+                boxShadow: 'inset 0 1px 2px rgba(255,255,255,0.1)',
+              }} />}
               selected={selectedTool === TOOL_SOIL}
               onTap={() => setSelectedTool(selectedTool === TOOL_SOIL ? null : TOOL_SOIL)}
               qty={null}
             />
 
+            {/* Seed tools from inventory */}
             {seedItems.map(seed => (
               <ToolSlot
                 key={seed.id}
                 label={seed.name.replace(' Seeds', '')}
-                icon={<span style={{ fontSize: '1.3rem' }}>{seed.emoji}</span>}
+                icon={<span style={{ fontSize: '1.2rem', lineHeight: 1 }}>{seed.emoji}</span>}
                 selected={selectedTool === seed.id}
                 onTap={() => setSelectedTool(selectedTool === seed.id ? null : seed.id)}
                 qty={seed.qty}
               />
             ))}
 
+            {/* Empty state if no seeds */}
             {seedItems.length === 0 && (
               <div style={{
-                padding: '8px 14px',
+                padding: '6px 12px',
                 borderRadius: 8,
-                background: 'rgba(255,248,232,0.04)',
-                border: '1px dashed rgba(201,169,110,0.2)',
-                color: 'rgba(220,200,255,0.3)',
+                border: '1px dashed rgba(180,150,100,0.15)',
+                color: 'rgba(220,200,255,0.25)',
                 fontFamily: SANS,
-                fontSize: '0.7rem',
+                fontSize: '0.65rem',
               }}>
-                No seeds in inventory
+                No seeds
               </div>
             )}
           </div>
@@ -361,41 +362,41 @@ function PlantVisual({ plantId, plantedAt, wateredAt, tick }) {
   const watered = isWatered(wateredAt, now);
   const color = plant.stageColors[stage] || '#6B8E4E';
 
-  // Resolve sprite — fallback to null if missing
   const sprite = PLANT_SPRITES[plantId]?.[stage] || null;
 
   // Dry indicator: desaturation when unwatered and not seed/mature
-  const dryFilter = (!watered && stage > 0 && !mature)
-    ? 'saturate(0.6) brightness(0.9)' : 'none';
+  const isDry = !watered && stage > 0 && !mature;
+  const dryFilter = isDry ? 'saturate(0.55) brightness(0.85)' : '';
+  const shadowFilter = stage > 0 ? 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))' : '';
+  const combinedFilter = [dryFilter, shadowFilter].filter(Boolean).join(' ') || 'none';
 
-  // If sprite exists, render as image with all existing effects preserved
+  // If sprite exists, render as image
   if (sprite) {
     return (
       <div style={{
         position: 'absolute',
-        inset: 0,
+        inset: '-5%',  // allow slight overflow for natural feel
         zIndex: 2,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         pointerEvents: 'none',
-        // Mature plants get the pulse animation
         animation: mature ? 'maturePulse 3s ease-in-out infinite' : 'none',
       }}>
-        {mature && <style>{`
+        <style>{`
           @keyframes maturePulse {
             0%, 100% { filter: brightness(1); }
-            50% { filter: brightness(1.15); }
+            50% { filter: brightness(1.12); }
           }
-        `}</style>}
+        `}</style>
 
-        {/* Glow behind mature plants */}
+        {/* Warm glow behind mature plants */}
         {mature && (
           <div style={{
             position: 'absolute',
-            inset: '-15%',
+            inset: '-20%',
             borderRadius: '50%',
-            background: `radial-gradient(circle, ${color}25 0%, transparent 65%)`,
+            background: `radial-gradient(circle, ${color}30 0%, ${color}10 40%, transparent 70%)`,
             pointerEvents: 'none',
           }} />
         )}
@@ -405,14 +406,12 @@ function PlantVisual({ plantId, plantedAt, wateredAt, tick }) {
           alt=""
           draggable={false}
           style={{
-            width: '80%',
-            height: '80%',
+            width: '95%',
+            height: '95%',
             objectFit: 'contain',
             pointerEvents: 'none',
-            filter: dryFilter,
+            filter: combinedFilter,
             transition: 'filter 0.5s ease',
-            // Small drop shadow grounds the plant on the soil
-            ...(stage > 0 ? { filter: `${dryFilter} drop-shadow(0 2px 3px rgba(0,0,0,0.25))`.replace('none ', '') } : {}),
           }}
         />
       </div>
@@ -431,7 +430,7 @@ function PlantVisual({ plantId, plantedAt, wateredAt, tick }) {
         background: color,
         boxShadow: `0 0 4px ${color}44`,
         transition: 'all 0.6s ease',
-        filter: dryFilter,
+        filter: combinedFilter,
       }} />
     );
   }
@@ -443,7 +442,7 @@ function PlantVisual({ plantId, plantedAt, wateredAt, tick }) {
         width: `${size * 100}%`, height: `${size * 120}%`,
         display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'flex-end',
-        transition: 'all 0.6s ease', filter: dryFilter,
+        transition: 'all 0.6s ease', filter: combinedFilter,
       }}>
         <div style={{ display: 'flex', gap: 1, marginBottom: -1 }}>
           <div style={{ width: 6, height: 4, borderRadius: '50% 50% 0 50%', background: color, transform: 'rotate(-20deg)' }} />
@@ -461,7 +460,7 @@ function PlantVisual({ plantId, plantedAt, wateredAt, tick }) {
         width: `${size * 100}%`, height: `${size * 110}%`,
         display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'flex-end',
-        transition: 'all 0.6s ease', filter: dryFilter,
+        transition: 'all 0.6s ease', filter: combinedFilter,
       }}>
         <div style={{ display: 'flex', gap: 0, marginBottom: -2 }}>
           <div style={{ width: 9, height: 6, borderRadius: '50% 50% 0 50%', background: color, transform: 'rotate(-25deg)', boxShadow: `0 0 4px ${color}33` }} />
@@ -489,7 +488,7 @@ function PlantVisual({ plantId, plantedAt, wateredAt, tick }) {
       <style>{`
         @keyframes maturePulse {
           0%, 100% { filter: brightness(1); }
-          50% { filter: brightness(1.15); }
+          50% { filter: brightness(1.12); }
         }
       `}</style>
       <div style={{ position: 'absolute', inset: '-30%', borderRadius: '50%', background: `radial-gradient(circle, ${color}22 0%, transparent 70%)`, pointerEvents: 'none' }} />
@@ -514,27 +513,30 @@ function ToolSlot({ label, icon, selected, onTap, qty }) {
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        gap: 3,
-        padding: '8px 12px 6px',
-        minWidth: 64,
-        borderRadius: 10,
+        gap: 4,
+        padding: '8px 14px 6px',
+        minWidth: 58,
+        borderRadius: 12,
         border: selected
-          ? '1.5px solid rgba(201,169,110,0.6)'
-          : '1px solid rgba(201,169,110,0.15)',
+          ? '1px solid rgba(201,169,110,0.45)'
+          : '1px solid rgba(180,150,100,0.10)',
         background: selected
-          ? 'rgba(201,169,110,0.12)'
-          : 'rgba(255,248,232,0.04)',
+          ? 'rgba(201,169,110,0.10)'
+          : 'rgba(255,248,232,0.03)',
         cursor: 'pointer',
-        transition: 'all 0.15s',
+        transition: 'all 0.2s ease',
         WebkitTapHighlightColor: 'transparent',
+        backdropFilter: 'blur(6px)',
+        WebkitBackdropFilter: 'blur(6px)',
       }}
     >
       {icon}
       <span style={{
         fontFamily: SANS,
-        fontSize: '0.62rem',
-        color: selected ? B.goldL : 'rgba(220,200,255,0.5)',
+        fontSize: '0.6rem',
+        color: selected ? B.goldL : 'rgba(220,200,255,0.4)',
         fontWeight: selected ? 600 : 400,
+        letterSpacing: '0.02em',
       }}>
         {label}
       </span>
@@ -542,17 +544,18 @@ function ToolSlot({ label, icon, selected, onTap, qty }) {
       {qty !== null && qty !== undefined && (
         <span style={{
           position: 'absolute',
-          top: -4,
-          right: -4,
-          background: 'rgba(201,169,110,0.8)',
+          top: -3,
+          right: -3,
+          background: selected ? 'rgba(201,169,110,0.85)' : 'rgba(180,150,100,0.6)',
           color: '#0E0812',
-          fontSize: '0.55rem',
+          fontSize: '0.5rem',
           fontWeight: 700,
           fontFamily: SANS,
-          borderRadius: 8,
-          padding: '1px 5px',
-          minWidth: 14,
+          borderRadius: 7,
+          padding: '1px 4px',
+          minWidth: 13,
           textAlign: 'center',
+          transition: 'background 0.2s',
         }}>
           {qty}
         </span>
