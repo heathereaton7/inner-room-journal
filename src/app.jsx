@@ -4414,6 +4414,7 @@ function AppInner(){
     <RooftopLoungeScreen
       spaceTransit={spaceTransit} transitDir={transitDir}
       transitionToCabin={transitionToCabin} transitionToGarden={transitionToGarden}
+      skipClimb={transitDir==="toRooftop"}
       candles={candles} bank={bank}
       playerAppearance={playerAppearance}
     />

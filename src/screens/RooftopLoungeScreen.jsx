@@ -24,9 +24,9 @@ const WALK_SPEED = 10; // % per second
 
 export default function RooftopLoungeScreen({
   spaceTransit, transitDir, transitionToCabin, transitionToGarden,
-  candles, bank, playerAppearance,
+  skipClimb, candles, bank, playerAppearance,
 }){
-  const [climbPhase, setClimbPhase] = useState("climbing"); // "climbing" | "emerging" | "done"
+  const [climbPhase, setClimbPhase] = useState(skipClimb ? "done" : "climbing"); // "climbing" | "emerging" | "done"
   const spriteRef = useRef(null);
   const animRef = useRef(null);
   const pathIdx = useRef(0);
@@ -141,8 +141,8 @@ export default function RooftopLoungeScreen({
       {climbPhase==="done" && (
         <CharacterWalker
           appearance={playerAppearance}
-          spawnX={50}
-          spawnY={95}
+          spawnX={skipClimb ? 85 : 50}
+          spawnY={skipClimb ? 30 : 95}
           speed={10}
           scale={1.6}
           zIndex={18}
