@@ -9,16 +9,16 @@ import { resolveSprite } from '../overworld/sprites.js';
 // Staircase starts bottom-right of the skylight opening, spirals counterclockwise
 // up to the wooden deck on the left, then the stone trail goes up-right
 const CLIMB_PATH = [
-  { x: 82, y: 97 },   // very bottom-right, base of staircase
-  { x: 78, y: 85 },   // first steps curving up
-  { x: 68, y: 72 },   // mid spiral, curving left
-  { x: 58, y: 58 },   // upper spiral
-  { x: 52, y: 48 },   // near top of staircase
-  { x: 50, y: 40 },   // reaching the top landing
-  { x: 55, y: 32 },   // hooks right onto the deck/trail
-  { x: 62, y: 22 },   // on the stone trail going up-right
-  { x: 65, y: 14 },   // climbing the trail
-  { x: 68, y: 5 },    // disappearing off the top-right
+  { x: 92, y: 97 },   // far bottom-right, base of staircase
+  { x: 88, y: 85 },   // first steps curving up
+  { x: 78, y: 72 },   // mid spiral, curving left
+  { x: 68, y: 58 },   // upper spiral
+  { x: 60, y: 48 },   // near top of staircase
+  { x: 58, y: 40 },   // reaching the top landing
+  { x: 62, y: 32 },   // hooks right onto the deck/trail
+  { x: 70, y: 22 },   // on the stone trail going up-right
+  { x: 76, y: 14 },   // climbing the trail
+  { x: 80, y: 5 },    // disappearing off the top-right
 ];
 const WALK_SPEED = 10; // % per second
 
