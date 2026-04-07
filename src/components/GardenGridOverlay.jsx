@@ -335,19 +335,19 @@ export default function GardenGridOverlay({
 }
 
 
-/* ── Plant sprite paths (matched to actual filenames on disk) ── */
+/* ── Plant sprite paths — clean transparent PNGs from sprite sheet ── */
 const PLANT_SPRITES = {
   'timothy-hay': [
-    '/Plants/Timothy-Hay/timothystage0.png',
-    '/Plants/Timothy-Hay/timothystage1.png',
-    '/Plants/Timothy-Hay/timothystage2.png',
-    '/Plants/Timothy-Hay/timothystage3.png',
+    '/Plants/timothy_stage_0.png',
+    '/Plants/timothy_stage_1.png',
+    '/Plants/timothy_stage_2.png',
+    '/Plants/timothy_stage_3.png',
   ],
   'cilantro': [
-    '/Plants/Cilantro/Cilantro stage0.png',
-    '/Plants/Cilantro/Cilantro stage 1.png',
-    '/Plants/Cilantro/ cilantro stage 2 .png',
-    '/Plants/Cilantro/cilantrostage3.png',
+    '/Plants/cilantro_stage_0.png',
+    '/Plants/cilantro_stage_1.png',
+    '/Plants/cilantro_stage_2.png',
+    '/Plants/cilantro_stage_3.png',
   ],
 };
 
