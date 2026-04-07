@@ -4298,6 +4298,9 @@ function AppInner(){
                 <button onClick={()=>{if(step1Ok)setOnboardStep(2);}} disabled={!step1Ok} className={step1Ok?"door-btn":""} style={{marginTop:"28px",background:step1Ok?"linear-gradient(135deg,rgba(201,169,110,0.22),rgba(201,169,110,0.06))":"transparent",border:`1px solid ${step1Ok?"rgba(201,169,110,0.45)":"rgba(255,248,232,0.08)"}`,borderRadius:"28px",padding:"13px 44px",cursor:step1Ok?"pointer":"default",color:step1Ok?"#FFF8E8":"rgba(255,248,232,0.2)",fontFamily:SERIF,fontStyle:"italic",fontWeight:600,fontSize:"0.88rem",letterSpacing:"0.1em",transition:"all 0.3s"}}>
                   Continue
                 </button>
+                <button onClick={()=>setOnboardStep(0)} style={{marginTop:"14px",background:"transparent",border:"none",cursor:"pointer",color:"rgba(255,248,232,0.22)",fontFamily:SERIF,fontStyle:"italic",fontSize:"0.78rem",letterSpacing:"0.06em",transition:"color 0.2s"}} onMouseEnter={e=>e.target.style.color="rgba(255,248,232,0.45)"} onMouseLeave={e=>e.target.style.color="rgba(255,248,232,0.22)"}>
+                  Back
+                </button>
               </div>
             </div>
           </div>
