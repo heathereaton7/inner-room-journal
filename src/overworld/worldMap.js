@@ -452,6 +452,6 @@ export const INTERACTION_ZONES = [
 ];
 
 // ─── Player Spawn ──────────────────────────────────────────────────
-// On the road to the left of the cabin (col 11, row 53)
-export const SPAWN_X = 11 * TILE + TILE / 2;   // col 11, left side of road
-export const SPAWN_Y = 53 * TILE + TILE / 2;   // row 53, beside cabin
+// North of the cabin, on the main path — clear of the cabin door zone
+export const SPAWN_X = 14 * TILE + TILE / 2;   // col 14, centered on path
+export const SPAWN_Y = 46 * TILE + TILE / 2;   // row 46, above cabin

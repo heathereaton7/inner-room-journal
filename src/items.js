@@ -49,6 +49,10 @@ export const ITEMS = {
   silk_curtains:  { name: 'Silk Curtains',         emoji: '\uD83E\uDDE3', category: 'furniture', buyPrice: 30, currency: 'candles', placeable: true, premium: true, decor: { src: '/assets/furniture/silk-curtains.png',  width: '20%', defaultPos: { left: 30, top: 10 } } },
   incense_burner: { name: 'Incense Burner',        emoji: '\uD83E\uDD58', category: 'candles',   buyPrice: 20, currency: 'candles', placeable: true, premium: true, decor: { src: '/assets/furniture/incense-burner.png', width: '7%',  defaultPos: { left: 18, top: 58 } } },
 
+  // ═══ GARDEN SEEDS (for rooftop garden grid placement) ═══
+  timothy_hay_seed: { name: 'Timothy Hay Seeds', emoji: '\uD83C\uDF3E', category: 'seeds', buyPrice: 3, sellPrice: 1, currency: 'coins', gardenPlant: 'timothy-hay' },
+  cilantro_seed:    { name: 'Cilantro Seeds',    emoji: '\uD83C\uDF3F', category: 'seeds', buyPrice: 4, sellPrice: 2, currency: 'coins', gardenPlant: 'cilantro' },
+
   // ═══ ECONOMY — SEEDS ═══
   herb_seed:    { name: 'Herb Seeds',    emoji: '\uD83C\uDF3F', category: 'seeds',       buyPrice: 2,  sellPrice: 1,  currency: 'coins' },
   carrot_seed:  { name: 'Carrot Seeds',  emoji: '\uD83E\uDD55', category: 'seeds',       buyPrice: 3,  sellPrice: 1,  currency: 'coins' },
@@ -58,6 +62,10 @@ export const ITEMS = {
   wheat_seed:   { name: 'Wheat Seeds',   emoji: '\uD83C\uDF3E', category: 'seeds',       buyPrice: 4,  sellPrice: 2,  currency: 'coins' },
   lavender_seed:{ name: 'Lavender Seeds',emoji: '\uD83D\uDC9C', category: 'seeds',       buyPrice: 6,  sellPrice: 3,  currency: 'coins' },
   flax_seed:    { name: 'Flax Seeds',    emoji: '\uD83E\uDDF5', category: 'seeds',       buyPrice: 7,  sellPrice: 3,  currency: 'coins' },
+
+  // ═══ GARDEN HARVESTS (from rooftop garden grid) ═══
+  timothy_hay:   { name: 'Timothy Hay',   emoji: '\uD83C\uDF3E', category: 'crops', sellPrice: 5, description: 'A soft, fragrant grass. Rabbits love it.' },
+  cilantro_herb: { name: 'Cilantro',      emoji: '\uD83C\uDF3F', category: 'crops', sellPrice: 6, description: 'A bright, fragrant herb. Rabbits enjoy it as a treat.' },
 
   // ═══ ECONOMY — CROPS ═══
   herbs:        { name: 'Herbs',         emoji: '\uD83C\uDF3F', category: 'crops',       sellPrice: 3  },

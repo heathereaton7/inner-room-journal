@@ -16,20 +16,25 @@ export default {
   buildGrid: buildWorldGrid,
 
   // Filter out buildings that now have walkable interiors (use door transitions instead)
-  zones: INTERACTION_ZONES.filter(z => z.id !== 'cabin' && z.id !== 'upper-room' && z.id !== 'market'),
-
-  transitions: [
+  // Cabin uses the immersive CabinScreen, so it gets a zone (not a map transition)
+  zones: [
+    ...INTERACTION_ZONES.filter(z => z.id !== 'cabin' && z.id !== 'upper-room' && z.id !== 'market'),
     {
       id: 'cabin-door',
-      // Aligned with the visual door in the artwork (slightly left of center).
-      // Radius 120px covers the full porch. Path at col 11 (x=736) is
-      // 128px away — just outside trigger, won't auto-enter from path.
-      cx: 13.5 * TILE,            // col 13.5 = 864, aligned with visual door
-      cy: 56.5 * TILE,            // between porch rows 56-57
-      radius: 120,
-      targetMap: 'cabin-interior',
-      spawnId: 'from-exterior',
+      label: 'Cabin',
+      description: 'Your quiet place',
+      screen: 'cabin',
+      // Centered ON the cabin building so the zone catches players
+      // walking past on the N-S path (cols 14-15). Building (cols 12-16,
+      // rows 51-55) is solid — player walks alongside on cols 11 or 17.
+      // At col 11, row 53: distance to center = ~200px → inside 280.
+      cx: 14 * TILE,              // col 14 — cabin center
+      cy: 53 * TILE,              // row 53 — cabin midpoint
+      radius: 280,                // catches path alongside + porch area
     },
+  ],
+
+  transitions: [
     {
       id: 'upper-room-door',
       cx: 32 * TILE + TILE / 2,

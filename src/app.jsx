@@ -4,6 +4,8 @@ import { OverworldScreen } from './overworld/index.js';
 import { resolveSprite } from './overworld/sprites.js';
 import { DEFAULT_ROOM, migrateRoom, placeItem, isPlacedInRoom } from './roomDecor.js';
 import { ITEMS, isOwned } from './items.js';
+import { createEmptyGrid, serializeGrid, deserializeGrid } from './systems/GardenGrid.js';
+import { canUnlockRabbit } from './systems/rabbitUnlock.js';
 /* R3F imports removed — ImmersiveCabin uses pure DOM/Canvas2D for performance */
 import { GFONTS, B, SERIF, SANS, DISPLAY, RT, th, REFLECTION_ROOMS, COMMUNITY_ROOMS, LOCKED_ROOM, JESUS_QUESTIONS, QUESTION_SETS, ALL_CARD_QS, CARD_THEMES, CARD_RATIOS, VERSE_THEMES, VIRAL_QS, SAMPLE_PRAYERS, SHELF_BOOKS, BOOK_COVERS, BOOK_CONTENT, getBookPageCount, todayStr, nowTime, entryTime, isoDate, wc, shuffle, THEME_WORDS, aggregateThemes, EMOTION_WORDS, LIFE_THEMES, FAITH_WORDS, SCRIPTURE_PATTERN, IDENTITY_NEG, IDENTITY_POS, GROWTH_MARKERS, STOP_WORDS, EMOTION_COLORS, computeInsights, computeWeeklyDigest, computeSeasonalSummary, computeFutureYou, SHOP_ITEMS, GARDEN_PLANTS, GROWTH_STAGES, PRAYER_BONUS_MINS, CRAFTING_STATIONS, ITEM_CATALOG, KITCHEN_RECIPES, NPC_TRADES, FARM_PLANTS, ANIMAL_TYPES, MAX_ANIMALS, DAILY_MISSIONS, WEEKLY_MISSIONS, getWeekStart, CABIN_FALLBACK_IMAGE, PREMIUM_DAILY_MISSIONS, PREMIUM_WEEKLY_MISSIONS, PREMIUM_GARDEN_PLANTS, PREMIUM_FARM_PLANTS, PREMIUM_ANIMALS, PREMIUM_PROMPTS, PREMIUM_SHOP_ITEMS, PLUS_BENEFITS } from './constants.js';
 import { CSS } from './styles.js';
@@ -39,7 +41,7 @@ async function dbSave(k,v){
     localStorage.setItem(k,JSON.stringify(v));
     // Dual-write to Firestore when signed in
     if(auth?.currentUser){
-      const fieldMap={"irj-entries":"entries","irj-prayer":"prayerPosts","irj-saved-cards":"savedCards","irj-onboarded":"isOnboarded","irj-candles":"candles","irj-prayed":"prayedFor","irj-owned-items":"ownedItems","irj-garden":"gardenPlots","irj-inventory":"inventory","irj-saved-verses":"savedVerses","irj-bank":"bank","irj-sell-basket":"sellBasket","irj-farm-plots":"farmPlots","irj-animals":"animals","irj-missions":"missions","irj-premium":"isPremium","irj-becoming-her":"becomingHer"};
+      const fieldMap={"irj-entries":"entries","irj-prayer":"prayerPosts","irj-saved-cards":"savedCards","irj-onboarded":"isOnboarded","irj-candles":"candles","irj-prayed":"prayedFor","irj-owned-items":"ownedItems","irj-garden":"gardenPlots","irj-inventory":"inventory","irj-saved-verses":"savedVerses","irj-bank":"bank","irj-sell-basket":"sellBasket","irj-farm-plots":"farmPlots","irj-animals":"animals","irj-missions":"missions","irj-premium":"isPremium","irj-becoming-her":"becomingHer","irj-garden-grid":"gardenGrid","irj-unlocks":"unlocks"};
       const field=fieldMap[k];
       if(field){
         const userRef=doc(db,"users",auth.currentUser.uid);
@@ -1722,6 +1724,8 @@ function AppInner(){
   const [userSearchLoading, setUserSearchLoading]  = useState(false);
   const [lastCheckinIntensity, setLastCheckinIntensity] = useState(null);
   const [becomingHer, setBecomingHer] = useState(null); // Becoming Her journal progress
+  const [gardenGrid, setGardenGridRaw] = useState(() => createEmptyGrid()); // Rooftop garden tile grid
+  const [unlocks, setUnlocksRaw] = useState({}); // Persistent unlock flags { rabbitUnlocked, ... }
   const [activeGatheringSpace, setActiveGatheringSpace] = useState(null);
   const [gatheringPosts, setGatheringPosts] = useState([]);
   const [gatheringLoading, setGatheringLoading] = useState(false);
@@ -1932,6 +1936,8 @@ function AppInner(){
       const pa   = await dbLoad("irj-appearance") || null;
       const rm   = await dbLoad("irj-room") || null;
       const bh   = await dbLoad("irj-becoming-her") || null;
+      const gg   = await dbLoad("irj-garden-grid") || null;
+      const ul   = await dbLoad("irj-unlocks") || {};
       // Migrate prayers: add status/answeredDate/category if missing
       let migrated=false;
       const mpp=pp.map(p=>{
@@ -1952,12 +1958,20 @@ function AppInner(){
       setBank(bnk); setSellBasket(sb); setFarmPlots(fp); setAnimals(an); setMissions(ms); setIsPremium(!!pm);
       if(pa) setPlayerAppearance(pa);
       if(bh) setBecomingHer(bh);
+      if(gg) setGardenGridRaw(deserializeGrid(gg));
+      if(ul) setUnlocksRaw(ul);
       // Safety: if user has done check-ins but candle was lost in migration, restore it
       const hasCheckins=Object.keys(localStorage).some(k=>k.startsWith("irj-checkins-"));
       const candlePlaced=migratedRoom.placed?.some(p=>p.id==="candle");
       const candleInInv=(inv.candle||0)>0;
       if(hasCheckins&&!candlePlaced&&!candleInInv){
         inv.candle=(inv.candle||0)+1;
+        dbSave("irj-inventory",inv);
+      }
+      // Grant starter garden seeds (one-time)
+      if(!inv.timothy_hay_seed&&!inv.cilantro_seed){
+        inv.timothy_hay_seed=5;
+        inv.cilantro_seed=5;
         dbSave("irj-inventory",inv);
       }
       setPlayerRoom(migratedRoom);
@@ -2425,6 +2439,22 @@ function AppInner(){
     });
     setPrayerPosts(next); dbSave("irj-prayer",next);
     setReminderPanel(null);
+  }
+
+  // ── GARDEN GRID (auto-save on change) ──
+  function setGardenGrid(nextGrid){
+    setGardenGridRaw(nextGrid);
+    dbSave("irj-garden-grid",serializeGrid(nextGrid));
+  }
+
+  // ── UNLOCKS (auto-save on change) ──
+  function setUnlocks(key,value){
+    setUnlocksRaw(prev=>{
+      if(prev[key]===value) return prev; // no-op if already set
+      const next={...prev,[key]:value};
+      dbSave("irj-unlocks",next);
+      return next;
+    });
   }
 
   // ── CANDLE ECONOMY ──
@@ -4433,6 +4463,19 @@ function AppInner(){
       transitionToRooftop={transitionToRooftop}
       candles={candles} bank={bank}
       playerAppearance={playerAppearance}
+      gardenGrid={gardenGrid} setGardenGrid={setGardenGrid}
+      inventory={inventory} setInventory={(updater)=>{
+        setInventory(prev=>{
+          const next=typeof updater==='function'?updater(prev):{...prev,...updater};
+          dbSave("irj-inventory",next);
+          // Check rabbit unlock after inventory change (harvest)
+          if(!unlocks.rabbitUnlocked&&canUnlockRabbit(next)){
+            setUnlocks("rabbitUnlocked",true);
+          }
+          return next;
+        });
+      }}
+      unlocks={unlocks}
     />
   </>);
 
