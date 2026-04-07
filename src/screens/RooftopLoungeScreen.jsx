@@ -6,19 +6,22 @@ import CharacterWalker from '../components/CharacterWalker.jsx';
 import { resolveSprite } from '../overworld/sprites.js';
 
 // Waypoints for auto-walk up the staircase in FINALSKYLIGHT image
-// Character climbs from cabin bottom up the spiral stairs → across deck → up the stone trail
+// Staircase starts bottom-right of the skylight opening, spirals counterclockwise
+// up to the wooden deck on the left, then the stone trail goes up-right
 const CLIMB_PATH = [
-  { x: 48, y: 88 },   // bottom of staircase near cabin
-  { x: 52, y: 78 },   // starting up the spiral
-  { x: 58, y: 67 },   // mid spiral
-  { x: 63, y: 55 },   // upper spiral
-  { x: 65, y: 44 },   // reaching the deck landing
-  { x: 60, y: 35 },   // crossing the deck
-  { x: 52, y: 25 },   // onto the stone trail
-  { x: 46, y: 15 },   // walking up the path
-  { x: 42, y: 5 },    // disappearing off the top
+  { x: 70, y: 78 },   // bottom of spiral staircase (right side of opening)
+  { x: 67, y: 69 },   // first step up, curving left
+  { x: 62, y: 61 },   // mid spiral, going left
+  { x: 55, y: 54 },   // upper spiral curve
+  { x: 48, y: 47 },   // near top of staircase
+  { x: 42, y: 40 },   // stepping onto deck landing (left side)
+  { x: 38, y: 34 },   // on the deck near lanterns
+  { x: 45, y: 26 },   // crossing deck toward trail (moving right)
+  { x: 52, y: 18 },   // on the stone trail going up-right
+  { x: 58, y: 10 },   // climbing the trail
+  { x: 62, y: 3 },    // disappearing off the top-right
 ];
-const WALK_SPEED = 11; // % per second
+const WALK_SPEED = 10; // % per second
 
 export default function RooftopLoungeScreen({
   spaceTransit, transitDir, transitionToCabin,
