@@ -218,14 +218,6 @@ export default function RooftopLoungeScreen({
         </button>
       )}
 
-      {/* Rooftop label — fades in after arrival */}
-      {climbPhase==="done"&&(
-        <div style={{position:"absolute",bottom:"6%",left:"50%",transform:"translateX(-50%)",zIndex:12,animation:"fadeUp 1.5s 0.5s ease both",pointerEvents:"none",textAlign:"center"}}>
-          <div style={{fontFamily:DISPLAY,fontSize:"1.1rem",fontWeight:700,color:"rgba(220,200,255,0.30)",letterSpacing:"0.08em",textTransform:"uppercase"}}>Rooftop Lounge</div>
-          <div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.75rem",color:"rgba(220,200,255,0.18)",marginTop:4}}>A quiet place above the world</div>
-        </div>
-      )}
-
       {/* Space transition overlay (for going back down) */}
       {spaceTransit&&<div style={{position:"fixed",inset:0,zIndex:9999,background:"#0A0806",display:"flex",alignItems:"center",justifyContent:"center",animation:"spaceFadeIn .5s ease"}}>
         <div style={{textAlign:"center",animation:"fadeUp .6s .15s ease both"}}>
