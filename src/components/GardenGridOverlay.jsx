@@ -15,9 +15,9 @@ import { ITEMS } from '../items.js';
  * Always: renders soil + planted visuals integrated into the terrace.
  */
 
-// Soil tile images
-const SOIL_IMG = '/Plants/Freshly tilled soil tile.png';
-const WATERED_SOIL_IMG = '/Plants/watered-soil.png';
+// Soil tile sprites — clean 384x384 RGBA with feathered edges
+const SOIL_IMG = '/Plants/soil_tile.png';
+const WATERED_SOIL_IMG = '/Plants/soil_tile_watered.png';
 
 // Toolbar items the player can place
 const TOOL_SOIL = 'soil';
@@ -187,7 +187,7 @@ export default function GardenGridOverlay({
                 overflow: 'hidden',
               }}
             >
-              {/* Soil tile — fills nearly the full cell, blended into terrace */}
+              {/* Soil sprite — feathered-edge PNG, contain to preserve soft edges */}
               {hasSoilOrPlant && (
                 <img
                   src={showWateredSoil ? WATERED_SOIL_IMG : SOIL_IMG}
@@ -195,19 +195,13 @@ export default function GardenGridOverlay({
                   draggable={false}
                   style={{
                     position: 'absolute',
-                    // Fill the entire cell — object-fit:cover crops the natural rough
-                    // edges so soil patches tile seamlessly with no gaps
-                    inset: '-6%',
-                    width: '112%',
-                    height: '112%',
-                    objectFit: 'cover',
-                    borderRadius: 0,
-                    opacity: 0.88,
+                    inset: '-5%',
+                    width: '110%',
+                    height: '110%',
+                    objectFit: 'contain',
                     pointerEvents: 'none',
-                    filter: showWateredSoil
-                      ? 'brightness(0.80) saturate(1.25)'
-                      : 'brightness(0.88) saturate(1.05)',
-                    transition: 'filter 0.5s ease',
+                    opacity: 0.92,
+                    transition: 'opacity 0.4s ease',
                     zIndex: 1,
                   }}
                 />
