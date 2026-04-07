@@ -1,34 +1,124 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { GFONTS, B, SERIF, SANS, DISPLAY, SKYLIGHT_STAIRCASE_IMAGE } from '../constants.js';
 import { CSS } from '../styles.js';
 import ImmersiveRooftop from '../components/ImmersiveRooftop.jsx';
 import CharacterWalker from '../components/CharacterWalker.jsx';
+import { resolveSprite } from '../overworld/sprites.js';
+
+// Waypoints for auto-walk up the staircase in FINALSKYLIGHT image
+// Character climbs from cabin bottom up the spiral stairs → across deck → up the stone trail
+const CLIMB_PATH = [
+  { x: 48, y: 88 },   // bottom of staircase near cabin
+  { x: 52, y: 78 },   // starting up the spiral
+  { x: 58, y: 67 },   // mid spiral
+  { x: 63, y: 55 },   // upper spiral
+  { x: 65, y: 44 },   // reaching the deck landing
+  { x: 60, y: 35 },   // crossing the deck
+  { x: 52, y: 25 },   // onto the stone trail
+  { x: 46, y: 15 },   // walking up the path
+  { x: 42, y: 5 },    // disappearing off the top
+];
+const WALK_SPEED = 11; // % per second
 
 export default function RooftopLoungeScreen({
   spaceTransit, transitDir, transitionToCabin,
   candles, bank, playerAppearance,
 }){
-  // Skylight climb-through transition — plays once on arrival
   const [climbPhase, setClimbPhase] = useState("climbing"); // "climbing" | "emerging" | "done"
+  const spriteRef = useRef(null);
+  const animRef = useRef(null);
+  const pathIdx = useRef(0);
+  const posRef = useRef({ x: CLIMB_PATH[0].x, y: CLIMB_PATH[0].y });
+  const frameRef = useRef(0);
+  const frameTimer = useRef(0);
+  const lastTs = useRef(0);
 
-  useEffect(()=>{
-    // Phase 1: show skylight staircase view, slowly zoom in (0 → 1.8s)
-    // Phase 2: cross-fade to rooftop (1.8s → 3s)
-    // Phase 3: fully on rooftop
-    const t1 = setTimeout(()=> setClimbPhase("emerging"), 1800);
-    const t2 = setTimeout(()=> setClimbPhase("done"), 3200);
-    return()=>{clearTimeout(t1);clearTimeout(t2);};
-  },[]);
+  const sprite = resolveSprite(playerAppearance);
+  const SPRITE_SCALE = 1.6;
+  const SW = 40 * SPRITE_SCALE;
+  const SH = 40 * SPRITE_SCALE;
+  const FRAME_DUR = 150;
+
+  // Auto-walk the character along the path
+  useEffect(() => {
+    if (climbPhase !== "climbing") return;
+    pathIdx.current = 0;
+    posRef.current = { x: CLIMB_PATH[0].x, y: CLIMB_PATH[0].y };
+    lastTs.current = 0;
+
+    const loop = (ts) => {
+      if (!lastTs.current) lastTs.current = ts;
+      const dt = Math.min((ts - lastTs.current) / 1000, 0.05);
+      lastTs.current = ts;
+
+      const target = CLIMB_PATH[pathIdx.current + 1];
+      if (!target) {
+        // Reached the end — trigger transition
+        setClimbPhase("emerging");
+        return;
+      }
+
+      const dx = target.x - posRef.current.x;
+      const dy = target.y - posRef.current.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const step = WALK_SPEED * dt;
+
+      if (dist <= step) {
+        // Snap to waypoint, advance
+        posRef.current.x = target.x;
+        posRef.current.y = target.y;
+        pathIdx.current++;
+      } else {
+        // Move toward waypoint
+        posRef.current.x += (dx / dist) * step;
+        posRef.current.y += (dy / dist) * step;
+      }
+
+      // Determine facing direction
+      let dir = 'up';
+      if (Math.abs(dx) > Math.abs(dy)) {
+        dir = dx > 0 ? 'right' : 'left';
+      } else {
+        dir = dy > 0 ? 'down' : 'up';
+      }
+
+      // Animate walk frames
+      frameTimer.current += dt * 1000;
+      if (frameTimer.current >= FRAME_DUR) {
+        frameTimer.current = 0;
+        frameRef.current = (frameRef.current + 1) % sprite.cols;
+      }
+
+      // Update DOM
+      if (spriteRef.current) {
+        spriteRef.current.style.left = `${posRef.current.x}%`;
+        spriteRef.current.style.top = `${posRef.current.y}%`;
+        const row = sprite.dirRow[dir] || 0;
+        const col = frameRef.current;
+        spriteRef.current.style.backgroundPosition = `${-(col * SW)}px ${-(row * SH)}px`;
+      }
+
+      animRef.current = requestAnimationFrame(loop);
+    };
+    animRef.current = requestAnimationFrame(loop);
+    return () => { if (animRef.current) cancelAnimationFrame(animRef.current); };
+  }, [climbPhase, sprite]);
+
+  // Emerging → done after cross-fade
+  useEffect(() => {
+    if (climbPhase !== "emerging") return;
+    const t = setTimeout(() => setClimbPhase("done"), 1400);
+    return () => clearTimeout(t);
+  }, [climbPhase]);
 
   const climbCSS = `
-    @keyframes skylightClimb {
-      0%   { transform: scale(1) translateY(0);     opacity: 1; }
-      60%  { transform: scale(1.8) translateY(-12%); opacity: 1; }
-      100% { transform: scale(2.6) translateY(-20%); opacity: 0; }
-    }
     @keyframes rooftopReveal {
       0%   { opacity: 0; }
       100% { opacity: 1; }
+    }
+    @keyframes climbFadeOut {
+      0%   { opacity: 1; }
+      100% { opacity: 0; }
     }
   `;
 
@@ -57,14 +147,15 @@ export default function RooftopLoungeScreen({
         />
       )}
 
-      {/* ── SKYLIGHT CLIMB TRANSITION ── */}
+      {/* ── SKYLIGHT CLIMB TRANSITION — character walks up the staircase ── */}
       {climbPhase!=="done"&&(
         <div style={{
           position:"fixed",inset:0,zIndex:50,overflow:"hidden",
           background:"#0A0806",
           pointerEvents: climbPhase==="emerging" ? "none" : "all",
+          animation: climbPhase==="emerging" ? "climbFadeOut 1.4s ease both" : "none",
         }}>
-          {/* Skylight staircase image — zooms in as if climbing up through it */}
+          {/* Skylight staircase image — static background, no zoom */}
           <img
             src={SKYLIGHT_STAIRCASE_IMAGE}
             alt=""
@@ -72,23 +163,34 @@ export default function RooftopLoungeScreen({
               position:"absolute",
               width:"100%",height:"100%",
               objectFit:"cover",
-              animation:"skylightClimb 3.2s cubic-bezier(0.3,0,0.2,1) forwards",
-              transformOrigin:"55% 15%", /* zoom toward the walkway/path at the top */
             }}
             draggable={false}
           />
           {/* Warm lantern glow overlay */}
           <div style={{position:"absolute",inset:0,pointerEvents:"none",background:"radial-gradient(ellipse at 50% 50%, rgba(255,180,80,0.08) 0%, transparent 60%)",mixBlendMode:"screen"}}/>
           {/* Dark vignette */}
-          <div style={{position:"absolute",inset:0,pointerEvents:"none",background:"radial-gradient(ellipse at center, transparent 25%, rgba(10,8,6,0.65) 100%)"}}/>
-          {/* Text */}
-          <div style={{position:"absolute",bottom:"12%",left:"50%",transform:"translateX(-50%)",zIndex:10,textAlign:"center",animation:"fadeUp 0.8s 0.3s ease both",pointerEvents:"none"}}>
-            <div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"1rem",color:"rgba(255,248,232,0.45)",letterSpacing:"0.04em"}}>Climbing to the rooftop...</div>
-          </div>
-          {/* Bright flash at the end as you "emerge" into the light */}
-          {climbPhase==="emerging"&&(
-            <div style={{position:"absolute",inset:0,pointerEvents:"none",zIndex:20,background:"rgba(255,240,220,0.15)",animation:"rooftopReveal 0.4s ease reverse both"}}/>
-          )}
+          <div style={{position:"absolute",inset:0,pointerEvents:"none",background:"radial-gradient(ellipse at center, transparent 25%, rgba(10,8,6,0.55) 100%)"}}/>
+
+          {/* Auto-walking character sprite */}
+          <div
+            ref={spriteRef}
+            style={{
+              position:"absolute",
+              left:`${CLIMB_PATH[0].x}%`,
+              top:`${CLIMB_PATH[0].y}%`,
+              width: SW,
+              height: SH,
+              transform:"translate(-50%,-80%)",
+              zIndex:10,
+              backgroundImage:`url(${sprite.src})`,
+              backgroundSize:`${sprite.cols * SW}px ${sprite.rows * SH}px`,
+              backgroundRepeat:"no-repeat",
+              backgroundPosition:"0px 0px",
+              imageRendering:"pixelated",
+              pointerEvents:"none",
+              filter:"drop-shadow(0 2px 8px rgba(0,0,0,0.6))",
+            }}
+          />
         </div>
       )}
 
