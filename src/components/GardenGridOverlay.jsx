@@ -187,25 +187,36 @@ export default function GardenGridOverlay({
                 overflow: 'hidden',
               }}
             >
-              {/* Soil sprite — feathered-edge PNG, contain to preserve soft edges */}
-              {hasSoilOrPlant && (
-                <img
-                  src={showWateredSoil ? WATERED_SOIL_IMG : SOIL_IMG}
-                  alt=""
-                  draggable={false}
-                  style={{
-                    position: 'absolute',
-                    inset: '-5%',
-                    width: '110%',
-                    height: '110%',
-                    objectFit: 'contain',
-                    pointerEvents: 'none',
-                    opacity: 0.92,
-                    transition: 'opacity 0.4s ease',
-                    zIndex: 1,
-                  }}
-                />
-              )}
+              {/* Soil sprite — scene-matched lighting + ground shadow */}
+              {hasSoilOrPlant && (() => {
+                // Deterministic micro-offset per cell to break grid perfection
+                const seed = cell.row * 7 + cell.col * 13;
+                const nudgeX = ((seed % 5) - 2) * 0.5; // -1 to +1 px
+                const nudgeY = ((seed % 3) - 1) * 0.8; // -0.8 to +0.8 px
+                const soilFilter = showWateredSoil
+                  ? 'brightness(0.78) saturate(1.15) drop-shadow(0 3px 4px rgba(0,0,0,0.18))'
+                  : 'brightness(0.90) saturate(0.95) drop-shadow(0 3px 4px rgba(0,0,0,0.18))';
+                return (
+                  <img
+                    src={showWateredSoil ? WATERED_SOIL_IMG : SOIL_IMG}
+                    alt=""
+                    draggable={false}
+                    style={{
+                      position: 'absolute',
+                      inset: '-9%',
+                      width: '118%',
+                      height: '118%',
+                      objectFit: 'contain',
+                      pointerEvents: 'none',
+                      opacity: 0.92,
+                      filter: soilFilter,
+                      transform: `translate(${nudgeX}px, ${nudgeY + 1}px)`,
+                      transition: 'filter 0.4s ease',
+                      zIndex: 1,
+                    }}
+                  />
+                );
+              })()}
 
               {/* Plant growth visual */}
               {isPlanted && cell.plantId && (
