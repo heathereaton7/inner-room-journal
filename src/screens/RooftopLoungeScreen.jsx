@@ -142,7 +142,7 @@ export default function RooftopLoungeScreen({
         <CharacterWalker
           appearance={playerAppearance}
           spawnX={skipClimb ? 85 : 50}
-          spawnY={skipClimb ? 30 : 95}
+          spawnY={skipClimb ? 45 : 95}
           speed={10}
           scale={1.6}
           zIndex={18}
