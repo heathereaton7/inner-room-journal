@@ -23,7 +23,7 @@ const CLIMB_PATH = [
 const WALK_SPEED = 10; // % per second
 
 export default function RooftopLoungeScreen({
-  spaceTransit, transitDir, transitionToCabin,
+  spaceTransit, transitDir, transitionToCabin, transitionToGarden,
   candles, bank, playerAppearance,
 }){
   const [climbPhase, setClimbPhase] = useState("climbing"); // "climbing" | "emerging" | "done"
@@ -147,6 +147,13 @@ export default function RooftopLoungeScreen({
           scale={1.6}
           zIndex={18}
         />
+      )}
+
+      {/* ── STAIRCASE HOTSPOT — upper-right spiral stairs → rooftop garden ── */}
+      {climbPhase==="done"&&(
+        <button onClick={()=>transitionToGarden()} style={{position:"absolute",right:"0%",top:"15%",width:"22%",height:"32%",zIndex:15,background:"transparent",border:"none",padding:0,cursor:"pointer",borderRadius:"8px",outline:"none",WebkitTapHighlightColor:"transparent"}}>
+          <div style={{position:"absolute",left:"20%",top:"25%",width:"60%",height:"50%",borderRadius:"45%",background:"radial-gradient(ellipse at 50% 50%,rgba(255,210,120,0.25) 0%,rgba(255,180,80,0.08) 45%,transparent 72%)",pointerEvents:"none",animation:"hotspotPulse 3s ease-in-out infinite"}}/>
+        </button>
       )}
 
       {/* ── SKYLIGHT CLIMB TRANSITION — character walks up the staircase ── */}

@@ -16,6 +16,7 @@ import NotificationsScreen from './screens/NotificationsScreen.jsx';
 import CheckInScreen from './screens/CheckInScreen.jsx';
 import BecomingHerScreen from './screens/BecomingHerScreen.jsx';
 import RooftopLoungeScreen from './screens/RooftopLoungeScreen.jsx';
+import RooftopGardenScreen from './screens/RooftopGardenScreen.jsx';
 import CheckInCalendar from './screens/CheckInCalendar.jsx';
 import PostCard from './components/PostCard.jsx';
 import UpperRoomGatherings from './screens/UpperRoomGatherings.jsx';
@@ -3334,6 +3335,10 @@ function AppInner(){
     setSpaceTransit(true); setTransitDir("toCabin");
     setTimeout(()=>{setScreen("cabin");setSpaceTransit(false);setTransitDir(null);},700);
   }
+  function transitionToGarden(){
+    setSpaceTransit(true); setTransitDir("toGarden");
+    setTimeout(()=>{setScreen("rooftop-garden");setSpaceTransit(false);setTransitDir(null);},700);
+  }
   function transitionToStove(){
     setStoveZoom(true);
     setTimeout(()=>{setScreen("stove");setStoveZoom(false);},1200);
@@ -4408,7 +4413,18 @@ function AppInner(){
   if(screen==="rooftop-lounge") return(<>
     <RooftopLoungeScreen
       spaceTransit={spaceTransit} transitDir={transitDir}
-      transitionToCabin={transitionToCabin}
+      transitionToCabin={transitionToCabin} transitionToGarden={transitionToGarden}
+      candles={candles} bank={bank}
+      playerAppearance={playerAppearance}
+    />
+  </>);
+
+
+  /* ══ ROOFTOP GARDEN (stone terrace with waterfall view) ══ */
+  if(screen==="rooftop-garden") return(<>
+    <RooftopGardenScreen
+      spaceTransit={spaceTransit} transitDir={transitDir}
+      transitionToRooftop={transitionToRooftop}
       candles={candles} bank={bank}
       playerAppearance={playerAppearance}
     />

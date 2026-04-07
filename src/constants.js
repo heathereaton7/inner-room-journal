@@ -533,6 +533,7 @@ export const WEEKLY_MISSIONS=[
 export const CABIN_FALLBACK_IMAGE="/cabin-interior.png";
 export const SKYLIGHT_STAIRCASE_IMAGE="/FINALSKYLIGHT.png";
 export const ROOFTOP_LOUNGE_IMAGE="/FINALROOFTOP.png";
+export const ROOFTOP_GARDEN_IMAGE="/Stone terrace at twilight waterfall view.png";
 
 /* ══════════════════════════════════════════════════════
    INNER ROOM PLUS — Premium Content
