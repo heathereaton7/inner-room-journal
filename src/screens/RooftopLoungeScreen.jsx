@@ -16,9 +16,9 @@ const CLIMB_PATH = [
   { x: 68, y: 48 },   // near top of staircase
   { x: 62, y: 40 },   // reaching the top landing
   { x: 64, y: 32 },   // hooks right onto the deck/trail
-  { x: 70, y: 22 },   // on the stone trail going up-right
-  { x: 76, y: 14 },   // climbing the trail
-  { x: 80, y: 5 },    // disappearing off the top-right
+  { x: 76, y: 22 },   // on the stone trail going up-right
+  { x: 84, y: 14 },   // climbing the trail
+  { x: 90, y: 5 },    // disappearing off the top-right
 ];
 const WALK_SPEED = 10; // % per second
 
