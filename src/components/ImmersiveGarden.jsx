@@ -132,7 +132,7 @@ export default function ImmersiveGarden(){
 
   return(
     <div ref={containerRef} style={{position:"absolute",inset:0,zIndex:0,overflow:"hidden",background:"#0E0812",cursor:"grab"}} onMouseDown={()=>{if(containerRef.current)containerRef.current.style.cursor="grabbing";}} onMouseUp={()=>{if(containerRef.current)containerRef.current.style.cursor="grab";}}>
-      <img ref={imgRef} src={ROOFTOP_GARDEN_IMAGE} alt="Rooftop garden" style={{position:"absolute",top:0,left:0,width:`calc(100% + ${PARALLAX*2}px)`,height:`calc(100% + ${PARALLAX*2}px)`,objectFit:"cover",transform:`translate(${-PARALLAX}px,${-PARALLAX}px)`,willChange:"transform",userSelect:"none",WebkitUserDrag:"none",pointerEvents:"none"}} draggable={false}/>
+      <img ref={imgRef} src={ROOFTOP_GARDEN_IMAGE} alt="Rooftop garden" style={{position:"absolute",top:0,left:0,width:`calc(100% + ${PARALLAX*2}px)`,height:`calc(100% + ${PARALLAX*2}px)`,objectFit:"cover",transform:`translate(${-PARALLAX}px,${-PARALLAX}px)`,willChange:"transform",userSelect:"none",WebkitUserDrag:"none",pointerEvents:"none",filter:"saturate(0.85) brightness(0.95) contrast(0.92) blur(0.3px)"}} draggable={false}/>
       {/* Waterfall mist glow */}
       <div style={{position:"absolute",left:"10%",top:"15%",width:"35%",height:"35%",pointerEvents:"none",zIndex:1,background:"radial-gradient(ellipse at 50% 60%, rgba(200,210,240,0.08) 0%, transparent 65%)",mixBlendMode:"screen"}}/>
       {/* Twilight sky wash */}
