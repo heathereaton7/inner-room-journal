@@ -187,15 +187,38 @@ export default function GardenGridOverlay({
                 overflow: 'hidden',
               }}
             >
-              {/* Soil sprite — scene-matched lighting + ground shadow */}
+              {/* Soil sprite — snapped in edit mode, polished in play mode */}
               {hasSoilOrPlant && (() => {
-                // Deterministic micro-offset per cell to break grid perfection
-                const seed = cell.row * 7 + cell.col * 13;
-                const nudgeX = ((seed % 5) - 2) * 0.5; // -1 to +1 px
-                const nudgeY = ((seed % 3) - 1) * 0.8; // -0.8 to +0.8 px
                 const soilFilter = showWateredSoil
                   ? 'brightness(0.78) saturate(1.15) drop-shadow(0 3px 4px rgba(0,0,0,0.18))'
                   : 'brightness(0.90) saturate(0.95) drop-shadow(0 3px 4px rgba(0,0,0,0.18))';
+
+                // Edit mode: perfect grid alignment, no offsets, 100% cell fit
+                if (editMode) {
+                  return (
+                    <img
+                      src={showWateredSoil ? WATERED_SOIL_IMG : SOIL_IMG}
+                      alt=""
+                      draggable={false}
+                      style={{
+                        position: 'absolute',
+                        inset: 0,
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'contain',
+                        pointerEvents: 'none',
+                        opacity: 0.92,
+                        filter: soilFilter,
+                        zIndex: 1,
+                      }}
+                    />
+                  );
+                }
+
+                // Play mode: micro-offset + overscale for natural feel
+                const seed = cell.row * 7 + cell.col * 13;
+                const nudgeX = ((seed % 5) - 2) * 0.5;
+                const nudgeY = ((seed % 3) - 1) * 0.8;
                 return (
                   <img
                     src={showWateredSoil ? WATERED_SOIL_IMG : SOIL_IMG}
