@@ -24,25 +24,24 @@ export default {
       label: 'Cabin',
       description: 'Your quiet place',
       screen: 'cabin',
-      // Centered ON the cabin building so the zone catches players
-      // walking past on the N-S path (cols 14-15). Building (cols 12-16,
-      // rows 51-55) is solid — player walks alongside on cols 11 or 17.
-      // At col 11, row 53: distance to center = ~200px → inside 280.
-      cx: 14 * TILE,              // col 14 — cabin center
-      cy: 53 * TILE,              // row 53 — cabin midpoint
-      radius: 280,                // catches path alongside + porch area
+      cx: 14 * TILE,
+      cy: 53 * TILE,
+      radius: 280,
+    },
+    {
+      id: 'upper-room-zone',
+      label: 'Upper Room',
+      description: 'Worship & encounter',
+      screen: 'upper-room',
+      // Centered on upper room building (cols 30-34, rows 7-11)
+      // Large radius so prompt appears when walking near the plaza
+      cx: 32 * TILE + TILE / 2,
+      cy: 9 * TILE + TILE / 2,
+      radius: 380,
     },
   ],
 
   transitions: [
-    {
-      id: 'upper-room-door',
-      cx: 32 * TILE + TILE / 2,
-      cy: 12 * TILE,
-      radius: 100,
-      targetMap: 'upper-room',
-      spawnId: 'from-exterior',
-    },
     {
       id: 'market-door',
       cx: 22 * TILE + TILE / 2,
