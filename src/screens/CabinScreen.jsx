@@ -856,10 +856,17 @@ export default function CabinScreen({
         </div>
       )}
 
+      {/* Kitchen — bottom right quick access */}
+      {!bookOpen&&!showInsights&&!shelfAnim&&(
+        <button onClick={()=>transitionToKitchen()} style={{position:"fixed",bottom:32,right:24,zIndex:12,background:"rgba(26,22,18,0.7)",backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",border:"1px solid rgba(201,169,110,0.15)",borderRadius:14,padding:"10px 18px",cursor:"pointer",color:"rgba(255,248,232,0.55)",fontFamily:SANS,fontSize:"0.72rem",fontWeight:600,transition:"all 0.2s",display:"flex",alignItems:"center",gap:6,animation:"fadeUp 1s 1s ease both",boxShadow:"0 2px 12px rgba(0,0,0,0.3)"}}>
+          <span style={{fontSize:"0.8rem",opacity:0.7}}>&#8595;</span> Kitchen
+        </button>
+      )}
+
       {/* ═══ SPACE TRANSITION OVERLAY ═══ */}
       {spaceTransit&&<div style={{position:"fixed",inset:0,zIndex:9999,background:"#0A0806",display:"flex",alignItems:"center",justifyContent:"center",animation:"spaceFadeIn .5s ease"}}>
         <div style={{textAlign:"center",animation:"fadeUp .6s .15s ease both"}}>
-          <div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"1.05rem",color:"rgba(255,248,232,0.5)",letterSpacing:"0.04em"}}>{transitDir==="toHall"?"Stepping into The Upper Room...":transitDir==="toRooftop"?"Climbing to the rooftop...":transitDir==="toGarden"?"Walking to the garden...":"Returning to the cabin..."}</div>
+          <div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"1.05rem",color:"rgba(255,248,232,0.5)",letterSpacing:"0.04em"}}>{transitDir==="toHall"?"Stepping into The Upper Room...":transitDir==="toRooftop"?"Climbing to the rooftop...":transitDir==="toKitchen"?"Heading downstairs...":transitDir==="toGarden"?"Walking to the garden...":"Returning to the cabin..."}</div>
         </div>
       </div>}
       <BottomMenuDrawer/>
