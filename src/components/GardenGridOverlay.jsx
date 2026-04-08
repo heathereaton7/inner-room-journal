@@ -193,7 +193,7 @@ export default function GardenGridOverlay({
                   ? 'brightness(0.78) saturate(1.15) drop-shadow(0 3px 4px rgba(0,0,0,0.18))'
                   : 'brightness(0.90) saturate(0.95) drop-shadow(0 3px 4px rgba(0,0,0,0.18))';
 
-                // Edit mode: perfect grid alignment, no offsets, 100% cell fit
+                // Edit mode: perfect grid alignment, no offsets, no filters
                 if (editMode) {
                   return (
                     <img
@@ -208,14 +208,16 @@ export default function GardenGridOverlay({
                         objectFit: 'contain',
                         pointerEvents: 'none',
                         opacity: 0.92,
-                        filter: soilFilter,
+                        filter: 'none',
+                        transform: 'none',
+                        transition: 'all 0.2s ease',
                         zIndex: 1,
                       }}
                     />
                   );
                 }
 
-                // Play mode: micro-offset + overscale for natural feel
+                // Play mode: micro-offset + overscale + lighting for natural feel
                 const seed = cell.row * 7 + cell.col * 13;
                 const nudgeX = ((seed % 5) - 2) * 0.5;
                 const nudgeY = ((seed % 3) - 1) * 0.8;
@@ -234,7 +236,7 @@ export default function GardenGridOverlay({
                       opacity: 0.92,
                       filter: soilFilter,
                       transform: `translate(${nudgeX}px, ${nudgeY + 1}px)`,
-                      transition: 'filter 0.4s ease',
+                      transition: 'all 0.2s ease',
                       zIndex: 1,
                     }}
                   />
