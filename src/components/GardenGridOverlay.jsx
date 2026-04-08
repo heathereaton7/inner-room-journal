@@ -28,6 +28,7 @@ export default function GardenGridOverlay({
   const [selectedTool, setSelectedTool] = useState(null);
   const [tick, setTick] = useState(0);
   const [toast, setToast] = useState(null);
+  const [flashCell, setFlashCell] = useState(null); // cell index that just got placed
   const cfg = grid?.config || DEFAULT_GRID_CONFIG;
 
   // Re-render every 30 seconds so plant stages + watered state update visually.
@@ -45,6 +46,13 @@ export default function GardenGridOverlay({
     return () => clearTimeout(id);
   }, [toast]);
 
+  // Auto-clear placement flash
+  useEffect(() => {
+    if (flashCell === null) return;
+    const id = setTimeout(() => setFlashCell(null), 200);
+    return () => clearTimeout(id);
+  }, [flashCell]);
+
   // Available seed items from inventory
   const seedItems = useMemo(() => {
     if (!inventory) return [];
@@ -61,7 +69,7 @@ export default function GardenGridOverlay({
 
     if (selectedTool === TOOL_SOIL) {
       const next = placeSoil(grid, row, col);
-      if (next) setGrid(next);
+      if (next) { setGrid(next); setFlashCell(row * cfg.cols + col); }
     } else {
       const item = ITEMS[selectedTool];
       if (!item?.gardenPlant) return;
@@ -69,6 +77,7 @@ export default function GardenGridOverlay({
       const next = plantSeed(grid, row, col, item.gardenPlant);
       if (next) {
         setGrid(next);
+        setFlashCell(row * cfg.cols + col);
         setInventory(prev => ({
           ...prev,
           [selectedTool]: (prev[selectedTool] || 1) - 1,
@@ -128,6 +137,22 @@ export default function GardenGridOverlay({
 
   return (
     <>
+      {/* Edit mode hover/active styles */}
+      {editMode && <style>{`
+        .garden-cell-edit:hover {
+          background: rgba(255,255,255,0.06) !important;
+          outline: 1px solid rgba(255,255,255,0.12);
+          outline-offset: -1px;
+        }
+        .garden-cell-edit:active {
+          background: rgba(180,150,100,0.12) !important;
+        }
+        @keyframes soilPlace {
+          0% { transform: scale(0.90); opacity: 0.6; }
+          100% { transform: scale(1); opacity: 0.92; }
+        }
+      `}</style>}
+
       {/* ── Grid cells layer ── */}
       <div style={{
         position: 'absolute',
@@ -152,10 +177,12 @@ export default function GardenGridOverlay({
           const showWateredSoil = (isSoil || isPlanted) && watered;
           const tappableOutsideEdit = !editMode && isPlanted;
           const hasSoilOrPlant = isSoil || isPlanted;
+          const isFlashing = flashCell === i;
 
           return (
             <div
               key={i}
+              className={editMode ? 'garden-cell-edit' : undefined}
               onClick={() => onCellTap(cell.row, cell.col)}
               style={{
                 position: 'absolute',
@@ -164,17 +191,18 @@ export default function GardenGridOverlay({
                 width: `${w}%`,
                 height: `${h}%`,
                 boxSizing: 'border-box',
-                // Subtle dashed grid guides in edit mode — nearly invisible
                 border: editMode
                   ? `1px dashed rgba(180,150,100,${isEmpty ? 0.10 : 0.18})`
                   : 'none',
                 borderRadius: 0,
-                // Gentle highlight on valid placement targets
-                background: editMode && isEmpty && selectedTool === TOOL_SOIL
-                  ? 'rgba(180,150,100,0.05)'
-                  : editMode && isSoil && selectedTool && selectedTool !== TOOL_SOIL
-                    ? 'rgba(90,138,106,0.06)'
-                    : 'transparent',
+                // Flash on placement, then settle; otherwise subtle target hints
+                background: isFlashing
+                  ? 'rgba(180,150,100,0.12)'
+                  : editMode && isEmpty && selectedTool === TOOL_SOIL
+                    ? 'rgba(180,150,100,0.05)'
+                    : editMode && isSoil && selectedTool && selectedTool !== TOOL_SOIL
+                      ? 'rgba(90,138,106,0.06)'
+                      : 'transparent',
                 cursor: (editMode || tappableOutsideEdit) ? 'pointer' : 'default',
                 pointerEvents: editMode ? 'auto'
                   : isPlanted ? 'auto'
@@ -194,6 +222,7 @@ export default function GardenGridOverlay({
                   : 'brightness(0.90) saturate(0.95) drop-shadow(0 3px 4px rgba(0,0,0,0.18))';
 
                 // Edit mode: perfect grid alignment, no offsets, no filters
+                // Fresh placements get a quick scale-in animation
                 if (editMode) {
                   return (
                     <img
@@ -211,6 +240,7 @@ export default function GardenGridOverlay({
                         filter: 'none',
                         transform: 'none',
                         transition: 'all 0.2s ease',
+                        animation: isFlashing ? 'soilPlace 0.15s ease' : 'none',
                         zIndex: 1,
                       }}
                     />
