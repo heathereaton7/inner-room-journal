@@ -278,7 +278,7 @@ export default function TrackersScreen({ progress, onProgressChange, onBack }) {
 /* ═══════════════════════════════════════════════════════════════
    CELL (editable)
 ═══════════════════════════════════════════════════════════════ */
-function Cell({ value, onChange, type='text', options, placeholder='', editing, onEdit, onBlur, style = {}, readOnly = false }) {
+function Cell({ value, onChange, type='text', format='auto', options, placeholder='', editing, onEdit, onBlur, style = {}, readOnly = false }) {
   if (readOnly) {
     return (
       <div style={{
@@ -351,7 +351,7 @@ function Cell({ value, onChange, type='text', options, placeholder='', editing, 
       cursor:'text',
       minHeight:'1.2em',
       ...style,
-    }}>{value === '' || value == null ? (placeholder || '—') : (type === 'number' ? money(value) : value)}</div>
+    }}>{value === '' || value == null ? (placeholder || '—') : (type === 'number' && format !== 'plain' ? money(value) : value)}</div>
   );
 }
 
@@ -415,7 +415,7 @@ function BillsTab({ bills, calc, editingCell, setEditingCell, updateBill, addBil
           };
           if (k === 'name')     return <Cell value={row.name}     placeholder="(bill name)" onChange={v => updateBill(row.id,'name',v)} {...commonProps} />;
           if (k === 'category') return <Cell value={row.category} type="select" options={BILL_CATEGORIES} onChange={v => updateBill(row.id,'category',v)} />;
-          if (k === 'dueDay')   return <Cell value={row.dueDay}   type="number" placeholder="—" onChange={v => updateBill(row.id,'dueDay',v === '' ? '' : Number(v))} {...commonProps} />;
+          if (k === 'dueDay')   return <Cell value={row.dueDay}   type="number" format="plain" placeholder="—" onChange={v => updateBill(row.id,'dueDay',v === '' ? '' : Number(v))} {...commonProps} />;
           if (k === 'amount')   return <Cell value={row.amount}   type="number" placeholder="$0" onChange={v => updateBill(row.id,'amount',Number(v)||0)} {...commonProps} />;
           if (k === 'autoPay')  return <Cell value={row.autoPay}  type="checkbox" onChange={v => updateBill(row.id,'autoPay',v)} />;
           if (k === 'paid')     return <Cell value={row.paid}     type="checkbox" onChange={v => updateBill(row.id,'paid',v)} />;
