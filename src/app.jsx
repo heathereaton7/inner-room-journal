@@ -3466,8 +3466,6 @@ function AppInner(){
     if(shelfAnim||bookId===deskBook) return;
     // Becoming Her opens its own sanctuary screen instead of desk book
     if(bookId==="becoming-her"){ setScreen("becoming-her"); return; }
-    // Trackers opens its own spreadsheet screen instead of desk book
-    if(bookId==="trackers"){ setScreen("trackers"); return; }
     setShelfAnim(bookId);
     setJournalSection(null);
     // Phase 1: book lifts & arcs to desk (1.2s)
