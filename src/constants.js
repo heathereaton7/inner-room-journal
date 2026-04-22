@@ -179,6 +179,7 @@ export const SHELF_BOOKS = [
   {id:"dreams",   label:"Dreams",             emoji:"✨"},
   {id:"prophecy", label:"Prophecy & Words",   emoji:"🕊️"},
   {id:"becoming-her", label:"Becoming Her",    emoji:"🌸"},
+  {id:"trackers", label:"Trackers",            emoji:"🌷"},
 ];
 /* Book cover colors for the floating shelf books */
 export const BOOK_COVERS = {
@@ -189,6 +190,7 @@ export const BOOK_COVERS = {
   dreams:   {bg:"linear-gradient(160deg,#1E2E3D,#101828)",accent:"#7AB8D8"},
   prophecy:      {bg:"linear-gradient(160deg,#3D1E2E,#281018)",accent:"#D490C0"},
   'becoming-her':{bg:"linear-gradient(160deg,#3D2E28,#2A1E18)",accent:"#D4A0A0"},
+  trackers:      {bg:"linear-gradient(160deg,#2E3D2E,#182818)",accent:"#A8D4B0"},
 };
 
 export const BOOK_CONTENT = {
