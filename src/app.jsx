@@ -18,6 +18,8 @@ import NotificationsScreen from './screens/NotificationsScreen.jsx';
 import CheckInScreen from './screens/CheckInScreen.jsx';
 import BecomingHerScreen from './screens/BecomingHerScreen.jsx';
 import TrackersScreen, { createEmptyTrackers } from './screens/TrackersScreen.jsx';
+import PregnancyScreen, { createEmptyPregnancy } from './screens/PregnancyScreen.jsx';
+import { computeWeek } from './data/pregnancyWeeks.js';
 import RooftopLoungeScreen from './screens/RooftopLoungeScreen.jsx';
 import RooftopGardenScreen from './screens/RooftopGardenScreen.jsx';
 import CheckInCalendar from './screens/CheckInCalendar.jsx';
@@ -42,7 +44,7 @@ async function dbSave(k,v){
     localStorage.setItem(k,JSON.stringify(v));
     // Dual-write to Firestore when signed in
     if(auth?.currentUser){
-      const fieldMap={"irj-entries":"entries","irj-prayer":"prayerPosts","irj-saved-cards":"savedCards","irj-onboarded":"isOnboarded","irj-candles":"candles","irj-prayed":"prayedFor","irj-owned-items":"ownedItems","irj-garden":"gardenPlots","irj-inventory":"inventory","irj-saved-verses":"savedVerses","irj-bank":"bank","irj-sell-basket":"sellBasket","irj-farm-plots":"farmPlots","irj-animals":"animals","irj-missions":"missions","irj-premium":"isPremium","irj-becoming-her":"becomingHer","irj-trackers":"trackers","irj-garden-grid":"gardenGrid","irj-unlocks":"unlocks"};
+      const fieldMap={"irj-entries":"entries","irj-prayer":"prayerPosts","irj-saved-cards":"savedCards","irj-onboarded":"isOnboarded","irj-candles":"candles","irj-prayed":"prayedFor","irj-owned-items":"ownedItems","irj-garden":"gardenPlots","irj-inventory":"inventory","irj-saved-verses":"savedVerses","irj-bank":"bank","irj-sell-basket":"sellBasket","irj-farm-plots":"farmPlots","irj-animals":"animals","irj-missions":"missions","irj-premium":"isPremium","irj-becoming-her":"becomingHer","irj-trackers":"trackers","irj-pregnancy":"pregnancy","irj-garden-grid":"gardenGrid","irj-unlocks":"unlocks"};
       const field=fieldMap[k];
       if(field){
         const userRef=doc(db,"users",auth.currentUser.uid);
@@ -1726,6 +1728,7 @@ function AppInner(){
   const [lastCheckinIntensity, setLastCheckinIntensity] = useState(null);
   const [becomingHer, setBecomingHer] = useState(null); // Becoming Her journal progress
   const [trackers, setTrackers] = useState(null); // Bill / Savings / Spending trackers
+  const [pregnancy, setPregnancy] = useState(null); // The Nursery pregnancy tracker
   const [gardenGrid, setGardenGridRaw] = useState(() => createEmptyGrid()); // Rooftop garden tile grid
   const [unlocks, setUnlocksRaw] = useState({}); // Persistent unlock flags { rabbitUnlocked, ... }
   const [activeGatheringSpace, setActiveGatheringSpace] = useState(null);
@@ -1939,6 +1942,7 @@ function AppInner(){
       const rm   = await dbLoad("irj-room") || null;
       const bh   = await dbLoad("irj-becoming-her") || null;
       const tr   = await dbLoad("irj-trackers") || null;
+      const pg   = await dbLoad("irj-pregnancy") || null;
       const gg   = await dbLoad("irj-garden-grid") || null;
       const ul   = await dbLoad("irj-unlocks") || {};
       // Migrate prayers: add status/answeredDate/category if missing
@@ -1962,6 +1966,7 @@ function AppInner(){
       if(pa) setPlayerAppearance(pa);
       if(bh) setBecomingHer(bh);
       if(tr) setTrackers(tr);
+      if(pg) setPregnancy(pg);
       if(gg) setGardenGridRaw(deserializeGrid(gg));
       if(ul) setUnlocksRaw(ul);
       // Safety: if user has done check-ins but candle was lost in migration, restore it
@@ -7212,13 +7217,34 @@ function AppInner(){
     );
   }
 
-  /* ══ TRACKERS — Bills / Savings / Spending Spreadsheet ══ */
+  /* ══ TRACKERS — Bills / Savings / Spending / Pregnancy Hub ══ */
   if(screen==="trackers"){
+    const pg = pregnancy;
+    const pgInfo = pg?.setupComplete ? computeWeek(pg.dueDate) : null;
+    const pregnancyStats = pg?.setupComplete ? {
+      setupComplete: true,
+      week: pgInfo?.week ?? null,
+      daysUntilDue: pgInfo?.daysUntilDue ?? null,
+      letters: pg.letters?.length || 0,
+    } : { setupComplete: false };
     return(
       <TrackersScreen
         onBack={()=>setScreen("cabin")}
         progress={trackers || createEmptyTrackers()}
         onProgressChange={(next)=>{setTrackers(next);dbSave("irj-trackers",next);}}
+        pregnancyStats={pregnancyStats}
+        onOpenPregnancy={()=>setScreen("pregnancy")}
+      />
+    );
+  }
+
+  /* ══ PREGNANCY — The Nursery ══ */
+  if(screen==="pregnancy"){
+    return(
+      <PregnancyScreen
+        onBack={()=>setScreen("trackers")}
+        progress={pregnancy || createEmptyPregnancy()}
+        onProgressChange={(next)=>{setPregnancy(next);dbSave("irj-pregnancy",next);}}
       />
     );
   }

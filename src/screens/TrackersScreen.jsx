@@ -160,7 +160,7 @@ const CELEBRATIONS = [
 // ═══════════════════════════════════════════════════════════════
 //  HUB — the two tracker category cards (To-Do, Finance Tracker)
 // ═══════════════════════════════════════════════════════════════
-function TrackerHub({ onPickTodos, onPickFinance, todoStats, financeStats }) {
+function TrackerHub({ onPickTodos, onPickFinance, onPickPregnancy, todoStats, financeStats, pregnancyStats }) {
   const P = useP();
   return (
     <>
@@ -251,6 +251,53 @@ function TrackerHub({ onPickTodos, onPickFinance, todoStats, financeStats }) {
           </div>
           <div style={{ color:P.taupe, fontSize:'1.2rem' }}>›</div>
         </button>
+
+        {/* Pregnancy / The Nursery card */}
+        <button onClick={onPickPregnancy} style={{
+          background:`linear-gradient(135deg, ${P.panel}, rgba(212,144,176,0.12))`,
+          border:`1.5px solid ${P.border}`,
+          borderRadius:16,
+          padding:'22px 22px',
+          cursor:'pointer',
+          textAlign:'left',
+          transition:'all 0.2s',
+          color:P.cream,
+          fontFamily:SANS,
+          display:'grid',
+          gridTemplateColumns:'54px 1fr auto',
+          gap:16,
+          alignItems:'center',
+        }} onMouseEnter={e => e.currentTarget.style.borderColor = '#D490B0'}
+           onMouseLeave={e => e.currentTarget.style.borderColor = P.border}>
+          <div style={{
+            width:54, height:54, borderRadius:14,
+            background:'linear-gradient(135deg, #D490B0, #E8B0B5)',
+            display:'flex', alignItems:'center', justifyContent:'center',
+            fontSize:'1.5rem', color:P.bg,
+          }}>🕯️</div>
+          <div>
+            <div style={{ fontFamily:SERIF, fontSize:'1.1rem', color:P.cream, marginBottom:4 }}>
+              The Nursery
+            </div>
+            <div style={{ fontSize:'0.78rem', color:P.taupe, lineHeight:1.5, marginBottom:8 }}>
+              A cozy pregnancy journal — weekly letters, memories, and a garden that blooms with you.
+            </div>
+            {pregnancyStats?.setupComplete ? (
+              <div style={{ display:'flex', gap:10, fontSize:'0.72rem', color:P.taupe, flexWrap:'wrap' }}>
+                <span>🌷 Week {pregnancyStats.week}</span>
+                <span>💌 {pregnancyStats.letters} letter{pregnancyStats.letters === 1 ? '' : 's'}</span>
+                {pregnancyStats.daysUntilDue != null && pregnancyStats.daysUntilDue >= 0 && (
+                  <span style={{ color:'#D490B0' }}>{pregnancyStats.daysUntilDue} days</span>
+                )}
+              </div>
+            ) : (
+              <div style={{ fontSize:'0.72rem', color:'#D490B0', fontStyle:'italic' }}>
+                Tap to begin your story
+              </div>
+            )}
+          </div>
+          <div style={{ color:P.taupe, fontSize:'1.2rem' }}>›</div>
+        </button>
       </div>
 
       <div style={{ textAlign:'center', marginTop:28, fontSize:'0.72rem', color:P.taupe, lineHeight:1.6 }}>
@@ -302,7 +349,7 @@ function billsVibe(ratio) {
 // ═══════════════════════════════════════════════════════════════
 //  MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════
-export default function TrackersScreen({ progress, onProgressChange, onBack }) {
+export default function TrackersScreen({ progress, onProgressChange, onBack, pregnancyStats, onOpenPregnancy }) {
   const state = progress || createEmptyTrackers();
   const [view, setView] = useState(null); // null = hub, 'todos', 'finance'
   const [tab, setTab] = useState('bills'); // finance subtabs
@@ -545,6 +592,7 @@ export default function TrackersScreen({ progress, onProgressChange, onBack }) {
           <TrackerHub
             onPickTodos={() => setView('todos')}
             onPickFinance={() => { setView('finance'); setTab('bills'); }}
+            onPickPregnancy={() => onOpenPregnancy && onOpenPregnancy()}
             todoStats={{
               big: todos.filter(t => !t.done && t.section === 'big').length,
               quick: todos.filter(t => !t.done && t.section === 'quick').length,
@@ -552,6 +600,7 @@ export default function TrackersScreen({ progress, onProgressChange, onBack }) {
               done: todos.filter(t => t.done).length,
             }}
             financeStats={billsCalc}
+            pregnancyStats={pregnancyStats}
           />
         )}
 
