@@ -157,6 +157,109 @@ const CELEBRATIONS = [
   'Off the plate.', 'Gentle win.', 'Consistency over intensity.', 'Keep going.', "That's one.",
 ];
 
+// ═══════════════════════════════════════════════════════════════
+//  HUB — the two tracker category cards (To-Do, Finance Tracker)
+// ═══════════════════════════════════════════════════════════════
+function TrackerHub({ onPickTodos, onPickFinance, todoStats, financeStats }) {
+  const P = useP();
+  return (
+    <>
+      <div style={{ textAlign:'center', marginBottom:28, marginTop:8 }}>
+        <div style={{ fontFamily:SERIF, fontSize:'1.35rem', color:P.cream, marginBottom:6 }}>
+          {P.bloom} Pick a tracker
+        </div>
+        <div style={{ fontSize:'0.82rem', color:P.taupe, maxWidth:340, margin:'0 auto', lineHeight:1.5 }}>
+          Each one is its own little room. Come back anytime.
+        </div>
+      </div>
+
+      <div style={{ display:'grid', gap:14 }}>
+        {/* To-Do card */}
+        <button onClick={onPickTodos} style={{
+          background:`linear-gradient(135deg, ${P.panel}, ${P.head})`,
+          border:`1.5px solid ${P.border}`,
+          borderRadius:16,
+          padding:'22px 22px',
+          cursor:'pointer',
+          textAlign:'left',
+          transition:'all 0.2s',
+          color:P.cream,
+          fontFamily:SANS,
+          display:'grid',
+          gridTemplateColumns:'54px 1fr auto',
+          gap:16,
+          alignItems:'center',
+        }} onMouseEnter={e => e.currentTarget.style.borderColor = P.accent}
+           onMouseLeave={e => e.currentTarget.style.borderColor = P.border}>
+          <div style={{
+            width:54, height:54, borderRadius:14,
+            background:`linear-gradient(135deg, ${P.accent}, ${P.accent2})`,
+            display:'flex', alignItems:'center', justifyContent:'center',
+            fontSize:'1.6rem', color:P.bg,
+          }}>✓</div>
+          <div>
+            <div style={{ fontFamily:SERIF, fontSize:'1.1rem', color:P.cream, marginBottom:4 }}>
+              To-Do
+            </div>
+            <div style={{ fontSize:'0.78rem', color:P.taupe, lineHeight:1.5, marginBottom:8 }}>
+              An ADHD-friendly task list. Big 3, Quick Wins, and Later — no overwhelm.
+            </div>
+            <div style={{ display:'flex', gap:10, fontSize:'0.72rem', color:P.taupe, flexWrap:'wrap' }}>
+              <span>🎯 {todoStats.big} Big 3</span>
+              <span>⚡ {todoStats.quick} Quick</span>
+              <span>📋 {todoStats.later} Later</span>
+              <span style={{ color:P.accent }}>✓ {todoStats.done} Done</span>
+            </div>
+          </div>
+          <div style={{ color:P.taupe, fontSize:'1.2rem' }}>›</div>
+        </button>
+
+        {/* Finance Tracker card */}
+        <button onClick={onPickFinance} style={{
+          background:`linear-gradient(135deg, ${P.panel}, ${P.head})`,
+          border:`1.5px solid ${P.border}`,
+          borderRadius:16,
+          padding:'22px 22px',
+          cursor:'pointer',
+          textAlign:'left',
+          transition:'all 0.2s',
+          color:P.cream,
+          fontFamily:SANS,
+          display:'grid',
+          gridTemplateColumns:'54px 1fr auto',
+          gap:16,
+          alignItems:'center',
+        }} onMouseEnter={e => e.currentTarget.style.borderColor = P.accent}
+           onMouseLeave={e => e.currentTarget.style.borderColor = P.border}>
+          <div style={{
+            width:54, height:54, borderRadius:14,
+            background:`linear-gradient(135deg, ${P.olive}, ${P.accent})`,
+            display:'flex', alignItems:'center', justifyContent:'center',
+            fontSize:'1.6rem', color:P.bg,
+          }}>{P.bloom}</div>
+          <div>
+            <div style={{ fontFamily:SERIF, fontSize:'1.1rem', color:P.cream, marginBottom:4 }}>
+              Finance Tracker
+            </div>
+            <div style={{ fontSize:'0.78rem', color:P.taupe, lineHeight:1.5, marginBottom:8 }}>
+              Monthly bills, savings goals, and spending — your garden blooms as you pay.
+            </div>
+            <div style={{ display:'flex', gap:10, fontSize:'0.72rem', color:P.taupe, flexWrap:'wrap' }}>
+              <span>💌 {financeStats.numPaid}/{financeStats.numTotal} paid</span>
+              <span style={{ color:P.accent }}>{Math.round((financeStats.ratio||0) * 100)}% done</span>
+            </div>
+          </div>
+          <div style={{ color:P.taupe, fontSize:'1.2rem' }}>›</div>
+        </button>
+      </div>
+
+      <div style={{ textAlign:'center', marginTop:28, fontSize:'0.72rem', color:P.taupe, lineHeight:1.6 }}>
+        Tap the ⚙ gear above to change colors.
+      </div>
+    </>
+  );
+}
+
 // Helper: format YYYY-MM to nice label like "April 2026"
 function monthLabel(ym) {
   if (!ym) return '';
@@ -201,7 +304,8 @@ function billsVibe(ratio) {
 // ═══════════════════════════════════════════════════════════════
 export default function TrackersScreen({ progress, onProgressChange, onBack }) {
   const state = progress || createEmptyTrackers();
-  const [tab, setTab] = useState('bills');
+  const [view, setView] = useState(null); // null = hub, 'todos', 'finance'
+  const [tab, setTab] = useState('bills'); // finance subtabs
   const [editingCell, setEditingCell] = useState(null); // `${rowId}:${field}`
   const [showSettings, setShowSettings] = useState(false);
 
@@ -378,19 +482,23 @@ export default function TrackersScreen({ progress, onProgressChange, onBack }) {
         backdropFilter:'blur(10px)',
       }}>
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'14px 16px' }}>
-          <button onClick={onBack} style={{
+          <button onClick={() => view ? setView(null) : onBack()} style={{
             background:'transparent', border:`1px solid ${P.border}`, color:P.taupe,
             padding:'6px 12px', borderRadius:8, cursor:'pointer', fontFamily:SANS, fontSize:'0.78rem',
           }}>← Back</button>
           <div style={{ fontFamily:SERIF, fontSize:'1.05rem', color:P.cream, letterSpacing:'0.03em' }}>
-            {P.bloom} Trackers
+            {view === 'todos' ? '✓ To-Do'
+              : view === 'finance' ? `${P.bloom} Finance Tracker`
+              : `${P.bloom} Trackers`}
           </div>
           <div style={{ display:'flex', gap:6 }}>
-            <button title="Download as PDF" onClick={downloadPDF} style={{
-              background:'transparent', border:`1px solid ${P.border}`, color:P.taupe,
-              width:32, height:32, borderRadius:8, cursor:'pointer', fontSize:'0.9rem',
-              display:'inline-flex', alignItems:'center', justifyContent:'center',
-            }}>⬇</button>
+            {view === 'finance' && (
+              <button title="Download as PDF" onClick={downloadPDF} style={{
+                background:'transparent', border:`1px solid ${P.border}`, color:P.taupe,
+                width:32, height:32, borderRadius:8, cursor:'pointer', fontSize:'0.9rem',
+                display:'inline-flex', alignItems:'center', justifyContent:'center',
+              }}>⬇</button>
+            )}
             <button title="Customize" onClick={() => setShowSettings(true)} style={{
               background:'transparent', border:`1px solid ${P.border}`, color:P.taupe,
               width:32, height:32, borderRadius:8, cursor:'pointer', fontSize:'0.9rem',
@@ -399,10 +507,10 @@ export default function TrackersScreen({ progress, onProgressChange, onBack }) {
           </div>
         </div>
 
-        {/* Tabs */}
+        {/* Tabs (only when inside Finance Tracker) */}
+        {view === 'finance' && (
         <div className="tracker-tabs" style={{ display:'flex', gap:0, borderTop:`1px solid ${P.borderL}`, overflowX:'auto' }}>
           {[
-            { id:'todos',    label:'To-Do',            icon:'✓' },
             { id:'bills',    label:'Monthly Bills',    icon:'💌' },
             { id:'goals',    label:'Savings Goals',    icon:P.bloom },
             { id:'spending', label:'Spending',         icon:'✨' },
@@ -426,44 +534,29 @@ export default function TrackersScreen({ progress, onProgressChange, onBack }) {
             </button>
           ))}
         </div>
+        )}
       </div>
 
       {/* ── Content ── */}
       <div style={{ padding:'18px 14px', maxWidth:960, margin:'0 auto' }}>
 
-        {tab === 'bills' && (
-          <BillsTab
-            bills={state.bills}
-            calc={billsCalc}
-            editingCell={editingCell} setEditingCell={setEditingCell}
-            updateBill={updateBill} addBill={addBill} deleteBill={deleteBill}
-            resetMonth={resetMonth}
-            lastReset={state.lastReset}
-            history={state.history || {}}
+        {/* Hub (default) */}
+        {view === null && (
+          <TrackerHub
+            onPickTodos={() => setView('todos')}
+            onPickFinance={() => { setView('finance'); setTab('bills'); }}
+            todoStats={{
+              big: todos.filter(t => !t.done && t.section === 'big').length,
+              quick: todos.filter(t => !t.done && t.section === 'quick').length,
+              later: todos.filter(t => !t.done && t.section === 'later').length,
+              done: todos.filter(t => t.done).length,
+            }}
+            financeStats={billsCalc}
           />
         )}
 
-        {tab === 'goals' && (
-          <GoalsTab
-            goals={state.goals}
-            calc={goalCalc}
-            editingCell={editingCell} setEditingCell={setEditingCell}
-            updateGoal={updateGoal} addGoal={addGoal} deleteGoal={deleteGoal}
-          />
-        )}
-
-        {tab === 'spending' && (
-          <SpendingTab
-            spending={state.spending}
-            calc={spendCalc}
-            editingCell={editingCell} setEditingCell={setEditingCell}
-            updateSpend={updateSpend} addSpend={addSpend} deleteSpend={deleteSpend}
-            lastReset={state.lastReset}
-            history={state.history || {}}
-          />
-        )}
-
-        {tab === 'todos' && (
+        {/* To-Do view */}
+        {view === 'todos' && (
           <TodoTab
             todos={todos}
             addTodo={addTodo} updateTodo={updateTodo}
@@ -474,7 +567,37 @@ export default function TrackersScreen({ progress, onProgressChange, onBack }) {
           />
         )}
 
-        {tab === 'howto' && <HowToTab />}
+        {/* Finance view (with subtabs) */}
+        {view === 'finance' && tab === 'bills' && (
+          <BillsTab
+            bills={state.bills}
+            calc={billsCalc}
+            editingCell={editingCell} setEditingCell={setEditingCell}
+            updateBill={updateBill} addBill={addBill} deleteBill={deleteBill}
+            resetMonth={resetMonth}
+            lastReset={state.lastReset}
+            history={state.history || {}}
+          />
+        )}
+        {view === 'finance' && tab === 'goals' && (
+          <GoalsTab
+            goals={state.goals}
+            calc={goalCalc}
+            editingCell={editingCell} setEditingCell={setEditingCell}
+            updateGoal={updateGoal} addGoal={addGoal} deleteGoal={deleteGoal}
+          />
+        )}
+        {view === 'finance' && tab === 'spending' && (
+          <SpendingTab
+            spending={state.spending}
+            calc={spendCalc}
+            editingCell={editingCell} setEditingCell={setEditingCell}
+            updateSpend={updateSpend} addSpend={addSpend} deleteSpend={deleteSpend}
+            lastReset={state.lastReset}
+            history={state.history || {}}
+          />
+        )}
+        {view === 'finance' && tab === 'howto' && <HowToTab />}
       </div>
 
       {/* ── Print header (only visible on print) ── */}
