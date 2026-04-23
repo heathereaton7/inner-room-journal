@@ -1,5 +1,9 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useContext, createContext } from 'react';
 import { SERIF, SANS } from '../constants.js';
+
+// ── Theme context — provides current palette to all sub-components ──
+const ThemeCtx = createContext(null);
+const useP = () => useContext(ThemeCtx);
 
 /* ═══════════════════════════════════════════════════════════════
    TRACKERS — Spreadsheet-style Bill / Savings / Spending tracker
@@ -14,21 +18,78 @@ import { SERIF, SANS } from '../constants.js';
    Data is persisted via onProgressChange (localStorage + Firestore).
 ═══════════════════════════════════════════════════════════════ */
 
-// ── Palette (matches app aesthetic) ──
-const P = {
-  bg:      '#1A1612',
-  panel:   'rgba(26,22,18,0.92)',
-  cream:   '#FAF6F0',
-  brown:   '#3A2E28',
-  taupe:   '#8A7A70',
-  gold:    '#C9A96E',
-  rose:    '#D4A0A0',
-  olive:   '#9AAA8A',
-  border:  'rgba(201,169,110,0.22)',
-  borderL: 'rgba(201,169,110,0.1)',
-  paidBg:  'rgba(154,170,138,0.18)',
-  paidTxt: '#B8D4A8',
-  head:    'rgba(201,169,110,0.12)',
+// ── Theme presets (user can switch) ──
+const TRACKER_THEMES = {
+  tulip: {
+    label: 'Tulip Garden',
+    bloom: '🌷',
+    bg: '#1A1612', panel: 'rgba(26,22,18,0.92)',
+    cream: '#FAF6F0', brown: '#3A2E28', taupe: '#8A7A70',
+    accent: '#C9A96E', accent2: '#D4A0A0', olive: '#9AAA8A',
+    border: 'rgba(201,169,110,0.22)', borderL: 'rgba(201,169,110,0.1)',
+    paidBg: 'rgba(154,170,138,0.18)', paidTxt: '#B8D4A8',
+    head: 'rgba(201,169,110,0.12)',
+  },
+  lavender: {
+    label: 'Lavender Dream',
+    bloom: '💜',
+    bg: '#1A1624', panel: 'rgba(30,24,40,0.92)',
+    cream: '#F5F0FA', brown: '#2E1E3D', taupe: '#9086A0',
+    accent: '#B8A0D0', accent2: '#C9A0B8', olive: '#A8A0D0',
+    border: 'rgba(184,160,208,0.22)', borderL: 'rgba(184,160,208,0.1)',
+    paidBg: 'rgba(184,160,208,0.18)', paidTxt: '#D4C0E8',
+    head: 'rgba(184,160,208,0.12)',
+  },
+  ocean: {
+    label: 'Ocean Calm',
+    bloom: '🌊',
+    bg: '#0F1A24', panel: 'rgba(18,30,45,0.92)',
+    cream: '#F0F5FA', brown: '#1E2E3D', taupe: '#7090A0',
+    accent: '#7AB8D8', accent2: '#A0C8D8', olive: '#8AC8C0',
+    border: 'rgba(122,184,216,0.22)', borderL: 'rgba(122,184,216,0.1)',
+    paidBg: 'rgba(122,184,216,0.18)', paidTxt: '#B0D4E8',
+    head: 'rgba(122,184,216,0.12)',
+  },
+  sage: {
+    label: 'Sage Garden',
+    bloom: '🌿',
+    bg: '#141A14', panel: 'rgba(22,30,22,0.92)',
+    cream: '#F5FAF0', brown: '#1E3D2E', taupe: '#7A9078',
+    accent: '#9AAA8A', accent2: '#C8D4A0', olive: '#8AC8A0',
+    border: 'rgba(154,170,138,0.25)', borderL: 'rgba(154,170,138,0.12)',
+    paidBg: 'rgba(154,170,138,0.2)', paidTxt: '#C8D8B0',
+    head: 'rgba(154,170,138,0.14)',
+  },
+  sunset: {
+    label: 'Sunset Glow',
+    bloom: '🌅',
+    bg: '#241410', panel: 'rgba(40,22,18,0.92)',
+    cream: '#FAF0ED', brown: '#3D1E18', taupe: '#A08578',
+    accent: '#E8A878', accent2: '#D88870', olive: '#D4A068',
+    border: 'rgba(232,168,120,0.22)', borderL: 'rgba(232,168,120,0.1)',
+    paidBg: 'rgba(232,168,120,0.18)', paidTxt: '#F0C8A0',
+    head: 'rgba(232,168,120,0.12)',
+  },
+  rose: {
+    label: 'Rose Quartz',
+    bloom: '🌸',
+    bg: '#24141A', panel: 'rgba(40,22,30,0.92)',
+    cream: '#FAF0F3', brown: '#3D1E2E', taupe: '#A08085',
+    accent: '#D490B0', accent2: '#E8A8C0', olive: '#C898B8',
+    border: 'rgba(212,144,176,0.22)', borderL: 'rgba(212,144,176,0.1)',
+    paidBg: 'rgba(212,144,176,0.18)', paidTxt: '#E8B8D0',
+    head: 'rgba(212,144,176,0.12)',
+  },
+  light: {
+    label: 'Soft Light',
+    bloom: '☀️',
+    bg: '#FAF6F0', panel: 'rgba(255,251,245,0.95)',
+    cream: '#3A2E28', brown: '#5C4A2E', taupe: '#8A7A70',
+    accent: '#B89456', accent2: '#D4A0A0', olive: '#7A9068',
+    border: 'rgba(93,74,46,0.18)', borderL: 'rgba(93,74,46,0.08)',
+    paidBg: 'rgba(154,170,138,0.2)', paidTxt: '#5C7048',
+    head: 'rgba(201,169,110,0.14)',
+  },
 };
 
 // ── Categories for bills & spending ──
@@ -65,6 +126,7 @@ export function createEmptyTrackers() {
     goals: SEED.goals.map(g => ({ ...g })),
     spending: [],
     lastReset: new Date().toISOString().slice(0,7), // YYYY-MM
+    theme: 'tulip',
   };
 }
 
@@ -106,10 +168,26 @@ export default function TrackersScreen({ progress, onProgressChange, onBack }) {
   const state = progress || createEmptyTrackers();
   const [tab, setTab] = useState('bills');
   const [editingCell, setEditingCell] = useState(null); // `${rowId}:${field}`
+  const [showSettings, setShowSettings] = useState(false);
+
+  // Active theme (falls back to tulip)
+  const P = TRACKER_THEMES[state.theme] || TRACKER_THEMES.tulip;
+  const isLight = state.theme === 'light';
 
   const update = useCallback((next) => {
     onProgressChange({ ...state, ...next });
   }, [state, onProgressChange]);
+
+  const setTheme = (themeId) => update({ theme: themeId });
+
+  // Download as PDF via browser print (native Save as PDF dialog)
+  const downloadPDF = () => {
+    document.body.classList.add('tracker-print-mode');
+    setTimeout(() => {
+      window.print();
+      setTimeout(() => document.body.classList.remove('tracker-print-mode'), 500);
+    }, 50);
+  };
 
   // ── Computed: bills totals ──
   const billsCalc = useMemo(() => {
@@ -184,17 +262,21 @@ export default function TrackersScreen({ progress, onProgressChange, onBack }) {
   };
 
   return (
-    <div style={{
+    <ThemeCtx.Provider value={P}>
+    <PrintStyles />
+    <div className="tracker-root" style={{
       minHeight:'100vh',
-      background:'linear-gradient(180deg, #1A1612 0%, #14100C 100%)',
+      background: isLight
+        ? `linear-gradient(180deg, ${P.bg} 0%, #F0EBE2 100%)`
+        : `linear-gradient(180deg, ${P.bg} 0%, #0F0B08 100%)`,
       color:P.cream,
       fontFamily:SANS,
       paddingBottom:80,
     }}>
       {/* ── Top bar ── */}
-      <div style={{
+      <div className="tracker-topbar" style={{
         position:'sticky', top:0, zIndex:20,
-        background:'rgba(20,16,12,0.95)',
+        background: isLight ? 'rgba(255,251,245,0.95)' : 'rgba(20,16,12,0.95)',
         borderBottom:`1px solid ${P.border}`,
         backdropFilter:'blur(10px)',
       }}>
@@ -204,16 +286,27 @@ export default function TrackersScreen({ progress, onProgressChange, onBack }) {
             padding:'6px 12px', borderRadius:8, cursor:'pointer', fontFamily:SANS, fontSize:'0.78rem',
           }}>← Back</button>
           <div style={{ fontFamily:SERIF, fontSize:'1.05rem', color:P.cream, letterSpacing:'0.03em' }}>
-            🌷 Trackers
+            {P.bloom} Trackers
           </div>
-          <div style={{ width:60 }} />
+          <div style={{ display:'flex', gap:6 }}>
+            <button title="Download as PDF" onClick={downloadPDF} style={{
+              background:'transparent', border:`1px solid ${P.border}`, color:P.taupe,
+              width:32, height:32, borderRadius:8, cursor:'pointer', fontSize:'0.9rem',
+              display:'inline-flex', alignItems:'center', justifyContent:'center',
+            }}>⬇</button>
+            <button title="Customize" onClick={() => setShowSettings(true)} style={{
+              background:'transparent', border:`1px solid ${P.border}`, color:P.taupe,
+              width:32, height:32, borderRadius:8, cursor:'pointer', fontSize:'0.9rem',
+              display:'inline-flex', alignItems:'center', justifyContent:'center',
+            }}>⚙</button>
+          </div>
         </div>
 
         {/* Tabs */}
-        <div style={{ display:'flex', gap:0, borderTop:`1px solid ${P.borderL}`, overflowX:'auto' }}>
+        <div className="tracker-tabs" style={{ display:'flex', gap:0, borderTop:`1px solid ${P.borderL}`, overflowX:'auto' }}>
           {[
             { id:'bills',    label:'Monthly Bills',    icon:'💌' },
-            { id:'goals',    label:'Savings Goals',    icon:'🌷' },
+            { id:'goals',    label:'Savings Goals',    icon:P.bloom },
             { id:'spending', label:'Spending',         icon:'✨' },
             { id:'howto',    label:'How to Use',       icon:'💗' },
           ].map(t => (
@@ -221,7 +314,7 @@ export default function TrackersScreen({ progress, onProgressChange, onBack }) {
               flex:1, minWidth:100,
               background: tab === t.id ? P.head : 'transparent',
               border:'none',
-              borderBottom: tab === t.id ? `2px solid ${P.gold}` : `2px solid transparent`,
+              borderBottom: tab === t.id ? `2px solid ${P.accent}` : `2px solid transparent`,
               color: tab === t.id ? P.cream : P.taupe,
               padding:'10px 8px',
               cursor:'pointer',
@@ -271,7 +364,135 @@ export default function TrackersScreen({ progress, onProgressChange, onBack }) {
 
         {tab === 'howto' && <HowToTab />}
       </div>
+
+      {/* ── Print header (only visible on print) ── */}
+      <div className="tracker-print-header">
+        <h1>{P.bloom} My Trackers</h1>
+        <div className="subtitle">Printed {new Date().toLocaleDateString()}</div>
+      </div>
+
+      {/* ── Settings modal ── */}
+      {showSettings && (
+        <SettingsPanel
+          currentTheme={state.theme || 'tulip'}
+          onSelect={(id) => { setTheme(id); }}
+          onClose={() => setShowSettings(false)}
+        />
+      )}
     </div>
+    </ThemeCtx.Provider>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SETTINGS PANEL — color theme picker
+═══════════════════════════════════════════════════════════════ */
+function SettingsPanel({ currentTheme, onSelect, onClose }) {
+  const P = useP();
+  return (
+    <div onClick={onClose} style={{
+      position:'fixed', inset:0, zIndex:100,
+      background:'rgba(10,8,6,0.75)', backdropFilter:'blur(4px)',
+      display:'flex', alignItems:'center', justifyContent:'center',
+      padding:'20px',
+    }}>
+      <div onClick={e => e.stopPropagation()} style={{
+        background:P.panel, border:`1px solid ${P.border}`,
+        borderRadius:16, padding:'22px 22px 24px',
+        maxWidth:460, width:'100%', maxHeight:'82vh', overflowY:'auto',
+      }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
+          <div style={{ fontFamily:SERIF, fontSize:'1.15rem', color:P.cream }}>Customize</div>
+          <button onClick={onClose} style={{
+            background:'transparent', border:'none', color:P.taupe,
+            cursor:'pointer', fontSize:'1.2rem', padding:4,
+          }}>×</button>
+        </div>
+        <div style={{ fontSize:'0.76rem', color:P.taupe, marginBottom:16, lineHeight:1.5 }}>
+          Pick a color theme for your tracker. Your choice saves automatically.
+        </div>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(130px, 1fr))', gap:10 }}>
+          {Object.entries(TRACKER_THEMES).map(([id, t]) => {
+            const active = currentTheme === id;
+            return (
+              <button key={id} onClick={() => onSelect(id)} style={{
+                background: active ? `linear-gradient(135deg, ${t.bg}, ${t.panel})` : t.bg,
+                border:`1.5px solid ${active ? t.accent : 'rgba(255,255,255,0.08)'}`,
+                borderRadius:12, padding:'14px 12px',
+                cursor:'pointer', textAlign:'left',
+                position:'relative', overflow:'hidden',
+                transition:'all 0.2s',
+                color: t.cream,
+                fontFamily:SANS,
+              }}>
+                <div style={{ fontSize:'1.4rem', marginBottom:6 }}>{t.bloom}</div>
+                <div style={{ fontFamily:SERIF, fontSize:'0.85rem', color:t.cream, marginBottom:8 }}>{t.label}</div>
+                <div style={{ display:'flex', gap:4 }}>
+                  <span style={{ width:14, height:14, borderRadius:3, background:t.accent }} />
+                  <span style={{ width:14, height:14, borderRadius:3, background:t.accent2 }} />
+                  <span style={{ width:14, height:14, borderRadius:3, background:t.olive }} />
+                </div>
+                {active && (
+                  <div style={{
+                    position:'absolute', top:8, right:8,
+                    width:18, height:18, borderRadius:'50%',
+                    background: t.accent, color: t.bg,
+                    display:'flex', alignItems:'center', justifyContent:'center',
+                    fontSize:'0.7rem', fontWeight:700,
+                  }}>✓</div>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PRINT STYLES — injects @media print rules
+═══════════════════════════════════════════════════════════════ */
+function PrintStyles() {
+  return (
+    <style>{`
+      .tracker-print-header { display: none; }
+      @media print {
+        @page { margin: 0.5in; }
+        body { background: white !important; }
+        body > *:not(.tracker-root):not(style):not(link):not(script) { display: none !important; }
+        .tracker-root .tracker-topbar,
+        .tracker-root button.row-delete,
+        .tracker-root .tracker-action-row,
+        .tracker-root .tracker-summary-gardens {
+          display: none !important;
+        }
+        .tracker-root {
+          background: white !important;
+          color: black !important;
+          padding: 0 !important;
+          min-height: auto !important;
+        }
+        .tracker-print-header {
+          display: block !important;
+          padding: 0 0 12px;
+          border-bottom: 2px solid #333;
+          margin-bottom: 16px;
+        }
+        .tracker-print-header h1 { font-family: Georgia, serif; font-size: 22px; margin: 0; color: #222; }
+        .tracker-print-header .subtitle { font-size: 11px; color: #666; margin-top: 4px; }
+        .tracker-root * {
+          color: black !important;
+          background: white !important;
+          border-color: #ccc !important;
+          text-shadow: none !important;
+          box-shadow: none !important;
+        }
+        .tracker-root table { page-break-inside: auto; }
+        .tracker-root tr { page-break-inside: avoid; page-break-after: auto; }
+        .tracker-root thead { display: table-header-group; }
+      }
+    `}</style>
   );
 }
 
@@ -279,6 +500,7 @@ export default function TrackersScreen({ progress, onProgressChange, onBack }) {
    CELL (editable)
 ═══════════════════════════════════════════════════════════════ */
 function Cell({ value, onChange, type='text', format='auto', options, placeholder='', editing, onEdit, onBlur, style = {}, readOnly = false }) {
+  const P = useP();
   if (readOnly) {
     return (
       <div style={{
@@ -333,7 +555,7 @@ function Cell({ value, onChange, type='text', format='auto', options, placeholde
         style={{
           width:'100%', padding:'8px 10px',
           background:'rgba(201,169,110,0.08)',
-          border:`1.5px solid ${P.gold}`,
+          border:`1.5px solid ${P.accent}`,
           borderRadius:4,
           color:P.cream, fontFamily:SANS, fontSize:'0.82rem',
           outline:'none',
@@ -359,6 +581,7 @@ function Cell({ value, onChange, type='text', format='auto', options, placeholde
    BILLS TAB
 ═══════════════════════════════════════════════════════════════ */
 function BillsTab({ bills, calc, editingCell, setEditingCell, updateBill, addBill, deleteBill, resetMonth, lastReset }) {
+  const P = useP();
   return (
     <>
       <SectionHeader
@@ -374,13 +597,13 @@ function BillsTab({ bills, calc, editingCell, setEditingCell, updateBill, addBil
           <StatRow label="Paid So Far"  value={money(calc.paidBills)} accent={P.paidTxt} />
           <StatRow label="Still to Pay" value={money(calc.stillPay)} accent={P.rose} />
           <StatRow label="Bills Paid"   value={`${calc.numPaid} / ${calc.numTotal}`} />
-          <StatRow label="% Done"       value={pct(calc.ratio)} accent={P.gold} />
+          <StatRow label="% Done"       value={pct(calc.ratio)} accent={P.accent} />
         </SummaryCard>
 
         <SummaryCard>
           <div style={{ fontSize:'0.72rem', color:P.taupe, letterSpacing:'0.08em', marginBottom:6 }}>🌷 YOUR GARDEN</div>
           <div style={{ fontSize:'1.25rem', letterSpacing:'0.1em', lineHeight:1.5, marginBottom:10 }}>
-            {bloomRow(calc.ratio, '🌸','🤍', 10)}
+            {bloomRow(calc.ratio, P.bloom,'🤍', 10)}
           </div>
           <div style={{ fontSize:'0.82rem', color:P.cream, fontStyle:'italic' }}>
             {billsVibe(calc.ratio)}
@@ -427,7 +650,7 @@ function BillsTab({ bills, calc, editingCell, setEditingCell, updateBill, addBil
         footer={
           <tr>
             <td colSpan={3} style={{ padding:'10px 12px', textAlign:'right', color:P.taupe, fontSize:'0.78rem' }}>TOTAL</td>
-            <td style={{ padding:'10px 12px', color:P.gold, fontWeight:600, fontSize:'0.82rem' }}>{money(calc.totalBills)}</td>
+            <td style={{ padding:'10px 12px', color:P.accent, fontWeight:600, fontSize:'0.82rem' }}>{money(calc.totalBills)}</td>
             <td colSpan={4} />
           </tr>
         }
@@ -451,6 +674,7 @@ function BillsTab({ bills, calc, editingCell, setEditingCell, updateBill, addBil
    GOALS TAB
 ═══════════════════════════════════════════════════════════════ */
 function GoalsTab({ goals, calc, editingCell, setEditingCell, updateGoal, addGoal, deleteGoal }) {
+  const P = useP();
   return (
     <>
       <SectionHeader
@@ -462,7 +686,7 @@ function GoalsTab({ goals, calc, editingCell, setEditingCell, updateGoal, addGoa
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:10 }}>
           <StatBlock label="Total Target"  value={money(calc.target)} />
           <StatBlock label="Saved So Far"  value={money(calc.saved)}  accent={P.olive} />
-          <StatBlock label="% to Total"    value={pct(calc.ratio)}    accent={P.gold} />
+          <StatBlock label="% to Total"    value={pct(calc.ratio)}    accent={P.accent} />
         </div>
       </SummaryCard>
 
@@ -473,7 +697,7 @@ function GoalsTab({ goals, calc, editingCell, setEditingCell, updateGoal, addGoa
         return (
           <div key={g.id} style={{
             background: done ? 'linear-gradient(135deg, rgba(201,169,110,0.18), rgba(201,169,110,0.08))' : P.panel,
-            border:`1px solid ${done ? P.gold : P.border}`,
+            border:`1px solid ${done ? P.accent : P.border}`,
             borderRadius:12,
             padding:'14px 16px',
             marginBottom:10,
@@ -529,18 +753,18 @@ function GoalsTab({ goals, calc, editingCell, setEditingCell, updateGoal, addGoa
               <div style={{
                 width:`${Math.min(100, ratio*100)}%`,
                 height:'100%',
-                background: done ? P.gold : `linear-gradient(90deg, ${P.olive}, ${P.gold})`,
+                background: done ? P.accent : `linear-gradient(90deg, ${P.olive}, ${P.accent})`,
                 transition:'width 0.3s',
               }} />
             </div>
 
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', fontSize:'0.78rem' }}>
-              <span style={{ color: done ? P.gold : P.cream }}>{goalStage(ratio)}</span>
+              <span style={{ color: done ? P.accent : P.cream }}>{goalStage(ratio)}</span>
               <span style={{ color:P.taupe }}>{pct(ratio)}</span>
             </div>
 
             <div style={{ fontSize:'1rem', letterSpacing:'0.08em', marginTop:8, lineHeight:1.3 }}>
-              {bloomRow(ratio, '🌷','🤍', 10)}
+              {bloomRow(ratio, P.bloom,'🤍', 10)}
             </div>
           </div>
         );
@@ -555,6 +779,7 @@ function GoalsTab({ goals, calc, editingCell, setEditingCell, updateGoal, addGoa
    SPENDING TAB
 ═══════════════════════════════════════════════════════════════ */
 function SpendingTab({ spending, calc, editingCell, setEditingCell, updateSpend, addSpend, deleteSpend }) {
+  const P = useP();
   return (
     <>
       <SectionHeader
@@ -565,7 +790,7 @@ function SpendingTab({ spending, calc, editingCell, setEditingCell, updateSpend,
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:16 }}>
         <SummaryCard>
           <div style={{ fontSize:'0.72rem', color:P.taupe, letterSpacing:'0.08em', marginBottom:6 }}>TOTAL SPENT</div>
-          <div style={{ fontFamily:SERIF, fontSize:'1.6rem', color:P.gold }}>{money(calc.total)}</div>
+          <div style={{ fontFamily:SERIF, fontSize:'1.6rem', color:P.accent }}>{money(calc.total)}</div>
           <div style={{ fontSize:'0.7rem', color:P.taupe, marginTop:6 }}>{spending.length} entries</div>
         </SummaryCard>
 
@@ -580,7 +805,7 @@ function SpendingTab({ spending, calc, editingCell, setEditingCell, updateSpend,
               .map(([cat,amt]) => (
                 <div key={cat} style={{ display:'flex', justifyContent:'space-between', fontSize:'0.78rem', padding:'2px 0' }}>
                   <span style={{ color:P.cream }}>{cat}</span>
-                  <span style={{ color:P.gold }}>{money(amt)}</span>
+                  <span style={{ color:P.accent }}>{money(amt)}</span>
                 </div>
               ))
           )}
@@ -626,7 +851,7 @@ function SpendingTab({ spending, calc, editingCell, setEditingCell, updateSpend,
           footer={
             <tr>
               <td colSpan={3} style={{ padding:'10px 12px', textAlign:'right', color:P.taupe, fontSize:'0.78rem' }}>TOTAL</td>
-              <td style={{ padding:'10px 12px', color:P.gold, fontWeight:600, fontSize:'0.82rem' }}>{money(calc.total)}</td>
+              <td style={{ padding:'10px 12px', color:P.accent, fontWeight:600, fontSize:'0.82rem' }}>{money(calc.total)}</td>
               <td colSpan={2} />
             </tr>
           }
@@ -644,6 +869,7 @@ function SpendingTab({ spending, calc, editingCell, setEditingCell, updateSpend,
    HOW-TO TAB
 ═══════════════════════════════════════════════════════════════ */
 function HowToTab() {
+  const P = useP();
   const items = [
     { t:'The Tabs',        b:'Four tabs at the top: Monthly Bills, Savings Goals, Spending Tracker, and this How-To page.' },
     { t:'Your Garden',     b:"The flowers aren't pictures — they respond to your numbers. 🌸 = done. 🤍 = not yet. As you mark bills paid or add saved money, the garden blooms." },
@@ -678,6 +904,7 @@ function HowToTab() {
    SHARED SUB-COMPONENTS
 ═══════════════════════════════════════════════════════════════ */
 function SectionHeader({ title, subtitle }) {
+  const P = useP();
   return (
     <div style={{ marginBottom:16 }}>
       <div style={{ fontFamily:SERIF, fontSize:'1.25rem', color:P.cream, marginBottom:4 }}>{title}</div>
@@ -687,6 +914,7 @@ function SectionHeader({ title, subtitle }) {
 }
 
 function SummaryCard({ children, style }) {
+  const P = useP();
   return (
     <div style={{
       background:P.panel,
@@ -699,6 +927,7 @@ function SummaryCard({ children, style }) {
 }
 
 function StatRow({ label, value, accent }) {
+  const P = useP();
   return (
     <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', padding:'3px 0', fontSize:'0.82rem' }}>
       <span style={{ color:P.taupe }}>{label}</span>
@@ -708,6 +937,7 @@ function StatRow({ label, value, accent }) {
 }
 
 function StatBlock({ label, value, accent }) {
+  const P = useP();
   return (
     <div>
       <div style={{ fontSize:'0.66rem', color:P.taupe, letterSpacing:'0.08em', marginBottom:2 }}>{label}</div>
@@ -717,10 +947,11 @@ function StatBlock({ label, value, accent }) {
 }
 
 function ActionBtn({ children, onClick, variant }) {
+  const P = useP();
   const ghost = variant === 'ghost';
   return (
     <button onClick={onClick} style={{
-      background: ghost ? 'transparent' : `linear-gradient(135deg, ${P.gold}, #B8945A)`,
+      background: ghost ? 'transparent' : `linear-gradient(135deg, ${P.accent}, ${P.accent2})`,
       border: ghost ? `1px solid ${P.border}` : 'none',
       color: ghost ? P.taupe : P.bg,
       padding:'9px 16px',
@@ -735,8 +966,9 @@ function ActionBtn({ children, onClick, variant }) {
 }
 
 function RowDelete({ onClick }) {
+  const P = useP();
   return (
-    <button onClick={onClick} style={{
+    <button className="row-delete" onClick={onClick} style={{
       background:'transparent', border:'none', color:P.taupe,
       cursor:'pointer', fontSize:'1rem', padding:'8px', opacity:0.5,
     }}>×</button>
@@ -744,6 +976,7 @@ function RowDelete({ onClick }) {
 }
 
 function SheetTable({ columns, rows, renderCell, rowStyle, footer }) {
+  const P = useP();
   return (
     <div style={{
       background:P.panel,
