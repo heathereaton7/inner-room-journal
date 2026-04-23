@@ -127,7 +127,16 @@ export function createEmptyTrackers() {
     spending: [],
     lastReset: new Date().toISOString().slice(0,7), // YYYY-MM
     theme: 'tulip',
+    history: {}, // { 'YYYY-MM': { bills, totals, spending } } snapshots of past months
   };
+}
+
+// Helper: format YYYY-MM to nice label like "April 2026"
+function monthLabel(ym) {
+  if (!ym) return '';
+  const [y, m] = ym.split('-');
+  const d = new Date(Number(y), Number(m) - 1, 1);
+  return d.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
 }
 
 // ── Helpers ──
@@ -232,8 +241,34 @@ export default function TrackersScreen({ progress, onProgressChange, onBack }) {
     update({ bills: state.bills.filter(b => b.id !== id) });
   };
   const resetMonth = () => {
+    // Archive current month before resetting so the user can look back
+    const ym = state.lastReset || new Date().toISOString().slice(0,7);
+    const named = state.bills.filter(b => (b.name||'').trim().length > 0);
+    const numPaid  = named.filter(b => b.paid).length;
+    const numTotal = named.length;
+    const totalBills = state.bills.reduce((s,b) => s + (Number(b.amount)||0), 0);
+    const paidBills  = state.bills.filter(b => b.paid).reduce((s,b) => s + (Number(b.amount)||0), 0);
+    // Spending that falls in this archive month
+    const monthSpending = state.spending.filter(r => (r.date||'').startsWith(ym));
+    const spendTotal = monthSpending.reduce((s,r) => s + (Number(r.amount)||0), 0);
+    const byCat = {};
+    monthSpending.forEach(r => { const c = r.category || 'Other'; byCat[c] = (byCat[c]||0) + (Number(r.amount)||0); });
+
+    const snapshot = {
+      bills: state.bills.map(b => ({ ...b })),
+      totalBills, paidBills, numPaid, numTotal,
+      ratio: numTotal > 0 ? numPaid / numTotal : 0,
+      spending: monthSpending,
+      spendTotal,
+      byCat,
+      archivedAt: new Date().toISOString(),
+    };
+
+    const history = { ...(state.history || {}), [ym]: snapshot };
     const bills = state.bills.map(b => ({ ...b, paid:false }));
-    update({ bills, lastReset: new Date().toISOString().slice(0,7) });
+    // Remove archived month's spending from the active list so the new month starts clean
+    const spending = state.spending.filter(r => !(r.date||'').startsWith(ym));
+    update({ bills, spending, history, lastReset: new Date().toISOString().slice(0,7) });
   };
 
   const updateGoal = (id, field, value) => {
@@ -341,6 +376,7 @@ export default function TrackersScreen({ progress, onProgressChange, onBack }) {
             updateBill={updateBill} addBill={addBill} deleteBill={deleteBill}
             resetMonth={resetMonth}
             lastReset={state.lastReset}
+            history={state.history || {}}
           />
         )}
 
@@ -359,6 +395,8 @@ export default function TrackersScreen({ progress, onProgressChange, onBack }) {
             calc={spendCalc}
             editingCell={editingCell} setEditingCell={setEditingCell}
             updateSpend={updateSpend} addSpend={addSpend} deleteSpend={deleteSpend}
+            lastReset={state.lastReset}
+            history={state.history || {}}
           />
         )}
 
@@ -580,8 +618,9 @@ function Cell({ value, onChange, type='text', format='auto', options, placeholde
 /* ═══════════════════════════════════════════════════════════════
    BILLS TAB
 ═══════════════════════════════════════════════════════════════ */
-function BillsTab({ bills, calc, editingCell, setEditingCell, updateBill, addBill, deleteBill, resetMonth, lastReset }) {
+function BillsTab({ bills, calc, editingCell, setEditingCell, updateBill, addBill, deleteBill, resetMonth, lastReset, history }) {
   const P = useP();
+  const archivedMonths = Object.keys(history || {}).sort().reverse();
   return (
     <>
       <SectionHeader
@@ -663,10 +702,132 @@ function BillsTab({ bills, calc, editingCell, setEditingCell, updateBill, addBil
 
       {lastReset && (
         <div style={{ marginTop:10, fontSize:'0.7rem', color:P.taupe }}>
-          Last reset: {lastReset}
+          Current month: {monthLabel(lastReset)}
+        </div>
+      )}
+
+      {archivedMonths.length > 0 && (
+        <div style={{ marginTop:32 }}>
+          <div style={{ fontFamily:SERIF, fontSize:'1.05rem', color:P.cream, marginBottom:4 }}>Past Months</div>
+          <div style={{ fontSize:'0.76rem', color:P.taupe, marginBottom:12, lineHeight:1.5 }}>
+            A snapshot of every month you've reset. Tap to expand.
+          </div>
+          <div style={{ display:'grid', gap:10 }}>
+            {archivedMonths.map(ym => (
+              <HistoryMonthCard key={ym} ym={ym} snap={history[ym]} type="bills" />
+            ))}
+          </div>
         </div>
       )}
     </>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   HISTORY MONTH CARD — used in both Bills and Spending tabs
+═══════════════════════════════════════════════════════════════ */
+function HistoryMonthCard({ ym, snap, type }) {
+  const P = useP();
+  const [open, setOpen] = useState(false);
+  if (!snap) return null;
+
+  const ratio = snap.ratio ?? (snap.numTotal > 0 ? snap.numPaid / snap.numTotal : 0);
+
+  return (
+    <div style={{
+      background:P.panel, border:`1px solid ${P.border}`, borderRadius:12,
+      overflow:'hidden',
+    }}>
+      <button onClick={() => setOpen(!open)} style={{
+        width:'100%', padding:'12px 16px',
+        background:'transparent', border:'none', cursor:'pointer',
+        display:'flex', alignItems:'center', justifyContent:'space-between', gap:10,
+        fontFamily:SANS, color:P.cream, textAlign:'left',
+      }}>
+        <div style={{ display:'flex', alignItems:'center', gap:12, flex:1, minWidth:0 }}>
+          <div style={{ fontFamily:SERIF, fontSize:'0.95rem', color:P.cream }}>
+            {monthLabel(ym)}
+          </div>
+          <div style={{ fontSize:'0.9rem', letterSpacing:'0.05em' }}>
+            {bloomRow(ratio, P.bloom, '🤍', 6)}
+          </div>
+        </div>
+        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+          {type === 'bills' ? (
+            <>
+              <span style={{ fontSize:'0.76rem', color:P.taupe }}>{snap.numPaid}/{snap.numTotal} paid</span>
+              <span style={{ fontSize:'0.76rem', color:P.accent, fontWeight:600 }}>{money(snap.paidBills || 0)}</span>
+            </>
+          ) : (
+            <>
+              <span style={{ fontSize:'0.76rem', color:P.taupe }}>{(snap.spending||[]).length} entries</span>
+              <span style={{ fontSize:'0.76rem', color:P.accent, fontWeight:600 }}>{money(snap.spendTotal || 0)}</span>
+            </>
+          )}
+          <span style={{ color:P.taupe, fontSize:'0.9rem' }}>{open ? '▴' : '▾'}</span>
+        </div>
+      </button>
+
+      {open && (
+        <div style={{ padding:'4px 16px 14px', borderTop:`1px solid ${P.borderL}` }}>
+          {type === 'bills' ? (
+            <div style={{ padding:'10px 0' }}>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:12 }}>
+                <div style={{ fontSize:'0.76rem' }}>
+                  <div style={{ color:P.taupe, fontSize:'0.66rem', letterSpacing:'0.08em' }}>TOTAL BILLS</div>
+                  <div style={{ color:P.cream }}>{money(snap.totalBills || 0)}</div>
+                </div>
+                <div style={{ fontSize:'0.76rem' }}>
+                  <div style={{ color:P.taupe, fontSize:'0.66rem', letterSpacing:'0.08em' }}>PAID</div>
+                  <div style={{ color:P.accent }}>{money(snap.paidBills || 0)} ({Math.round(ratio * 100)}%)</div>
+                </div>
+              </div>
+              {(snap.bills || []).filter(b => (b.name||'').trim()).map(b => (
+                <div key={b.id} style={{
+                  display:'flex', justifyContent:'space-between', padding:'5px 0',
+                  fontSize:'0.78rem',
+                  borderTop:`1px dashed ${P.borderL}`,
+                  color: b.paid ? P.paidTxt : P.taupe,
+                }}>
+                  <span>{b.paid ? '✓ ' : '○ '}{b.name}</span>
+                  <span>{money(b.amount || 0)}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div style={{ padding:'10px 0' }}>
+              {Object.keys(snap.byCat || {}).length > 0 && (
+                <div style={{ marginBottom:12 }}>
+                  <div style={{ color:P.taupe, fontSize:'0.66rem', letterSpacing:'0.08em', marginBottom:4 }}>BY CATEGORY</div>
+                  {Object.entries(snap.byCat).sort((a,b) => b[1]-a[1]).map(([cat,amt]) => (
+                    <div key={cat} style={{ display:'flex', justifyContent:'space-between', fontSize:'0.78rem', padding:'2px 0' }}>
+                      <span style={{ color:P.cream }}>{cat}</span>
+                      <span style={{ color:P.accent }}>{money(amt)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {(snap.spending || []).length > 0 && (
+                <div>
+                  <div style={{ color:P.taupe, fontSize:'0.66rem', letterSpacing:'0.08em', marginBottom:4 }}>ENTRIES</div>
+                  {snap.spending.map(r => (
+                    <div key={r.id} style={{
+                      display:'grid', gridTemplateColumns:'70px 1fr auto', gap:10,
+                      padding:'4px 0', fontSize:'0.76rem',
+                      borderTop:`1px dashed ${P.borderL}`,
+                    }}>
+                      <span style={{ color:P.taupe }}>{r.date}</span>
+                      <span style={{ color:P.cream }}>{r.where || r.category}</span>
+                      <span style={{ color:P.accent }}>{money(r.amount || 0)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -778,8 +939,9 @@ function GoalsTab({ goals, calc, editingCell, setEditingCell, updateGoal, addGoa
 /* ═══════════════════════════════════════════════════════════════
    SPENDING TAB
 ═══════════════════════════════════════════════════════════════ */
-function SpendingTab({ spending, calc, editingCell, setEditingCell, updateSpend, addSpend, deleteSpend }) {
+function SpendingTab({ spending, calc, editingCell, setEditingCell, updateSpend, addSpend, deleteSpend, lastReset, history }) {
   const P = useP();
+  const archivedMonths = Object.keys(history || {}).sort().reverse();
   return (
     <>
       <SectionHeader
@@ -861,6 +1023,26 @@ function SpendingTab({ spending, calc, editingCell, setEditingCell, updateSpend,
       <div style={{ marginTop:14 }}>
         <ActionBtn onClick={addSpend}>+ Add Entry</ActionBtn>
       </div>
+
+      {lastReset && (
+        <div style={{ marginTop:10, fontSize:'0.7rem', color:P.taupe }}>
+          Current month: {monthLabel(lastReset)}
+        </div>
+      )}
+
+      {archivedMonths.length > 0 && (
+        <div style={{ marginTop:32 }}>
+          <div style={{ fontFamily:SERIF, fontSize:'1.05rem', color:P.cream, marginBottom:4 }}>Past Months</div>
+          <div style={{ fontSize:'0.76rem', color:P.taupe, marginBottom:12, lineHeight:1.5 }}>
+            Saved when you reset the Bills tab. Tap a month to see where your money went.
+          </div>
+          <div style={{ display:'grid', gap:10 }}>
+            {archivedMonths.map(ym => (
+              <HistoryMonthCard key={ym} ym={ym} snap={history[ym]} type="spending" />
+            ))}
+          </div>
+        </div>
+      )}
     </>
   );
 }
