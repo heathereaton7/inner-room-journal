@@ -128,8 +128,34 @@ export function createEmptyTrackers() {
     lastReset: new Date().toISOString().slice(0,7), // YYYY-MM
     theme: 'tulip',
     history: {}, // { 'YYYY-MM': { bills, totals, spending } } snapshots of past months
+    todos: [], // { id, title, priority, energy, minutes, section, done, doneAt, createdAt }
+    todoDay: new Date().toISOString().slice(0,10), // last day the Done list was rolled over
   };
 }
+
+// ── Todo constants (ADHD-friendly) ──
+const TODO_PRIORITIES = {
+  must:   { label:'Must do',   emoji:'🔥', color:'#E8A878' },
+  should: { label:'Should do', emoji:'💛', color:'#D4C87A' },
+  nice:   { label:'Nice to do',emoji:'💙', color:'#7AB8D8' },
+};
+const TODO_ENERGIES = {
+  low:  { label:'Low',    emoji:'🌿' },
+  med:  { label:'Medium', emoji:'🌸' },
+  high: { label:'High',   emoji:'⚡' },
+};
+const TODO_TIMES = [5, 15, 30, 60];
+const SECTIONS = {
+  big:   { label:'The Big 3',     desc:"Today's most important tasks — do these first.", cap:3 },
+  quick: { label:'Quick Wins',    desc:'Small tasks (5–15 min) for dopamine hits.',       cap:99 },
+  later: { label:'Later',         desc:"The backlog. Don't think about it right now.",    cap:99 },
+};
+
+// Encouragement messages when tasks complete
+const CELEBRATIONS = [
+  'One less thing.', 'Well done.', 'That counted.', 'Look at you.', 'Progress.',
+  'Off the plate.', 'Gentle win.', 'Consistency over intensity.', 'Keep going.', "That's one.",
+];
 
 // Helper: format YYYY-MM to nice label like "April 2026"
 function monthLabel(ym) {
@@ -296,6 +322,42 @@ export default function TrackersScreen({ progress, onProgressChange, onBack }) {
     update({ spending: state.spending.filter(r => r.id !== id) });
   };
 
+  // ── Todo operations ──
+  // Daily rollover: if it's a new day, archive yesterday's completed todos (remove from list)
+  const today = new Date().toISOString().slice(0,10);
+  const todos = (state.todos || []).filter(t => !(t.done && t.doneAt && !t.doneAt.startsWith(today)));
+  // Note: we don't call update() just for rollover reads — we filter on display
+
+  const addTodo = (section = 'later') => {
+    const id = 't' + Date.now();
+    const newTodo = {
+      id, title:'', priority:'should', energy:'med', minutes:15,
+      section, done:false, doneAt:null, createdAt: new Date().toISOString(),
+    };
+    update({ todos: [...(state.todos || []), newTodo] });
+  };
+  const updateTodo = (id, field, value) => {
+    const todos = (state.todos || []).map(t => t.id === id ? { ...t, [field]: value } : t);
+    update({ todos });
+  };
+  const toggleTodoDone = (id) => {
+    const todos = (state.todos || []).map(t => {
+      if (t.id !== id) return t;
+      const done = !t.done;
+      return { ...t, done, doneAt: done ? new Date().toISOString() : null };
+    });
+    update({ todos });
+  };
+  const deleteTodo = (id) => {
+    update({ todos: (state.todos || []).filter(t => t.id !== id) });
+  };
+  const moveTodoToSection = (id, section) => {
+    updateTodo(id, 'section', section);
+  };
+  const clearDoneTodos = () => {
+    update({ todos: (state.todos || []).filter(t => !t.done) });
+  };
+
   return (
     <ThemeCtx.Provider value={P}>
     <PrintStyles />
@@ -340,6 +402,7 @@ export default function TrackersScreen({ progress, onProgressChange, onBack }) {
         {/* Tabs */}
         <div className="tracker-tabs" style={{ display:'flex', gap:0, borderTop:`1px solid ${P.borderL}`, overflowX:'auto' }}>
           {[
+            { id:'todos',    label:'To-Do',            icon:'✓' },
             { id:'bills',    label:'Monthly Bills',    icon:'💌' },
             { id:'goals',    label:'Savings Goals',    icon:P.bloom },
             { id:'spending', label:'Spending',         icon:'✨' },
@@ -397,6 +460,17 @@ export default function TrackersScreen({ progress, onProgressChange, onBack }) {
             updateSpend={updateSpend} addSpend={addSpend} deleteSpend={deleteSpend}
             lastReset={state.lastReset}
             history={state.history || {}}
+          />
+        )}
+
+        {tab === 'todos' && (
+          <TodoTab
+            todos={todos}
+            addTodo={addTodo} updateTodo={updateTodo}
+            toggleTodoDone={toggleTodoDone} deleteTodo={deleteTodo}
+            moveTodoToSection={moveTodoToSection}
+            clearDoneTodos={clearDoneTodos}
+            editingCell={editingCell} setEditingCell={setEditingCell}
           />
         )}
 
@@ -1048,12 +1122,421 @@ function SpendingTab({ spending, calc, editingCell, setEditingCell, updateSpend,
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   TODO TAB — ADHD-friendly task list
+   "The Big 3" → Quick Wins → Later → Done Today
+═══════════════════════════════════════════════════════════════ */
+function TodoTab({ todos, addTodo, updateTodo, toggleTodoDone, deleteTodo, moveTodoToSection, clearDoneTodos, editingCell, setEditingCell }) {
+  const P = useP();
+  const [celebration, setCelebration] = useState(null);
+
+  const bySection = {
+    big:   todos.filter(t => !t.done && t.section === 'big'),
+    quick: todos.filter(t => !t.done && t.section === 'quick'),
+    later: todos.filter(t => !t.done && t.section === 'later'),
+  };
+  const doneToday = todos.filter(t => t.done);
+  const totalActive = bySection.big.length + bySection.quick.length + bySection.later.length;
+
+  const handleToggle = (t) => {
+    if (!t.done) {
+      // About to mark done — celebrate
+      const msg = CELEBRATIONS[Math.floor(Math.random() * CELEBRATIONS.length)];
+      setCelebration(msg);
+      setTimeout(() => setCelebration(null), 1800);
+    }
+    toggleTodoDone(t.id);
+  };
+
+  return (
+    <>
+      <SectionHeader
+        title="To-Do"
+        subtitle="Designed for ADHD brains. Pick your Big 3, get quick wins, let Later stay out of sight."
+      />
+
+      {/* Stats strip */}
+      <div style={{
+        display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:8,
+        marginBottom:18,
+      }}>
+        <StatMini P={P} icon="🎯" label="Big 3" value={bySection.big.length} />
+        <StatMini P={P} icon="⚡" label="Quick" value={bySection.quick.length} />
+        <StatMini P={P} icon="📋" label="Later" value={bySection.later.length} />
+        <StatMini P={P} icon="✓"  label="Done"  value={doneToday.length} accent />
+      </div>
+
+      {/* Empty state */}
+      {totalActive === 0 && doneToday.length === 0 && (
+        <div style={{
+          textAlign:'center', padding:'30px 20px',
+          border:`1px dashed ${P.border}`, borderRadius:12,
+          color:P.taupe, fontSize:'0.85rem', lineHeight:1.6,
+          marginBottom:16,
+        }}>
+          Your list is clear. <br/>
+          Start by adding one <strong style={{ color:P.accent }}>Big 3</strong> task — just one — to anchor your day.
+        </div>
+      )}
+
+      {/* Big 3 */}
+      <TodoSection
+        section="big"
+        title={SECTIONS.big.label}
+        subtitle={SECTIONS.big.desc}
+        items={bySection.big}
+        cap={SECTIONS.big.cap}
+        onAdd={() => addTodo('big')}
+        onToggle={handleToggle}
+        onUpdate={updateTodo}
+        onDelete={deleteTodo}
+        onMove={moveTodoToSection}
+        editingCell={editingCell}
+        setEditingCell={setEditingCell}
+        highlight
+      />
+
+      {/* Quick Wins */}
+      <TodoSection
+        section="quick"
+        title={SECTIONS.quick.label}
+        subtitle={SECTIONS.quick.desc}
+        items={bySection.quick}
+        cap={SECTIONS.quick.cap}
+        onAdd={() => addTodo('quick')}
+        onToggle={handleToggle}
+        onUpdate={updateTodo}
+        onDelete={deleteTodo}
+        onMove={moveTodoToSection}
+        editingCell={editingCell}
+        setEditingCell={setEditingCell}
+      />
+
+      {/* Later */}
+      <TodoSection
+        section="later"
+        title={SECTIONS.later.label}
+        subtitle={SECTIONS.later.desc}
+        items={bySection.later}
+        cap={SECTIONS.later.cap}
+        onAdd={() => addTodo('later')}
+        onToggle={handleToggle}
+        onUpdate={updateTodo}
+        onDelete={deleteTodo}
+        onMove={moveTodoToSection}
+        editingCell={editingCell}
+        setEditingCell={setEditingCell}
+        collapsible
+      />
+
+      {/* Done Today */}
+      {doneToday.length > 0 && (
+        <div style={{ marginTop:24 }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:8 }}>
+            <div>
+              <div style={{ fontFamily:SERIF, fontSize:'1rem', color:P.cream }}>
+                ✨ Done Today ({doneToday.length})
+              </div>
+              <div style={{ fontSize:'0.72rem', color:P.taupe, marginTop:2 }}>
+                Every check is a win worth celebrating.
+              </div>
+            </div>
+            <button onClick={clearDoneTodos} style={{
+              background:'transparent', border:'none', color:P.taupe,
+              cursor:'pointer', fontSize:'0.72rem', fontFamily:SANS,
+            }}>Clear</button>
+          </div>
+          <div style={{ display:'grid', gap:6 }}>
+            {doneToday.map(t => (
+              <div key={t.id} style={{
+                display:'flex', alignItems:'center', gap:10,
+                padding:'8px 12px',
+                background:`linear-gradient(90deg, ${P.paidBg}, transparent)`,
+                border:`1px solid ${P.borderL}`,
+                borderRadius:10,
+              }}>
+                <button onClick={() => handleToggle(t)} style={{
+                  width:22, height:22, borderRadius:'50%',
+                  background:P.olive, border:'none', color:P.bg,
+                  cursor:'pointer', fontSize:'0.75rem', fontWeight:700,
+                  display:'inline-flex', alignItems:'center', justifyContent:'center',
+                  flexShrink:0,
+                }}>✓</button>
+                <span style={{ flex:1, fontSize:'0.84rem', color:P.paidTxt, textDecoration:'line-through' }}>
+                  {t.title || '(untitled)'}
+                </span>
+                <button onClick={() => deleteTodo(t.id)} style={{
+                  background:'transparent', border:'none', color:P.taupe,
+                  cursor:'pointer', fontSize:'0.95rem', padding:4, opacity:0.5,
+                }}>×</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Celebration toast */}
+      {celebration && (
+        <div style={{
+          position:'fixed', bottom:40, left:'50%', transform:'translateX(-50%)',
+          background:`linear-gradient(135deg, ${P.accent}, ${P.accent2})`,
+          color:P.bg, padding:'12px 24px', borderRadius:999,
+          fontFamily:SERIF, fontSize:'0.95rem', fontWeight:600,
+          boxShadow:'0 8px 32px rgba(0,0,0,0.25)',
+          zIndex:50,
+          animation:'celebrateIn 0.35s cubic-bezier(.2,.9,.3,1.3) both',
+          pointerEvents:'none',
+        }}>
+          🌿 {celebration}
+        </div>
+      )}
+
+      {/* keyframes injected once */}
+      <style>{`
+        @keyframes celebrateIn {
+          0%   { opacity:0; transform:translateX(-50%) translateY(20px) scale(0.8); }
+          60%  { opacity:1; transform:translateX(-50%) translateY(-4px) scale(1.05); }
+          100% { opacity:1; transform:translateX(-50%) translateY(0) scale(1); }
+        }
+        @keyframes todoFade { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:none; } }
+      `}</style>
+    </>
+  );
+}
+
+/* ── Small stat box for todo header ── */
+function StatMini({ P, icon, label, value, accent }) {
+  return (
+    <div style={{
+      background:P.panel, border:`1px solid ${P.border}`,
+      borderRadius:10, padding:'10px 8px', textAlign:'center',
+    }}>
+      <div style={{ fontSize:'1.1rem', marginBottom:2 }}>{icon}</div>
+      <div style={{
+        fontFamily:SERIF, fontSize:'1.15rem',
+        color: accent ? P.accent : P.cream, lineHeight:1,
+      }}>{value}</div>
+      <div style={{ fontSize:'0.6rem', color:P.taupe, marginTop:4, letterSpacing:'0.08em' }}>
+        {label}
+      </div>
+    </div>
+  );
+}
+
+/* ── Todo section (Big 3 / Quick / Later) ── */
+function TodoSection({ section, title, subtitle, items, cap, onAdd, onToggle, onUpdate, onDelete, onMove, editingCell, setEditingCell, highlight, collapsible }) {
+  const P = useP();
+  const [open, setOpen] = useState(!collapsible);
+  const atCap = items.length >= cap;
+
+  return (
+    <div style={{
+      marginBottom:20,
+      background: highlight ? `linear-gradient(135deg, ${P.head}, transparent)` : 'transparent',
+      border: highlight ? `1px solid ${P.border}` : 'none',
+      borderRadius: highlight ? 14 : 0,
+      padding: highlight ? '14px 14px 12px' : 0,
+    }}>
+      <button onClick={() => collapsible && setOpen(!open)} style={{
+        display:'flex', justifyContent:'space-between', alignItems:'flex-start',
+        width:'100%', background:'transparent', border:'none', color:P.cream,
+        padding:0, cursor: collapsible ? 'pointer' : 'default',
+        textAlign:'left', marginBottom:10,
+      }}>
+        <div>
+          <div style={{ fontFamily:SERIF, fontSize:'1rem', color:P.cream }}>
+            {title} <span style={{ color:P.taupe, fontSize:'0.82rem' }}>({items.length}{cap < 99 ? `/${cap}` : ''})</span>
+          </div>
+          <div style={{ fontSize:'0.72rem', color:P.taupe, marginTop:2, lineHeight:1.5 }}>
+            {subtitle}
+          </div>
+        </div>
+        {collapsible && (
+          <span style={{ color:P.taupe, fontSize:'0.9rem' }}>{open ? '▴' : '▾'}</span>
+        )}
+      </button>
+
+      {open && (
+        <>
+          <div style={{ display:'grid', gap:6 }}>
+            {items.map(t => (
+              <TodoItem
+                key={t.id} todo={t}
+                onToggle={() => onToggle(t)}
+                onUpdate={onUpdate}
+                onDelete={() => onDelete(t.id)}
+                onMove={onMove}
+                editingCell={editingCell}
+                setEditingCell={setEditingCell}
+              />
+            ))}
+          </div>
+          {!atCap && (
+            <button onClick={onAdd} style={{
+              marginTop: items.length > 0 ? 8 : 0,
+              width:'100%', padding:'10px',
+              background:'transparent', border:`1px dashed ${P.border}`,
+              borderRadius:10, color:P.taupe,
+              cursor:'pointer', fontFamily:SANS, fontSize:'0.78rem',
+              transition:'all 0.2s',
+            }}>+ Add a {section === 'big' ? 'Big 3 task' : section === 'quick' ? 'quick win' : 'task for later'}</button>
+          )}
+          {atCap && section === 'big' && (
+            <div style={{
+              marginTop:8, padding:'8px 12px',
+              background:P.borderL, borderRadius:8,
+              fontSize:'0.72rem', color:P.taupe, fontStyle:'italic', textAlign:'center',
+            }}>
+              3 is enough. Do these first.
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+/* ── Individual todo item ── */
+function TodoItem({ todo, onToggle, onUpdate, onDelete, onMove, editingCell, setEditingCell }) {
+  const P = useP();
+  const [showOptions, setShowOptions] = useState(false);
+  const prio = TODO_PRIORITIES[todo.priority] || TODO_PRIORITIES.should;
+  const energy = TODO_ENERGIES[todo.energy] || TODO_ENERGIES.med;
+  const cellKey = `${todo.id}:title`;
+  const isEditing = editingCell === cellKey;
+
+  return (
+    <div style={{
+      background:P.panel, border:`1px solid ${P.border}`,
+      borderRadius:10, overflow:'hidden',
+      animation:'todoFade 0.3s ease',
+    }}>
+      <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px' }}>
+        <button onClick={onToggle} style={{
+          width:22, height:22, borderRadius:'50%',
+          background:'transparent', border:`2px solid ${P.taupe}`,
+          cursor:'pointer', fontSize:'0.75rem',
+          display:'inline-flex', alignItems:'center', justifyContent:'center',
+          flexShrink:0, transition:'all 0.15s',
+        }} onMouseEnter={e => e.currentTarget.style.borderColor = P.accent}
+           onMouseLeave={e => e.currentTarget.style.borderColor = P.taupe} />
+
+        <div style={{ flex:1, minWidth:0 }}>
+          {isEditing ? (
+            <input
+              autoFocus
+              value={todo.title || ''}
+              onChange={e => onUpdate(todo.id, 'title', e.target.value)}
+              onBlur={() => setEditingCell(null)}
+              onKeyDown={e => { if (e.key === 'Enter') e.target.blur(); }}
+              placeholder="What needs to happen?"
+              style={{
+                width:'100%', background:'transparent', border:'none',
+                color:P.cream, fontFamily:SANS, fontSize:'0.88rem',
+                outline:'none', padding:0,
+              }}
+            />
+          ) : (
+            <div onClick={() => setEditingCell(cellKey)} style={{
+              fontSize:'0.88rem', color: todo.title ? P.cream : P.taupe,
+              cursor:'text', fontStyle: todo.title ? 'normal' : 'italic',
+            }}>{todo.title || 'Tap to name this task…'}</div>
+          )}
+          <div style={{ display:'flex', gap:10, marginTop:4, fontSize:'0.7rem', color:P.taupe, flexWrap:'wrap' }}>
+            <span style={{ color: prio.color }}>{prio.emoji} {prio.label}</span>
+            <span>{energy.emoji} {energy.label} energy</span>
+            <span>⏱ {todo.minutes}min</span>
+          </div>
+        </div>
+
+        <button onClick={() => setShowOptions(!showOptions)} style={{
+          background:'transparent', border:'none', color:P.taupe,
+          cursor:'pointer', fontSize:'1.1rem', padding:4, opacity:0.6,
+        }}>{showOptions ? '×' : '⋯'}</button>
+      </div>
+
+      {showOptions && (
+        <div style={{
+          padding:'4px 12px 12px',
+          borderTop:`1px solid ${P.borderL}`,
+          display:'flex', flexDirection:'column', gap:10,
+        }}>
+          {/* Priority */}
+          <div>
+            <div style={{ fontSize:'0.66rem', color:P.taupe, letterSpacing:'0.08em', marginBottom:4 }}>PRIORITY</div>
+            <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+              {Object.entries(TODO_PRIORITIES).map(([k, v]) => (
+                <button key={k} onClick={() => onUpdate(todo.id, 'priority', k)} style={{
+                  padding:'5px 10px', borderRadius:6,
+                  background: todo.priority === k ? v.color + '33' : 'transparent',
+                  border: `1px solid ${todo.priority === k ? v.color : P.border}`,
+                  color: todo.priority === k ? v.color : P.taupe,
+                  cursor:'pointer', fontSize:'0.72rem', fontFamily:SANS,
+                }}>{v.emoji} {v.label}</button>
+              ))}
+            </div>
+          </div>
+          {/* Energy */}
+          <div>
+            <div style={{ fontSize:'0.66rem', color:P.taupe, letterSpacing:'0.08em', marginBottom:4 }}>ENERGY NEEDED</div>
+            <div style={{ display:'flex', gap:6 }}>
+              {Object.entries(TODO_ENERGIES).map(([k, v]) => (
+                <button key={k} onClick={() => onUpdate(todo.id, 'energy', k)} style={{
+                  padding:'5px 10px', borderRadius:6, flex:1,
+                  background: todo.energy === k ? P.head : 'transparent',
+                  border: `1px solid ${todo.energy === k ? P.accent : P.border}`,
+                  color: todo.energy === k ? P.cream : P.taupe,
+                  cursor:'pointer', fontSize:'0.72rem', fontFamily:SANS,
+                }}>{v.emoji} {v.label}</button>
+              ))}
+            </div>
+          </div>
+          {/* Time */}
+          <div>
+            <div style={{ fontSize:'0.66rem', color:P.taupe, letterSpacing:'0.08em', marginBottom:4 }}>TIME ESTIMATE</div>
+            <div style={{ display:'flex', gap:6 }}>
+              {TODO_TIMES.map(m => (
+                <button key={m} onClick={() => onUpdate(todo.id, 'minutes', m)} style={{
+                  padding:'5px 10px', borderRadius:6, flex:1,
+                  background: todo.minutes === m ? P.head : 'transparent',
+                  border: `1px solid ${todo.minutes === m ? P.accent : P.border}`,
+                  color: todo.minutes === m ? P.cream : P.taupe,
+                  cursor:'pointer', fontSize:'0.72rem', fontFamily:SANS,
+                }}>{m < 60 ? `${m}m` : `${m/60}h`}</button>
+              ))}
+            </div>
+          </div>
+          {/* Move + delete */}
+          <div>
+            <div style={{ fontSize:'0.66rem', color:P.taupe, letterSpacing:'0.08em', marginBottom:4 }}>MOVE TO</div>
+            <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+              {Object.entries(SECTIONS).filter(([k]) => k !== todo.section).map(([k, v]) => (
+                <button key={k} onClick={() => onMove(todo.id, k)} style={{
+                  padding:'5px 10px', borderRadius:6,
+                  background:'transparent', border:`1px solid ${P.border}`,
+                  color:P.taupe, cursor:'pointer', fontSize:'0.72rem', fontFamily:SANS,
+                }}>→ {v.label}</button>
+              ))}
+              <button onClick={onDelete} style={{
+                padding:'5px 10px', borderRadius:6, marginLeft:'auto',
+                background:'transparent', border:`1px solid ${P.border}`,
+                color:P.taupe, cursor:'pointer', fontSize:'0.72rem', fontFamily:SANS,
+              }}>Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
    HOW-TO TAB
 ═══════════════════════════════════════════════════════════════ */
 function HowToTab() {
   const P = useP();
   const items = [
-    { t:'The Tabs',        b:'Four tabs at the top: Monthly Bills, Savings Goals, Spending Tracker, and this How-To page.' },
+    { t:'The Tabs',        b:'Five tabs at the top: To-Do, Monthly Bills, Savings Goals, Spending Tracker, and this How-To page.' },
+    { t:'To-Do (ADHD-friendly)', b:"Pick 1–3 tasks as your 'Big 3' for the day — that's your anchor. Quick Wins (5–15 min) give dopamine hits. Later is the backlog that stays out of sight. Each task has a priority (🔥/💛/💙), energy level (🌿/🌸/⚡), and time estimate. Completed tasks move to Done Today with a small celebration. At midnight the Done list rolls over so you start fresh." },
     { t:'Your Garden',     b:"The flowers aren't pictures — they respond to your numbers. 🌸 = done. 🤍 = not yet. As you mark bills paid or add saved money, the garden blooms." },
     { t:'Monthly Bills',   b:"Type your real bills over the sample ones. Fill in Amount. When you pay a bill, tap the Paid? checkbox — the row turns green and a flower blooms in your garden." },
     { t:'Monthly Reset',   b:"On the first of each new month, tap 'Reset All Paid' to replant your garden for the new month. 🌱" },
