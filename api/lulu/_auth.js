@@ -87,12 +87,13 @@ export async function luluFetch(path, { method = 'GET', body, headers = {} } = {
   return data;
 }
 
-// Standard 6×9 hardcover SKU used for keepsake books.
-// Full SKU reference: https://api.lulu.com/print-job-cost-calculations/ (POD packages)
-// SKU parts: Trim (0600X0900) + Color interior (FC) + Paper (CREAM) + ... etc
-// This is a sensible default; can be made configurable later.
-export const DEFAULT_POD_PACKAGE_ID = '0600X0900FCSTDPB080CW444MXX'; // 6x9 paperback cream — widely available
-export const DEFAULT_HARDCOVER_ID   = '0600X0900FCSTDCW080CW444GXX'; // 6x9 hardcover cream
+// Lulu POD package IDs — confirmed working via live price quote (April 2026)
+// SKU format: Trim + Color + Paper + Binding + Weight + Interior + Finish
+//   PB = Paperback, CW = Hardcover (Case Wrap)
+//   FC = Full Color, BW = Black & White
+//   M = Matte cover, G = Gloss cover
+export const DEFAULT_POD_PACKAGE_ID = '0600X0900BWSTDPB060UW444MXX'; // 6x9 paperback, B&W, cream, matte
+export const DEFAULT_HARDCOVER_ID   = '0600X0900FCSTDCW080CW444MXX'; // 6x9 hardcover, full color, cream, matte
 
 // CORS helper — allows innerroomjournal.com + localhost (dev)
 export function setCors(res, origin = '') {

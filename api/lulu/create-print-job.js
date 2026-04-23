@@ -42,7 +42,7 @@ export default async function handler(req, res) {
       pageCount,
       quantity = 1,
       podPackageId = DEFAULT_HARDCOVER_ID,
-      shippingLevel = 'GROUND',
+      shippingLevel = 'MAIL',
       shippingAddress,
       externalId,
       contactEmail,

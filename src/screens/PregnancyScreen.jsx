@@ -1212,7 +1212,7 @@ function OrderHardcoverPanel({ state, currentWeek, motherName, dedication }) {
     phone_number: '',
   });
   const [email, setEmail] = useState('');
-  const [shippingLevel, setShippingLevel] = useState('GROUND');
+  const [shippingLevel, setShippingLevel] = useState('MAIL');
   const [quote, setQuote] = useState(null);
   const [order, setOrder] = useState(null);
   const [error, setError] = useState(null);

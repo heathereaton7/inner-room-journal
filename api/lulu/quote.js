@@ -28,7 +28,7 @@ export default async function handler(req, res) {
   if (req.method !== 'POST')    return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    const { pageCount, quantity = 1, shippingAddress, podPackageId = DEFAULT_HARDCOVER_ID, shippingLevel = 'GROUND' } = req.body || {};
+    const { pageCount, quantity = 1, shippingAddress, podPackageId = DEFAULT_HARDCOVER_ID, shippingLevel = 'MAIL' } = req.body || {};
 
     if (!pageCount || pageCount < 32) {
       return res.status(400).json({ error: 'pageCount is required and must be at least 32' });
