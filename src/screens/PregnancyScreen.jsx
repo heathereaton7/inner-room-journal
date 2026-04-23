@@ -1173,20 +1173,14 @@ function KeepsakeBookView({ state, currentWeek, onUpdateDedication, onUpdateMoth
         </div>
       )}
 
-      {/* Print option */}
-      <div style={{
-        marginTop:24, padding:'16px 18px',
-        background:'transparent', border:`1px dashed ${P.borderL}`,
-        borderRadius:12,
-      }}>
-        <div style={{ fontFamily:SERIF, fontSize:'0.95rem', color:P.cream, marginBottom:6 }}>
-          🕊️ Want it printed?
-        </div>
-        <div style={{ fontSize:'0.78rem', color:P.taupe, lineHeight:1.6 }}>
-          Printing-on-demand is coming soon. For now, download the PDF above and order a
-          hardcover copy through a printing service like Lulu, Blurb, or Bookvault —
-          your book is formatted for 6×9" hardcover printing.
-        </div>
+      {/* Print-on-demand order */}
+      <div style={{ marginTop:24 }}>
+        <OrderHardcoverPanel
+          state={state}
+          currentWeek={currentWeek}
+          motherName={motherName}
+          dedication={dedication}
+        />
       </div>
 
       {/* Empty state */}
@@ -1203,6 +1197,284 @@ function KeepsakeBookView({ state, currentWeek, onUpdateDedication, onUpdateMoth
       )}
     </div>
   );
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  ORDER HARDCOVER PANEL — quote + checkout flow calling /api/lulu/*
+// ═══════════════════════════════════════════════════════════════
+function OrderHardcoverPanel({ state, currentWeek, motherName, dedication }) {
+  const [step, setStep] = useState('intro'); // intro | address | quoting | quote | ordering | success | error
+  const [addr, setAddr] = useState({
+    name: motherName || '',
+    street1: '', street2: '',
+    city: '', state_code: '', postcode: '',
+    country_code: 'US',
+    phone_number: '',
+  });
+  const [email, setEmail] = useState('');
+  const [shippingLevel, setShippingLevel] = useState('GROUND');
+  const [quote, setQuote] = useState(null);
+  const [order, setOrder] = useState(null);
+  const [error, setError] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  const letterCount = state.letters?.length || 0;
+  const mementoCount = Object.keys(state.milestones || {}).length;
+  const pageEstimate = useMemo(() => {
+    const w = Math.min(40, currentWeek || 1);
+    return Math.max(32, 6 + w + letterCount + (mementoCount > 0 ? 2 : 0));
+  }, [currentWeek, letterCount, mementoCount]);
+
+  const canQuote = addr.name && addr.street1 && addr.city && addr.postcode && addr.phone_number;
+
+  const fetchQuote = async () => {
+    setError(null); setBusy(true);
+    try {
+      const { getBookQuote } = await import('../book/orderApi.jsx');
+      const data = await getBookQuote({
+        pageCount: pageEstimate,
+        shippingAddress: addr,
+        shippingLevel,
+      });
+      setQuote(data);
+      setStep('quote');
+    } catch (e) {
+      setError(e.message || 'Could not get a price quote.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const placeOrder = async () => {
+    setError(null); setBusy(true); setStep('ordering');
+    try {
+      const { buildAndUploadBook, createPrintOrder } = await import('../book/orderApi.jsx');
+      const bookId = `nursery-${Date.now()}`;
+      const { interiorUrl, coverUrl, pageCount } = await buildAndUploadBook({
+        pregnancy: state,
+        motherName,
+        currentWeek,
+        dedication,
+        bookId,
+      });
+      const title = `The Story of ${state.babyNickname || 'Little One'}`;
+      const result = await createPrintOrder({
+        title, interiorUrl, coverUrl, pageCount,
+        shippingAddress: addr,
+        shippingLevel,
+        externalId: bookId,
+        contactEmail: email,
+      });
+      setOrder(result);
+      setStep('success');
+    } catch (e) {
+      setError(e.message || 'Order failed.');
+      setStep('quote'); // return to quote so they can retry
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // ── UI ──
+  if (step === 'success' && order) {
+    return (
+      <div style={panelBox()}>
+        <div style={{ textAlign:'center', padding:'10px 0' }}>
+          <div style={{ fontSize:'2rem', marginBottom:10 }}>📖</div>
+          <div style={{ fontFamily:SERIF, fontSize:'1.15rem', color:P.cream, marginBottom:6 }}>
+            Your book is on its way to being bound.
+          </div>
+          <div style={{ fontSize:'0.82rem', color:P.taupe, lineHeight:1.6 }}>
+            Order <strong style={{ color:P.rose }}>#{order.id}</strong> received.
+            We'll email {email} when it ships.
+          </div>
+          {order.estimatedShipping && (
+            <div style={{ fontSize:'0.76rem', color:P.taupe, marginTop:10, fontStyle:'italic' }}>
+              Estimated shipping: {order.estimatedShipping.arrival_min} – {order.estimatedShipping.arrival_max}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (step === 'intro') {
+    return (
+      <div style={panelBox()}>
+        <div style={{ fontFamily:SERIF, fontSize:'1.05rem', color:P.cream, marginBottom:6 }}>
+          🕊️ Order a hardcover copy
+        </div>
+        <div style={{ fontSize:'0.8rem', color:P.taupe, lineHeight:1.6, marginBottom:14 }}>
+          We'll print your book as a 6×9" hardcover with cream pages, and ship it to your door.
+          No printing or shipping on your end.
+        </div>
+        <div style={{ fontSize:'0.72rem', color:P.taupe, marginBottom:14, fontStyle:'italic' }}>
+          ~{pageEstimate} pages · 6×9 hardcover · cream paper
+        </div>
+        <button onClick={() => setStep('address')} style={{ ...primaryBtn(), width:'100%' }}>
+          Get a price →
+        </button>
+      </div>
+    );
+  }
+
+  if (step === 'address' || step === 'quoting') {
+    return (
+      <div style={panelBox()}>
+        <div style={{ fontFamily:SERIF, fontSize:'1.05rem', color:P.cream, marginBottom:14 }}>
+          Where should we send it?
+        </div>
+        <div style={{ display:'grid', gap:10 }}>
+          <Field label="Full name" value={addr.name} onChange={v => setAddr({...addr, name:v})} />
+          <Field label="Email (for shipping updates)" value={email} onChange={setEmail} type="email" />
+          <Field label="Address line 1" value={addr.street1} onChange={v => setAddr({...addr, street1:v})} />
+          <Field label="Address line 2 (optional)" value={addr.street2} onChange={v => setAddr({...addr, street2:v})} />
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
+            <Field label="City" value={addr.city} onChange={v => setAddr({...addr, city:v})} />
+            <Field label="State / Region" value={addr.state_code} onChange={v => setAddr({...addr, state_code:v})} />
+          </div>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
+            <Field label="Postal code" value={addr.postcode} onChange={v => setAddr({...addr, postcode:v})} />
+            <Field label="Country (ISO, e.g. US)" value={addr.country_code} onChange={v => setAddr({...addr, country_code:v.toUpperCase()})} />
+          </div>
+          <Field label="Phone (digits only)" value={addr.phone_number} onChange={v => setAddr({...addr, phone_number:v.replace(/\D/g,'')})} />
+
+          <div style={{ marginTop:8 }}>
+            <div style={{ fontSize:'0.66rem', color:P.taupe, letterSpacing:'0.08em', marginBottom:6 }}>SHIPPING</div>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:6 }}>
+              {['MAIL','GROUND','EXPEDITED','EXPRESS'].map(lvl => (
+                <button key={lvl} onClick={() => setShippingLevel(lvl)} style={{
+                  padding:'8px', borderRadius:8,
+                  background: shippingLevel === lvl ? P.head : 'transparent',
+                  border:`1px solid ${shippingLevel === lvl ? P.rose : P.border}`,
+                  color: shippingLevel === lvl ? P.cream : P.taupe,
+                  cursor:'pointer', fontSize:'0.74rem', fontFamily:SANS,
+                }}>{lvl}</button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {error && <ErrorBox msg={error} />}
+
+        <div style={{ display:'flex', gap:8, marginTop:16 }}>
+          <button onClick={() => setStep('intro')} style={{ ...ghostBtn(), flex:1 }}>Back</button>
+          <button onClick={fetchQuote} disabled={!canQuote || !email || busy} style={{
+            ...primaryBtn(), flex:2, opacity: (canQuote && email && !busy) ? 1 : 0.5,
+          }}>
+            {busy ? 'Getting price…' : 'Get price'}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (step === 'quote' && quote) {
+    const total = Number(quote.total || 0).toFixed(2);
+    const currency = quote.currency || 'USD';
+    return (
+      <div style={panelBox()}>
+        <div style={{ fontFamily:SERIF, fontSize:'1.05rem', color:P.cream, marginBottom:14 }}>
+          Your keepsake book
+        </div>
+        <div style={{ padding:'12px 0', borderTop:`1px solid ${P.borderL}`, borderBottom:`1px solid ${P.borderL}`, marginBottom:14 }}>
+          <Line label="6×9 Hardcover · cream paper" value={`${quote.lineItem?.total || quote.lineItem?.unit || '—'} ${currency}`} />
+          <Line label={`Shipping (${shippingLevel.toLowerCase()})`} value={`${quote.lineItem?.shipping || '—'} ${currency}`} />
+          <Line label="Tax" value={`${quote.lineItem?.taxes || '—'} ${currency}`} />
+          <div style={{ height:1, background:P.borderL, margin:'8px 0' }} />
+          <Line label="Total" value={`${total} ${currency}`} big />
+        </div>
+        <div style={{ fontSize:'0.72rem', color:P.taupe, marginBottom:14 }}>
+          Shipping to {addr.name}, {addr.city} {addr.postcode}, {addr.country_code}
+        </div>
+
+        {error && <ErrorBox msg={error} />}
+
+        <div style={{ display:'flex', gap:8 }}>
+          <button onClick={() => setStep('address')} style={{ ...ghostBtn(), flex:1 }}>Edit address</button>
+          <button onClick={placeOrder} disabled={busy} style={{ ...primaryBtn(), flex:2, opacity: busy ? 0.5 : 1 }}>
+            {busy ? 'Placing order…' : 'Place order →'}
+          </button>
+        </div>
+        <div style={{ fontSize:'0.68rem', color:P.taupe, marginTop:10, fontStyle:'italic', textAlign:'center' }}>
+          Payment processing is coming soon — for now Lulu will invoice the order.
+        </div>
+      </div>
+    );
+  }
+
+  if (step === 'ordering') {
+    return (
+      <div style={panelBox()}>
+        <div style={{ textAlign:'center', padding:'20px 0' }}>
+          <div style={{ fontSize:'1.4rem', marginBottom:10 }}>📖</div>
+          <div style={{ fontFamily:SERIF, fontSize:'1rem', color:P.cream, marginBottom:6 }}>
+            Binding your book…
+          </div>
+          <div style={{ fontSize:'0.8rem', color:P.taupe }}>
+            Generating PDF · uploading · sending to printer
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return null;
+}
+
+function Field({ label, value, onChange, type = 'text' }) {
+  return (
+    <div>
+      <div style={{ fontSize:'0.66rem', color:P.taupe, letterSpacing:'0.08em', marginBottom:4 }}>
+        {label.toUpperCase()}
+      </div>
+      <input
+        type={type}
+        value={value || ''}
+        onChange={e => onChange(e.target.value)}
+        style={{
+          width:'100%', padding:'10px 12px',
+          background:'rgba(0,0,0,0.15)',
+          border:`1px solid ${P.border}`,
+          borderRadius:8,
+          color:P.cream, fontFamily:SANS, fontSize:'0.86rem',
+          outline:'none', boxSizing:'border-box',
+        }}
+      />
+    </div>
+  );
+}
+
+function Line({ label, value, big }) {
+  return (
+    <div style={{ display:'flex', justifyContent:'space-between', padding:'4px 0' }}>
+      <span style={{ fontSize: big ? '0.88rem' : '0.78rem', color: big ? P.cream : P.taupe }}>{label}</span>
+      <span style={{ fontSize: big ? '0.94rem' : '0.8rem', color: big ? P.rose : P.cream, fontWeight: big ? 700 : 400 }}>
+        {value}
+      </span>
+    </div>
+  );
+}
+
+function ErrorBox({ msg }) {
+  return (
+    <div style={{
+      marginTop:14, padding:'10px 14px',
+      background:'rgba(200,80,80,0.15)', border:'1px solid rgba(200,80,80,0.3)',
+      borderRadius:10, color:'#E8B0B0', fontSize:'0.78rem',
+    }}>
+      {msg}
+    </div>
+  );
+}
+
+function panelBox() {
+  return {
+    padding:'18px 20px',
+    background:`linear-gradient(135deg, ${P.panel}, rgba(212,144,152,0.06))`,
+    border:`1px solid ${P.border}`,
+    borderRadius:14,
+  };
 }
 
 function StatLine({ label, value }) {
