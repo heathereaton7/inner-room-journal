@@ -189,7 +189,8 @@ function SetupFlow({ state, onComplete }) {
   const [step, setStep] = useState(0);
   const [dueDate, setDueDate] = useState(state.dueDate || '');
   const [babyNickname, setBabyNickname] = useState(state.babyNickname || '');
-  const [faithMode, setFaithMode] = useState(state.faithMode || 'christian');
+  // Faith mode is always Christian — the nursery is built around weekly scripture
+  const faithMode = 'christian';
 
   const steps = [
     {
@@ -214,7 +215,7 @@ function SetupFlow({ state, onComplete }) {
     {
       title: 'Do they have a nickname yet?',
       body: "Something just between you two. You can skip this — or change it later.",
-      cta: 'Continue',
+      cta: 'Enter the nursery',
       render: (
         <input
           type="text"
@@ -223,34 +224,6 @@ function SetupFlow({ state, onComplete }) {
           placeholder="Peach, Little One, Baby Bean…"
           style={inputStyle()}
         />
-      ),
-    },
-    {
-      title: 'What tone feels like home?',
-      body: "We'll shape your weekly encouragement around this. You can always change it later in settings.",
-      cta: 'Enter the nursery',
-      render: (
-        <div style={{ display:'grid', gap:10 }}>
-          {[
-            { id:'christian',  label:'Christian',   desc:'Weekly scripture and faith-based reflection.' },
-            { id:'spiritual',  label:'Spiritual',   desc:'Poetic, open spiritual encouragement.' },
-            { id:'general',    label:'Just warmth', desc:'No spiritual language — just gentle, loving words.' },
-          ].map(opt => {
-            const active = faithMode === opt.id;
-            return (
-              <button key={opt.id} onClick={() => setFaithMode(opt.id)} style={{
-                background: active ? P.head : P.panel,
-                border:`1.5px solid ${active ? P.rose : P.border}`,
-                borderRadius:12, padding:'14px 16px',
-                cursor:'pointer', textAlign:'left', color:P.cream, fontFamily:SANS,
-                transition:'all 0.2s',
-              }}>
-                <div style={{ fontFamily:SERIF, fontSize:'0.95rem', color:P.cream, marginBottom:3 }}>{opt.label}</div>
-                <div style={{ fontSize:'0.76rem', color:P.taupe, lineHeight:1.5 }}>{opt.desc}</div>
-              </button>
-            );
-          })}
-        </div>
       ),
     },
   ];
