@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { SERIF, SANS } from '../constants.js';
 import { PREGNANCY_WEEKS, computeWeek, MILESTONES, PREGNANCY_MOODS, PREGNANCY_SYMPTOMS } from '../data/pregnancyWeeks.js';
 
@@ -47,6 +47,7 @@ export function createEmptyPregnancy() {
     kickSessions: [],       // { id, date, startTime, endTime, count }
     prayers: [],            // { id, date, text }
     bookDedication: '',     // optional custom dedication
+    orders: [],             // [{ id, luluPrintJobId, stripePaymentId, status, total, currency, shippingAddress, createdAt, trackingUrl }]
     createdAt: new Date().toISOString(),
   };
 }
@@ -175,6 +176,7 @@ export default function PregnancyScreen({ progress, onProgressChange, onBack }) 
             currentWeek={weekIdx}
             onUpdateDedication={(text) => update({ bookDedication: text })}
             onUpdateMotherName={(name) => update({ motherName: name })}
+            onSaveOrder={(order) => update({ orders: [order, ...(state.orders || [])] })}
           />
         )}
       </div>
@@ -961,7 +963,7 @@ function GardenView({ currentWeek, onPickWeek }) {
 // ═══════════════════════════════════════════════════════════════
 //  KEEPSAKE BOOK VIEW — compile + preview + download PDF
 // ═══════════════════════════════════════════════════════════════
-function KeepsakeBookView({ state, currentWeek, onUpdateDedication, onUpdateMotherName }) {
+function KeepsakeBookView({ state, currentWeek, onUpdateDedication, onUpdateMotherName, onSaveOrder }) {
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState(null);
   const [dedication, setDedication] = useState(state.bookDedication || '');
@@ -1180,8 +1182,16 @@ function KeepsakeBookView({ state, currentWeek, onUpdateDedication, onUpdateMoth
           currentWeek={currentWeek}
           motherName={motherName}
           dedication={dedication}
+          onSaveOrder={onSaveOrder}
         />
       </div>
+
+      {/* Order history */}
+      {(state.orders || []).length > 0 && (
+        <div style={{ marginTop:18 }}>
+          <OrderHistory orders={state.orders} />
+        </div>
+      )}
 
       {/* Empty state */}
       {letterCount === 0 && mementoCount === 0 && (
@@ -1202,8 +1212,8 @@ function KeepsakeBookView({ state, currentWeek, onUpdateDedication, onUpdateMoth
 // ═══════════════════════════════════════════════════════════════
 //  ORDER HARDCOVER PANEL — quote + checkout flow calling /api/lulu/*
 // ═══════════════════════════════════════════════════════════════
-function OrderHardcoverPanel({ state, currentWeek, motherName, dedication }) {
-  const [step, setStep] = useState('intro'); // intro | address | quoting | quote | ordering | success | error
+function OrderHardcoverPanel({ state, currentWeek, motherName, dedication, onSaveOrder }) {
+  const [step, setStep] = useState('intro'); // intro | address | quote | pay | ordering | success
   const [addr, setAddr] = useState({
     name: motherName || '',
     street1: '', street2: '',
@@ -1214,9 +1224,12 @@ function OrderHardcoverPanel({ state, currentWeek, motherName, dedication }) {
   const [email, setEmail] = useState('');
   const [shippingLevel, setShippingLevel] = useState('MAIL');
   const [quote, setQuote] = useState(null);
+  const [customerPrice, setCustomerPrice] = useState(null);
+  const [paymentIntent, setPaymentIntent] = useState(null);
   const [order, setOrder] = useState(null);
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
+  const bookIdRef = useRef(null);
 
   const letterCount = state.letters?.length || 0;
   const mementoCount = Object.keys(state.milestones || {}).length;
@@ -1227,16 +1240,18 @@ function OrderHardcoverPanel({ state, currentWeek, motherName, dedication }) {
 
   const canQuote = addr.name && addr.street1 && addr.city && addr.postcode && addr.phone_number;
 
+  // Step 1: get quote from Lulu + compute customer price
   const fetchQuote = async () => {
     setError(null); setBusy(true);
     try {
-      const { getBookQuote } = await import('../book/orderApi.jsx');
+      const { getBookQuote, computeCustomerPrice } = await import('../book/orderApi.jsx');
       const data = await getBookQuote({
         pageCount: pageEstimate,
         shippingAddress: addr,
         shippingLevel,
       });
       setQuote(data);
+      setCustomerPrice(computeCustomerPrice(data.total, data.currency));
       setStep('quote');
     } catch (e) {
       setError(e.message || 'Could not get a price quote.');
@@ -1245,31 +1260,66 @@ function OrderHardcoverPanel({ state, currentWeek, motherName, dedication }) {
     }
   };
 
-  const placeOrder = async () => {
+  // Step 2: create PaymentIntent + move to pay step
+  const proceedToPayment = async () => {
+    setError(null); setBusy(true);
+    try {
+      const { createPaymentIntent } = await import('../book/orderApi.jsx');
+      const bookId = `nursery-${Date.now()}`;
+      bookIdRef.current = bookId;
+      const intent = await createPaymentIntent({
+        amountCents: Math.round(customerPrice.total * 100),
+        currency: (customerPrice.currency || 'USD').toLowerCase(),
+        orderId: bookId,
+        customerEmail: email,
+        babyName: state.babyNickname,
+        motherName,
+        shippingAddress: addr,
+      });
+      setPaymentIntent(intent);
+      setStep('pay');
+    } catch (e) {
+      setError(e.message || 'Could not set up payment.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // Step 3: after successful payment, generate PDFs + create Lulu print job
+  const afterPaymentSuccess = async (stripePaymentId) => {
     setError(null); setBusy(true); setStep('ordering');
     try {
       const { buildAndUploadBook, createPrintOrder } = await import('../book/orderApi.jsx');
-      const bookId = `nursery-${Date.now()}`;
+      const bookId = bookIdRef.current || `nursery-${Date.now()}`;
       const { interiorUrl, coverUrl, pageCount } = await buildAndUploadBook({
-        pregnancy: state,
-        motherName,
-        currentWeek,
-        dedication,
-        bookId,
+        pregnancy: state, motherName, currentWeek, dedication, bookId,
       });
       const title = `The Story of ${state.babyNickname || 'Little One'}`;
       const result = await createPrintOrder({
         title, interiorUrl, coverUrl, pageCount,
-        shippingAddress: addr,
-        shippingLevel,
-        externalId: bookId,
-        contactEmail: email,
+        shippingAddress: addr, shippingLevel,
+        externalId: bookId, contactEmail: email,
       });
       setOrder(result);
+      // Save to local state
+      onSaveOrder && onSaveOrder({
+        id: bookId,
+        luluPrintJobId: result.id,
+        stripePaymentId,
+        status: result.status || 'CREATED',
+        total: customerPrice.total,
+        currency: customerPrice.currency,
+        shippingAddress: addr,
+        email,
+        babyName: state.babyNickname,
+        pageCount,
+        trackingUrl: result.trackingUrl || null,
+        createdAt: new Date().toISOString(),
+      });
       setStep('success');
     } catch (e) {
-      setError(e.message || 'Order failed.');
-      setStep('quote'); // return to quote so they can retry
+      setError(`Payment succeeded but the print job failed: ${e.message}. Contact support with payment id ${stripePaymentId}.`);
+      setStep('quote');
     } finally {
       setBusy(false);
     }
@@ -1369,20 +1419,18 @@ function OrderHardcoverPanel({ state, currentWeek, motherName, dedication }) {
     );
   }
 
-  if (step === 'quote' && quote) {
-    const total = Number(quote.total || 0).toFixed(2);
-    const currency = quote.currency || 'USD';
+  if (step === 'quote' && quote && customerPrice) {
+    const currency = (customerPrice.currency || 'USD').toUpperCase();
     return (
       <div style={panelBox()}>
         <div style={{ fontFamily:SERIF, fontSize:'1.05rem', color:P.cream, marginBottom:14 }}>
           Your keepsake book
         </div>
         <div style={{ padding:'12px 0', borderTop:`1px solid ${P.borderL}`, borderBottom:`1px solid ${P.borderL}`, marginBottom:14 }}>
-          <Line label="6×9 Hardcover · cream paper" value={`${quote.lineItem?.total || quote.lineItem?.unit || '—'} ${currency}`} />
-          <Line label={`Shipping (${shippingLevel.toLowerCase()})`} value={`${quote.lineItem?.shipping || '—'} ${currency}`} />
-          <Line label="Tax" value={`${quote.lineItem?.taxes || '—'} ${currency}`} />
+          <Line label="6×9 Hardcover · cream paper" value="included" />
+          <Line label={`Shipping (${shippingLevel.toLowerCase()})`} value="included" />
           <div style={{ height:1, background:P.borderL, margin:'8px 0' }} />
-          <Line label="Total" value={`${total} ${currency}`} big />
+          <Line label="Total" value={`$${customerPrice.total.toFixed(2)} ${currency}`} big />
         </div>
         <div style={{ fontSize:'0.72rem', color:P.taupe, marginBottom:14 }}>
           Shipping to {addr.name}, {addr.city} {addr.postcode}, {addr.country_code}
@@ -1392,13 +1440,30 @@ function OrderHardcoverPanel({ state, currentWeek, motherName, dedication }) {
 
         <div style={{ display:'flex', gap:8 }}>
           <button onClick={() => setStep('address')} style={{ ...ghostBtn(), flex:1 }}>Edit address</button>
-          <button onClick={placeOrder} disabled={busy} style={{ ...primaryBtn(), flex:2, opacity: busy ? 0.5 : 1 }}>
-            {busy ? 'Placing order…' : 'Place order →'}
+          <button onClick={proceedToPayment} disabled={busy} style={{ ...primaryBtn(), flex:2, opacity: busy ? 0.5 : 1 }}>
+            {busy ? 'Preparing…' : 'Continue to payment →'}
           </button>
         </div>
-        <div style={{ fontSize:'0.68rem', color:P.taupe, marginTop:10, fontStyle:'italic', textAlign:'center' }}>
-          Payment processing is coming soon — for now Lulu will invoice the order.
+      </div>
+    );
+  }
+
+  if (step === 'pay' && paymentIntent && customerPrice) {
+    return (
+      <div style={panelBox()}>
+        <div style={{ fontFamily:SERIF, fontSize:'1.05rem', color:P.cream, marginBottom:6 }}>
+          Payment
         </div>
+        <div style={{ fontSize:'0.78rem', color:P.taupe, marginBottom:14 }}>
+          Total: <strong style={{ color:P.rose }}>${customerPrice.total.toFixed(2)} {(customerPrice.currency || 'USD').toUpperCase()}</strong>
+        </div>
+        <StripePaymentForm
+          clientSecret={paymentIntent.clientSecret}
+          onSuccess={afterPaymentSuccess}
+          onBack={() => setStep('quote')}
+          onError={(msg) => setError(msg)}
+        />
+        {error && <ErrorBox msg={error} />}
       </div>
     );
   }
@@ -1420,6 +1485,181 @@ function OrderHardcoverPanel({ state, currentWeek, motherName, dedication }) {
   }
 
   return null;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  STRIPE PAYMENT FORM — Elements lazily loaded
+// ═══════════════════════════════════════════════════════════════
+function StripePaymentForm({ clientSecret, onSuccess, onBack, onError }) {
+  const P = { rose:'#D4A0A0', taupe:'#A08580', cream:'#FAF0EA', border:'rgba(212,144,152,0.22)' };
+  const [ready, setReady] = useState(false);
+  const [ElementsComp, setElementsComp] = useState(null);
+  const [stripePromise, setStripePromise] = useState(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const [stripeJs, reactStripe] = await Promise.all([
+          import('@stripe/stripe-js'),
+          import('@stripe/react-stripe-js'),
+        ]);
+        const pk = window.__STRIPE_PUBLIC_KEY__ || import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
+        if (!pk) {
+          onError && onError('Stripe is not configured yet (missing VITE_STRIPE_PUBLISHABLE_KEY).');
+          return;
+        }
+        setStripePromise(stripeJs.loadStripe(pk));
+        setElementsComp(() => reactStripe);
+        setReady(true);
+      } catch (e) {
+        onError && onError('Failed to load Stripe: ' + e.message);
+      }
+    })();
+  }, [onError]);
+
+  if (!ready || !ElementsComp) {
+    return (
+      <div style={{ textAlign:'center', padding:'24px 0', color:P.taupe, fontSize:'0.84rem' }}>
+        Loading secure payment…
+      </div>
+    );
+  }
+
+  const { Elements, PaymentElement, useStripe, useElements } = ElementsComp;
+
+  return (
+    <Elements stripe={stripePromise} options={{
+      clientSecret,
+      appearance: {
+        theme: 'night',
+        variables: {
+          colorPrimary: '#D4A0A0',
+          colorBackground: '#1A1410',
+          colorText: '#FAF0EA',
+          colorDanger: '#E8B0B0',
+          fontFamily: 'Inter, system-ui, sans-serif',
+          borderRadius: '10px',
+        },
+      },
+    }}>
+      <StripeInnerForm
+        onSuccess={onSuccess} onBack={onBack} onError={onError}
+        PaymentElement={PaymentElement}
+        useStripe={useStripe}
+        useElements={useElements}
+      />
+    </Elements>
+  );
+}
+
+function StripeInnerForm({ onSuccess, onBack, onError, PaymentElement, useStripe, useElements }) {
+  const P = { rose:'#D4A0A0', roseL:'#E8B0B5', taupe:'#A08580', cream:'#FAF0EA', border:'rgba(212,144,152,0.22)', bg:'#1A1410' };
+  const stripe = useStripe();
+  const elements = useElements();
+  const [processing, setProcessing] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!stripe || !elements) return;
+    setProcessing(true);
+    try {
+      const { error, paymentIntent } = await stripe.confirmPayment({
+        elements,
+        confirmParams: { return_url: window.location.href },
+        redirect: 'if_required',
+      });
+      if (error) {
+        onError && onError(error.message || 'Payment failed');
+        setProcessing(false);
+        return;
+      }
+      if (paymentIntent && paymentIntent.status === 'succeeded') {
+        onSuccess(paymentIntent.id);
+      } else if (paymentIntent) {
+        onError && onError(`Payment status: ${paymentIntent.status}. Please try again.`);
+        setProcessing(false);
+      }
+    } catch (err) {
+      onError && onError(err.message || 'Unexpected payment error');
+      setProcessing(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <div style={{ padding:'6px 0 14px' }}>
+        <PaymentElement />
+      </div>
+      <div style={{ display:'flex', gap:8 }}>
+        <button type="button" onClick={onBack} disabled={processing} style={{
+          background:'transparent', border:`1px solid ${P.border}`, color:P.taupe,
+          padding:'9px 14px', borderRadius:10, cursor:'pointer',
+          fontSize:'0.78rem', fontFamily:SANS, flex:1, opacity: processing ? 0.5 : 1,
+        }}>Back</button>
+        <button type="submit" disabled={!stripe || processing} style={{
+          background:`linear-gradient(135deg, ${P.rose}, ${P.roseL})`,
+          border:'none', color:P.bg,
+          padding:'10px 18px', borderRadius:10, cursor:'pointer',
+          fontSize:'0.82rem', fontFamily:SANS, fontWeight:600, letterSpacing:'0.04em',
+          flex:2, opacity: processing ? 0.5 : 1,
+        }}>{processing ? 'Processing…' : 'Pay & place order'}</button>
+      </div>
+      <div style={{ fontSize:'0.68rem', color:P.taupe, marginTop:10, fontStyle:'italic', textAlign:'center' }}>
+        Secured by Stripe. You will not be charged until you confirm.
+      </div>
+    </form>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  ORDER HISTORY — list of past orders from local state
+// ═══════════════════════════════════════════════════════════════
+function OrderHistory({ orders }) {
+  const P = { panel:'rgba(30,22,18,0.92)', cream:'#FAF0EA', rose:'#D4A0A0', taupe:'#A08580', borderL:'rgba(212,144,152,0.1)', border:'rgba(212,144,152,0.22)' };
+  if (!orders || orders.length === 0) return null;
+  return (
+    <div style={{
+      background:P.panel, border:`1px solid ${P.border}`,
+      borderRadius:14, padding:'16px 18px',
+    }}>
+      <div style={{ fontFamily:SERIF, fontSize:'1rem', color:P.cream, marginBottom:10 }}>
+        📖 Your orders ({orders.length})
+      </div>
+      <div style={{ display:'grid', gap:8 }}>
+        {orders.map(o => (
+          <div key={o.id || o.luluPrintJobId} style={{
+            borderTop:`1px solid ${P.borderL}`,
+            padding:'10px 0',
+          }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:3 }}>
+              <div style={{ fontSize:'0.86rem', color:P.cream }}>
+                {o.babyName ? `The Story of ${o.babyName}` : 'Keepsake Book'}
+              </div>
+              <div style={{ fontSize:'0.74rem', color:P.rose, fontWeight:600 }}>
+                {o.status || 'CREATED'}
+              </div>
+            </div>
+            <div style={{ fontSize:'0.72rem', color:P.taupe, marginBottom:2 }}>
+              {new Date(o.createdAt).toLocaleDateString()} ·
+              {o.total ? ` $${Number(o.total).toFixed(2)} ${o.currency || 'USD'}` : ''} ·
+              {o.pageCount ? ` ${o.pageCount}pg` : ''}
+            </div>
+            {o.shippingAddress && (
+              <div style={{ fontSize:'0.7rem', color:P.taupe }}>
+                to {o.shippingAddress.city}{o.shippingAddress.state_code ? `, ${o.shippingAddress.state_code}` : ''}
+              </div>
+            )}
+            {o.trackingUrl && (
+              <a href={o.trackingUrl} target="_blank" rel="noreferrer" style={{
+                display:'inline-block', marginTop:4, fontSize:'0.74rem', color:P.rose,
+                textDecoration:'underline',
+              }}>Track shipment</a>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 function Field({ label, value, onChange, type = 'text' }) {

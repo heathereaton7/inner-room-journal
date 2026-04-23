@@ -1,9 +1,10 @@
-/* Client-side helper for calling /api/lulu/* endpoints */
+/* Client-side helper for calling /api/lulu/* and /api/stripe/* endpoints */
 
 const API_BASE = '/api/lulu';
+const STRIPE_BASE = '/api/stripe';
 
-async function postJson(path, body) {
-  const res = await fetch(`${API_BASE}${path}`, {
+async function postJson(path, body, base = API_BASE) {
+  const res = await fetch(`${base}${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -16,7 +17,30 @@ async function postJson(path, body) {
   return data;
 }
 
-export async function getBookQuote({ pageCount, shippingAddress, quantity = 1, shippingLevel = 'GROUND', podPackageId }) {
+// ─── Stripe ─────────────────────────────────────────────────────
+export async function createPaymentIntent({ amountCents, currency = 'usd', orderId, customerEmail, babyName, motherName, shippingAddress }) {
+  return postJson('/create-payment-intent', {
+    amountCents, currency, orderId, customerEmail, babyName, motherName, shippingAddress,
+  }, STRIPE_BASE);
+}
+
+// Compute what to charge the customer given Lulu's total cost.
+// Formula: Lulu cost + flat-tiered markup.
+export function computeCustomerPrice(luluTotal, currency = 'USD') {
+  const base = Number(luluTotal) || 0;
+  let markup = 20;
+  if (base > 30) markup = 25;
+  if (base > 50) markup = 30;
+  const total = base + markup;
+  return {
+    luluCost: base,
+    markup,
+    total: Math.round(total * 100) / 100,
+    currency,
+  };
+}
+
+export async function getBookQuote({ pageCount, shippingAddress, quantity = 1, shippingLevel = 'MAIL', podPackageId }) {
   return postJson('/quote', { pageCount, shippingAddress, quantity, shippingLevel, podPackageId });
 }
 

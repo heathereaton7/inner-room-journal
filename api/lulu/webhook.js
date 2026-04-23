@@ -18,6 +18,7 @@
  */
 
 import { createHmac } from 'node:crypto';
+import { updateOrderStatus } from '../_firebaseAdmin.js';
 
 // Keep raw body for signature verification
 export const config = {
@@ -55,16 +56,32 @@ export default async function handler(req, res) {
 
     const topic = event.topic || 'unknown';
     const data  = event.data  || {};
+    const statusName  = data.status?.name;
+    const trackingUrl = data.line_items?.[0]?.tracking_urls?.[0] || null;
 
-    // TODO (Phase 3): persist to Firestore and notify user
-    // For now just log so we can confirm webhook delivery end-to-end.
     console.log('[Lulu Webhook]', {
       topic,
       printJobId:     data.id,
       externalId:     data.external_id,
-      status:         data.status?.name,
-      trackingUrl:    data.line_items?.[0]?.tracking_urls?.[0],
+      status:         statusName,
+      trackingUrl,
     });
+
+    // Persist status to Firestore (best-effort — don't fail the webhook if FS is unavailable)
+    try {
+      await updateOrderStatus({
+        externalId:     data.external_id,
+        luluPrintJobId: data.id,
+        status:         statusName || 'UPDATED',
+        trackingUrl,
+        extra: {
+          luluPrintJobId: data.id,
+          lastTopic:      topic,
+        },
+      });
+    } catch (e) {
+      console.error('Firestore update failed (non-blocking):', e.message);
+    }
 
     return res.status(200).json({ received: true });
   } catch (err) {
