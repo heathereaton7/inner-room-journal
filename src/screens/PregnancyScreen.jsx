@@ -38,6 +38,7 @@ export function createEmptyPregnancy() {
     setupComplete: false,
     dueDate: null,          // ISO date string YYYY-MM-DD
     babyNickname: '',
+    motherName: '',         // optional — used on cover
     faithMode: 'christian', // 'christian' | 'general' | 'spiritual'
     letters: [],            // { id, date, text, sealed, sealUntilBirth }
     checkins: [],           // { id, date, mood, symptoms, reflection }
@@ -45,6 +46,7 @@ export function createEmptyPregnancy() {
     appointments: [],       // { id, date, provider, type, questions, notes }
     kickSessions: [],       // { id, date, startTime, endTime, count }
     prayers: [],            // { id, date, text }
+    bookDedication: '',     // optional custom dedication
     createdAt: new Date().toISOString(),
   };
 }
@@ -90,6 +92,7 @@ export default function PregnancyScreen({ progress, onProgressChange, onBack }) 
            view === 'checkin' ? '🌿 Today' :
            view === 'milestones' ? '🌙 Mementos' :
            view === 'garden' ? '🌷 Garden' :
+           view === 'book' ? '📖 Keepsake Book' :
            view === 'week' ? `Week ${activeWeek || weekIdx}` :
            '🕯️ The Nursery'}
         </div>
@@ -117,6 +120,7 @@ export default function PregnancyScreen({ progress, onProgressChange, onBack }) 
             onCheckin={() => setView('checkin')}
             onMilestones={() => setView('milestones')}
             onGarden={() => setView('garden')}
+            onBook={() => setView('book')}
           />
         )}
 
@@ -162,6 +166,15 @@ export default function PregnancyScreen({ progress, onProgressChange, onBack }) 
           <GardenView
             currentWeek={weekIdx}
             onPickWeek={(w) => { setActiveWeek(w); setView('week'); }}
+          />
+        )}
+
+        {view === 'book' && (
+          <KeepsakeBookView
+            state={state}
+            currentWeek={weekIdx}
+            onUpdateDedication={(text) => update({ bookDedication: text })}
+            onUpdateMotherName={(name) => update({ motherName: name })}
           />
         )}
       </div>
@@ -293,7 +306,7 @@ function SetupFlow({ state, onComplete }) {
 // ═══════════════════════════════════════════════════════════════
 //  NURSERY HOME
 // ═══════════════════════════════════════════════════════════════
-function NurseryHome({ state, current, weekData, onWeekClick, onLetters, onCheckin, onMilestones, onGarden }) {
+function NurseryHome({ state, current, weekData, onWeekClick, onLetters, onCheckin, onMilestones, onGarden, onBook }) {
   const greeting = getGreeting();
   const daysUntil = current?.daysUntilDue ?? null;
   const bloomRatio = current ? Math.min(1, current.week / 40) : 0;
@@ -374,6 +387,36 @@ function NurseryHome({ state, current, weekData, onWeekClick, onLetters, onCheck
         <HotspotBtn icon="🌙" label="Mementos" sub={`${Object.keys(state.milestones).length}/${MILESTONES.length} saved`} onClick={onMilestones} />
         <HotspotBtn icon="🌷" label="Garden" sub="every week's bloom" onClick={onGarden} />
       </div>
+
+      {/* Book is forming card — appears once she has content */}
+      {(state.letters.length >= 1 || Object.keys(state.milestones).length >= 2) && (
+        <button onClick={onBook} style={{
+          width:'100%', textAlign:'left', marginBottom:14, marginTop:4,
+          background:`linear-gradient(135deg, rgba(212,144,152,0.18), rgba(232,192,136,0.08))`,
+          border:`1.5px solid ${P.border}`,
+          borderRadius:16, padding:'18px 20px',
+          cursor:'pointer', color:P.cream, fontFamily:SANS,
+          transition:'all 0.2s',
+          display:'grid', gridTemplateColumns:'48px 1fr auto', gap:14, alignItems:'center',
+        }} onMouseEnter={e => e.currentTarget.style.borderColor = P.rose}
+           onMouseLeave={e => e.currentTarget.style.borderColor = P.border}>
+          <div style={{
+            width:48, height:48, borderRadius:12,
+            background:`linear-gradient(135deg, ${P.rose}, ${P.roseL})`,
+            display:'flex', alignItems:'center', justifyContent:'center',
+            fontSize:'1.5rem', color:P.bg,
+          }}>📖</div>
+          <div>
+            <div style={{ fontFamily:SERIF, fontSize:'1rem', color:P.cream, marginBottom:3 }}>
+              A little book is forming.
+            </div>
+            <div style={{ fontSize:'0.74rem', color:P.taupe, lineHeight:1.5 }}>
+              {state.letters.length} letter{state.letters.length === 1 ? '' : 's'} · {Object.keys(state.milestones).length} memento{Object.keys(state.milestones).length === 1 ? '' : 's'}. Tap to peek inside.
+            </div>
+          </div>
+          <div style={{ color:P.taupe, fontSize:'1.2rem' }}>›</div>
+        </button>
+      )}
 
       {/* Scripture / poem for this week */}
       {weekData && (
@@ -942,6 +985,265 @@ function GardenView({ currentWeek, onPickWeek }) {
 // ═══════════════════════════════════════════════════════════════
 //  HELPERS
 // ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
+//  KEEPSAKE BOOK VIEW — compile + preview + download PDF
+// ═══════════════════════════════════════════════════════════════
+function KeepsakeBookView({ state, currentWeek, onUpdateDedication, onUpdateMotherName }) {
+  const [generating, setGenerating] = useState(false);
+  const [error, setError] = useState(null);
+  const [dedication, setDedication] = useState(state.bookDedication || '');
+  const [motherName, setMotherName] = useState(state.motherName || '');
+
+  const letterCount = state.letters?.length || 0;
+  const mementoCount = Object.keys(state.milestones || {}).length;
+  const babyName = state.babyNickname || 'Little One';
+
+  const pageEstimate = useMemo(() => {
+    // Rough: cover + title + dedication + opening + TOC + closing = 6
+    // Week spreads: only weeks up to current
+    // Letters: 1 page each
+    // Mementos: 1 page (or 2 if many)
+    const weekPages = Math.min(40, currentWeek || 1);
+    const letterPages = letterCount;
+    const mementoPages = mementoCount > 0 ? 2 : 0;
+    return 6 + weekPages + letterPages + mementoPages;
+  }, [currentWeek, letterCount, mementoCount]);
+
+  const handleGenerate = async () => {
+    setError(null);
+    setGenerating(true);
+    try {
+      // Persist any edits
+      if (dedication !== (state.bookDedication || '')) onUpdateDedication(dedication);
+      if (motherName !== (state.motherName || '')) onUpdateMotherName(motherName);
+
+      // Dynamic import keeps the PDF lib out of the main bundle
+      const [{ pdf }, { PREGNANCY_WEEKS }, { default: PregnancyBookDocument }] = await Promise.all([
+        import('@react-pdf/renderer'),
+        import('../data/pregnancyWeeks.js'),
+        import('../book/PregnancyBookDocument.jsx'),
+      ]);
+
+      // Include weeks up to current (or all 40 if post-term)
+      const weeksToInclude = PREGNANCY_WEEKS.slice(0, Math.min(40, currentWeek || 1));
+
+      const doc = (
+        <PregnancyBookDocument
+          pregnancy={{ ...state, bookDedication: dedication, motherName }}
+          motherName={motherName || 'Mama'}
+          weeksData={weeksToInclude}
+          dedication={dedication}
+        />
+      );
+
+      const blob = await pdf(doc).toBlob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const safeBaby = babyName.replace(/[^a-z0-9]/gi, '-').toLowerCase();
+      a.download = `the-story-of-${safeBaby}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 300);
+    } catch (e) {
+      console.error(e);
+      setError(e?.message || 'Something went wrong generating the book.');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handlePreview = async () => {
+    setError(null);
+    setGenerating(true);
+    try {
+      if (dedication !== (state.bookDedication || '')) onUpdateDedication(dedication);
+      if (motherName !== (state.motherName || '')) onUpdateMotherName(motherName);
+
+      const [{ pdf }, { PREGNANCY_WEEKS }, { default: PregnancyBookDocument }] = await Promise.all([
+        import('@react-pdf/renderer'),
+        import('../data/pregnancyWeeks.js'),
+        import('../book/PregnancyBookDocument.jsx'),
+      ]);
+
+      const weeksToInclude = PREGNANCY_WEEKS.slice(0, Math.min(40, currentWeek || 1));
+
+      const doc = (
+        <PregnancyBookDocument
+          pregnancy={{ ...state, bookDedication: dedication, motherName }}
+          motherName={motherName || 'Mama'}
+          weeksData={weeksToInclude}
+          dedication={dedication}
+        />
+      );
+
+      const blob = await pdf(doc).toBlob();
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+    } catch (e) {
+      console.error(e);
+      setError(e?.message || 'Something went wrong generating the book.');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  return (
+    <div>
+      {/* Book cover mockup */}
+      <div style={{ textAlign:'center', marginBottom:28 }}>
+        <div style={{
+          display:'inline-block',
+          width:180, height:240,
+          background:'linear-gradient(135deg, #FAF6EE, #F4EADF)',
+          border:`8px solid ${P.roseL}`,
+          boxShadow:'0 12px 32px rgba(0,0,0,0.4)',
+          padding:'28px 18px',
+          textAlign:'center',
+          color:P.brown,
+          fontFamily:SERIF,
+          marginBottom:20,
+          position:'relative',
+        }}>
+          <div style={{ fontSize:'0.5rem', letterSpacing:'0.3em', color:P.rose, marginBottom:10, textTransform:'uppercase' }}>
+            A Keepsake Book
+          </div>
+          <div style={{ width:30, height:1, background:P.rose, margin:'8px auto' }} />
+          <div style={{ fontFamily:SERIF, fontSize:'0.95rem', fontWeight:700, lineHeight:1.2, color:P.brown, marginBottom:6 }}>
+            The Story{'\n'}of {babyName}
+          </div>
+          <div style={{ fontSize:'0.6rem', fontStyle:'italic', color:P.taupe, marginBottom:10 }}>
+            Before we ever met
+          </div>
+          <div style={{ width:30, height:1, background:P.rose, margin:'8px auto' }} />
+          {motherName && (
+            <div style={{ fontSize:'0.5rem', letterSpacing:'0.2em', color:P.taupe, marginTop:8, textTransform:'uppercase' }}>
+              by {motherName}
+            </div>
+          )}
+        </div>
+        <div style={{ fontFamily:SERIF, fontSize:'1.3rem', color:P.cream, marginBottom:4 }}>
+          Your Keepsake Book
+        </div>
+        <div style={{ fontSize:'0.82rem', color:P.taupe, fontStyle:'italic' }}>
+          Everything you've written, bound in one place.
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div style={{
+        background:P.panel, border:`1px solid ${P.border}`,
+        borderRadius:14, padding:'16px 18px', marginBottom:18,
+      }}>
+        <div style={{ fontSize:'0.66rem', color:P.taupe, letterSpacing:'0.08em', marginBottom:10 }}>WHAT'S INSIDE</div>
+        <StatLine label="Weeks chronicled" value={`${Math.min(40, currentWeek)}`} />
+        <StatLine label="Letters written" value={letterCount} />
+        <StatLine label="Mementos saved" value={mementoCount} />
+        <StatLine label="Estimated pages" value={`~${pageEstimate}`} />
+      </div>
+
+      {/* Book editor */}
+      <div style={{ marginBottom:18 }}>
+        <div style={{ fontSize:'0.68rem', color:P.taupe, letterSpacing:'0.08em', marginBottom:8 }}>
+          YOUR NAME (appears on cover)
+        </div>
+        <input
+          type="text" value={motherName}
+          onChange={e => setMotherName(e.target.value)}
+          placeholder="e.g. Sarah"
+          style={inputStyle()}
+        />
+      </div>
+
+      <div style={{ marginBottom:22 }}>
+        <div style={{ fontSize:'0.68rem', color:P.taupe, letterSpacing:'0.08em', marginBottom:8 }}>
+          DEDICATION <span style={{ textTransform:'none', fontStyle:'italic', letterSpacing:0 }}>(optional — we have a beautiful default)</span>
+        </div>
+        <textarea
+          value={dedication}
+          onChange={e => setDedication(e.target.value)}
+          placeholder={`For you, ${babyName}.\nBefore we ever met, you were already loved.`}
+          style={{
+            width:'100%', minHeight:90,
+            background:P.panel, border:`1px solid ${P.border}`,
+            borderRadius:12, padding:'12px 14px',
+            color:P.cream, fontFamily:SERIF, fontSize:'0.92rem',
+            lineHeight:1.6, outline:'none', resize:'vertical', boxSizing:'border-box',
+          }}
+        />
+      </div>
+
+      {/* Actions */}
+      <div style={{ display:'grid', gap:10 }}>
+        <button onClick={handlePreview} disabled={generating} style={{
+          ...primaryBtn(), width:'100%', opacity: generating ? 0.6 : 1,
+        }}>
+          {generating ? 'Binding your book…' : '📖 Preview your book'}
+        </button>
+        <button onClick={handleGenerate} disabled={generating} style={{
+          ...ghostBtn(), width:'100%', opacity: generating ? 0.6 : 1,
+        }}>
+          {generating ? '…' : '⬇ Download as PDF'}
+        </button>
+      </div>
+
+      {error && (
+        <div style={{
+          marginTop:14, padding:'10px 14px',
+          background:'rgba(200,80,80,0.15)', border:'1px solid rgba(200,80,80,0.3)',
+          borderRadius:10, color:'#E8B0B0', fontSize:'0.78rem',
+        }}>
+          {error}
+        </div>
+      )}
+
+      {/* Print option */}
+      <div style={{
+        marginTop:24, padding:'16px 18px',
+        background:'transparent', border:`1px dashed ${P.borderL}`,
+        borderRadius:12,
+      }}>
+        <div style={{ fontFamily:SERIF, fontSize:'0.95rem', color:P.cream, marginBottom:6 }}>
+          🕊️ Want it printed?
+        </div>
+        <div style={{ fontSize:'0.78rem', color:P.taupe, lineHeight:1.6 }}>
+          Printing-on-demand is coming soon. For now, download the PDF above and order a
+          hardcover copy through a printing service like Lulu, Blurb, or Bookvault —
+          your book is formatted for 6×9" hardcover printing.
+        </div>
+      </div>
+
+      {/* Empty state */}
+      {letterCount === 0 && mementoCount === 0 && (
+        <div style={{
+          marginTop:20, padding:'18px 20px',
+          background:P.panel, border:`1px dashed ${P.border}`,
+          borderRadius:12, textAlign:'center',
+          color:P.taupe, fontSize:'0.82rem', lineHeight:1.6, fontStyle:'italic',
+        }}>
+          Your book is waiting. Start with a letter or save a memento —<br/>
+          every word you add becomes another page.
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StatLine({ label, value }) {
+  return (
+    <div style={{
+      display:'flex', justifyContent:'space-between', alignItems:'baseline',
+      padding:'4px 0', fontSize:'0.84rem',
+    }}>
+      <span style={{ color:P.taupe }}>{label}</span>
+      <span style={{ color:P.cream, fontWeight:600 }}>{value}</span>
+    </div>
+  );
+}
+
 function HotspotBtn({ icon, label, sub, onClick }) {
   return (
     <button onClick={onClick} style={{
