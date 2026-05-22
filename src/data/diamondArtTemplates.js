@@ -872,6 +872,308 @@ function buildPearlGates() {
   return cells;
 }
 
+// Build the 100-color palette for Faithful Companion (dog portrait)
+function buildPortraitPalette() {
+  // 1-22: black/dark gray ramp (pitch to medium gray)
+  const black = ramp([
+    '#000000', '#040404', '#080808', '#0C0C0C', '#101010',
+    '#161616', '#1C1C1C', '#222222', '#282828', '#303030',
+    '#383838', '#404040', '#484848', '#505050', '#585858',
+    '#606060', '#686868', '#707070', '#787878', '#808080',
+    '#888888', '#909090',
+  ], 22);
+  // 23-42: white/cream ramp (pure white to warm cream)
+  const white = ramp([
+    '#FFFFFF', '#FCFCFC', '#F8F8F8', '#F4F4F4', '#F0F0EC',
+    '#ECEBE4', '#E8E6DC', '#E0DCD0', '#D8D2C4', '#D0C8B8',
+    '#C8BCA8', '#BCAE98', '#B0A088', '#A09078', '#908068',
+    '#807058', '#706048', '#605038', '#504028', '#403018',
+  ], 20);
+  // 43-62: autumn leaf brown ramp (deep to highlights)
+  const leafBrown = ramp([
+    '#1A1008', '#241408', '#2E1C0C', '#382410', '#422C14',
+    '#4C3418', '#583C20', '#644428', '#704C30', '#7C5438',
+    '#885C40', '#946448', '#A06C50', '#AC7858', '#B88460',
+    '#C49068', '#D09C70', '#DCA878', '#E8B484', '#F0C090',
+  ], 20);
+  // 63-77: grass green ramp
+  const grass = ramp([
+    '#0A1408', '#0E1C0C', '#142410', '#1C2C14', '#243418',
+    '#2C401C', '#384C20', '#445828', '#506430', '#5C7038',
+    '#687C40', '#788848', '#889450', '#98A058', '#A8AC60',
+  ], 15);
+  // 78-85: pink tongue ramp
+  const pink = ramp([
+    '#C04864', '#D0586C', '#DC6878', '#E47884', '#EC8890', '#F49AA0', '#F8ACB4', '#FCC0C8',
+  ], 8);
+  // 86-93: sparkle white (sparkle=true)
+  const sparkleWhite = ['#FFFFFF', '#FCFCFF', '#F8F8FF', '#FCFCFC', '#FFFEFC', '#F8FCFF', '#FFFDF8', '#FCFFFE'];
+  // 94-97: nose/eye darks (deepest blacks with subtle blue)
+  const noseEye = ['#000000', '#0A0608', '#04060C', '#080810'];
+  // 98-100: gold leaf accents (sparkle=true)
+  const goldLeaf = ['#E8B040', '#F4C858', '#FCDC78'];
+
+  return joinPalette(
+    makeEntries(black, 'Fur', 0),
+    makeEntries(white, 'Chest', 0),
+    makeEntries(leafBrown, 'Leaf', 0),
+    makeEntries(grass, 'Grass', 0),
+    makeEntries(pink, 'Tongue', 0),
+    makeEntries(sparkleWhite, 'Shine', 0, { sparkle: true }),
+    makeEntries(noseEye, 'Nose', 0),
+    makeEntries(goldLeaf, 'Gold leaf', 0, { sparkle: true }),
+  );
+}
+
+// ── Template 9: Faithful Companion (dog portrait) ─────────────────────────
+function buildPortrait() {
+  const cells = emptyCells();
+
+  // ── Background: autumn leaves with noise variation ──
+  // Use a deterministic pseudo-random for stability
+  function pseudoRand(r, c, seed = 0) {
+    const x = Math.sin(r * 12.9898 + c * 78.233 + seed) * 43758.5453;
+    return x - Math.floor(x); // [0,1)
+  }
+
+  fillRegion(cells, (r, c) => {
+    // Multi-scale noise for natural leaf variation
+    const n1 = pseudoRand(r, c, 0);
+    const n2 = pseudoRand(Math.floor(r / 2), Math.floor(c / 2), 1);
+    const n = (n1 * 0.6 + n2 * 0.4);
+    // Light from upper-left (rows 0 lighter, rows 39 darker)
+    const lightDir = clamp(1 - (r * 0.5 + c * 0.5) / 40, 0, 1);
+    const composite = clamp(n * 0.65 + lightDir * 0.35, 0, 1);
+    return Math.round(43 + composite * 19); // 43-62 leaf brown ramp
+  });
+
+  // Grass tufts scattered at corners/edges
+  const grassPatches = [
+    [33, 2], [34, 3], [35, 4], [36, 5], [37, 4],
+    [33, 37], [34, 36], [35, 36], [36, 35], [37, 37],
+    [3, 2], [4, 2], [38, 20], [37, 19],
+    [3, 37], [2, 36], [38, 12], [38, 28],
+  ];
+  grassPatches.forEach(([r, c], i) => {
+    const baseGreen = 63 + (i % 15);
+    setCell(cells, r, c, baseGreen);
+    // Surround with subtle green tint
+    if (i % 3 === 0) {
+      setCell(cells, r - 1, c, 63 + ((i + 2) % 15));
+      setCell(cells, r, c + 1, 63 + ((i + 4) % 15));
+    }
+  });
+
+  // ── Dog body — large rounded shape (chest/torso) ──
+  // Center at (24, 20), ellipse spanning rows 16-32, cols 12-28
+  fillRegion(cells, (r, c) => {
+    const dx = (c - 20) / 8;
+    const dy = (r - 24) / 9;
+    const d = Math.sqrt(dx * dx + dy * dy);
+    if (d > 1) return 0;
+    // Light from upper-left: surface normal pointing up-left = brighter
+    const lightX = -0.55, lightY = -0.55;
+    const norm = (dx * lightX + dy * lightY); // -1..1
+    const light = clamp(norm * 0.9 + 0.5, 0, 1); // 0..1
+    // Edge darkening for roundness
+    const edge = 1 - Math.pow(d, 2);
+    const shade = clamp(light * 0.55 + edge * 0.3 + 0.1, 0, 1);
+    return Math.round(1 + shade * 18); // 1-19 from black ramp
+  });
+
+  // ── Head — ellipse centered at (13, 20) ──
+  fillRegion(cells, (r, c) => {
+    const dx = (c - 20) / 5.5;
+    const dy = (r - 13) / 5.5;
+    const d = Math.sqrt(dx * dx + dy * dy);
+    if (d > 1) return 0;
+    const lightX = -0.6, lightY = -0.5;
+    const norm = (dx * lightX + dy * lightY);
+    const light = clamp(norm * 0.9 + 0.5, 0, 1);
+    const edge = 1 - Math.pow(d, 2.2);
+    const shade = clamp(light * 0.55 + edge * 0.3 + 0.1, 0, 1);
+    return Math.round(1 + shade * 18);
+  });
+
+  // ── Ears (floppy, sticking out) ──
+  // Left ear — at (8-13, 13-16)
+  for (let r = 8; r <= 13; r++) {
+    for (let c = 13; c <= 17; c++) {
+      const dx = c - 15, dy = r - 11;
+      const d2 = (dx * dx) / 4 + (dy * dy) / 9;
+      if (d2 < 1) {
+        const t = (r - 8) / 5;
+        const ht = (c - 13) / 4;
+        const shade = clamp(0.2 + (1 - t) * 0.4 + (1 - ht) * 0.2, 0, 1);
+        setCell(cells, r, c, Math.round(1 + shade * 14));
+      }
+    }
+  }
+  // Right ear — at (8-13, 24-27)
+  for (let r = 8; r <= 13; r++) {
+    for (let c = 23; c <= 27; c++) {
+      const dx = c - 25, dy = r - 11;
+      const d2 = (dx * dx) / 4 + (dy * dy) / 9;
+      if (d2 < 1) {
+        const t = (r - 8) / 5;
+        const ht = (c - 23) / 4;
+        const shade = clamp(0.2 + (1 - t) * 0.4 + ht * 0.2, 0, 1);
+        setCell(cells, r, c, Math.round(1 + shade * 14));
+      }
+    }
+  }
+
+  // ── White chest blaze ──
+  // Vertical white stripe going up between front legs into chest
+  fillRegion(cells, (r, c) => {
+    if (r < 17 || r > 30) return 0;
+    const dx = (c - 20);
+    const dy = (r - 24);
+    // Tapered chest patch — wider at chest, narrows up to neck
+    const taper = 1 - clamp((r - 17) / 13, 0, 1) * 0.3; // wider at chest
+    const width = 2.5 + (1 - taper) * 1.5;
+    if (Math.abs(dx) > width) return 0;
+    // Only paint over body cells (current is black)
+    const cur = cells[idx(r, c)];
+    if (cur === 0 || cur > 22) return 0;
+    const light = clamp(0.5 + (-dx * 0.1 - dy * 0.05) + 0.2, 0, 1);
+    const edge = 1 - Math.abs(dx) / width;
+    const shade = clamp(light * 0.5 + edge * 0.5, 0, 1);
+    return Math.round(23 + shade * 12); // mostly bright whites
+  });
+
+  // ── White blaze on muzzle (vertical stripe down the face) ──
+  for (let r = 13; r <= 17; r++) {
+    for (let c = 19; c <= 21; c++) {
+      const cur = cells[idx(r, c)];
+      if (cur > 0 && cur < 23) {
+        const dx = c - 20;
+        const shade = clamp(0.5 - Math.abs(dx) * 0.2, 0, 1);
+        setCell(cells, r, c, Math.round(23 + shade * 14));
+      }
+    }
+  }
+
+  // ── Muzzle bottom (small protrusion below nose) ──
+  for (let r = 16; r <= 18; r++) {
+    for (let c = 19; c <= 21; c++) {
+      const cur = cells[idx(r, c)];
+      if (cur > 0 && cur < 23) {
+        setCell(cells, r, c, 30 + ((r + c) % 8));
+      }
+    }
+  }
+
+  // ── Pink tongue (hanging from mouth) ──
+  // Tongue extends from row 16 to row 20, cols 19-21
+  for (let dr = 0; dr < 5; dr++) {
+    const r = 16 + dr;
+    const widthHere = dr < 2 ? 1 : 0; // narrows at bottom
+    for (let dc = -widthHere - 1; dc <= widthHere + 1; dc++) {
+      const c = 20 + dc;
+      const t = dr / 5;
+      const ht = Math.abs(dc) / (widthHere + 1);
+      // Shading: edges darker, center brighter; bottom darker
+      const light = clamp((1 - t * 0.4) * (1 - ht * 0.4) + 0.3, 0, 1);
+      setCell(cells, r, c, Math.round(78 + light * 7));
+    }
+  }
+
+  // ── Nose (small dark patch above tongue) ──
+  setCell(cells, 13, 19, 95);
+  setCell(cells, 13, 20, 94);
+  setCell(cells, 13, 21, 95);
+  setCell(cells, 14, 19, 96);
+  setCell(cells, 14, 20, 94);
+  setCell(cells, 14, 21, 96);
+  setCell(cells, 12, 20, 97); // nose top highlight
+
+  // ── Eyes ──
+  // Left eye
+  setCell(cells, 11, 17, 94);
+  setCell(cells, 11, 18, 95);
+  // Eye sparkle / highlight
+  setCell(cells, 10, 17, 86);
+  // Right eye
+  setCell(cells, 11, 22, 94);
+  setCell(cells, 11, 23, 95);
+  setCell(cells, 10, 23, 87);
+
+  // ── Front legs ──
+  // Left leg (cols 16-18)
+  for (let r = 28; r <= 35; r++) {
+    for (let c = 16; c <= 18; c++) {
+      const t = (r - 28) / 7;
+      const ht = (c - 16) / 2;
+      const light = clamp(0.4 + (1 - ht) * 0.3 + (1 - t) * 0.1, 0, 1);
+      setCell(cells, r, c, Math.round(2 + light * 14));
+    }
+  }
+  // Right leg (cols 22-24)
+  for (let r = 28; r <= 35; r++) {
+    for (let c = 22; c <= 24; c++) {
+      const t = (r - 28) / 7;
+      const ht = (c - 22) / 2;
+      const light = clamp(0.4 + (1 - ht) * 0.3 + (1 - t) * 0.1, 0, 1);
+      setCell(cells, r, c, Math.round(2 + light * 14));
+    }
+  }
+
+  // ── White paws ──
+  // Left paw
+  for (let r = 33; r <= 36; r++) {
+    for (let c = 15; c <= 19; c++) {
+      const t = (r - 33) / 3;
+      const ht = Math.abs(c - 17) / 2;
+      const light = clamp(0.7 - t * 0.2 - ht * 0.1, 0, 1);
+      setCell(cells, r, c, Math.round(23 + light * 13));
+    }
+  }
+  // Right paw
+  for (let r = 33; r <= 36; r++) {
+    for (let c = 21; c <= 25; c++) {
+      const t = (r - 33) / 3;
+      const ht = Math.abs(c - 23) / 2;
+      const light = clamp(0.7 - t * 0.2 - ht * 0.1, 0, 1);
+      setCell(cells, r, c, Math.round(23 + light * 13));
+    }
+  }
+
+  // ── Tail (curving up from back-right) ──
+  const tailCells = [
+    [25, 28], [25, 29], [24, 29], [24, 30],
+    [23, 30], [23, 31], [22, 31], [22, 32], [21, 32], [21, 33],
+  ];
+  tailCells.forEach(([r, c], i) => {
+    const shade = 3 + (i % 8);
+    setCell(cells, r, c, shade);
+  });
+
+  // ── Fur sparkles (subtle shines on the black coat) ──
+  const furSparkles = [
+    [17, 14], [19, 26], [23, 13], [25, 27], [28, 16], [30, 23],
+  ];
+  furSparkles.forEach(([r, c], i) => {
+    const cur = cells[idx(r, c)];
+    if (cur > 0 && cur < 23) setCell(cells, r, c, 86 + (i % 8));
+  });
+
+  // ── Scattered gold/sparkle leaves in the background ──
+  const goldLeaves = [
+    [3, 5], [4, 33], [6, 12], [8, 36], [10, 4],
+    [33, 14], [34, 25], [36, 8], [37, 31],
+    [22, 4], [27, 37],
+  ];
+  goldLeaves.forEach(([r, c], i) => {
+    const cur = cells[idx(r, c)];
+    if (cur >= 43 && cur <= 62) {
+      setCell(cells, r, c, 98 + (i % 3));
+    }
+  });
+
+  return cells;
+}
+
 // ── Templates registry ────────────────────────────────────────────────────
 export const TEMPLATES = [
   {
@@ -1044,6 +1346,15 @@ export const TEMPLATES = [
     grid: { cols: COLS, rows: ROWS },
     palette: buildPearlGatesPalette(),
     cells: buildPearlGates(),
+  },
+  {
+    id: 'faithful-companion',
+    title: 'Faithful Companion',
+    verse: 'A righteous man regardeth the life of his beast.',
+    reference: 'Proverbs 12:10',
+    grid: { cols: COLS, rows: ROWS },
+    palette: buildPortraitPalette(),
+    cells: buildPortrait(),
   },
 ];
 
