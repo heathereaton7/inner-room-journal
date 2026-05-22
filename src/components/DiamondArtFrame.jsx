@@ -59,31 +59,61 @@ export default function DiamondArtFrame({ artwork, size = 220, showLabel = true 
           >
             <defs>
               {palette.map(p => (
-                <radialGradient key={p.id} id={`fr-${artwork.id}-${p.id}`} cx="35%" cy="30%" r="70%">
-                  <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.85" />
-                  <stop offset="35%" stopColor={p.hex} stopOpacity="1" />
-                  <stop offset="100%" stopColor={darken(p.hex, 0.4)} stopOpacity="1" />
-                </radialGradient>
+                p.pearl ? (
+                  <radialGradient key={p.id} id={`fr-${artwork.id}-${p.id}`} cx="32%" cy="28%" r="80%">
+                    <stop offset="0%" stopColor="#FFFFFF" stopOpacity="1" />
+                    <stop offset="20%" stopColor={lighten(p.hex, 0.25)} stopOpacity="1" />
+                    <stop offset="55%" stopColor={p.hex} stopOpacity="1" />
+                    <stop offset="80%" stopColor={pearlShift(p.hex)} stopOpacity="1" />
+                    <stop offset="100%" stopColor={darken(p.hex, 0.18)} stopOpacity="1" />
+                  </radialGradient>
+                ) : p.sparkle ? (
+                  <radialGradient key={p.id} id={`fr-${artwork.id}-${p.id}`} cx="35%" cy="28%" r="75%">
+                    <stop offset="0%" stopColor="#FFFFFF" stopOpacity="1" />
+                    <stop offset="18%" stopColor="#FFFFFF" stopOpacity="0.95" />
+                    <stop offset="45%" stopColor={p.hex} stopOpacity="1" />
+                    <stop offset="100%" stopColor={darken(p.hex, 0.3)} stopOpacity="1" />
+                  </radialGradient>
+                ) : (
+                  <radialGradient key={p.id} id={`fr-${artwork.id}-${p.id}`} cx="35%" cy="30%" r="70%">
+                    <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.85" />
+                    <stop offset="35%" stopColor={p.hex} stopOpacity="1" />
+                    <stop offset="100%" stopColor={darken(p.hex, 0.4)} stopOpacity="1" />
+                  </radialGradient>
+                )
               ))}
             </defs>
-            {gems.map(({ i, cx, cy, half, hex }) => (
-              <g key={i} transform={`translate(${cx} ${cy}) rotate(45)`}>
-                <rect
-                  x={-half * 0.78} y={-half * 0.78}
-                  width={half * 1.56} height={half * 1.56}
-                  rx={1.6}
-                  fill={`url(#fr-${artwork.id}-${cells[i]})`}
-                  stroke={darken(hex, 0.35)}
-                  strokeWidth="0.2"
-                />
-                <rect
-                  x={-half * 0.55} y={-half * 0.68}
-                  width={half * 0.5} height={half * 0.22}
-                  rx={1}
-                  fill="rgba(255,255,255,0.55)"
-                />
-              </g>
-            ))}
+            {gems.map(({ i, cx, cy, half, hex }) => {
+              const p = palette.find(pp => pp.id === cells[i]);
+              return (
+                <g key={i} transform={`translate(${cx} ${cy}) rotate(45)`}>
+                  <rect
+                    x={-half * 0.78} y={-half * 0.78}
+                    width={half * 1.56} height={half * 1.56}
+                    rx={1.6}
+                    fill={`url(#fr-${artwork.id}-${cells[i]})`}
+                    stroke={darken(hex, 0.35)}
+                    strokeWidth="0.2"
+                  />
+                  {p?.pearl ? (
+                    <ellipse cx={-half * 0.25} cy={-half * 0.35} rx={half * 0.42} ry={half * 0.28} fill="rgba(255,255,255,0.75)" />
+                  ) : (
+                    <rect
+                      x={-half * 0.55} y={-half * 0.68}
+                      width={half * 0.5} height={half * 0.22}
+                      rx={1}
+                      fill="rgba(255,255,255,0.55)"
+                    />
+                  )}
+                  {p?.sparkle && (
+                    <g transform={`rotate(-45)`}>
+                      <path d={`M 0 ${-half * 0.55} L ${half * 0.12} 0 L 0 ${half * 0.55} L ${-half * 0.12} 0 Z`} fill="rgba(255,255,255,0.95)" />
+                      <path d={`M ${-half * 0.55} 0 L 0 ${half * 0.12} L ${half * 0.55} 0 L 0 ${-half * 0.12} Z`} fill="rgba(255,255,255,0.85)" />
+                    </g>
+                  )}
+                </g>
+              );
+            })}
           </svg>
         </div>
       </div>
@@ -101,13 +131,28 @@ export default function DiamondArtFrame({ artwork, size = 220, showLabel = true 
   );
 }
 
-function darken(hex, amount) {
-  if (!hex) return '#000';
+function parseHex(hex) {
   let h = hex.replace('#', '');
   if (h.length === 3) h = h.split('').map(c => c + c).join('');
   const n = parseInt(h, 16);
-  const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
-  const f = 1 - amount;
-  const to = v => Math.round(v * f).toString(16).padStart(2, '0');
+  return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+}
+function toHex(r, g, b) {
+  const to = v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0');
   return `#${to(r)}${to(g)}${to(b)}`;
+}
+function darken(hex, amount) {
+  if (!hex) return '#000';
+  const { r, g, b } = parseHex(hex);
+  const f = 1 - amount;
+  return toHex(r * f, g * f, b * f);
+}
+function lighten(hex, amount) {
+  if (!hex) return '#fff';
+  const { r, g, b } = parseHex(hex);
+  return toHex(r + (255 - r) * amount, g + (255 - g) * amount, b + (255 - b) * amount);
+}
+function pearlShift(hex) {
+  const { r, g, b } = parseHex(hex);
+  return toHex(g * 0.4 + r * 0.6, b * 0.4 + g * 0.6, r * 0.3 + b * 0.7);
 }

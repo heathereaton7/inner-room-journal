@@ -46,6 +46,13 @@ export default function DiamondArtCanvas({
     return out;
   }, [cells, template, cols, rows]);
 
+  // Build O(1) lookup map for palette properties (pearl, sparkle, etc.)
+  const paletteMap = useMemo(() => {
+    const m = new Map();
+    palette.forEach(p => m.set(p.id, p));
+    return m;
+  }, [palette]);
+
   const handleTap = (idx, target) => {
     if (mode === 'guided') {
       // In guided mode, only tappable cells have target > 0
@@ -73,11 +80,30 @@ export default function DiamondArtCanvas({
         <defs>
           {/* Gem gradient per palette color */}
           {palette.map(p => (
-            <radialGradient key={p.id} id={`gem-${p.id}`} cx="35%" cy="30%" r="70%">
-              <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.85" />
-              <stop offset="35%" stopColor={p.hex} stopOpacity="1" />
-              <stop offset="100%" stopColor={darken(p.hex, 0.4)} stopOpacity="1" />
-            </radialGradient>
+            p.pearl ? (
+              // Pearl: iridescent shimmer with soft hue shift
+              <radialGradient key={p.id} id={`gem-${p.id}`} cx="32%" cy="28%" r="80%">
+                <stop offset="0%" stopColor="#FFFFFF" stopOpacity="1" />
+                <stop offset="20%" stopColor={lighten(p.hex, 0.25)} stopOpacity="1" />
+                <stop offset="55%" stopColor={p.hex} stopOpacity="1" />
+                <stop offset="80%" stopColor={pearlShift(p.hex)} stopOpacity="1" />
+                <stop offset="100%" stopColor={darken(p.hex, 0.18)} stopOpacity="1" />
+              </radialGradient>
+            ) : p.sparkle ? (
+              // Sparkle: extra-bright core with crystalline edge
+              <radialGradient key={p.id} id={`gem-${p.id}`} cx="35%" cy="28%" r="75%">
+                <stop offset="0%" stopColor="#FFFFFF" stopOpacity="1" />
+                <stop offset="18%" stopColor="#FFFFFF" stopOpacity="0.95" />
+                <stop offset="45%" stopColor={p.hex} stopOpacity="1" />
+                <stop offset="100%" stopColor={darken(p.hex, 0.3)} stopOpacity="1" />
+              </radialGradient>
+            ) : (
+              <radialGradient key={p.id} id={`gem-${p.id}`} cx="35%" cy="30%" r="70%">
+                <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.85" />
+                <stop offset="35%" stopColor={p.hex} stopOpacity="1" />
+                <stop offset="100%" stopColor={darken(p.hex, 0.4)} stopOpacity="1" />
+              </radialGradient>
+            )
           ))}
           <filter id="da-glow" x="-50%" y="-50%" width="200%" height="200%">
             <feGaussianBlur stdDeviation="0.6" />
@@ -126,12 +152,30 @@ export default function DiamondArtCanvas({
                     strokeWidth="0.25"
                   />
                   {/* Inner highlight */}
-                  <rect
-                    x={-half * 0.55} y={-half * 0.68}
-                    width={half * 0.5} height={half * 0.22}
-                    rx={1}
-                    fill="rgba(255,255,255,0.55)"
-                  />
+                  {(paletteMap.get(filled)?.pearl) ? (
+                    // Pearl: large soft highlight (no harsh edge)
+                    <ellipse cx={-half * 0.25} cy={-half * 0.35} rx={half * 0.42} ry={half * 0.28} fill="rgba(255,255,255,0.75)" />
+                  ) : (
+                    <rect
+                      x={-half * 0.55} y={-half * 0.68}
+                      width={half * 0.5} height={half * 0.22}
+                      rx={1}
+                      fill="rgba(255,255,255,0.55)"
+                    />
+                  )}
+                  {/* Sparkle: tiny 4-point star inside */}
+                  {(paletteMap.get(filled)?.sparkle) && (
+                    <g transform={`rotate(-45)`}>
+                      <path
+                        d={`M 0 ${-half * 0.55} L ${half * 0.12} 0 L 0 ${half * 0.55} L ${-half * 0.12} 0 Z`}
+                        fill="rgba(255,255,255,0.95)"
+                      />
+                      <path
+                        d={`M ${-half * 0.55} 0 L 0 ${half * 0.12} L ${half * 0.55} 0 L 0 ${-half * 0.12} Z`}
+                        fill="rgba(255,255,255,0.85)"
+                      />
+                    </g>
+                  )}
                 </g>
               ) : (
                 // Empty target cell — show outline + number
@@ -184,6 +228,25 @@ function darken(hex, amount) {
   const { r, g, b } = hexToRgb(hex);
   const f = 1 - amount;
   return rgbToHex(Math.round(r * f), Math.round(g * f), Math.round(b * f));
+}
+function lighten(hex, amount) {
+  if (!hex) return '#fff';
+  const { r, g, b } = hexToRgb(hex);
+  return rgbToHex(
+    Math.round(r + (255 - r) * amount),
+    Math.round(g + (255 - g) * amount),
+    Math.round(b + (255 - b) * amount),
+  );
+}
+// pearlShift: shift hue toward complementary tint for iridescent look
+function pearlShift(hex) {
+  const { r, g, b } = hexToRgb(hex);
+  // Subtle channel swap towards opal/iridescent feel
+  return rgbToHex(
+    Math.round(g * 0.4 + r * 0.6),
+    Math.round(b * 0.4 + g * 0.6),
+    Math.round(r * 0.3 + b * 0.7),
+  );
 }
 function hexWithAlpha(hex, a) {
   const { r, g, b } = hexToRgb(hex);

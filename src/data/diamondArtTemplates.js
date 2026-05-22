@@ -6,7 +6,11 @@
  *
  * Each template uses positional shading functions to give the art
  * realistic light/shadow ramps rather than flat color blocks.
+ *
+ * Special premium templates use 100-color palettes with pearl/sparkle gems.
  */
+
+import { ramp, makeEntries, joinPalette } from './diamondArtPalette.js';
 
 const COLS = 40;
 const ROWS = 40;
@@ -535,6 +539,339 @@ function buildHeart() {
   return cells;
 }
 
+// ──────────────────────────────────────────────────────────────────────────
+// PREMIUM 100-COLOR TEMPLATES (with pearls + sparkles)
+// ──────────────────────────────────────────────────────────────────────────
+
+// Build the 100-color palette for Crown of Life
+function buildCrownPalette() {
+  // 1-18: gold ramp (deep to bright)
+  const gold = ramp([
+    '#1A0F03', '#3A2208', '#5A3812', '#7A5018', '#9A6820',
+    '#B47830', '#C9904A', '#D8A655', '#E4B868', '#EDC97A',
+    '#F4D88A', '#FAE5A0', '#FCEFB8', '#FFF4CC', '#FFF8D8',
+    '#FFFBE6', '#FFFDF0', '#FFFEF8',
+  ], 18);
+  // 19-30: pearl ramp (subtle hue shifts, pearl=true)
+  const pearl = [
+    '#F4E8E8', '#F8EEEE', '#FCF4F4', '#F8F0E8',
+    '#F0E8F0', '#E8F0F4', '#F4F8FC', '#FAFAFA',
+    '#FFFCFC', '#FFFFFF', '#FFF8F0', '#F8F4FC',
+  ];
+  // 31-42: sapphire blue ramp
+  const sapphire = ramp([
+    '#0A0828', '#181848', '#222870', '#28389A',
+    '#3050C0', '#3870E0', '#5090F0', '#70B0F8',
+    '#A0CCFC', '#C8E0FE', '#E0EEFF', '#F0F8FF',
+  ], 12);
+  // 43-54: ruby red ramp
+  const ruby = ramp([
+    '#1A0408', '#400810', '#600C18', '#801028',
+    '#A01838', '#C02050', '#D8385A', '#E85870',
+    '#F08090', '#F8A8B4', '#FCCCD4', '#FFE4EC',
+  ], 12);
+  // 55-66: emerald green ramp
+  const emerald = ramp([
+    '#021008', '#082818', '#0C4028', '#105838',
+    '#187048', '#208860', '#28A078', '#48B89A',
+    '#78D0B8', '#A8E0CC', '#D0EEDC', '#E8F8F0',
+  ], 12);
+  // 67-78: amethyst purple ramp
+  const amethyst = ramp([
+    '#0A0418', '#1A0830', '#301050', '#481870',
+    '#603090', '#7848B0', '#9068C8', '#A888D8',
+    '#C0A8E4', '#D8C8EC', '#ECE0F4', '#F8F0FC',
+  ], 12);
+  // 79-86: sparkle white (sparkle=true)
+  const sparkle = ['#FFFFFF', '#FCFCFF', '#F8F8FF', '#F4F4FC', '#FCFCFC', '#FFFEF0', '#FEF8D8', '#FAEFB0'];
+  // 87-94: shadow brown (8)
+  const shadow = ramp(['#0A0604', '#1A0E08', '#28180C', '#382010', '#482814', '#583018', '#68381C', '#784020'], 8);
+  // 95-100: velvet purple background (6)
+  const velvet = ramp(['#08051A', '#0E0820', '#180A2C', '#241038', '#321848', '#3E2058'], 6);
+
+  return joinPalette(
+    makeEntries(gold, 'Gold', 0),
+    makeEntries(pearl, 'Pearl', 0, { pearl: true }),
+    makeEntries(sapphire, 'Sapphire', 0),
+    makeEntries(ruby, 'Ruby', 0),
+    makeEntries(emerald, 'Emerald', 0),
+    makeEntries(amethyst, 'Amethyst', 0),
+    makeEntries(sparkle, 'Sparkle', 0, { sparkle: true }),
+    makeEntries(shadow, 'Shadow', 0),
+    makeEntries(velvet, 'Velvet', 0),
+  );
+}
+
+// Build the 100-color palette for New Jerusalem (Pearl Gates)
+function buildPearlGatesPalette() {
+  // 1-20: pearl iridescent ramps with subtle hue shifts (pearl=true)
+  const pearls = [
+    '#FFFFFF', '#FFFCFC', '#FCFCFF', '#FCF8F4', '#F8F4F0',
+    '#F4F0F4', '#F0F4F8', '#E8ECF4', '#ECECEC', '#E0E8E8',
+    '#F8F4E8', '#F4ECE0', '#ECE8E4', '#F8F0F0', '#F0E8E8',
+    '#E4ECEC', '#E8F0E8', '#F0F4E8', '#F8F8E8', '#FFFEF0',
+  ];
+  // 21-30: golden street (sparkle=true on brightest)
+  const street = ramp([
+    '#6A4818', '#8B6020', '#B07A30', '#D49D40',
+    '#E8C25C', '#F4DC78', '#FAE8A0', '#FCEFB8',
+    '#FFF4CC', '#FFFADC',
+  ], 10);
+  // 31-36: jasper (red)
+  const jasper = ramp(['#2A0808', '#5A1810', '#80281C', '#A03830', '#B85048', '#D87068'], 6);
+  // 37-42: sapphire
+  const sapphire = ramp(['#080828', '#1C2858', '#304080', '#4860A8', '#6080C8', '#88A8E0'], 6);
+  // 43-48: chalcedony (pale blue/white)
+  const chalcedony = ramp(['#3A4858', '#5A6878', '#7888A0', '#9CACC0', '#BCD0E0', '#DCE8F0'], 6);
+  // 49-54: emerald
+  const emerald = ramp(['#082018', '#0C3828', '#185040', '#286858', '#408878', '#68A89A'], 6);
+  // 55-60: sardonyx (pale orange-pink)
+  const sardonyx = ramp(['#3A1A14', '#5A2A20', '#80483A', '#A0685A', '#C0887A', '#D8A89A'], 6);
+  // 61-66: sardius (deep orange-red)
+  const sardius = ramp(['#3A1004', '#5A1808', '#7A2810', '#9A3818', '#BA5028', '#D87040'], 6);
+  // 67-72: chrysolite (gold-green)
+  const chrysolite = ramp(['#1A2008', '#383C10', '#585820', '#787838', '#989858', '#B8B878'], 6);
+  // 73-78: beryl (sea green)
+  const beryl = ramp(['#082028', '#103840', '#185860', '#287880', '#4898A0', '#78B8C0'], 6);
+  // 79-82: topaz (golden yellow)
+  const topaz = ramp(['#3A2808', '#806020', '#C09838', '#F8D060'], 4);
+  // 83-86: chrysoprasus (yellow-green)
+  const chrysoprasus = ramp(['#1A2808', '#384818', '#586828', '#80983C'], 4);
+  // 87-90: jacinth (orange)
+  const jacinth = ramp(['#3A2008', '#704018', '#A86828', '#E89848'], 4);
+  // 91-94: amethyst
+  const amethyst = ramp(['#180828', '#382058', '#583890', '#8060B8'], 4);
+  // 95-100: sky glow above gates (6)
+  const skyGlow = ramp(['#181230', '#241848', '#3A2868', '#583890', '#7858B0', '#A088D0'], 6);
+
+  return joinPalette(
+    makeEntries(pearls, 'Pearl', 0, { pearl: true }),
+    makeEntries(street.slice(0, 8), 'Street', 0),
+    makeEntries(street.slice(8), 'Street shine', 0, { sparkle: true }),
+    makeEntries(jasper, 'Jasper', 0),
+    makeEntries(sapphire, 'Sapphire', 0),
+    makeEntries(chalcedony, 'Chalcedony', 0),
+    makeEntries(emerald, 'Emerald', 0),
+    makeEntries(sardonyx, 'Sardonyx', 0),
+    makeEntries(sardius, 'Sardius', 0),
+    makeEntries(chrysolite, 'Chrysolite', 0),
+    makeEntries(beryl, 'Beryl', 0),
+    makeEntries(topaz, 'Topaz', 0),
+    makeEntries(chrysoprasus, 'Chrysoprasus', 0),
+    makeEntries(jacinth, 'Jacinth', 0),
+    makeEntries(amethyst, 'Amethyst', 0),
+    makeEntries(skyGlow, 'Sky', 0),
+  );
+}
+
+// ── Template 7: Crown of Life ─────────────────────────────────────────────
+function buildCrown() {
+  const cells = emptyCells();
+  // Velvet purple background with radial vignette (palette 95-100)
+  fillRegion(cells, (r, c) => {
+    const dx = (c - 20) / 24, dy = (r - 20) / 24;
+    const d = Math.sqrt(dx * dx + dy * dy);
+    return bandPick(d, [
+      [0, 0.25, 100],   // brightest center (still dark velvet)
+      [0.25, 0.50, 99],
+      [0.50, 0.70, 98],
+      [0.70, 0.85, 97],
+      [0.85, 1.0, 96],
+      [1.0, 1.5, 95],
+    ]);
+  });
+  // Crown band — wide gold arc, rows 18-26
+  fillRegion(cells, (r, c) => {
+    if (r < 18 || r > 26) return 0;
+    if (c < 4 || c > 35) return 0;
+    // Curve: band thickness modulates with cos
+    const bandCenter = 22 + Math.sin((c - 4) * 0.2) * 0.6;
+    const distFromCenter = Math.abs(r - bandCenter);
+    if (distFromCenter > 4) return 0;
+    // Vertical shading on band (top = bright, bottom = dark)
+    const vt = (r - 18) / 8;
+    // Horizontal subtle shading
+    const ht = Math.abs(c - 20) / 16; // edges darker
+    const composite = (1 - vt) * 0.6 + (1 - ht) * 0.4;
+    return Math.round(2 + composite * 14); // gold ramp ids 1-18 (use 2-16)
+  });
+  // Crown spikes (5 spikes pointing up)
+  const spikeCols = [8, 14, 20, 26, 32];
+  spikeCols.forEach((sc, i) => {
+    // Spike triangle from row 18 down to row 8 (top of spike)
+    const spikeTop = 10 + (i === 2 ? -2 : 0); // center spike is taller
+    for (let r = spikeTop; r <= 18; r++) {
+      const halfWidth = Math.floor((r - spikeTop) / 2) + 1;
+      for (let dc = -halfWidth; dc <= halfWidth; dc++) {
+        const cc = sc + dc;
+        // Shading: outer edges darker, top brighter
+        const vt = (r - spikeTop) / (18 - spikeTop);
+        const ht = Math.abs(dc) / Math.max(1, halfWidth);
+        const composite = (1 - vt * 0.4) * (1 - ht * 0.3);
+        const colorIdx = Math.round(4 + composite * 12); // gold
+        setCell(cells, r, cc, clamp(colorIdx, 2, 17));
+      }
+    }
+  });
+  // Jewels at top of spikes (different gems per spike)
+  // Center spike: large pearl (palette 19-30, pearl=true), positioned at row 8
+  const gemSpots = [
+    { r: 14, c: 8,  baseId: 31, ramp: 12, type: 'sapphire' },    // sapphire
+    { r: 14, c: 14, baseId: 55, ramp: 12, type: 'emerald' },     // emerald
+    { r: 8,  c: 20, baseId: 19, ramp: 12, type: 'pearl' },       // central pearl
+    { r: 14, c: 26, baseId: 43, ramp: 12, type: 'ruby' },        // ruby
+    { r: 14, c: 32, baseId: 67, ramp: 12, type: 'amethyst' },    // amethyst
+  ];
+  gemSpots.forEach(({ r, c, baseId, ramp: rampLen, type }) => {
+    const isCentral = type === 'pearl';
+    const radius = isCentral ? 3 : 2.2;
+    for (let dr = -Math.ceil(radius); dr <= Math.ceil(radius); dr++) {
+      for (let dc = -Math.ceil(radius); dc <= Math.ceil(radius); dc++) {
+        const d = Math.sqrt(dr * dr + dc * dc);
+        if (d > radius) continue;
+        // Inner cells = brightest
+        const t = d / radius; // 0 center, 1 edge
+        const colorIdx = Math.round(baseId + rampLen - 2 - t * (rampLen - 3));
+        setCell(cells, r + dr, c + dc, colorIdx);
+      }
+    }
+    // Sparkle highlight cell (single bright cell)
+    if (!isCentral) setCell(cells, r - 1, c - 1, 79 + (baseId % 8)); // sparkle id
+  });
+  // Pearl row beneath the crown band — row 26-27
+  for (let c = 5; c < 35; c += 2) {
+    const idx = 19 + (c % 12); // varied pearls
+    setCell(cells, 27, c, idx);
+    setCell(cells, 27, c + 1, 19 + ((c + 3) % 12));
+  }
+  // Cross on central spike (small)
+  setCell(cells, 5, 20, 86); // sparkle
+  setCell(cells, 6, 20, 14); // gold
+  setCell(cells, 5, 19, 13);
+  setCell(cells, 5, 21, 13);
+  // Sparkle stars scattered around
+  const sparkles = [
+    [3, 4], [4, 12], [2, 28], [5, 36],
+    [10, 3], [12, 36], [22, 2], [24, 37],
+    [33, 5], [34, 15], [35, 25], [33, 35],
+  ];
+  sparkles.forEach(([r, c], i) => setCell(cells, r, c, 79 + (i % 8)));
+  return cells;
+}
+
+// ── Template 8: New Jerusalem — Pearl Gates ───────────────────────────────
+function buildPearlGates() {
+  const cells = emptyCells();
+  // Sky glow gradient (top half) — palette 95-100
+  fillRegion(cells, (r, c) => {
+    if (r >= 12) return 0;
+    const t = r / 12;
+    return bandPick(t, [
+      [0, 0.2, 95],
+      [0.2, 0.4, 96],
+      [0.4, 0.6, 97],
+      [0.6, 0.8, 98],
+      [0.8, 1.5, 99],
+    ]);
+  });
+  // Glowing star at top center
+  const starR = 4, starC = 20;
+  fillRegion(cells, (r, c) => {
+    const d = Math.sqrt((c - starC) ** 2 + (r - starR) ** 2);
+    if (d < 1) return 29; // sparkle street
+    if (d < 2) return 30;
+    return 0;
+  });
+  // Light rays from star (diagonal)
+  for (let i = 0; i < 5; i++) {
+    for (let step = 1; step < 7; step++) {
+      const ang = (i / 5) * Math.PI - Math.PI / 2;
+      const dr = Math.round(Math.sin(ang) * step);
+      const dc = Math.round(Math.cos(ang) * step);
+      const cell = idx(starR + dr, starC + dc);
+      if (cell >= 0 && cell < cells.length && cells[cell] >= 95 && cells[cell] <= 100) {
+        cells[cell] = 100;
+      }
+    }
+  }
+  // Three gate arches (large, pearl) — left, center, right
+  const gates = [
+    { cx: 8, cy: 22, w: 5, top: 12 },   // left gate
+    { cx: 20, cy: 21, w: 7, top: 10 },  // center gate (largest)
+    { cx: 32, cy: 22, w: 5, top: 12 },  // right gate
+  ];
+  gates.forEach(({ cx, cy, w, top }) => {
+    fillRegion(cells, (r, c) => {
+      if (r < top || r > 32) return 0;
+      if (c < cx - w || c > cx + w) return 0;
+      // Arch top — semicircle
+      if (r < cy - 2) {
+        const dy = (cy - 2) - r;
+        const halfArch = Math.sqrt(Math.max(0, w * w - dy * dy));
+        if (Math.abs(c - cx) > halfArch) return 0;
+      }
+      // Pillar shading (light from upper-left)
+      const distFromLeftEdge = c - (cx - w);
+      const lightness = clamp((distFromLeftEdge / (2 * w)) + (top - r) / 30, 0, 1);
+      // Use pearl indices 1-20 (palette pearls are first 20 entries)
+      const colorIdx = Math.round(1 + lightness * 19);
+      return clamp(colorIdx, 1, 20);
+    });
+  });
+  // Gate openings (darker, deep inside) — small darker rectangles inside each gate
+  gates.forEach(({ cx, cy, w }) => {
+    const innerW = Math.max(1, w - 3);
+    for (let r = cy; r <= 31; r++) {
+      for (let c = cx - innerW; c <= cx + innerW; c++) {
+        setCell(cells, r, c, 95); // sky glow (deep)
+      }
+    }
+  });
+  // Foundation stones — 12 stones in two rows (rows 33-36)
+  // Each stone is ~3 columns wide
+  const stones = [
+    { start: 31, ids: [31, 32, 33, 34, 35, 36] },   // jasper
+    { start: 37, ids: [37, 38, 39, 40, 41, 42] },   // sapphire
+    { start: 43, ids: [43, 44, 45, 46, 47, 48] },   // chalcedony
+    { start: 49, ids: [49, 50, 51, 52, 53, 54] },   // emerald
+    { start: 55, ids: [55, 56, 57, 58, 59, 60] },   // sardonyx
+    { start: 61, ids: [61, 62, 63, 64, 65, 66] },   // sardius
+    { start: 67, ids: [67, 68, 69, 70, 71, 72] },   // chrysolite
+    { start: 73, ids: [73, 74, 75, 76, 77, 78] },   // beryl
+    { start: 79, ids: [79, 80, 81, 82] },           // topaz (4 colors)
+    { start: 83, ids: [83, 84, 85, 86] },           // chrysoprasus
+    { start: 87, ids: [87, 88, 89, 90] },           // jacinth
+    { start: 91, ids: [91, 92, 93, 94] },           // amethyst
+  ];
+  // Arrange 12 stones in one row of 12 (cols 2-37, 3 cols each, rows 33-36)
+  stones.forEach((stone, i) => {
+    const startCol = 2 + i * 3;
+    for (let r = 33; r <= 35; r++) {
+      for (let c = startCol; c < startCol + 3; c++) {
+        // Shading within stone: top = brightest, bottom = darkest
+        const t = (r - 33) / 2; // 0 top, 1 bottom
+        const horizT = (c - startCol) / 2;
+        const composite = (1 - t) * 0.7 + (1 - horizT) * 0.3;
+        const ids = stone.ids;
+        const colorIdx = ids[Math.round(composite * (ids.length - 1))];
+        setCell(cells, r, c, colorIdx);
+      }
+    }
+  });
+  // Golden street (rows 36-39)
+  fillRegion(cells, (r, c) => {
+    if (r < 36) return 0;
+    const t = (r - 36) / 4;
+    // Slight horizontal variation for shimmer
+    const shimmer = Math.abs(Math.sin(c * 0.6)) * 0.3;
+    const composite = clamp(t + shimmer, 0, 1);
+    // Use street ids 21-30 (8 normal + 2 sparkle)
+    if (shimmer > 0.25 && r > 37 && (c % 4) === 0) return 29; // sparkle
+    return Math.round(21 + composite * 7); // 21-28 normal street
+  });
+  return cells;
+}
+
 // ── Templates registry ────────────────────────────────────────────────────
 export const TEMPLATES = [
   {
@@ -689,6 +1026,24 @@ export const TEMPLATES = [
       { id: 14, hex: '#FAEFB0', label: 'Sparkle white' },
     ],
     cells: buildHeart(),
+  },
+  {
+    id: 'crown',
+    title: 'Crown of Life',
+    verse: 'Blessed is the man that endureth temptation: for when he is tried, he shall receive the crown of life.',
+    reference: 'James 1:12',
+    grid: { cols: COLS, rows: ROWS },
+    palette: buildCrownPalette(),
+    cells: buildCrown(),
+  },
+  {
+    id: 'pearl-gates',
+    title: 'New Jerusalem',
+    verse: 'And the twelve gates were twelve pearls; every several gate was of one pearl: and the street of the city was pure gold.',
+    reference: 'Revelation 21:21',
+    grid: { cols: COLS, rows: ROWS },
+    palette: buildPearlGatesPalette(),
+    cells: buildPearlGates(),
   },
 ];
 

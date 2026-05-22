@@ -422,34 +422,63 @@ function PaintView({ progress, template, selectedColor, setSelectedColor, onCell
         </div>
       </div>
 
-      {/* Palette */}
-      <div style={{
-        display: 'flex', flexWrap: 'wrap', justifyContent: 'center',
-        gap: 8, margin: '14px auto', maxWidth: 520,
-        padding: '10px 8px', background: 'rgba(0,0,0,0.3)', borderRadius: 10,
-        border: `1px solid ${P.border}`,
-      }}>
-        {progress.palette.map(p => {
-          const selected = p.id === selectedColor;
-          return (
-            <button key={p.id} onClick={() => setSelectedColor(p.id)} style={{
-              width: 38, height: 38, borderRadius: 8,
-              background: p.hex,
-              border: selected ? `2px solid ${P.goldL}` : `1px solid rgba(0,0,0,0.4)`,
-              boxShadow: selected ? '0 0 0 2px rgba(232,212,160,0.35)' : '0 1px 2px rgba(0,0,0,0.3)',
-              cursor: 'pointer',
-              position: 'relative',
-              transition: 'transform 0.15s',
-              transform: selected ? 'scale(1.1)' : 'scale(1)',
-            }} title={p.label}>
-              <span style={{
-                position: 'absolute', bottom: -16, left: '50%', transform: 'translateX(-50%)',
-                fontSize: '0.62rem', color: selected ? P.goldL : P.sub, fontFamily: SANS, fontWeight: 600,
-              }}>{p.id}</span>
-            </button>
-          );
-        })}
-      </div>
+      {/* Palette — compact swatches for large palettes */}
+      {(() => {
+        const isLarge = progress.palette.length > 30;
+        const swatch = isLarge ? 24 : 38;
+        const gap = isLarge ? 5 : 8;
+        const selectedEntry = progress.palette.find(p => p.id === selectedColor);
+        return (
+          <>
+            {selectedEntry && (
+              <div style={{ textAlign: 'center', margin: '8px 0 4px', fontSize: '0.74rem', color: P.goldL, fontFamily: SANS }}>
+                <span style={{ fontFamily: SERIF, fontStyle: 'italic' }}>{selectedEntry.label}</span>
+                <span style={{ color: P.sub }}> · #{selectedEntry.id}</span>
+                {selectedEntry.pearl && <span style={{ color: P.sub }}> · pearl</span>}
+                {selectedEntry.sparkle && <span style={{ color: P.sub }}> · sparkle</span>}
+              </div>
+            )}
+            <div style={{
+              display: 'flex', flexWrap: 'wrap', justifyContent: 'center',
+              gap, margin: '8px auto', maxWidth: 560,
+              padding: '10px 8px', background: 'rgba(0,0,0,0.3)', borderRadius: 10,
+              border: `1px solid ${P.border}`,
+              maxHeight: isLarge ? 200 : 'none',
+              overflowY: isLarge ? 'auto' : 'visible',
+            }}>
+              {progress.palette.map(p => {
+                const selected = p.id === selectedColor;
+                return (
+                  <button key={p.id} onClick={() => setSelectedColor(p.id)} style={{
+                    width: swatch, height: swatch, borderRadius: isLarge ? 5 : 8,
+                    background: p.hex,
+                    border: selected ? `2px solid ${P.goldL}` : `1px solid rgba(0,0,0,0.4)`,
+                    boxShadow: selected ? '0 0 0 2px rgba(232,212,160,0.35)' : '0 1px 2px rgba(0,0,0,0.3)',
+                    cursor: 'pointer',
+                    position: 'relative',
+                    transition: 'transform 0.15s',
+                    transform: selected ? 'scale(1.15)' : 'scale(1)',
+                    padding: 0,
+                  }} title={`${p.label} (#${p.id})`}>
+                    {p.sparkle && (
+                      <span style={{ position: 'absolute', top: 1, right: 2, fontSize: '0.55rem', color: 'rgba(0,0,0,0.5)', fontWeight: 700, lineHeight: 1 }}>*</span>
+                    )}
+                    {p.pearl && (
+                      <span style={{ position: 'absolute', top: 1, left: 2, fontSize: '0.55rem', color: 'rgba(0,0,0,0.5)', fontWeight: 700, lineHeight: 1 }}>o</span>
+                    )}
+                    {!isLarge && (
+                      <span style={{
+                        position: 'absolute', bottom: -16, left: '50%', transform: 'translateX(-50%)',
+                        fontSize: '0.62rem', color: selected ? P.goldL : P.sub, fontFamily: SANS, fontWeight: 600,
+                      }}>{p.id}</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </>
+        );
+      })()}
 
       {/* Footer actions */}
       <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginTop: 28, flexWrap: 'wrap' }}>
