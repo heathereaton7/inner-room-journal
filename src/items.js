@@ -193,3 +193,36 @@ export const ITEM_CATALOG = Object.fromEntries(
       ...(item.sellPrice ? { sellPrice: item.sellPrice } : {}),
     }])
 );
+
+/**
+ * isArtItemId — identifies dynamic diamond-art item ids (e.g. "art_lilies_171...")
+ */
+export function isArtItemId(id) {
+  return typeof id === 'string' && id.startsWith('art_');
+}
+
+/**
+ * getArtItemDef — resolves a diamond-art gallery entry to a synthetic ITEMS-compatible
+ * descriptor so cabin placement logic can treat finished pieces like any other decor.
+ *
+ *   artwork  — gallery entry from artGallery (has cells, palette, etc.)
+ *   returns  — { name, emoji, category, placeable, decor: { width, defaultPos } }
+ *              decor.src is null; the renderer should special-case `art_*` ids and
+ *              render the artwork via <DiamondArtFrame /> instead of an <img>.
+ */
+export function getArtItemDef(artwork) {
+  if (!artwork) return null;
+  return {
+    name: artwork.title || 'Diamond Art',
+    emoji: '\u2756', // black diamond
+    category: 'decor',
+    placeable: true,
+    artwork,
+    decor: {
+      src: null,
+      width: '14%',
+      defaultPos: { left: 40, top: 30 },
+      glow: { size: '20%', color: 'rgba(232,212,160,0.12)' },
+    },
+  };
+}

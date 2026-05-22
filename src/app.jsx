@@ -3,7 +3,7 @@ import { auth, db, functions, googleProvider, signInWithPopup, signInWithRedirec
 import { OverworldScreen } from './overworld/index.js';
 import { resolveSprite } from './overworld/sprites.js';
 import { DEFAULT_ROOM, migrateRoom, placeItem, isPlacedInRoom } from './roomDecor.js';
-import { ITEMS, isOwned } from './items.js';
+import { ITEMS, isOwned, isArtItemId, getArtItemDef } from './items.js';
 import { createEmptyGrid, serializeGrid, deserializeGrid } from './systems/GardenGrid.js';
 import { canUnlockRabbit } from './systems/rabbitUnlock.js';
 /* R3F imports removed — ImmersiveCabin uses pure DOM/Canvas2D for performance */
@@ -17,6 +17,8 @@ import FeedScreen from './screens/FeedScreen.jsx';
 import NotificationsScreen from './screens/NotificationsScreen.jsx';
 import CheckInScreen from './screens/CheckInScreen.jsx';
 import BecomingHerScreen from './screens/BecomingHerScreen.jsx';
+import DiamondArtScreen from './screens/DiamondArtScreen.jsx';
+import DiamondArtFrame from './components/DiamondArtFrame.jsx';
 import TrackersScreen, { createEmptyTrackers } from './screens/TrackersScreen.jsx';
 import PregnancyScreen, { createEmptyPregnancy } from './screens/PregnancyScreen.jsx';
 import { computeWeek } from './data/pregnancyWeeks.js';
@@ -44,7 +46,7 @@ async function dbSave(k,v){
     localStorage.setItem(k,JSON.stringify(v));
     // Dual-write to Firestore when signed in
     if(auth?.currentUser){
-      const fieldMap={"irj-entries":"entries","irj-prayer":"prayerPosts","irj-saved-cards":"savedCards","irj-onboarded":"isOnboarded","irj-candles":"candles","irj-prayed":"prayedFor","irj-owned-items":"ownedItems","irj-garden":"gardenPlots","irj-inventory":"inventory","irj-saved-verses":"savedVerses","irj-bank":"bank","irj-sell-basket":"sellBasket","irj-farm-plots":"farmPlots","irj-animals":"animals","irj-missions":"missions","irj-premium":"isPremium","irj-becoming-her":"becomingHer","irj-trackers":"trackers","irj-pregnancy":"pregnancy","irj-garden-grid":"gardenGrid","irj-unlocks":"unlocks"};
+      const fieldMap={"irj-entries":"entries","irj-prayer":"prayerPosts","irj-saved-cards":"savedCards","irj-onboarded":"isOnboarded","irj-candles":"candles","irj-prayed":"prayedFor","irj-owned-items":"ownedItems","irj-garden":"gardenPlots","irj-inventory":"inventory","irj-saved-verses":"savedVerses","irj-bank":"bank","irj-sell-basket":"sellBasket","irj-farm-plots":"farmPlots","irj-animals":"animals","irj-missions":"missions","irj-premium":"isPremium","irj-becoming-her":"becomingHer","irj-trackers":"trackers","irj-pregnancy":"pregnancy","irj-garden-grid":"gardenGrid","irj-unlocks":"unlocks","irj-diamond-art":"diamondArt","irj-art-gallery":"artGallery"};
       const field=fieldMap[k];
       if(field){
         const userRef=doc(db,"users",auth.currentUser.uid);
@@ -1731,6 +1733,8 @@ function AppInner(){
   const [pregnancy, setPregnancy] = useState(null); // The Nursery pregnancy tracker
   const [gardenGrid, setGardenGridRaw] = useState(() => createEmptyGrid()); // Rooftop garden tile grid
   const [unlocks, setUnlocksRaw] = useState({}); // Persistent unlock flags { rabbitUnlocked, ... }
+  const [diamondArt, setDiamondArtRaw] = useState({}); // In-progress diamond art works keyed by templateId/freeKey
+  const [artGallery, setArtGalleryRaw] = useState([]); // Completed diamond art pieces
   const [activeGatheringSpace, setActiveGatheringSpace] = useState(null);
   const [gatheringPosts, setGatheringPosts] = useState([]);
   const [gatheringLoading, setGatheringLoading] = useState(false);
@@ -1945,6 +1949,8 @@ function AppInner(){
       const pg   = await dbLoad("irj-pregnancy") || null;
       const gg   = await dbLoad("irj-garden-grid") || null;
       const ul   = await dbLoad("irj-unlocks") || {};
+      const da   = await dbLoad("irj-diamond-art") || {};
+      const ag   = await dbLoad("irj-art-gallery") || [];
       // Migrate prayers: add status/answeredDate/category if missing
       let migrated=false;
       const mpp=pp.map(p=>{
@@ -1969,6 +1975,8 @@ function AppInner(){
       if(pg) setPregnancy(pg);
       if(gg) setGardenGridRaw(deserializeGrid(gg));
       if(ul) setUnlocksRaw(ul);
+      if(da) setDiamondArtRaw(da);
+      if(ag) setArtGalleryRaw(ag);
       // Safety: if user has done check-ins but candle was lost in migration, restore it
       const hasCheckins=Object.keys(localStorage).some(k=>k.startsWith("irj-checkins-"));
       const candlePlaced=migratedRoom.placed?.some(p=>p.id==="candle");
@@ -2464,6 +2472,16 @@ function AppInner(){
       dbSave("irj-unlocks",next);
       return next;
     });
+  }
+
+  // ── DIAMOND ART (auto-save on change) ──
+  function setDiamondArt(next){
+    setDiamondArtRaw(next);
+    dbSave("irj-diamond-art",next);
+  }
+  function setArtGallery(next){
+    setArtGalleryRaw(next);
+    dbSave("irj-art-gallery",next);
   }
 
   // ── CANDLE ECONOMY ──
@@ -4597,6 +4615,21 @@ function AppInner(){
         )}
         <BottomMenuDrawer/>
       </div>
+    );
+  }
+
+  /* ══ DIAMOND ART STUDIO ═══════════════════════════ */
+  if(screen==="diamond-art"){
+    return(
+      <DiamondArtScreen
+        onBack={()=>setScreen(prevScreen||"cabin")}
+        diamondArt={diamondArt}
+        setDiamondArt={setDiamondArt}
+        artGallery={artGallery}
+        setArtGallery={setArtGallery}
+        inventory={inventory}
+        setInventory={(next)=>{setInventory(next);dbSave("irj-inventory",next);}}
+      />
     );
   }
 
