@@ -57,7 +57,14 @@ export default function DiamondArtScreen({
   // ── Actions ─────────────────────────────────────────────────────────────
   const startGuided = (tpl) => {
     const key = tpl.id;
-    if (!diamondArt[key]) {
+    const existing = diamondArt[key];
+    // Migrate: if existing progress's grid size doesn't match current template, restart
+    const expectedLen = tpl.cells.length;
+    const compatible = existing
+      && existing.cells?.length === expectedLen
+      && existing.cols === tpl.grid.cols
+      && existing.rows === tpl.grid.rows;
+    if (!compatible) {
       setDiamondArt({ ...diamondArt, [key]: makeGuidedProgress(tpl) });
     }
     setActiveKey(key);
@@ -141,7 +148,22 @@ export default function DiamondArtScreen({
           onGuided={() => setView('guided')}
           onFree={startFreestyle}
           diamondArt={diamondArt}
-          onResume={(key) => { setActiveKey(key); setView('paint'); }}
+          onResume={(key) => {
+            // If a guided piece's grid size no longer matches current template, restart it
+            const p = diamondArt[key];
+            if (p?.mode === 'guided') {
+              const tpl = templateFor(p);
+              const compatible = tpl
+                && p.cells?.length === tpl.cells.length
+                && p.cols === tpl.grid.cols
+                && p.rows === tpl.grid.rows;
+              if (!compatible && tpl) {
+                setDiamondArt({ ...diamondArt, [key]: makeGuidedProgress(tpl) });
+              }
+            }
+            setActiveKey(key);
+            setView('paint');
+          }}
         />
       )}
 

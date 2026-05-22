@@ -24,12 +24,13 @@ export default function DiamondArtCanvas({
     return () => clearTimeout(t);
   }, [flashIdx]);
 
-  // SVG viewBox sized to grid
-  const cellSize = 16; // svg units per cell
-  const gap = 1;
+  // SVG viewBox sized to grid. Smaller cells for denser grids.
+  const cellSize = cols >= 32 ? 12 : 16; // svg units per cell
+  const gap = cols >= 32 ? 0.5 : 1;
   const pad = 4;
   const w = cols * cellSize + pad * 2;
   const h = rows * cellSize + pad * 2;
+  const showNumbersResolved = showNumbers && cols < 32; // hide numbers on dense grids
 
   // Pre-compute gem display data for each cell
   const cellData = useMemo(() => {
@@ -139,11 +140,11 @@ export default function DiamondArtCanvas({
                     x={cx - half * 0.85} y={cy - half * 0.85}
                     width={half * 1.7} height={half * 1.7}
                     rx={2}
-                    fill={targetHex ? hexWithAlpha(targetHex, 0.10) : 'rgba(255,255,255,0.04)'}
-                    stroke={targetHex ? hexWithAlpha(targetHex, 0.35) : 'rgba(255,255,255,0.12)'}
+                    fill={targetHex ? hexWithAlpha(targetHex, showNumbersResolved ? 0.10 : 0.22) : 'rgba(255,255,255,0.04)'}
+                    stroke={targetHex ? hexWithAlpha(targetHex, showNumbersResolved ? 0.35 : 0.50) : 'rgba(255,255,255,0.12)'}
                     strokeWidth="0.35"
                   />
-                  {showNumbers && target > 0 && (
+                  {showNumbersResolved && target > 0 && (
                     <text
                       x={cx} y={cy + cellSize * 0.18}
                       textAnchor="middle"
