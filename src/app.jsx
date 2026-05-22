@@ -46,7 +46,7 @@ async function dbSave(k,v){
     localStorage.setItem(k,JSON.stringify(v));
     // Dual-write to Firestore when signed in
     if(auth?.currentUser){
-      const fieldMap={"irj-entries":"entries","irj-prayer":"prayerPosts","irj-saved-cards":"savedCards","irj-onboarded":"isOnboarded","irj-candles":"candles","irj-prayed":"prayedFor","irj-owned-items":"ownedItems","irj-garden":"gardenPlots","irj-inventory":"inventory","irj-saved-verses":"savedVerses","irj-bank":"bank","irj-sell-basket":"sellBasket","irj-farm-plots":"farmPlots","irj-animals":"animals","irj-missions":"missions","irj-premium":"isPremium","irj-becoming-her":"becomingHer","irj-trackers":"trackers","irj-pregnancy":"pregnancy","irj-garden-grid":"gardenGrid","irj-unlocks":"unlocks","irj-diamond-art":"diamondArt","irj-art-gallery":"artGallery"};
+      const fieldMap={"irj-entries":"entries","irj-prayer":"prayerPosts","irj-saved-cards":"savedCards","irj-onboarded":"isOnboarded","irj-candles":"candles","irj-prayed":"prayedFor","irj-owned-items":"ownedItems","irj-garden":"gardenPlots","irj-inventory":"inventory","irj-saved-verses":"savedVerses","irj-bank":"bank","irj-sell-basket":"sellBasket","irj-farm-plots":"farmPlots","irj-animals":"animals","irj-missions":"missions","irj-premium":"isPremium","irj-becoming-her":"becomingHer","irj-trackers":"trackers","irj-pregnancy":"pregnancy","irj-garden-grid":"gardenGrid","irj-unlocks":"unlocks","irj-diamond-art":"diamondArt","irj-art-gallery":"artGallery","irj-imported-templates":"importedTemplates"};
       const field=fieldMap[k];
       if(field){
         const userRef=doc(db,"users",auth.currentUser.uid);
@@ -1735,6 +1735,7 @@ function AppInner(){
   const [unlocks, setUnlocksRaw] = useState({}); // Persistent unlock flags { rabbitUnlocked, ... }
   const [diamondArt, setDiamondArtRaw] = useState({}); // In-progress diamond art works keyed by templateId/freeKey
   const [artGallery, setArtGalleryRaw] = useState([]); // Completed diamond art pieces
+  const [importedTemplates, setImportedTemplatesRaw] = useState({}); // User-imported AI-generated artwork templates
   const [activeGatheringSpace, setActiveGatheringSpace] = useState(null);
   const [gatheringPosts, setGatheringPosts] = useState([]);
   const [gatheringLoading, setGatheringLoading] = useState(false);
@@ -1951,6 +1952,7 @@ function AppInner(){
       const ul   = await dbLoad("irj-unlocks") || {};
       const da   = await dbLoad("irj-diamond-art") || {};
       const ag   = await dbLoad("irj-art-gallery") || [];
+      const itp  = await dbLoad("irj-imported-templates") || {};
       // Migrate prayers: add status/answeredDate/category if missing
       let migrated=false;
       const mpp=pp.map(p=>{
@@ -1977,6 +1979,7 @@ function AppInner(){
       if(ul) setUnlocksRaw(ul);
       if(da) setDiamondArtRaw(da);
       if(ag) setArtGalleryRaw(ag);
+      if(itp) setImportedTemplatesRaw(itp);
       // Safety: if user has done check-ins but candle was lost in migration, restore it
       const hasCheckins=Object.keys(localStorage).some(k=>k.startsWith("irj-checkins-"));
       const candlePlaced=migratedRoom.placed?.some(p=>p.id==="candle");
@@ -2482,6 +2485,10 @@ function AppInner(){
   function setArtGallery(next){
     setArtGalleryRaw(next);
     dbSave("irj-art-gallery",next);
+  }
+  function setImportedTemplates(next){
+    setImportedTemplatesRaw(next);
+    dbSave("irj-imported-templates",next);
   }
 
   // ── CANDLE ECONOMY ──
@@ -4629,6 +4636,8 @@ function AppInner(){
         setArtGallery={setArtGallery}
         inventory={inventory}
         setInventory={(next)=>{setInventory(next);dbSave("irj-inventory",next);}}
+        importedTemplates={importedTemplates}
+        setImportedTemplates={setImportedTemplates}
       />
     );
   }

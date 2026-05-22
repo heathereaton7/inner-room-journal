@@ -3,9 +3,11 @@ import { TEMPLATES, getTemplate } from '../data/diamondArtTemplates.js';
 import {
   makeGuidedProgress, makeFreeProgress, paintCell,
   isComplete, progressPercent, serializeArtwork, templateFor, freeKey,
+  cellsToArray, cellsFromArray, setImportedTemplateLookup,
 } from '../systems/diamondArt.js';
-import DiamondArtCanvas from '../components/DiamondArtCanvas.jsx';
+import CanvasDiamondBoard from '../components/CanvasDiamondBoard.jsx';
 import DiamondArtFrame from '../components/DiamondArtFrame.jsx';
+import ImportArtworkModal from '../components/ImportArtworkModal.jsx';
 
 const SERIF = "'Cormorant Garamond', Georgia, serif";
 const SANS = "'Inter', system-ui, -apple-system, sans-serif";
@@ -36,15 +38,34 @@ export default function DiamondArtScreen({
   diamondArt, setDiamondArt,
   artGallery, setArtGallery,
   inventory, setInventory,
+  importedTemplates, setImportedTemplates,
 }) {
   const [view, setView] = useState('hub');
   const [activeKey, setActiveKey] = useState(null);  // key in diamondArt map
   const [selectedColor, setSelectedColor] = useState(1);
   const [toast, setToast] = useState(null);
   const [completedArtwork, setCompletedArtwork] = useState(null);
+  const [showImport, setShowImport] = useState(false);
+
+  // Allow templateFor() in systems/diamondArt.js to find imported templates
+  useEffect(() => {
+    setImportedTemplateLookup((id) => importedTemplates?.[id] || null);
+    return () => setImportedTemplateLookup(null);
+  }, [importedTemplates]);
+
+  // Merge built-in and imported templates for the picker
+  const allTemplates = useMemo(() => {
+    const imp = Object.values(importedTemplates || {});
+    return [...TEMPLATES, ...imp];
+  }, [importedTemplates]);
 
   const progress = activeKey ? diamondArt[activeKey] : null;
-  const template = useMemo(() => templateFor(progress), [progress]);
+  const template = useMemo(() => {
+    if (!progress || progress.mode !== 'guided') return null;
+    const id = progress.templateId;
+    if (!id) return null;
+    return getTemplate(id) || importedTemplates?.[id] || null;
+  }, [progress, importedTemplates]);
   const pct = useMemo(() => progressPercent(progress, template), [progress, template]);
   const complete = useMemo(() => isComplete(progress, template), [progress, template]);
 
@@ -147,7 +168,9 @@ export default function DiamondArtScreen({
         <HubView
           onGuided={() => setView('guided')}
           onFree={startFreestyle}
+          onImport={() => setShowImport(true)}
           diamondArt={diamondArt}
+          importedTemplates={importedTemplates}
           onResume={(key) => {
             // If a guided piece's grid size no longer matches current template, restart it
             const p = diamondArt[key];
@@ -171,6 +194,26 @@ export default function DiamondArtScreen({
         <TemplatePickerView
           onPick={startGuided}
           diamondArt={diamondArt}
+          allTemplates={allTemplates}
+        />
+      )}
+
+      {showImport && (
+        <ImportArtworkModal
+          onClose={() => setShowImport(false)}
+          onCommit={(template) => {
+            // Persist imported template (convert Uint16Array → number[] for storage)
+            const storable = { ...template, cells: cellsToArray(template.cells) };
+            const nextImported = { ...(importedTemplates || {}), [template.id]: storable };
+            setImportedTemplates(nextImported);
+            // Start a new guided progress against the template
+            setDiamondArt({ ...diamondArt, [template.id]: makeGuidedProgress(storable) });
+            setActiveKey(template.id);
+            setSelectedColor(template.palette[0]?.id || 1);
+            setShowImport(false);
+            setView('paint');
+            setToast('Artwork imported');
+          }}
         />
       )}
 
@@ -249,8 +292,12 @@ const smallBtn = {
 };
 
 // ── Hub view ──────────────────────────────────────────────────────────────
-function HubView({ onGuided, onFree, diamondArt, onResume }) {
+function HubView({ onGuided, onFree, onImport, diamondArt, importedTemplates, onResume }) {
   const inProgress = Object.entries(diamondArt || {});
+  const resolveTpl = (p) => {
+    if (p?.mode !== 'guided') return null;
+    return getTemplate(p.templateId) || importedTemplates?.[p.templateId] || null;
+  };
   return (
     <main style={{ maxWidth: 640, margin: '0 auto', padding: '32px 22px 80px' }}>
       <div style={{ textAlign: 'center', marginBottom: 36 }}>
@@ -259,7 +306,7 @@ function HubView({ onGuided, onFree, diamondArt, onResume }) {
         </p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 28 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 28 }}>
         <ModeButton
           title="Guided"
           subtitle="Verse-by-verse art"
@@ -270,6 +317,11 @@ function HubView({ onGuided, onFree, diamondArt, onResume }) {
           subtitle="Blank canvas"
           onClick={onFree}
         />
+        <ModeButton
+          title="Import"
+          subtitle="Your own image"
+          onClick={onImport}
+        />
       </div>
 
       {inProgress.length > 0 && (
@@ -277,7 +329,7 @@ function HubView({ onGuided, onFree, diamondArt, onResume }) {
           <div style={sectionLabel}>In progress</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {inProgress.map(([key, p]) => {
-              const tpl = p.mode === 'guided' ? getTemplate(p.templateId) : null;
+              const tpl = resolveTpl(p);
               const pct = Math.round(progressPercent(p, tpl) * 100);
               return (
                 <button key={key} onClick={() => onResume(key)} style={resumeRow}>
@@ -331,14 +383,18 @@ const resumeRow = {
 };
 
 // ── Template picker ───────────────────────────────────────────────────────
-function TemplatePickerView({ onPick, diamondArt }) {
+function TemplatePickerView({ onPick, diamondArt, allTemplates }) {
+  const tpls = allTemplates || TEMPLATES;
   return (
-    <main style={{ maxWidth: 640, margin: '0 auto', padding: '28px 22px 80px' }}>
+    <main style={{ maxWidth: 720, margin: '0 auto', padding: '28px 22px 80px' }}>
       <div style={sectionLabel}>Choose a verse</div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12 }}>
-        {TEMPLATES.map(tpl => {
+        {tpls.map(tpl => {
           const p = diamondArt?.[tpl.id];
+          // Resolve target cells for percent (use template.cells; for imported,
+          // template has cells in number[] form, fine for the iteration)
           const pct = p ? Math.round(progressPercent(p, tpl) * 100) : 0;
+          const isImported = !!tpl.thumbnail;
           return (
             <button key={tpl.id} onClick={() => onPick(tpl)} style={{
               background: P.panel, border: `1px solid ${P.border}`,
@@ -350,10 +406,14 @@ function TemplatePickerView({ onPick, diamondArt }) {
               onMouseLeave={e => e.currentTarget.style.borderColor = P.border}
             >
               <div style={{ marginBottom: 10 }}>
-                <MiniPreview template={tpl} />
+                {isImported
+                  ? <img src={tpl.thumbnail} alt="" style={{ width: '100%', aspectRatio: '1/1', objectFit: 'cover', borderRadius: 6, background: '#0E0A06', display: 'block' }} />
+                  : <MiniPreview template={tpl} />}
               </div>
               <div style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: '0.98rem', color: P.goldL, marginBottom: 2 }}>{tpl.title}</div>
-              <div style={{ fontSize: '0.7rem', color: P.sub, marginBottom: 6, letterSpacing: '0.06em' }}>{tpl.reference}</div>
+              <div style={{ fontSize: '0.7rem', color: P.sub, marginBottom: 6, letterSpacing: '0.06em' }}>
+                {tpl.reference || (isImported ? `${tpl.grid.cols}×${tpl.grid.rows} · ${(tpl.grid.cols * tpl.grid.rows).toLocaleString()} drills` : '')}
+              </div>
               {pct > 0 && (
                 <div style={{ fontSize: '0.7rem', color: P.gold }}>{pct}% complete</div>
               )}
@@ -374,7 +434,7 @@ function MiniPreview({ template }) {
   const h = rows * cellSize + pad * 2;
   return (
     <svg viewBox={`0 0 ${w} ${h}`} style={{ width: '100%', height: 'auto', display: 'block', background: '#0E0A06', borderRadius: 4 }}>
-      {template.cells.map((cid, i) => {
+      {Array.from(template.cells).map((cid, i) => {
         if (!cid) return null;
         const c = i % cols, r = Math.floor(i / cols);
         const hex = template.palette.find(p => p.id === cid)?.hex || '#fff';
@@ -404,7 +464,7 @@ function PaintView({ progress, template, selectedColor, setSelectedColor, onCell
         </div>
       )}
 
-      <DiamondArtCanvas
+      <CanvasDiamondBoard
         progress={progress}
         template={template}
         selectedColor={selectedColor}

@@ -16,6 +16,7 @@
     "@vercel/blob": "^2.3.3",
     "firebase": "^12.10.0",
     "firebase-admin": "^13.8.0",
+    "image-q": "^4.0.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "stripe": "^22.0.2"
