@@ -600,63 +600,13 @@ function PaintView({ progress, template, selectedColor, setSelectedColor, onCell
         </div>
       </div>
 
-      {/* Palette — compact swatches for large palettes */}
-      {(() => {
-        const isLarge = progress.palette.length > 30;
-        const swatch = isLarge ? 24 : 38;
-        const gap = isLarge ? 5 : 8;
-        const selectedEntry = progress.palette.find(p => p.id === selectedColor);
-        return (
-          <>
-            {selectedEntry && (
-              <div style={{ textAlign: 'center', margin: '8px 0 4px', fontSize: '0.74rem', color: P.goldL, fontFamily: SANS }}>
-                <span style={{ fontFamily: SERIF, fontStyle: 'italic' }}>{selectedEntry.label}</span>
-                <span style={{ color: P.sub }}> · #{selectedEntry.id}</span>
-                {selectedEntry.pearl && <span style={{ color: P.sub }}> · pearl</span>}
-                {selectedEntry.sparkle && <span style={{ color: P.sub }}> · sparkle</span>}
-              </div>
-            )}
-            <div style={{
-              display: 'flex', flexWrap: 'wrap', justifyContent: 'center',
-              gap, margin: '8px auto', maxWidth: 560,
-              padding: '10px 8px', background: 'rgba(0,0,0,0.3)', borderRadius: 10,
-              border: `1px solid ${P.border}`,
-              maxHeight: isLarge ? 200 : 'none',
-              overflowY: isLarge ? 'auto' : 'visible',
-            }}>
-              {progress.palette.map(p => {
-                const selected = p.id === selectedColor;
-                return (
-                  <button key={p.id} onClick={() => setSelectedColor(p.id)} style={{
-                    width: swatch, height: swatch, borderRadius: isLarge ? 5 : 8,
-                    background: p.hex,
-                    border: selected ? `2px solid ${P.goldL}` : `1px solid rgba(0,0,0,0.4)`,
-                    boxShadow: selected ? '0 0 0 2px rgba(232,212,160,0.35)' : '0 1px 2px rgba(0,0,0,0.3)',
-                    cursor: 'pointer',
-                    position: 'relative',
-                    transition: 'transform 0.15s',
-                    transform: selected ? 'scale(1.15)' : 'scale(1)',
-                    padding: 0,
-                  }} title={`${p.label} (#${p.id})`}>
-                    {p.sparkle && (
-                      <span style={{ position: 'absolute', top: 1, right: 2, fontSize: '0.55rem', color: 'rgba(0,0,0,0.5)', fontWeight: 700, lineHeight: 1 }}>*</span>
-                    )}
-                    {p.pearl && (
-                      <span style={{ position: 'absolute', top: 1, left: 2, fontSize: '0.55rem', color: 'rgba(0,0,0,0.5)', fontWeight: 700, lineHeight: 1 }}>o</span>
-                    )}
-                    {!isLarge && (
-                      <span style={{
-                        position: 'absolute', bottom: -16, left: '50%', transform: 'translateX(-50%)',
-                        fontSize: '0.62rem', color: selected ? P.goldL : P.sub, fontFamily: SANS, fontWeight: 600,
-                      }}>{p.id}</span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </>
-        );
-      })()}
+      {/* Palette — completed colors auto-hide, number printed on each swatch */}
+      <PaletteStrip
+        progress={progress}
+        template={template}
+        selectedColor={selectedColor}
+        setSelectedColor={setSelectedColor}
+      />
 
       {/* Footer actions */}
       <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginTop: 28, flexWrap: 'wrap' }}>
@@ -680,6 +630,135 @@ function PaintView({ progress, template, selectedColor, setSelectedColor, onCell
       </div>
     </main>
   );
+}
+
+// ── Palette strip ─────────────────────────────────────────────────────────
+function PaletteStrip({ progress, template, selectedColor, setSelectedColor }) {
+  // Count needed vs filled per color id (only relevant in guided mode)
+  const completion = useMemo(() => {
+    const out = new Map();
+    if (progress.mode !== 'guided' || !template) return out;
+    const tcells = template.cells;
+    const pcells = progress.cells;
+    const len = Math.min(tcells.length, pcells.length);
+    for (let i = 0; i < len; i++) {
+      const t = tcells[i];
+      if (t > 0) {
+        const cur = out.get(t) || { needed: 0, filled: 0 };
+        cur.needed++;
+        if (pcells[i] === t) cur.filled++;
+        out.set(t, cur);
+      }
+    }
+    return out;
+  }, [progress, template]);
+
+  // Visible palette — drop colors that are 100% complete in guided mode
+  const visiblePalette = useMemo(() => {
+    if (progress.mode !== 'guided' || !template) return progress.palette;
+    return progress.palette.filter(p => {
+      const info = completion.get(p.id);
+      if (!info || info.needed === 0) return false;       // unused colors hidden
+      return info.filled < info.needed;                   // hide when finished
+    });
+  }, [progress.palette, completion, template, progress.mode]);
+
+  // Switch selected color if the current one just got hidden
+  useEffect(() => {
+    if (!visiblePalette.length) return;
+    if (!visiblePalette.find(p => p.id === selectedColor)) {
+      setSelectedColor(visiblePalette[0].id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visiblePalette.length]);
+
+  const isLarge = visiblePalette.length > 30;
+  const swatch = isLarge ? 28 : 42;
+  const gap = isLarge ? 6 : 8;
+  const selectedEntry = visiblePalette.find(p => p.id === selectedColor);
+
+  if (visiblePalette.length === 0) {
+    return (
+      <div style={{
+        textAlign: 'center', margin: '14px auto', maxWidth: 520,
+        padding: '14px 12px', background: 'rgba(201,169,110,0.08)',
+        border: `1px solid ${P.border}`, borderRadius: 10,
+        fontFamily: SERIF, fontStyle: 'italic', color: P.goldL, fontSize: '0.95rem',
+      }}>
+        Every color has been placed. The piece is finished.
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {selectedEntry && (
+        <div style={{ textAlign: 'center', margin: '8px 0 4px', fontSize: '0.74rem', color: P.goldL, fontFamily: SANS }}>
+          <span style={{ fontFamily: SERIF, fontStyle: 'italic' }}>{selectedEntry.label}</span>
+          <span style={{ color: P.sub }}> · #{selectedEntry.id}</span>
+          {selectedEntry.pearl && <span style={{ color: P.sub }}> · pearl</span>}
+          {selectedEntry.sparkle && <span style={{ color: P.sub }}> · sparkle</span>}
+          {(() => {
+            const info = completion.get(selectedEntry.id);
+            if (!info) return null;
+            return <span style={{ color: P.sub }}> · {info.filled} / {info.needed}</span>;
+          })()}
+        </div>
+      )}
+      <div style={{
+        display: 'flex', flexWrap: 'wrap', justifyContent: 'center',
+        gap, margin: '8px auto', maxWidth: 580,
+        padding: '12px 10px', background: 'rgba(0,0,0,0.3)', borderRadius: 10,
+        border: `1px solid ${P.border}`,
+        maxHeight: isLarge ? 220 : 'none',
+        overflowY: isLarge ? 'auto' : 'visible',
+      }}>
+        {visiblePalette.map(p => {
+          const selected = p.id === selectedColor;
+          const luma = paletteLuma(p.hex);
+          const numColor = luma > 140 ? '#1A1612' : '#FAF6F0';
+          const numShadow = luma > 140 ? '0 1px 0 rgba(255,255,255,0.5)' : '0 1px 2px rgba(0,0,0,0.55)';
+          const fontSize = Math.max(10, Math.round(swatch * 0.48));
+          return (
+            <button key={p.id} onClick={() => setSelectedColor(p.id)} style={{
+              width: swatch, height: swatch, borderRadius: isLarge ? 6 : 8,
+              background: p.hex,
+              border: selected ? `2px solid ${P.goldL}` : `1px solid rgba(0,0,0,0.4)`,
+              boxShadow: selected ? '0 0 0 2px rgba(232,212,160,0.4)' : '0 1px 2px rgba(0,0,0,0.3)',
+              cursor: 'pointer',
+              position: 'relative',
+              transition: 'transform 0.15s',
+              transform: selected ? 'scale(1.15)' : 'scale(1)',
+              padding: 0,
+            }} title={`${p.label} (#${p.id})`}>
+              {p.sparkle && (
+                <span style={{ position: 'absolute', top: 1, right: 2, fontSize: '0.55rem', color: 'rgba(0,0,0,0.55)', fontWeight: 700, lineHeight: 1 }}>*</span>
+              )}
+              {p.pearl && (
+                <span style={{ position: 'absolute', top: 1, left: 2, fontSize: '0.55rem', color: 'rgba(0,0,0,0.55)', fontWeight: 700, lineHeight: 1 }}>o</span>
+              )}
+              {/* Number always visible — centered on the swatch */}
+              <span style={{
+                position: 'absolute', inset: 0,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize, fontWeight: 700, color: numColor,
+                fontFamily: SANS, textShadow: numShadow,
+                pointerEvents: 'none',
+              }}>{p.id}</span>
+            </button>
+          );
+        })}
+      </div>
+    </>
+  );
+}
+
+function paletteLuma(hex) {
+  let h = (hex || '#000').replace('#', '');
+  if (h.length === 3) h = h.split('').map(c => c + c).join('');
+  const n = parseInt(h, 16);
+  const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 }
 
 // ── Gallery view ──────────────────────────────────────────────────────────
