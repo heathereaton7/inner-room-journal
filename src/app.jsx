@@ -19,6 +19,7 @@ import CheckInScreen from './screens/CheckInScreen.jsx';
 import BecomingHerScreen from './screens/BecomingHerScreen.jsx';
 import DiamondArtScreen from './screens/DiamondArtScreen.jsx';
 import DiamondArtFrame from './components/DiamondArtFrame.jsx';
+import WordSearchScreen from './screens/WordSearchScreen.jsx';
 import TrackersScreen, { createEmptyTrackers } from './screens/TrackersScreen.jsx';
 import PregnancyScreen, { createEmptyPregnancy } from './screens/PregnancyScreen.jsx';
 import { computeWeek } from './data/pregnancyWeeks.js';
@@ -46,7 +47,7 @@ async function dbSave(k,v){
     localStorage.setItem(k,JSON.stringify(v));
     // Dual-write to Firestore when signed in
     if(auth?.currentUser){
-      const fieldMap={"irj-entries":"entries","irj-prayer":"prayerPosts","irj-saved-cards":"savedCards","irj-onboarded":"isOnboarded","irj-candles":"candles","irj-prayed":"prayedFor","irj-owned-items":"ownedItems","irj-garden":"gardenPlots","irj-inventory":"inventory","irj-saved-verses":"savedVerses","irj-bank":"bank","irj-sell-basket":"sellBasket","irj-farm-plots":"farmPlots","irj-animals":"animals","irj-missions":"missions","irj-premium":"isPremium","irj-becoming-her":"becomingHer","irj-trackers":"trackers","irj-pregnancy":"pregnancy","irj-garden-grid":"gardenGrid","irj-unlocks":"unlocks","irj-diamond-art":"diamondArt","irj-art-gallery":"artGallery","irj-imported-templates":"importedTemplates"};
+      const fieldMap={"irj-entries":"entries","irj-prayer":"prayerPosts","irj-saved-cards":"savedCards","irj-onboarded":"isOnboarded","irj-candles":"candles","irj-prayed":"prayedFor","irj-owned-items":"ownedItems","irj-garden":"gardenPlots","irj-inventory":"inventory","irj-saved-verses":"savedVerses","irj-bank":"bank","irj-sell-basket":"sellBasket","irj-farm-plots":"farmPlots","irj-animals":"animals","irj-missions":"missions","irj-premium":"isPremium","irj-becoming-her":"becomingHer","irj-trackers":"trackers","irj-pregnancy":"pregnancy","irj-garden-grid":"gardenGrid","irj-unlocks":"unlocks","irj-diamond-art":"diamondArt","irj-art-gallery":"artGallery","irj-imported-templates":"importedTemplates","irj-word-search":"wordSearch"};
       const field=fieldMap[k];
       if(field){
         const userRef=doc(db,"users",auth.currentUser.uid);
@@ -1736,6 +1737,7 @@ function AppInner(){
   const [diamondArt, setDiamondArtRaw] = useState({}); // In-progress diamond art works keyed by templateId/freeKey
   const [artGallery, setArtGalleryRaw] = useState([]); // Completed diamond art pieces
   const [importedTemplates, setImportedTemplatesRaw] = useState({}); // User-imported AI-generated artwork templates
+  const [wordSearch, setWordSearchRaw] = useState({}); // Word search puzzle progress keyed by puzzleId
   const [activeGatheringSpace, setActiveGatheringSpace] = useState(null);
   const [gatheringPosts, setGatheringPosts] = useState([]);
   const [gatheringLoading, setGatheringLoading] = useState(false);
@@ -1953,6 +1955,7 @@ function AppInner(){
       const da   = await dbLoad("irj-diamond-art") || {};
       const ag   = await dbLoad("irj-art-gallery") || [];
       const itp  = await dbLoad("irj-imported-templates") || {};
+      const ws   = await dbLoad("irj-word-search") || {};
       // Migrate prayers: add status/answeredDate/category if missing
       let migrated=false;
       const mpp=pp.map(p=>{
@@ -1980,6 +1983,7 @@ function AppInner(){
       if(da) setDiamondArtRaw(da);
       if(ag) setArtGalleryRaw(ag);
       if(itp) setImportedTemplatesRaw(itp);
+      if(ws) setWordSearchRaw(ws);
       // Safety: if user has done check-ins but candle was lost in migration, restore it
       const hasCheckins=Object.keys(localStorage).some(k=>k.startsWith("irj-checkins-"));
       const candlePlaced=migratedRoom.placed?.some(p=>p.id==="candle");
@@ -2489,6 +2493,10 @@ function AppInner(){
   function setImportedTemplates(next){
     setImportedTemplatesRaw(next);
     dbSave("irj-imported-templates",next);
+  }
+  function setWordSearch(next){
+    setWordSearchRaw(next);
+    dbSave("irj-word-search",next);
   }
 
   // ── CANDLE ECONOMY ──
@@ -4638,6 +4646,17 @@ function AppInner(){
         setInventory={(next)=>{setInventory(next);dbSave("irj-inventory",next);}}
         importedTemplates={importedTemplates}
         setImportedTemplates={setImportedTemplates}
+      />
+    );
+  }
+
+  /* ══ WORD SEARCH ══════════════════════════════════ */
+  if(screen==="word-search"){
+    return(
+      <WordSearchScreen
+        onBack={()=>setScreen(prevScreen||"cabin")}
+        progress={wordSearch}
+        onProgressChange={setWordSearch}
       />
     );
   }
