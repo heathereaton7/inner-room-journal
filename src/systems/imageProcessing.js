@@ -407,6 +407,107 @@ export function canvasToThumbnail(downCanvas, palette, cells, cols, rows, size =
 }
 
 /**
+ * Process a built-in image URL through the same pipeline as user uploads.
+ * Supports cropping (useful for reference cards where the artwork is a
+ * fraction of the source image).
+ *
+ *   url                 — image url (relative to site root or absolute)
+ *   presetId            — quality preset
+ *   options.cropFraction — { x, y, w, h } as fractions of source [0..1]
+ *   options.numColors    — palette size (default 80)
+ *   options.sharpen      — boolean (default true)
+ *   options.sparkles     — boolean (default true)
+ *   options.onProgress   — (label, fraction) callback
+ */
+export async function processUrlToTemplate(url, presetId, options = {}) {
+  const {
+    cropFraction,
+    numColors = 80,
+    sharpen = true,
+    sparkles = true,
+    onProgress = () => {},
+  } = options;
+  const preset = presetById(presetId);
+
+  onProgress('Loading artwork', 0.05);
+  const resp = await fetch(url);
+  if (!resp.ok) throw new Error(`Failed to load ${url}`);
+  const blob = await resp.blob();
+
+  // Convert blob → ImageBitmap so we can crop
+  let bitmap;
+  try {
+    bitmap = await createImageBitmap(blob, { imageOrientation: 'from-image' });
+  } catch {
+    bitmap = await new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = URL.createObjectURL(blob);
+    });
+  }
+  const sw = bitmap.width || bitmap.naturalWidth;
+  const sh = bitmap.height || bitmap.naturalHeight;
+
+  // Apply optional crop
+  let cropX = 0, cropY = 0, cropW = sw, cropH = sh;
+  if (cropFraction) {
+    cropX = Math.round(cropFraction.x * sw);
+    cropY = Math.round(cropFraction.y * sh);
+    cropW = Math.round(cropFraction.w * sw);
+    cropH = Math.round(cropFraction.h * sh);
+  }
+
+  // Downscale cropped region to max 1024 longest side
+  const maxSide = 1024;
+  const scale = Math.min(1, maxSide / Math.max(cropW, cropH));
+  const w = Math.max(1, Math.round(cropW * scale));
+  const h = Math.max(1, Math.round(cropH * scale));
+
+  let canvas = document.createElement('canvas');
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(bitmap, cropX, cropY, cropW, cropH, 0, 0, w, h);
+
+  if (sharpen) {
+    onProgress('Sharpening', 0.25);
+    canvas = sharpenCanvas(canvas, 0.4);
+  }
+
+  onProgress('Extracting palette', 0.45);
+  let palette = extractPalette(canvas, numColors);
+
+  onProgress('Downscaling', 0.65);
+  const small = downscaleToGrid(canvas, preset.cols, preset.rows);
+
+  onProgress('Dithering drills', 0.85);
+  const cells = ditherToPaletteIndices(small, palette, 'floyd-steinberg');
+
+  let sparkleCount = 0;
+  if (sparkles) {
+    palette = detectSparkles(palette, cells);
+    for (let i = 0; i < cells.length; i++) {
+      const p = palette.find(pp => pp.id === cells[i]);
+      if (p?.sparkle) sparkleCount++;
+    }
+  }
+
+  const thumbnail = canvasToThumbnail(small, palette, cells, preset.cols, preset.rows, 96);
+
+  onProgress('Done', 1);
+  return {
+    cols: preset.cols,
+    rows: preset.rows,
+    palette,
+    cells,
+    thumbnail,
+    sparkleCount,
+  };
+}
+
+/**
  * Recommend a preset id based on the source image aspect ratio.
  */
 export function recommendedPreset(srcCanvas) {

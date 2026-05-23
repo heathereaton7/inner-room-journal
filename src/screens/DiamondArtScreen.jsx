@@ -5,6 +5,8 @@ import {
   isComplete, progressPercent, serializeArtwork, templateFor, freeKey,
   cellsToArray, cellsFromArray, setImportedTemplateLookup,
 } from '../systems/diamondArt.js';
+import { BUILTIN_IMAGE_TEMPLATES } from '../data/builtinImageTemplates.js';
+import { processUrlToTemplate } from '../systems/imageProcessing.js';
 import CanvasDiamondBoard from '../components/CanvasDiamondBoard.jsx';
 import DiamondArtFrame from '../components/DiamondArtFrame.jsx';
 import ImportArtworkModal from '../components/ImportArtworkModal.jsx';
@@ -46,6 +48,7 @@ export default function DiamondArtScreen({
   const [toast, setToast] = useState(null);
   const [completedArtwork, setCompletedArtwork] = useState(null);
   const [showImport, setShowImport] = useState(false);
+  const [processing, setProcessing] = useState(null); // { id, label, fraction } | null
 
   // Allow templateFor() in systems/diamondArt.js to find imported templates
   useEffect(() => {
@@ -53,11 +56,76 @@ export default function DiamondArtScreen({
     return () => setImportedTemplateLookup(null);
   }, [importedTemplates]);
 
+  // Built-in image templates as picker stubs (no cells until processed)
+  const builtinStubs = useMemo(() => {
+    return BUILTIN_IMAGE_TEMPLATES.map(b => {
+      // If already processed and cached as an imported template, use that
+      const cached = importedTemplates?.[b.id];
+      if (cached) return cached;
+      // Otherwise present as a stub the user can tap to process
+      return {
+        id: b.id,
+        title: b.title,
+        verse: b.verse,
+        reference: b.reference,
+        grid: { cols: 150, rows: 150 },
+        palette: [],
+        cells: [],
+        sourceUrl: b.sourceUrl,
+        cropFraction: b.cropFraction,
+        defaultPreset: b.defaultPreset,
+        _builtinStub: true,
+      };
+    });
+  }, [importedTemplates]);
+
   // Merge built-in and imported templates for the picker
   const allTemplates = useMemo(() => {
     const imp = Object.values(importedTemplates || {});
-    return [...TEMPLATES, ...imp];
-  }, [importedTemplates]);
+    // Filter out imported entries that correspond to builtins (those are surfaced via builtinStubs)
+    const userImports = imp.filter(t => !BUILTIN_IMAGE_TEMPLATES.some(b => b.id === t.id));
+    return [...TEMPLATES, ...builtinStubs, ...userImports];
+  }, [importedTemplates, builtinStubs]);
+
+  // Lazy-process a builtin image template and cache it as an imported template
+  const processBuiltin = async (builtinStub) => {
+    setProcessing({ id: builtinStub.id, label: 'Preparing artwork...', fraction: 0 });
+    try {
+      const tpl = await processUrlToTemplate(
+        builtinStub.sourceUrl,
+        builtinStub.defaultPreset || 'detailed',
+        {
+          cropFraction: builtinStub.cropFraction,
+          onProgress: (label, fraction) => setProcessing({ id: builtinStub.id, label, fraction }),
+        }
+      );
+      const storable = {
+        id: builtinStub.id,
+        title: builtinStub.title,
+        verse: builtinStub.verse || '',
+        reference: builtinStub.reference || '',
+        grid: { cols: tpl.cols, rows: tpl.rows },
+        palette: tpl.palette,
+        cells: cellsToArray(tpl.cells),
+        thumbnail: tpl.thumbnail,
+        sparkleCount: tpl.sparkleCount,
+        createdAt: Date.now(),
+        source: 'builtin',
+      };
+      const next = { ...(importedTemplates || {}), [builtinStub.id]: storable };
+      setImportedTemplates(next);
+      // Start a new guided progress against the template
+      setDiamondArt({ ...diamondArt, [builtinStub.id]: makeGuidedProgress(storable) });
+      setActiveKey(builtinStub.id);
+      setSelectedColor(tpl.palette[0]?.id || 1);
+      setProcessing(null);
+      setView('paint');
+    } catch (e) {
+      console.error(e);
+      setProcessing(null);
+      setToast('Could not load that artwork. Try again.');
+    }
+  };
 
   const progress = activeKey ? diamondArt[activeKey] : null;
   const template = useMemo(() => {
@@ -77,6 +145,11 @@ export default function DiamondArtScreen({
 
   // ── Actions ─────────────────────────────────────────────────────────────
   const startGuided = (tpl) => {
+    // If this is a builtin-image stub that hasn't been processed yet, run the pipeline
+    if (tpl._builtinStub) {
+      processBuiltin(tpl);
+      return;
+    }
     const key = tpl.id;
     const existing = diamondArt[key];
     // Migrate: if existing progress's grid size OR palette doesn't match
@@ -258,6 +331,30 @@ export default function DiamondArtScreen({
           backdropFilter: 'blur(6px)',
         }}>{toast}</div>
       )}
+
+      {processing && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 1500,
+          background: 'rgba(10,8,6,0.85)',
+          backdropFilter: 'blur(10px)',
+          display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center',
+          padding: 24,
+        }}>
+          <div style={{ fontFamily: SERIF, fontStyle: 'italic', color: P.goldL, fontSize: '1.4rem', marginBottom: 18, textAlign: 'center' }}>
+            Preparing your artwork
+          </div>
+          <div style={{ width: 280, height: 4, background: 'rgba(255,255,255,0.08)', borderRadius: 2, overflow: 'hidden', marginBottom: 14 }}>
+            <div style={{
+              width: `${Math.round((processing.fraction || 0) * 100)}%`,
+              height: '100%', background: P.gold, transition: 'width 0.25s',
+            }} />
+          </div>
+          <div style={{ fontFamily: SANS, fontSize: '0.82rem', color: P.sub, textAlign: 'center' }}>
+            {processing.label || 'Processing...'}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -408,10 +505,28 @@ function TemplatePickerView({ onPick, diamondArt, allTemplates }) {
               onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(201,169,110,0.45)'}
               onMouseLeave={e => e.currentTarget.style.borderColor = P.border}
             >
-              <div style={{ marginBottom: 10 }}>
-                {isImported
-                  ? <img src={tpl.thumbnail} alt="" style={{ width: '100%', aspectRatio: '1/1', objectFit: 'cover', borderRadius: 6, background: '#0E0A06', display: 'block' }} />
-                  : <MiniPreview template={tpl} />}
+              <div style={{ marginBottom: 10, position: 'relative' }}>
+                {tpl._builtinStub
+                  ? (
+                    <div style={{ width: '100%', aspectRatio: '1/1', borderRadius: 6, background: '#0E0A06', overflow: 'hidden', position: 'relative' }}>
+                      <img
+                        src={tpl.sourceUrl}
+                        alt=""
+                        style={{
+                          position: 'absolute',
+                          left: `${-(tpl.cropFraction?.x || 0) * 100 / (tpl.cropFraction?.w || 1)}%`,
+                          top: `${-(tpl.cropFraction?.y || 0) * 100 / (tpl.cropFraction?.h || 1)}%`,
+                          width: `${100 / (tpl.cropFraction?.w || 1)}%`,
+                          height: `${100 / (tpl.cropFraction?.h || 1)}%`,
+                          objectFit: 'cover',
+                          display: 'block',
+                        }}
+                      />
+                    </div>
+                  )
+                  : isImported
+                    ? <img src={tpl.thumbnail} alt="" style={{ width: '100%', aspectRatio: '1/1', objectFit: 'cover', borderRadius: 6, background: '#0E0A06', display: 'block' }} />
+                    : <MiniPreview template={tpl} />}
               </div>
               <div style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: '0.98rem', color: P.goldL, marginBottom: 2 }}>{tpl.title}</div>
               <div style={{ fontSize: '0.7rem', color: P.sub, marginBottom: 6, letterSpacing: '0.06em' }}>
