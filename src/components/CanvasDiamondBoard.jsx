@@ -80,11 +80,14 @@ export default function CanvasDiamondBoard({
   }, [palette]);
 
   // ── Render loop ──
+  // requestDraw must always call the LATEST draw function (which captures
+  // current selectedColor, cells, etc.) so we route through a ref.
+  const drawFnRef = useRef(() => {});
   const requestDraw = useCallback(() => {
     if (rafRef.current) return;
     rafRef.current = requestAnimationFrame(() => {
       rafRef.current = null;
-      draw();
+      drawFnRef.current();
     });
   }, []);
 
@@ -115,6 +118,15 @@ export default function CanvasDiamondBoard({
     const flashIdx = flashRef.current.idx;
     const flashT = flashRef.current.t;
 
+    // Show numbers when cells are big enough on screen (>=10px)
+    const showNumbers = cellSizePx >= 10;
+    const fontSize = Math.max(6, Math.min(14, cellSizePx * 0.55));
+    if (showNumbers) {
+      ctx.font = `600 ${fontSize}px ui-sans-serif, system-ui, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+    }
+
     for (let r = r0; r < r1; r++) {
       for (let c = c0; c < c1; c++) {
         const i = r * cols + c;
@@ -130,7 +142,6 @@ export default function CanvasDiamondBoard({
           else if (p?.pearl) sprite = sprites.pearl.get(filled);
           else sprite = sprites.reg.get(filled);
           if (flashIdx === i) {
-            // Pulse animation
             const pulse = 1 + (1 - flashT) * 0.2;
             scaleFactor = pulse;
           }
@@ -147,8 +158,35 @@ export default function CanvasDiamondBoard({
             ctx.drawImage(sprite, dx, dy, cellSizePx, cellSizePx);
           }
         }
+
+        // Highlight glow on empty cells whose target matches the selected color
+        if (!filled && mode === 'guided' && targetId > 0 && targetId === selectedColor) {
+          ctx.save();
+          ctx.lineWidth = Math.max(1.2, cellSizePx * 0.14);
+          ctx.strokeStyle = 'rgba(255, 240, 180, 0.95)';
+          ctx.shadowColor = 'rgba(255, 220, 120, 0.9)';
+          ctx.shadowBlur = Math.max(2, cellSizePx * 0.7);
+          const pad = cellSizePx * 0.08;
+          ctx.strokeRect(dx + pad, dy + pad, cellSizePx - pad * 2, cellSizePx - pad * 2);
+          ctx.restore();
+        }
+
+        // Draw target number on empty cells (guided mode)
+        if (showNumbers && !filled && mode === 'guided' && targetId > 0) {
+          const p = paletteMap.get(targetId);
+          if (p) {
+            // Use the target color but force readable contrast
+            const luma = lumaOf(p.hex);
+            ctx.fillStyle = luma > 140
+              ? 'rgba(40,30,20,0.85)'
+              : 'rgba(245,235,210,0.92)';
+            const text = String(targetId);
+            ctx.fillText(text, dx + cellSizePx / 2, dy + cellSizePx / 2 + fontSize * 0.05);
+          }
+        }
       }
     }
+
 
     // If flash is animating, queue another frame
     if (flashIdx >= 0) {
@@ -160,7 +198,12 @@ export default function CanvasDiamondBoard({
       }
     }
     lastDrawRef.current = performance.now();
-  }, [cellArr, templateCells, cols, rows, paletteMap, mode, requestDraw]);
+  }, [cellArr, templateCells, cols, rows, paletteMap, mode, selectedColor, requestDraw]);
+
+  // Sync the drawFnRef to the latest draw closure so requestDraw always uses fresh state
+  useEffect(() => {
+    drawFnRef.current = draw;
+  }, [draw]);
 
   // ── Compute base cell size in CSS px (at scale=1) so the board fits its container ──
   const cellPixelSize = useCallback(() => {
@@ -573,6 +616,10 @@ function hexToRgb(hex) {
   if (h.length === 3) h = h.split('').map(c => c + c).join('');
   const n = parseInt(h, 16);
   return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+}
+function lumaOf(hex) {
+  const { r, g, b } = hexToRgb(hex);
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 }
 function rgbToHex(r, g, b) {
   const to = v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0');

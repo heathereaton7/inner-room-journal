@@ -79,12 +79,14 @@ export default function DiamondArtScreen({
   const startGuided = (tpl) => {
     const key = tpl.id;
     const existing = diamondArt[key];
-    // Migrate: if existing progress's grid size doesn't match current template, restart
+    // Migrate: if existing progress's grid size OR palette doesn't match
+    // current template (e.g. palette upgrades like Lilies 15 → 100), restart.
     const expectedLen = tpl.cells.length;
     const compatible = existing
       && existing.cells?.length === expectedLen
       && existing.cols === tpl.grid.cols
-      && existing.rows === tpl.grid.rows;
+      && existing.rows === tpl.grid.rows
+      && existing.palette?.length === tpl.palette.length;
     if (!compatible) {
       setDiamondArt({ ...diamondArt, [key]: makeGuidedProgress(tpl) });
     }
@@ -172,14 +174,15 @@ export default function DiamondArtScreen({
           diamondArt={diamondArt}
           importedTemplates={importedTemplates}
           onResume={(key) => {
-            // If a guided piece's grid size no longer matches current template, restart it
+            // If a guided piece's grid OR palette no longer matches current template, restart it
             const p = diamondArt[key];
             if (p?.mode === 'guided') {
-              const tpl = templateFor(p);
+              const tpl = getTemplate(p.templateId) || importedTemplates?.[p.templateId] || null;
               const compatible = tpl
                 && p.cells?.length === tpl.cells.length
                 && p.cols === tpl.grid.cols
-                && p.rows === tpl.grid.rows;
+                && p.rows === tpl.grid.rows
+                && p.palette?.length === tpl.palette.length;
               if (!compatible && tpl) {
                 setDiamondArt({ ...diamondArt, [key]: makeGuidedProgress(tpl) });
               }

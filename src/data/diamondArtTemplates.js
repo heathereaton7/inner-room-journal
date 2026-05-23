@@ -50,82 +50,195 @@ function bandPick(t, bands) {
   return bands[bands.length - 1][2];
 }
 
-// ── Template 1: Lilies of the Field ───────────────────────────────────────
+// Build the 100-color palette for Lilies of the Field
+function buildLiliesPalette() {
+  // 1-18: sky ramp — dawn pink → cream → pale blue (18 shades)
+  const sky = ramp([
+    '#F8C9D8', '#F4D0CE', '#F4E2D2', '#F8EBD6', '#FAF2DC',
+    '#F8F0D8', '#F4ECD0', '#EFE6C8', '#E8DBC2', '#E0D8C0',
+    '#D8D8C0', '#CCD8C8', '#C0D8D0', '#B4D4D6', '#A8CFDC',
+    '#A0CCDC', '#98C8DC', '#90C4DC',
+  ], 18);
+  // 19-32: light grass (14)
+  const lightGrass = ramp([
+    '#C8E0A0', '#BCDA98', '#B0D08C', '#A4C880', '#98C078',
+    '#8CB870', '#80B068', '#74A858', '#68A050', '#5C9848',
+    '#509040', '#488838', '#408030', '#387828',
+  ], 14);
+  // 33-50: deep grass shadow band (18)
+  const deepGrass = ramp([
+    '#347224', '#306820', '#2C601C', '#285818', '#245014',
+    '#204810', '#1C400C', '#183808', '#143004', '#102800',
+    '#0C2400', '#082000', '#061C00', '#041800', '#021400',
+    '#021004', '#020C08', '#02080C',
+  ], 18);
+  // 51-68: petal whites (18) — shadow to highlight
+  const petalWhites = ramp([
+    '#988A78', '#A89A88', '#B8AC98', '#C8BEA8', '#D8D0B8',
+    '#E0DBC4', '#E8E5D0', '#F0EDDC', '#F4F0E2', '#F8F4E8',
+    '#FAF7ED', '#FBF9F0', '#FCFAF4', '#FDFBF6', '#FEFCF8',
+    '#FEFDFA', '#FFFEFC', '#FFFFFF',
+  ], 18);
+  // 69-80: gold center (12) — bright cream-gold to deep gold
+  const goldCenter = ramp([
+    '#FFF8D0', '#FFEFA8', '#FFE486', '#FFD86A', '#F8C84C',
+    '#EAB438', '#D89E28', '#C08B20', '#A87018', '#905810',
+    '#78400C', '#603008',
+  ], 12);
+  // 81-86: petal sparkles (sparkle: true)
+  const sparkles = ['#FFFFFF', '#FFFEF8', '#FFFCEC', '#FAF4D8', '#F8E8AC', '#FFD888'];
+  // 87-92: pearl petal highlights (pearl: true)
+  const pearls = ['#F8E8E4', '#F0E4F0', '#E8E8F4', '#F4F0E8', '#FCFBF8', '#FFFCF4'];
+  // 93-96: stem/leaf greens (4)
+  const stemLeaf = ['#2C401C', '#385020', '#486028', '#5A7830'];
+  // 97-100: small lily rose accents (4)
+  const roseAccent = ['#D88090', '#E89AA8', '#F4B0BC', '#F8C8D0'];
+
+  return joinPalette(
+    makeEntries(sky, 'Sky', 0),
+    makeEntries(lightGrass, 'Light grass', 0),
+    makeEntries(deepGrass, 'Deep grass', 0),
+    makeEntries(petalWhites, 'Petal', 0),
+    makeEntries(goldCenter, 'Gold', 0),
+    makeEntries(sparkles, 'Sparkle', 0, { sparkle: true }),
+    makeEntries(pearls, 'Pearl', 0, { pearl: true }),
+    makeEntries(stemLeaf, 'Leaf', 0),
+    makeEntries(roseAccent, 'Rose', 0),
+  );
+}
+
+// ── Template 1: Lilies of the Field (100 colors) ──────────────────────────
+//
+// Palette layout (100 total):
+//   1-18:   sky ramp (dawn pink → cream → pale blue) [pearl on highlights]
+//   19-32:  light grass / midground (yellow-green to mid green) [14]
+//   33-50:  deep grass shadow band (mid → forest) [18]
+//   51-68:  petal whites (shadow → highlight → shine) [18]
+//   69-80:  gold center (deep gold → bright cream-gold) [12]
+//   81-86:  petal sparkles (sparkle: true) [6]
+//   87-92:  pearl petal highlights (pearl: true) [6]
+//   93-96:  stem/leaf greens (deep, mid, light, bright) [4]
+//   97-100: small lily rose accents (deep → bright rose) [4]
 function buildLilies() {
   const cells = emptyCells();
-  // Sky gradient (top -> middle)
+
+  // ── Sky gradient (rows 0..23) — uses ids 1-18 ──
   fillRegion(cells, (r, c) => {
     if (r >= 24) return 0;
-    const t = r / 24;
-    return bandPick(t, [
-      [0, 0.25, 1],   // pale cream top
-      [0.25, 0.55, 2], // soft peach
-      [0.55, 1.0, 3], // sky cream
-    ]);
+    // Vertical t with subtle horizontal warmth (sun on the right)
+    const vt = r / 23;
+    const warmth = (c / COLS) * 0.08;
+    const t = clamp(vt - warmth, 0, 1);
+    return Math.round(1 + t * 17); // 1..18
   });
-  // Grass field (bottom)
+
+  // ── Grass — bottom rows 24..ROWS-1 ──
   fillRegion(cells, (r, c) => {
     if (r < 24) return 0;
     const t = (r - 24) / (ROWS - 24);
-    // mild wave variation across columns
-    const wave = Math.sin(c * 0.45) * 0.05;
+    // Gentle horizontal wave for natural feel
+    const wave = Math.sin(c * 0.45) * 0.05 + Math.cos(c * 0.27 + r * 0.18) * 0.04;
     const v = clamp(t + wave, 0, 1);
-    return bandPick(v, [
-      [0, 0.3, 4],  // light grass
-      [0.3, 0.7, 5], // mid grass
-      [0.7, 1.0, 6], // deep grass
-    ]);
+    if (v < 0.4) {
+      // Light grass (19-32) — 14 shades
+      return Math.round(19 + (v / 0.4) * 13);
+    }
+    // Deep grass shadow band (33-50) — 18 shades
+    const dt = (v - 0.4) / 0.6;
+    return Math.round(33 + dt * 17);
   });
-  // Central lily flower around (r=20, c=20), radius ~8
-  const cx = 20, cy = 20;
+
+  // ── Central lily flower around (r=18, c=20), radius ~9 ──
+  const cx = 20, cy = 18;
   fillRegion(cells, (r, c) => {
     const dx = c - cx, dy = r - cy;
     const dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist > 9) return 0;
+    if (dist > 9.5) return 0;
     // Six-petal pattern using angle
     const angle = Math.atan2(dy, dx);
     const petalAngle = (angle + Math.PI) / (Math.PI * 2) * 6;
-    const petalT = Math.abs((petalAngle % 1) - 0.5) * 2; // 0 at center of petal, 1 at edge
-    // Petal radius modulates with angle
-    const petalRadius = 8 - petalT * 3;
+    const petalT = Math.abs((petalAngle % 1) - 0.5) * 2; // 0 center-of-petal, 1 edge
+    const petalRadius = 8.5 - petalT * 3;
     if (dist > petalRadius) return 0;
-    // Shading: outer = dark cream, middle = cream, inner near center = bright white
-    if (dist < 2) return 11; // golden core inner
-    if (dist < 3) return 10; // gold mid
-    if (dist < 4) return 9;  // gold edge
-    if (petalT > 0.75) return 7; // petal shadow edge
-    if (dist > petalRadius - 1) return 7; // petal outline
-    if (petalT < 0.25 && dist > 4 && dist < 6) return 12; // petal highlight (bright white)
-    return 8; // mid petal cream
+
+    // Inner gold core (ids 69-80, 12 shades — bright center to deeper edge)
+    if (dist < 3.5) {
+      const t = dist / 3.5; // 0 center, 1 edge of core
+      // bright center → mid → deeper at edge
+      return Math.round(69 + t * 11);
+    }
+
+    // Petal — composite of distance from center and petal angle for shading
+    // Bright highlight along the spine (low petalT) on upper petals (negative dy)
+    const isUpperPetal = dy < 0;
+    const along = (petalRadius - dist) / Math.max(0.1, petalRadius - 3.5); // 0 at outer edge, 1 at gold-core boundary
+    const acrossLight = 1 - petalT;            // 1 along spine, 0 at edge
+
+    // Lit term: brighter when light from upper-left (compute pseudo-normal)
+    const light = clamp(0.45 + acrossLight * 0.55 + along * 0.25 + (isUpperPetal ? 0.15 : -0.05), 0, 1);
+
+    // Petal whites ramp (51-68) — 18 shades, low light = shadow, high light = bright
+    const baseId = Math.round(51 + light * 17);
+
+    // Sparkle on hottest along-spine highlight of front-facing petals
+    if (acrossLight > 0.85 && along > 0.55 && along < 0.85) {
+      // Random-ish sparkle gem (ids 81-86)
+      const sparkleIdx = ((r * 7 + c * 3) % 6);
+      return 81 + sparkleIdx;
+    }
+
+    // Pearl shimmer on inner-curve of petals
+    if (along > 0.7 && acrossLight < 0.4) {
+      const pearlIdx = ((r + c) % 6);
+      return 87 + pearlIdx;
+    }
+
+    return baseId;
   });
-  // Stem
+
+  // ── Stem (id 93-95 — leaf greens) ──
   for (let r = 28; r < 38; r++) {
-    setCell(cells, r, 20, 13);
-    if (r > 30) setCell(cells, r, 21, 13);
+    setCell(cells, r, 20, 93);
+    if (r > 30) setCell(cells, r, 21, 94);
   }
-  // Leaves left and right
+  // ── Leaves around stem ──
   const leafCells = [
     [31, 17], [31, 18], [32, 16], [32, 17], [32, 18], [33, 17], [33, 18],
     [31, 22], [31, 23], [32, 22], [32, 23], [32, 24], [33, 22], [33, 23],
   ];
-  leafCells.forEach(([r, c]) => setCell(cells, r, c, 13));
-  // Side smaller lilies (left and right)
-  const smallLilies = [[33, 8], [33, 32]];
+  leafCells.forEach(([r, c], i) => setCell(cells, r, c, 93 + (i % 4)));
+
+  // ── Side smaller lilies (rose 97-100) ──
+  const smallLilies = [[34, 7], [34, 33], [30, 5], [30, 35]];
   smallLilies.forEach(([rr, cc]) => {
     for (let dr = -2; dr <= 2; dr++) {
       for (let dc = -2; dc <= 2; dc++) {
         const d = Math.sqrt(dr * dr + dc * dc);
         if (d <= 2) {
-          if (d < 0.5) setCell(cells, rr + dr, cc + dc, 11);
-          else if (d < 1.5) setCell(cells, rr + dr, cc + dc, 14);
-          else setCell(cells, rr + dr, cc + dc, 15);
+          // Inner = bright, outer = deeper rose
+          const t = 1 - d / 2;
+          const id = Math.round(97 + t * 3); // 97-100
+          setCell(cells, rr + dr, cc + dc, id);
         }
       }
     }
   });
-  // Falling petals / dew sparkles in sky
-  const sparkles = [[5, 8], [8, 32], [12, 6], [15, 33], [3, 22]];
-  sparkles.forEach(([r, c]) => setCell(cells, r, c, 12));
+
+  // ── Drifting dew/petal sparkles in the sky ──
+  const sparkles = [
+    [3, 5], [4, 12], [2, 22], [5, 30], [7, 6],
+    [9, 34], [12, 4], [11, 28], [13, 14], [16, 32], [15, 3], [17, 38],
+    [6, 18], [10, 10],
+  ];
+  sparkles.forEach(([r, c], i) => setCell(cells, r, c, 81 + (i % 6)));
+
+  // ── Pearl droplets on petals & leaves ──
+  const pearlSpots = [
+    [16, 21], [15, 19], [18, 22], [33, 18], [33, 22],
+    [21, 16], [21, 24], [30, 18],
+  ];
+  pearlSpots.forEach(([r, c], i) => setCell(cells, r, c, 87 + (i % 6)));
+
   return cells;
 }
 
@@ -1182,23 +1295,7 @@ export const TEMPLATES = [
     verse: 'Consider the lilies of the field, how they grow; they toil not, neither do they spin.',
     reference: 'Matthew 6:28',
     grid: { cols: COLS, rows: ROWS },
-    palette: [
-      { id: 1,  hex: '#F4E5D0', label: 'Pale sky' },
-      { id: 2,  hex: '#F0C9A8', label: 'Peach' },
-      { id: 3,  hex: '#E8DBC2', label: 'Cream' },
-      { id: 4,  hex: '#B9D096', label: 'Light grass' },
-      { id: 5,  hex: '#8FAA75', label: 'Mid grass' },
-      { id: 6,  hex: '#5F7E4A', label: 'Deep grass' },
-      { id: 7,  hex: '#C8B998', label: 'Petal shadow' },
-      { id: 8,  hex: '#F2EBD8', label: 'Petal mid' },
-      { id: 9,  hex: '#E8C26A', label: 'Gold edge' },
-      { id: 10, hex: '#F0CF60', label: 'Gold mid' },
-      { id: 11, hex: '#FFE07A', label: 'Gold core' },
-      { id: 12, hex: '#FFFCF2', label: 'Petal shine' },
-      { id: 13, hex: '#3A5028', label: 'Stem' },
-      { id: 14, hex: '#D89AA8', label: 'Small lily' },
-      { id: 15, hex: '#A86C7A', label: 'Lily edge' },
-    ],
+    palette: buildLiliesPalette(),
     cells: buildLilies(),
   },
   {
