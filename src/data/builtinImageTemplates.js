@@ -21,6 +21,17 @@ export const BUILTIN_IMAGE_TEMPLATES = [
     cropFraction: { x: 0.0, y: 0.0, w: 0.585, h: 0.86 },
     defaultPreset: 'detailed',  // 150×150 = 22,500 drills
   },
+  {
+    id: 'builtin_beach_house',
+    title: 'Beach Is My Happy Place',
+    verse: 'He maketh me to lie down in green pastures: He leadeth me beside the still waters.',
+    reference: 'Psalm 23:2',
+    sourceUrl: '/beachhouse.png',
+    // Reference card has the beach-house artwork as a wide banner at the top,
+    // with the palette + symbol guide filling the bottom. Crop to top ~52%.
+    cropFraction: { x: 0.0, y: 0.0, w: 1.0, h: 0.52 },
+    defaultPreset: 'detailed',
+  },
 ];
 
 export function getBuiltinImageTemplate(id) {
