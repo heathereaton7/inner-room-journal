@@ -21,6 +21,7 @@ import DiamondArtScreen from './screens/DiamondArtScreen.jsx';
 import DiamondArtFrame from './components/DiamondArtFrame.jsx';
 import WordSearchScreen from './screens/WordSearchScreen.jsx';
 import PregnancyMeditationScreen from './screens/PregnancyMeditationScreen.jsx';
+import FertilityTrackerScreen from './screens/FertilityTrackerScreen.jsx';
 import VerseTranslationModal from './components/VerseTranslationModal.jsx';
 import TrackersScreen, { createEmptyTrackers } from './screens/TrackersScreen.jsx';
 import PregnancyScreen, { createEmptyPregnancy } from './screens/PregnancyScreen.jsx';
@@ -49,7 +50,7 @@ async function dbSave(k,v){
     localStorage.setItem(k,JSON.stringify(v));
     // Dual-write to Firestore when signed in
     if(auth?.currentUser){
-      const fieldMap={"irj-entries":"entries","irj-prayer":"prayerPosts","irj-saved-cards":"savedCards","irj-onboarded":"isOnboarded","irj-candles":"candles","irj-prayed":"prayedFor","irj-owned-items":"ownedItems","irj-garden":"gardenPlots","irj-inventory":"inventory","irj-saved-verses":"savedVerses","irj-bank":"bank","irj-sell-basket":"sellBasket","irj-farm-plots":"farmPlots","irj-animals":"animals","irj-missions":"missions","irj-premium":"isPremium","irj-becoming-her":"becomingHer","irj-trackers":"trackers","irj-pregnancy":"pregnancy","irj-garden-grid":"gardenGrid","irj-unlocks":"unlocks","irj-diamond-art":"diamondArt","irj-art-gallery":"artGallery","irj-imported-templates":"importedTemplates","irj-word-search":"wordSearch","irj-pregnancy-meditations":"pregnancyMeditations","irj-father-meditations":"fatherMeditations"};
+      const fieldMap={"irj-entries":"entries","irj-prayer":"prayerPosts","irj-saved-cards":"savedCards","irj-onboarded":"isOnboarded","irj-candles":"candles","irj-prayed":"prayedFor","irj-owned-items":"ownedItems","irj-garden":"gardenPlots","irj-inventory":"inventory","irj-saved-verses":"savedVerses","irj-bank":"bank","irj-sell-basket":"sellBasket","irj-farm-plots":"farmPlots","irj-animals":"animals","irj-missions":"missions","irj-premium":"isPremium","irj-becoming-her":"becomingHer","irj-trackers":"trackers","irj-pregnancy":"pregnancy","irj-garden-grid":"gardenGrid","irj-unlocks":"unlocks","irj-diamond-art":"diamondArt","irj-art-gallery":"artGallery","irj-imported-templates":"importedTemplates","irj-word-search":"wordSearch","irj-pregnancy-meditations":"pregnancyMeditations","irj-father-meditations":"fatherMeditations","irj-fertility":"fertility"};
       const field=fieldMap[k];
       if(field){
         const userRef=doc(db,"users",auth.currentUser.uid);
@@ -1743,6 +1744,7 @@ function AppInner(){
   const [wordSearch, setWordSearchRaw] = useState({}); // Word search puzzle progress keyed by puzzleId
   const [pregnancyMeditations, setPregnancyMeditationsRaw] = useState({}); // Pregnancy meditation card progress { currentWeek, completed }
   const [fatherMeditations, setFatherMeditationsRaw] = useState({});       // Father's weekly meditation progress { currentWeek, completed }
+  const [fertility, setFertilityRaw] = useState({});                       // Fertility / TTC tracker { periodStarts, cycleLength, periodLength, notes }
   const [activeGatheringSpace, setActiveGatheringSpace] = useState(null);
   const [gatheringPosts, setGatheringPosts] = useState([]);
   const [gatheringLoading, setGatheringLoading] = useState(false);
@@ -1963,6 +1965,7 @@ function AppInner(){
       const ws   = await dbLoad("irj-word-search") || {};
       const pm2  = await dbLoad("irj-pregnancy-meditations") || {};
       const fm   = await dbLoad("irj-father-meditations") || {};
+      const fert = await dbLoad("irj-fertility") || {};
       // Migrate prayers: add status/answeredDate/category if missing
       let migrated=false;
       const mpp=pp.map(p=>{
@@ -1993,6 +1996,7 @@ function AppInner(){
       if(ws) setWordSearchRaw(ws);
       if(pm2) setPregnancyMeditationsRaw(pm2);
       if(fm) setFatherMeditationsRaw(fm);
+      if(fert) setFertilityRaw(fert);
       // Safety: if user has done check-ins but candle was lost in migration, restore it
       const hasCheckins=Object.keys(localStorage).some(k=>k.startsWith("irj-checkins-"));
       const candlePlaced=migratedRoom.placed?.some(p=>p.id==="candle");
@@ -2514,6 +2518,10 @@ function AppInner(){
   function setFatherMeditations(next){
     setFatherMeditationsRaw(next);
     dbSave("irj-father-meditations",next);
+  }
+  function setFertility(next){
+    setFertilityRaw(next);
+    dbSave("irj-fertility",next);
   }
 
   // ── CANDLE ECONOMY ──
@@ -4698,6 +4706,17 @@ function AppInner(){
         progress={fatherMeditations}
         onProgressChange={setFatherMeditations}
         variant="father"
+      />
+    );
+  }
+
+  /* ══ CONCEPTION TRACKER ═══════════════════════════ */
+  if(screen==="fertility-tracker"){
+    return(
+      <FertilityTrackerScreen
+        onBack={()=>setScreen(prevScreen||"cabin")}
+        fertility={fertility}
+        onFertilityChange={setFertility}
       />
     );
   }
