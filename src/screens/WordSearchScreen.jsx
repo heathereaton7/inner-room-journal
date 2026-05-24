@@ -63,11 +63,12 @@ export default function WordSearchScreen({ onBack, progress, onProgressChange })
   return (
     <div style={{
       minHeight: '100vh',
-      background: 'radial-gradient(ellipse at 50% 20%, #2A1F18 0%, #14100C 70%)',
       color: P.ink,
       fontFamily: SANS,
       position: 'relative',
+      overflow: 'hidden',
     }}>
+      <CottageBackground />
       <Header
         title={view === 'play' && activePuzzle ? activePuzzle.title : 'Word Search'}
         onBack={() => {
@@ -106,13 +107,86 @@ export default function WordSearchScreen({ onBack, progress, onProgressChange })
   );
 }
 
+// ── Cottage background with flickering candles ────────────────────────────
+// Renders the rainy-cottage-window scene under the puzzle UI, plus three
+// soft glowing flames anchored to the actual candles in the painting (left
+// wall lantern, right windowsill lantern, table candle) that flicker with
+// staggered random pulses so they feel alive.
+function CottageBackground() {
+  return (
+    <>
+      <style>{`
+        @keyframes ws-flicker-a {
+          0%, 100% { opacity: 0.85; transform: translate(-50%, -50%) scale(1); }
+          15%      { opacity: 0.62; transform: translate(-50%, -50%) scale(0.96); }
+          32%      { opacity: 0.95; transform: translate(-50%, -50%) scale(1.06); }
+          48%      { opacity: 0.7;  transform: translate(-50%, -50%) scale(0.98); }
+          65%      { opacity: 0.88; transform: translate(-50%, -50%) scale(1.02); }
+          82%      { opacity: 0.55; transform: translate(-50%, -50%) scale(0.94); }
+        }
+        @keyframes ws-flicker-b {
+          0%, 100% { opacity: 0.7;  transform: translate(-50%, -50%) scale(1); }
+          12%      { opacity: 0.95; transform: translate(-50%, -50%) scale(1.08); }
+          28%      { opacity: 0.5;  transform: translate(-50%, -50%) scale(0.92); }
+          44%      { opacity: 0.85; transform: translate(-50%, -50%) scale(1.04); }
+          60%      { opacity: 0.62; transform: translate(-50%, -50%) scale(0.97); }
+          78%      { opacity: 0.92; transform: translate(-50%, -50%) scale(1.05); }
+        }
+        @keyframes ws-flicker-c {
+          0%, 100% { opacity: 0.78; transform: translate(-50%, -50%) scale(1.01); }
+          18%      { opacity: 0.55; transform: translate(-50%, -50%) scale(0.95); }
+          34%      { opacity: 0.9;  transform: translate(-50%, -50%) scale(1.07); }
+          52%      { opacity: 0.68; transform: translate(-50%, -50%) scale(0.99); }
+          70%      { opacity: 0.86; transform: translate(-50%, -50%) scale(1.03); }
+          88%      { opacity: 0.6;  transform: translate(-50%, -50%) scale(0.96); }
+        }
+      `}</style>
+      <div style={{
+        position: 'fixed', inset: 0, zIndex: 0,
+        backgroundImage: 'url(/wordsearchbackgroundone.png)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+        pointerEvents: 'none',
+      }} />
+      {/* Darken layer so puzzle text stays readable on top */}
+      <div style={{
+        position: 'fixed', inset: 0, zIndex: 0,
+        background: 'linear-gradient(180deg, rgba(10,8,6,0.55) 0%, rgba(10,8,6,0.72) 60%, rgba(10,8,6,0.82) 100%)',
+        pointerEvents: 'none',
+      }} />
+      {/* Flickering candle glows — positioned over the actual candles in the painting */}
+      <CandleGlow left="8.5%"  top="22%"  color="#FFB36A" size={220} keyframe="ws-flicker-a" duration={2.7} />
+      <CandleGlow left="86%"   top="76%"  color="#FFC07A" size={260} keyframe="ws-flicker-b" duration={3.4} />
+      <CandleGlow left="53%"   top="88%"  color="#FFC988" size={170} keyframe="ws-flicker-c" duration={2.2} />
+    </>
+  );
+}
+
+function CandleGlow({ left, top, color, size, keyframe, duration }) {
+  return (
+    <div style={{
+      position: 'fixed', left, top,
+      width: size, height: size,
+      transform: 'translate(-50%, -50%)',
+      background: `radial-gradient(circle, ${color} 0%, rgba(255,180,90,0.4) 22%, rgba(255,150,60,0.15) 50%, transparent 75%)`,
+      mixBlendMode: 'screen',
+      pointerEvents: 'none',
+      zIndex: 0,
+      filter: 'blur(2px)',
+      animation: `${keyframe} ${duration}s ease-in-out infinite`,
+    }} />
+  );
+}
+
 // ── Header ────────────────────────────────────────────────────────────────
 function Header({ title, onBack }) {
   return (
     <header style={{
       position: 'sticky', top: 0, zIndex: 10,
-      background: 'rgba(20,16,12,0.85)',
-      backdropFilter: 'blur(8px)',
+      background: 'rgba(20,16,12,0.78)',
+      backdropFilter: 'blur(12px)',
+      WebkitBackdropFilter: 'blur(12px)',
       padding: '0 18px', height: 50,
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       borderBottom: `1px solid ${P.border}`,
@@ -121,7 +195,7 @@ function Header({ title, onBack }) {
         background: 'transparent', border: 'none', cursor: 'pointer',
         color: P.sub, fontSize: '0.82rem', fontFamily: SANS, padding: 0,
       }}>← Back</button>
-      <span style={{ fontFamily: SERIF, fontStyle: 'italic', color: P.goldL, fontSize: '0.95rem' }}>{title}</span>
+      <span style={{ fontFamily: SERIF, fontStyle: 'italic', color: P.goldL, fontSize: '0.95rem', textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>{title}</span>
       <div style={{ minWidth: 60 }} />
     </header>
   );
@@ -130,7 +204,7 @@ function Header({ title, onBack }) {
 // ── Hub view ──────────────────────────────────────────────────────────────
 function HubView({ puzzles, progress, onPick }) {
   return (
-    <main style={{ maxWidth: 720, margin: '0 auto', padding: '32px 22px 80px' }}>
+    <main style={{ maxWidth: 720, margin: '0 auto', padding: '32px 22px 80px', position: 'relative', zIndex: 1 }}>
       <p style={{ textAlign: 'center', fontFamily: SERIF, fontStyle: 'italic', color: P.sub, fontSize: '0.95rem', lineHeight: 1.7, margin: '0 0 28px' }}>
         Hide and seek with the Word. Find every word of the verse to reveal the whole.
       </p>
@@ -142,10 +216,13 @@ function HubView({ puzzles, progress, onPick }) {
           const completed = !!p?.completedAt;
           return (
             <button key={puzzle.id} onClick={() => onPick(puzzle.id)} style={{
-              background: completed ? 'rgba(201,169,110,0.12)' : P.panel,
+              background: completed ? 'rgba(40,30,20,0.78)' : 'rgba(20,16,12,0.72)',
+              backdropFilter: 'blur(8px)',
+              WebkitBackdropFilter: 'blur(8px)',
               border: `1px solid ${completed ? 'rgba(201,169,110,0.4)' : P.border}`,
               color: P.ink, padding: '16px 18px', borderRadius: 12,
               cursor: 'pointer', textAlign: 'left', fontFamily: SANS,
+              boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
               transition: 'all 0.2s',
             }}>
               <div style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: '1rem', color: P.goldL, marginBottom: 2 }}>
@@ -196,14 +273,17 @@ function PlayView({ puzzle, progress, onWordFound, onComplete }) {
   const displayWords = useMemo(() => verseWords(puzzle.verseText), [puzzle.verseText]);
 
   return (
-    <main style={{ maxWidth: 720, margin: '0 auto', padding: '18px 14px 80px' }}>
+    <main style={{ maxWidth: 720, margin: '0 auto', padding: '18px 14px 80px', position: 'relative', zIndex: 1 }}>
       {/* Verse reveal area */}
       <div style={{
         textAlign: 'center', margin: '0 auto 16px', maxWidth: 600,
         padding: '14px 18px',
-        background: isComplete ? 'rgba(201,169,110,0.1)' : 'rgba(0,0,0,0.2)',
+        background: isComplete ? 'rgba(40,30,20,0.78)' : 'rgba(20,16,12,0.72)',
+        backdropFilter: 'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)',
         border: `1px solid ${isComplete ? 'rgba(201,169,110,0.5)' : P.border}`,
         borderRadius: 12,
+        boxShadow: '0 6px 22px rgba(0,0,0,0.4)',
       }}>
         <p style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: '1.04rem', lineHeight: 1.6, margin: 0, color: P.ink }}>
           {isComplete ? (

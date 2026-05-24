@@ -195,14 +195,18 @@ export default function WordSearchGrid({ grid, foundCells, targetWords, onWordFo
         display: 'grid',
         gridTemplateColumns: `repeat(${size}, 1fr)`,
         gap: 2,
-        background: 'rgba(0,0,0,0.35)',
+        background: 'rgba(10,8,6,0.78)',
+        backdropFilter: 'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)',
         padding: 8,
         borderRadius: 12,
         border: `1px solid ${P.border}`,
+        boxShadow: '0 8px 26px rgba(0,0,0,0.5)',
         maxWidth: 580,
         margin: '0 auto',
         touchAction: 'none',
         userSelect: 'none',
+        position: 'relative',
       }}
     >
       {grid.letters.map((letter, idx) => {
