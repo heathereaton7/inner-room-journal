@@ -20,6 +20,7 @@ import BecomingHerScreen from './screens/BecomingHerScreen.jsx';
 import DiamondArtScreen from './screens/DiamondArtScreen.jsx';
 import DiamondArtFrame from './components/DiamondArtFrame.jsx';
 import WordSearchScreen from './screens/WordSearchScreen.jsx';
+import VerseTranslationModal from './components/VerseTranslationModal.jsx';
 import TrackersScreen, { createEmptyTrackers } from './screens/TrackersScreen.jsx';
 import PregnancyScreen, { createEmptyPregnancy } from './screens/PregnancyScreen.jsx';
 import { computeWeek } from './data/pregnancyWeeks.js';
@@ -1691,6 +1692,7 @@ function AppInner(){
   const [bibleFontSize, setBibleFontSize] = useState(()=>{try{return parseInt(localStorage.getItem("irj-bible-fontsize"))||18;}catch{return 18;}});
   const [bibleLoading,  setBibleLoading]  = useState(false);
   const [bibleSearch,   setBibleSearch]   = useState("");
+  const [translateVerse, setTranslateVerse] = useState(null); // null | { bookIdx, chapter, verseIdx }
   const bibleDataRef = useRef(null);
   const editEntryRef = useRef(null);
   // ── Market stalls ──
@@ -7158,9 +7160,23 @@ function AppInner(){
                   {bibleData[bibleBook].chapters[bibleChapter].map((verse,i)=>{
                     const sel=selectedVerses.has(i);
                     return(
-                    <p key={i} className="verse-tap" onClick={()=>toggleVerseSelection(i)} style={{fontFamily:SERIF,fontSize:bibleFontSize,color:sel?"#FFF8E8":"#E8E0F0",lineHeight:1.85,margin:"0 0 4px",padding:"4px 10px 4px 14px",borderRadius:8,cursor:"pointer",background:sel?"rgba(212,168,64,0.12)":"transparent",borderLeft:sel?"3px solid rgba(212,168,64,0.55)":"3px solid transparent",transition:"all 0.2s ease",animation:`verseReveal .35s ${Math.min(i*0.015,1.2)}s ease both`,opacity:0,WebkitTapHighlightColor:"transparent"}}>
+                    <p key={i} className="verse-tap" onClick={()=>toggleVerseSelection(i)} style={{fontFamily:SERIF,fontSize:bibleFontSize,color:sel?"#FFF8E8":"#E8E0F0",lineHeight:1.85,margin:"0 0 4px",padding:"4px 10px 4px 14px",borderRadius:8,cursor:"pointer",background:sel?"rgba(212,168,64,0.12)":"transparent",borderLeft:sel?"3px solid rgba(212,168,64,0.55)":"3px solid transparent",transition:"all 0.2s ease",animation:`verseReveal .35s ${Math.min(i*0.015,1.2)}s ease both`,opacity:0,WebkitTapHighlightColor:"transparent",position:"relative"}}>
                       <span style={{fontFamily:SANS,fontSize:"0.68em",color:sel?"rgba(212,168,64,0.75)":"rgba(180,160,210,0.38)",marginRight:8,userSelect:"none",fontWeight:600,transition:"color 0.2s"}}>{i+1}</span>
                       {verse}
+                      <button
+                        onClick={(e)=>{e.stopPropagation();setTranslateVerse({bookIdx:bibleBook,chapter:bibleChapter,verseIdx:i});}}
+                        title="Translate to original Hebrew/Greek"
+                        style={{
+                          marginLeft:8,verticalAlign:"baseline",
+                          background:"transparent",border:"1px solid rgba(180,160,210,0.22)",
+                          color:"rgba(216,200,240,0.65)",fontFamily:SANS,fontSize:"0.62em",
+                          borderRadius:10,padding:"2px 9px",cursor:"pointer",
+                          letterSpacing:"0.08em",textTransform:"uppercase",fontWeight:600,
+                          opacity:0.75,transition:"all 0.15s",WebkitTapHighlightColor:"transparent",
+                        }}
+                        onMouseEnter={e=>{e.currentTarget.style.opacity="1";e.currentTarget.style.borderColor="rgba(216,200,240,0.5)";}}
+                        onMouseLeave={e=>{e.currentTarget.style.opacity="0.75";e.currentTarget.style.borderColor="rgba(180,160,210,0.22)";}}
+                      >א/Α</button>
                     </p>);
                   })}
                   {/* Chapter navigation */}
@@ -7191,6 +7207,17 @@ function AppInner(){
               )}
             </div>
           </div>
+        )}
+
+        {/* ── ORIGINAL-LANGUAGE TRANSLATION MODAL ── */}
+        {translateVerse && bibleDataRef.current && (
+          <VerseTranslationModal
+            bookIdx0={translateVerse.bookIdx}
+            chapter0={translateVerse.chapter}
+            verseIdx0={translateVerse.verseIdx}
+            bookName={bibleDataRef.current[translateVerse.bookIdx]?.name || ''}
+            onClose={()=>setTranslateVerse(null)}
+          />
         )}
 
         {/* ── SAVED VERSES VIEW ── */}
