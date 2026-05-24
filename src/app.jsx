@@ -49,7 +49,7 @@ async function dbSave(k,v){
     localStorage.setItem(k,JSON.stringify(v));
     // Dual-write to Firestore when signed in
     if(auth?.currentUser){
-      const fieldMap={"irj-entries":"entries","irj-prayer":"prayerPosts","irj-saved-cards":"savedCards","irj-onboarded":"isOnboarded","irj-candles":"candles","irj-prayed":"prayedFor","irj-owned-items":"ownedItems","irj-garden":"gardenPlots","irj-inventory":"inventory","irj-saved-verses":"savedVerses","irj-bank":"bank","irj-sell-basket":"sellBasket","irj-farm-plots":"farmPlots","irj-animals":"animals","irj-missions":"missions","irj-premium":"isPremium","irj-becoming-her":"becomingHer","irj-trackers":"trackers","irj-pregnancy":"pregnancy","irj-garden-grid":"gardenGrid","irj-unlocks":"unlocks","irj-diamond-art":"diamondArt","irj-art-gallery":"artGallery","irj-imported-templates":"importedTemplates","irj-word-search":"wordSearch","irj-pregnancy-meditations":"pregnancyMeditations"};
+      const fieldMap={"irj-entries":"entries","irj-prayer":"prayerPosts","irj-saved-cards":"savedCards","irj-onboarded":"isOnboarded","irj-candles":"candles","irj-prayed":"prayedFor","irj-owned-items":"ownedItems","irj-garden":"gardenPlots","irj-inventory":"inventory","irj-saved-verses":"savedVerses","irj-bank":"bank","irj-sell-basket":"sellBasket","irj-farm-plots":"farmPlots","irj-animals":"animals","irj-missions":"missions","irj-premium":"isPremium","irj-becoming-her":"becomingHer","irj-trackers":"trackers","irj-pregnancy":"pregnancy","irj-garden-grid":"gardenGrid","irj-unlocks":"unlocks","irj-diamond-art":"diamondArt","irj-art-gallery":"artGallery","irj-imported-templates":"importedTemplates","irj-word-search":"wordSearch","irj-pregnancy-meditations":"pregnancyMeditations","irj-father-meditations":"fatherMeditations"};
       const field=fieldMap[k];
       if(field){
         const userRef=doc(db,"users",auth.currentUser.uid);
@@ -1742,6 +1742,7 @@ function AppInner(){
   const [importedTemplates, setImportedTemplatesRaw] = useState({}); // User-imported AI-generated artwork templates
   const [wordSearch, setWordSearchRaw] = useState({}); // Word search puzzle progress keyed by puzzleId
   const [pregnancyMeditations, setPregnancyMeditationsRaw] = useState({}); // Pregnancy meditation card progress { currentWeek, completed }
+  const [fatherMeditations, setFatherMeditationsRaw] = useState({});       // Father's weekly meditation progress { currentWeek, completed }
   const [activeGatheringSpace, setActiveGatheringSpace] = useState(null);
   const [gatheringPosts, setGatheringPosts] = useState([]);
   const [gatheringLoading, setGatheringLoading] = useState(false);
@@ -1961,6 +1962,7 @@ function AppInner(){
       const itp  = await dbLoad("irj-imported-templates") || {};
       const ws   = await dbLoad("irj-word-search") || {};
       const pm2  = await dbLoad("irj-pregnancy-meditations") || {};
+      const fm   = await dbLoad("irj-father-meditations") || {};
       // Migrate prayers: add status/answeredDate/category if missing
       let migrated=false;
       const mpp=pp.map(p=>{
@@ -1990,6 +1992,7 @@ function AppInner(){
       if(itp) setImportedTemplatesRaw(itp);
       if(ws) setWordSearchRaw(ws);
       if(pm2) setPregnancyMeditationsRaw(pm2);
+      if(fm) setFatherMeditationsRaw(fm);
       // Safety: if user has done check-ins but candle was lost in migration, restore it
       const hasCheckins=Object.keys(localStorage).some(k=>k.startsWith("irj-checkins-"));
       const candlePlaced=migratedRoom.placed?.some(p=>p.id==="candle");
@@ -2507,6 +2510,10 @@ function AppInner(){
   function setPregnancyMeditations(next){
     setPregnancyMeditationsRaw(next);
     dbSave("irj-pregnancy-meditations",next);
+  }
+  function setFatherMeditations(next){
+    setFatherMeditationsRaw(next);
+    dbSave("irj-father-meditations",next);
   }
 
   // ── CANDLE ECONOMY ──
@@ -4678,6 +4685,19 @@ function AppInner(){
         onBack={()=>setScreen(prevScreen||"cabin")}
         progress={pregnancyMeditations}
         onProgressChange={setPregnancyMeditations}
+        variant="mother"
+      />
+    );
+  }
+
+  /* ══ FATHER'S MEDITATIONS ══════════════════════════ */
+  if(screen==="father-meditations"){
+    return(
+      <PregnancyMeditationScreen
+        onBack={()=>setScreen(prevScreen||"cabin")}
+        progress={fatherMeditations}
+        onProgressChange={setFatherMeditations}
+        variant="father"
       />
     );
   }

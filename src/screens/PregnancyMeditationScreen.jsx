@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { PREGNANCY_MEDITATIONS, getMeditation } from '../data/pregnancyMeditations.js';
+import { PREGNANCY_MEDITATIONS } from '../data/pregnancyMeditations.js';
+import { FATHER_MEDITATIONS } from '../data/fatherMeditations.js';
 import CottageBackground from '../components/CottageBackground.jsx';
 
 const SERIF = "'Cormorant Garamond', Georgia, serif";
@@ -18,16 +19,23 @@ const P = {
 
 /**
  * PregnancyMeditationScreen — 40 weekly meditation cards (verse + prayer +
- * affirmation) for a mother to meditate on through pregnancy.
+ * affirmation) for either parent to meditate on through pregnancy.
  *
  * Props:
  *   onBack()
  *   progress              — { currentWeek?: number, completed?: number[] }
  *   onProgressChange(next)
+ *   variant               — 'mother' (default) | 'father'
  */
-export default function PregnancyMeditationScreen({ onBack, progress, onProgressChange }) {
+export default function PregnancyMeditationScreen({ onBack, progress, onProgressChange, variant = 'mother' }) {
   const [view, setView] = useState('hub');   // 'hub' | 'card'
   const [activeWeek, setActiveWeek] = useState(null);
+
+  const meditations = variant === 'father' ? FATHER_MEDITATIONS : PREGNANCY_MEDITATIONS;
+  const screenTitle = variant === 'father' ? 'Father\'s Meditations' : 'Pregnancy Meditations';
+  const tagline = variant === 'father'
+    ? 'A verse, prayer, and declaration for every week — written for the father.'
+    : 'A verse, a prayer, and an affirmation for every week of pregnancy';
 
   const currentWeek = progress?.currentWeek || null;
   const completed = new Set(progress?.completed || []);
@@ -57,7 +65,7 @@ export default function PregnancyMeditationScreen({ onBack, progress, onProgress
     }}>
       <CottageBackground />
       <Header
-        title={view === 'card' && activeWeek ? `Week ${activeWeek}` : 'Pregnancy Meditations'}
+        title={view === 'card' && activeWeek ? `Week ${activeWeek}` : screenTitle}
         onBack={() => {
           if (view === 'hub') onBack();
           else { setActiveWeek(null); setView('hub'); }
@@ -66,6 +74,8 @@ export default function PregnancyMeditationScreen({ onBack, progress, onProgress
 
       {view === 'hub' && (
         <HubView
+          meditations={meditations}
+          tagline={tagline}
           currentWeek={currentWeek}
           completed={completed}
           onPick={openWeek}
@@ -75,6 +85,7 @@ export default function PregnancyMeditationScreen({ onBack, progress, onProgress
 
       {view === 'card' && activeWeek && (
         <CardView
+          meditations={meditations}
           week={activeWeek}
           isCompleted={completed.has(activeWeek)}
           onToggleComplete={() => toggleComplete(activeWeek)}
@@ -112,7 +123,7 @@ function Header({ title, onBack }) {
 }
 
 // ── Hub: 40-week grid ────────────────────────────────────────────────────
-function HubView({ currentWeek, completed, onPick, onSetCurrent }) {
+function HubView({ meditations, tagline, currentWeek, completed, onPick, onSetCurrent }) {
   return (
     <main style={{ maxWidth: 720, margin: '0 auto', padding: '24px 20px 80px' }}>
       <p style={{
@@ -125,7 +136,7 @@ function HubView({ currentWeek, completed, onPick, onSetCurrent }) {
         fontFamily: SANS, fontSize: '0.78rem', color: P.sub,
         textAlign: 'center', letterSpacing: '0.06em', marginBottom: 22,
       }}>
-        A verse, a prayer, and an affirmation for every week of pregnancy
+        {tagline}
       </p>
 
       {/* Week selector */}
@@ -150,7 +161,7 @@ function HubView({ currentWeek, completed, onPick, onSetCurrent }) {
             }}
           >
             <option value="">Select your week…</option>
-            {PREGNANCY_MEDITATIONS.map(m => (
+            {meditations.map(m => (
               <option key={m.week} value={m.week}>Week {m.week}</option>
             ))}
           </select>
@@ -180,7 +191,7 @@ function HubView({ currentWeek, completed, onPick, onSetCurrent }) {
         gridTemplateColumns: 'repeat(auto-fill, minmax(78px, 1fr))',
         gap: 8,
       }}>
-        {PREGNANCY_MEDITATIONS.map(m => {
+        {meditations.map(m => {
           const isCurrent = m.week === currentWeek;
           const isDone = completed.has(m.week);
           return (
@@ -217,8 +228,8 @@ function HubView({ currentWeek, completed, onPick, onSetCurrent }) {
 }
 
 // ── Card view ────────────────────────────────────────────────────────────
-function CardView({ week, isCompleted, onToggleComplete, onNext, onPrev }) {
-  const m = getMeditation(week);
+function CardView({ meditations, week, isCompleted, onToggleComplete, onNext, onPrev }) {
+  const m = meditations.find(x => x.week === week);
   if (!m) return null;
   return (
     <main style={{ maxWidth: 620, margin: '0 auto', padding: '26px 20px 90px' }}>
