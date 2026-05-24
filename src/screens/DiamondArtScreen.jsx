@@ -10,6 +10,7 @@ import { processUrlToTemplate } from '../systems/imageProcessing.js';
 import CanvasDiamondBoard from '../components/CanvasDiamondBoard.jsx';
 import DiamondArtFrame from '../components/DiamondArtFrame.jsx';
 import ImportArtworkModal from '../components/ImportArtworkModal.jsx';
+import CottageBackground from '../components/CottageBackground.jsx';
 
 const SERIF = "'Cormorant Garamond', Georgia, serif";
 const SANS = "'Inter', system-ui, -apple-system, sans-serif";
@@ -216,11 +217,12 @@ export default function DiamondArtScreen({
   return (
     <div style={{
       minHeight: '100vh',
-      background: 'radial-gradient(ellipse at 50% 20%, #2A1F18 0%, #14100C 70%)',
       color: P.ink,
       fontFamily: SANS,
       position: 'relative',
+      overflow: 'hidden',
     }}>
+      <CottageBackground />
       <Header
         title={view === 'gallery' ? 'Gallery' : view === 'paint' ? (template ? template.title : 'Freestyle') : view === 'complete' ? 'A new piece' : 'Art Studio'}
         onBack={() => {

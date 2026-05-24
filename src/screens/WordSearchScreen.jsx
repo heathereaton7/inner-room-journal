@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { WORD_SEARCH_PUZZLES, getPuzzle, extractWords, verseWords } from '../data/wordSearchPuzzles.js';
 import { generateGrid } from '../systems/wordSearchGen.js';
 import WordSearchGrid from '../components/WordSearchGrid.jsx';
+import CottageBackground from '../components/CottageBackground.jsx';
 
 const SERIF = "'Cormorant Garamond', Georgia, serif";
 const SANS = "'Inter', system-ui, -apple-system, sans-serif";
@@ -104,75 +105,6 @@ export default function WordSearchScreen({ onBack, progress, onProgressChange })
         }}>{toast}</div>
       )}
     </div>
-  );
-}
-
-// ── Cottage background with flickering candles ────────────────────────────
-// Renders the rainy-cottage-window scene under the puzzle UI, plus three
-// soft glowing flames anchored to the actual candles in the painting (left
-// wall lantern, right windowsill lantern, table candle) that flicker with
-// staggered random pulses so they feel alive.
-function CottageBackground() {
-  return (
-    <>
-      <style>{`
-        @keyframes ws-flicker-a {
-          0%, 100% { opacity: 0.85; transform: translate(-50%, -50%) scale(1); }
-          22%      { opacity: 0.74; transform: translate(-50%, -50%) scale(0.98); }
-          42%      { opacity: 0.92; transform: translate(-50%, -50%) scale(1.03); }
-          63%      { opacity: 0.78; transform: translate(-50%, -50%) scale(0.99); }
-          84%      { opacity: 0.88; transform: translate(-50%, -50%) scale(1.02); }
-        }
-        @keyframes ws-flicker-b {
-          0%, 100% { opacity: 0.78; transform: translate(-50%, -50%) scale(1); }
-          19%      { opacity: 0.92; transform: translate(-50%, -50%) scale(1.04); }
-          38%      { opacity: 0.68; transform: translate(-50%, -50%) scale(0.97); }
-          57%      { opacity: 0.86; transform: translate(-50%, -50%) scale(1.02); }
-          78%      { opacity: 0.72; transform: translate(-50%, -50%) scale(0.99); }
-        }
-        @keyframes ws-flicker-c {
-          0%, 100% { opacity: 0.8;  transform: translate(-50%, -50%) scale(1); }
-          25%      { opacity: 0.7;  transform: translate(-50%, -50%) scale(0.98); }
-          50%      { opacity: 0.9;  transform: translate(-50%, -50%) scale(1.03); }
-          75%      { opacity: 0.74; transform: translate(-50%, -50%) scale(0.99); }
-        }
-      `}</style>
-      <div style={{
-        position: 'fixed', inset: 0, zIndex: 0,
-        backgroundImage: 'url(/wordsearchbackgroundone.png)',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat',
-        pointerEvents: 'none',
-      }} />
-      {/* Darken layer so puzzle text stays readable on top */}
-      <div style={{
-        position: 'fixed', inset: 0, zIndex: 0,
-        background: 'linear-gradient(180deg, rgba(10,8,6,0.55) 0%, rgba(10,8,6,0.72) 60%, rgba(10,8,6,0.82) 100%)',
-        pointerEvents: 'none',
-      }} />
-      {/* Flickering candle glows — only the two candles Heather marked in red */}
-      {/* Left-wall copper lantern */}
-      <CandleGlow left="9%" top="18%" color="#FFB36A" size={170} keyframe="ws-flicker-a" duration={6.5} />
-      {/* Right windowsill lantern */}
-      <CandleGlow left="78%" top="65%" color="#FFC07A" size={180} keyframe="ws-flicker-b" duration={8.0} />
-    </>
-  );
-}
-
-function CandleGlow({ left, top, color, size, keyframe, duration }) {
-  return (
-    <div style={{
-      position: 'fixed', left, top,
-      width: size, height: size,
-      transform: 'translate(-50%, -50%)',
-      background: `radial-gradient(circle, ${color} 0%, rgba(255,180,90,0.4) 22%, rgba(255,150,60,0.15) 50%, transparent 75%)`,
-      mixBlendMode: 'screen',
-      pointerEvents: 'none',
-      zIndex: 0,
-      filter: 'blur(2px)',
-      animation: `${keyframe} ${duration}s ease-in-out infinite`,
-    }} />
   );
 }
 
