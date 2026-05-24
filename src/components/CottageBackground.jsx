@@ -30,7 +30,7 @@ export default function CottageBackground() {
         }
       `}</style>
       <div style={{
-        position: 'fixed', inset: 0, zIndex: 0,
+        position: 'fixed', inset: 0, zIndex: -1,
         backgroundImage: 'url(/wordsearchbackgroundone.png)',
         backgroundSize: 'cover',
         backgroundPosition: 'center',
@@ -39,7 +39,7 @@ export default function CottageBackground() {
       }} />
       {/* Darken layer so foreground UI stays readable on top */}
       <div style={{
-        position: 'fixed', inset: 0, zIndex: 0,
+        position: 'fixed', inset: 0, zIndex: -1,
         background: 'linear-gradient(180deg, rgba(10,8,6,0.55) 0%, rgba(10,8,6,0.72) 60%, rgba(10,8,6,0.82) 100%)',
         pointerEvents: 'none',
       }} />
@@ -60,7 +60,7 @@ function CandleGlow({ left, top, color, size, keyframe, duration }) {
       background: `radial-gradient(circle, ${color} 0%, rgba(255,180,90,0.4) 22%, rgba(255,150,60,0.15) 50%, transparent 75%)`,
       mixBlendMode: 'screen',
       pointerEvents: 'none',
-      zIndex: 0,
+      zIndex: -1,
       filter: 'blur(2px)',
       animation: `${keyframe} ${duration}s ease-in-out infinite`,
     }} />
