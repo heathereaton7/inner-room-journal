@@ -20,6 +20,7 @@ import BecomingHerScreen from './screens/BecomingHerScreen.jsx';
 import DiamondArtScreen from './screens/DiamondArtScreen.jsx';
 import DiamondArtFrame from './components/DiamondArtFrame.jsx';
 import WordSearchScreen from './screens/WordSearchScreen.jsx';
+import PregnancyMeditationScreen from './screens/PregnancyMeditationScreen.jsx';
 import VerseTranslationModal from './components/VerseTranslationModal.jsx';
 import TrackersScreen, { createEmptyTrackers } from './screens/TrackersScreen.jsx';
 import PregnancyScreen, { createEmptyPregnancy } from './screens/PregnancyScreen.jsx';
@@ -48,7 +49,7 @@ async function dbSave(k,v){
     localStorage.setItem(k,JSON.stringify(v));
     // Dual-write to Firestore when signed in
     if(auth?.currentUser){
-      const fieldMap={"irj-entries":"entries","irj-prayer":"prayerPosts","irj-saved-cards":"savedCards","irj-onboarded":"isOnboarded","irj-candles":"candles","irj-prayed":"prayedFor","irj-owned-items":"ownedItems","irj-garden":"gardenPlots","irj-inventory":"inventory","irj-saved-verses":"savedVerses","irj-bank":"bank","irj-sell-basket":"sellBasket","irj-farm-plots":"farmPlots","irj-animals":"animals","irj-missions":"missions","irj-premium":"isPremium","irj-becoming-her":"becomingHer","irj-trackers":"trackers","irj-pregnancy":"pregnancy","irj-garden-grid":"gardenGrid","irj-unlocks":"unlocks","irj-diamond-art":"diamondArt","irj-art-gallery":"artGallery","irj-imported-templates":"importedTemplates","irj-word-search":"wordSearch"};
+      const fieldMap={"irj-entries":"entries","irj-prayer":"prayerPosts","irj-saved-cards":"savedCards","irj-onboarded":"isOnboarded","irj-candles":"candles","irj-prayed":"prayedFor","irj-owned-items":"ownedItems","irj-garden":"gardenPlots","irj-inventory":"inventory","irj-saved-verses":"savedVerses","irj-bank":"bank","irj-sell-basket":"sellBasket","irj-farm-plots":"farmPlots","irj-animals":"animals","irj-missions":"missions","irj-premium":"isPremium","irj-becoming-her":"becomingHer","irj-trackers":"trackers","irj-pregnancy":"pregnancy","irj-garden-grid":"gardenGrid","irj-unlocks":"unlocks","irj-diamond-art":"diamondArt","irj-art-gallery":"artGallery","irj-imported-templates":"importedTemplates","irj-word-search":"wordSearch","irj-pregnancy-meditations":"pregnancyMeditations"};
       const field=fieldMap[k];
       if(field){
         const userRef=doc(db,"users",auth.currentUser.uid);
@@ -1740,6 +1741,7 @@ function AppInner(){
   const [artGallery, setArtGalleryRaw] = useState([]); // Completed diamond art pieces
   const [importedTemplates, setImportedTemplatesRaw] = useState({}); // User-imported AI-generated artwork templates
   const [wordSearch, setWordSearchRaw] = useState({}); // Word search puzzle progress keyed by puzzleId
+  const [pregnancyMeditations, setPregnancyMeditationsRaw] = useState({}); // Pregnancy meditation card progress { currentWeek, completed }
   const [activeGatheringSpace, setActiveGatheringSpace] = useState(null);
   const [gatheringPosts, setGatheringPosts] = useState([]);
   const [gatheringLoading, setGatheringLoading] = useState(false);
@@ -1958,6 +1960,7 @@ function AppInner(){
       const ag   = await dbLoad("irj-art-gallery") || [];
       const itp  = await dbLoad("irj-imported-templates") || {};
       const ws   = await dbLoad("irj-word-search") || {};
+      const pm2  = await dbLoad("irj-pregnancy-meditations") || {};
       // Migrate prayers: add status/answeredDate/category if missing
       let migrated=false;
       const mpp=pp.map(p=>{
@@ -1986,6 +1989,7 @@ function AppInner(){
       if(ag) setArtGalleryRaw(ag);
       if(itp) setImportedTemplatesRaw(itp);
       if(ws) setWordSearchRaw(ws);
+      if(pm2) setPregnancyMeditationsRaw(pm2);
       // Safety: if user has done check-ins but candle was lost in migration, restore it
       const hasCheckins=Object.keys(localStorage).some(k=>k.startsWith("irj-checkins-"));
       const candlePlaced=migratedRoom.placed?.some(p=>p.id==="candle");
@@ -2499,6 +2503,10 @@ function AppInner(){
   function setWordSearch(next){
     setWordSearchRaw(next);
     dbSave("irj-word-search",next);
+  }
+  function setPregnancyMeditations(next){
+    setPregnancyMeditationsRaw(next);
+    dbSave("irj-pregnancy-meditations",next);
   }
 
   // ── CANDLE ECONOMY ──
@@ -4659,6 +4667,17 @@ function AppInner(){
         onBack={()=>setScreen(prevScreen||"cabin")}
         progress={wordSearch}
         onProgressChange={setWordSearch}
+      />
+    );
+  }
+
+  /* ══ PREGNANCY MEDITATIONS ═════════════════════════ */
+  if(screen==="pregnancy-meditations"){
+    return(
+      <PregnancyMeditationScreen
+        onBack={()=>setScreen(prevScreen||"cabin")}
+        progress={pregnancyMeditations}
+        onProgressChange={setPregnancyMeditations}
       />
     );
   }
