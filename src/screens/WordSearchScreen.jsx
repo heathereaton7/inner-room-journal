@@ -118,27 +118,23 @@ function CottageBackground() {
       <style>{`
         @keyframes ws-flicker-a {
           0%, 100% { opacity: 0.85; transform: translate(-50%, -50%) scale(1); }
-          15%      { opacity: 0.62; transform: translate(-50%, -50%) scale(0.96); }
-          32%      { opacity: 0.95; transform: translate(-50%, -50%) scale(1.06); }
-          48%      { opacity: 0.7;  transform: translate(-50%, -50%) scale(0.98); }
-          65%      { opacity: 0.88; transform: translate(-50%, -50%) scale(1.02); }
-          82%      { opacity: 0.55; transform: translate(-50%, -50%) scale(0.94); }
+          22%      { opacity: 0.74; transform: translate(-50%, -50%) scale(0.98); }
+          42%      { opacity: 0.92; transform: translate(-50%, -50%) scale(1.03); }
+          63%      { opacity: 0.78; transform: translate(-50%, -50%) scale(0.99); }
+          84%      { opacity: 0.88; transform: translate(-50%, -50%) scale(1.02); }
         }
         @keyframes ws-flicker-b {
-          0%, 100% { opacity: 0.7;  transform: translate(-50%, -50%) scale(1); }
-          12%      { opacity: 0.95; transform: translate(-50%, -50%) scale(1.08); }
-          28%      { opacity: 0.5;  transform: translate(-50%, -50%) scale(0.92); }
-          44%      { opacity: 0.85; transform: translate(-50%, -50%) scale(1.04); }
-          60%      { opacity: 0.62; transform: translate(-50%, -50%) scale(0.97); }
-          78%      { opacity: 0.92; transform: translate(-50%, -50%) scale(1.05); }
+          0%, 100% { opacity: 0.78; transform: translate(-50%, -50%) scale(1); }
+          19%      { opacity: 0.92; transform: translate(-50%, -50%) scale(1.04); }
+          38%      { opacity: 0.68; transform: translate(-50%, -50%) scale(0.97); }
+          57%      { opacity: 0.86; transform: translate(-50%, -50%) scale(1.02); }
+          78%      { opacity: 0.72; transform: translate(-50%, -50%) scale(0.99); }
         }
         @keyframes ws-flicker-c {
-          0%, 100% { opacity: 0.78; transform: translate(-50%, -50%) scale(1.01); }
-          18%      { opacity: 0.55; transform: translate(-50%, -50%) scale(0.95); }
-          34%      { opacity: 0.9;  transform: translate(-50%, -50%) scale(1.07); }
-          52%      { opacity: 0.68; transform: translate(-50%, -50%) scale(0.99); }
-          70%      { opacity: 0.86; transform: translate(-50%, -50%) scale(1.03); }
-          88%      { opacity: 0.6;  transform: translate(-50%, -50%) scale(0.96); }
+          0%, 100% { opacity: 0.8;  transform: translate(-50%, -50%) scale(1); }
+          25%      { opacity: 0.7;  transform: translate(-50%, -50%) scale(0.98); }
+          50%      { opacity: 0.9;  transform: translate(-50%, -50%) scale(1.03); }
+          75%      { opacity: 0.74; transform: translate(-50%, -50%) scale(0.99); }
         }
       `}</style>
       <div style={{
@@ -155,10 +151,13 @@ function CottageBackground() {
         background: 'linear-gradient(180deg, rgba(10,8,6,0.55) 0%, rgba(10,8,6,0.72) 60%, rgba(10,8,6,0.82) 100%)',
         pointerEvents: 'none',
       }} />
-      {/* Flickering candle glows — positioned over the actual candles in the painting */}
-      <CandleGlow left="8.5%"  top="22%"  color="#FFB36A" size={220} keyframe="ws-flicker-a" duration={2.7} />
-      <CandleGlow left="86%"   top="76%"  color="#FFC07A" size={260} keyframe="ws-flicker-b" duration={3.4} />
-      <CandleGlow left="53%"   top="88%"  color="#FFC988" size={170} keyframe="ws-flicker-c" duration={2.2} />
+      {/* Flickering candle glows — anchored on the actual candle flames in the painting */}
+      {/* Left-wall lantern (flame inside the copper lantern) */}
+      <CandleGlow left="15%" top="26%" color="#FFB36A" size={180} keyframe="ws-flicker-a" duration={6.5} />
+      {/* Right-windowsill lantern (the larger candle behind the coffee cup) */}
+      <CandleGlow left="76%" top="73%" color="#FFC07A" size={200} keyframe="ws-flicker-b" duration={8.0} />
+      {/* Small windowsill candle near the bottom-right corner */}
+      <CandleGlow left="83%" top="92%" color="#FFC988" size={130} keyframe="ws-flicker-c" duration={5.5} />
     </>
   );
 }
