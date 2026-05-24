@@ -151,13 +151,11 @@ function CottageBackground() {
         background: 'linear-gradient(180deg, rgba(10,8,6,0.55) 0%, rgba(10,8,6,0.72) 60%, rgba(10,8,6,0.82) 100%)',
         pointerEvents: 'none',
       }} />
-      {/* Flickering candle glows — anchored on the actual candle flames in the painting */}
-      {/* Left-wall lantern (flame inside the copper lantern) */}
-      <CandleGlow left="15%" top="26%" color="#FFB36A" size={180} keyframe="ws-flicker-a" duration={6.5} />
-      {/* Right-windowsill lantern (the larger candle behind the coffee cup) */}
-      <CandleGlow left="76%" top="73%" color="#FFC07A" size={200} keyframe="ws-flicker-b" duration={8.0} />
-      {/* Small windowsill candle near the bottom-right corner */}
-      <CandleGlow left="83%" top="92%" color="#FFC988" size={130} keyframe="ws-flicker-c" duration={5.5} />
+      {/* Flickering candle glows — only the two candles Heather marked in red */}
+      {/* Left-wall copper lantern */}
+      <CandleGlow left="9%" top="18%" color="#FFB36A" size={170} keyframe="ws-flicker-a" duration={6.5} />
+      {/* Right windowsill lantern */}
+      <CandleGlow left="78%" top="65%" color="#FFC07A" size={180} keyframe="ws-flicker-b" duration={8.0} />
     </>
   );
 }
