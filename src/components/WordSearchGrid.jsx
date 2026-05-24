@@ -1,5 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
-import { checkSelection } from '../systems/wordSearchGen.js';
+import { useState, useRef, useCallback, useEffect } from 'react';
 
 const SANS = "'Inter', system-ui, -apple-system, sans-serif";
 
@@ -11,80 +10,190 @@ const P = {
 };
 
 /**
- * WordSearchGrid — interactive letter grid.
+ * WordSearchGrid — interactive letter grid with two selection modes:
  *
- * Selection model: tap the first letter, then tap the last letter. If the
- * cells between form a valid straight line that spells one of the unfound
- * target words (forwards or backwards), that word is marked found.
+ *   1. Drag mode — press on a letter and drag through letters in a straight
+ *      line to the last letter. Releasing checks for a word match.
+ *
+ *   2. Tap-per-letter mode — tap each letter of the word one by one. The
+ *      first tap starts the selection; each subsequent tap must be adjacent
+ *      (in any of 8 directions) and the line must keep going in the same
+ *      direction. The word is auto-checked after every tap, so finishing the
+ *      last letter immediately marks the word as found.
+ *
+ * Releasing on the same cell you started on counts as a tap (extends the
+ * incremental selection). Dragging across two or more cells counts as a
+ * drag (full-line match).
  *
  * Props:
- *   grid            — { size, letters, placements }
- *   foundCells      — Set<number> of cell indices already locked in (found)
- *   targetWords     — string[] of remaining unfound words
+ *   grid             — { size, letters, placements }
+ *   foundCells       — Set<number> of cell indices already locked in
+ *   targetWords      — string[] of remaining unfound words
  *   onWordFound(word, cells)
  */
 export default function WordSearchGrid({ grid, foundCells, targetWords, onWordFound }) {
-  const [first, setFirst] = useState(null);   // { r, c, idx } or null
-  const [hover, setHover] = useState(null);   // { r, c } for desktop hover preview
-  const [errorIdx, setErrorIdx] = useState(null);
+  const size = grid.size;
+  const wrapperRef = useRef(null);
+  const dragRef = useRef({ active: false, startIdx: null, lastIdx: null, moved: false });
+  // Selection: array of cell indices in order. In drag mode it's a straight
+  // line being previewed; in tap mode it's the incrementally-built selection.
+  const [selection, setSelection] = useState([]);
+  const [dragLine, setDragLine] = useState(null);
+  const [errorCells, setErrorCells] = useState(null);
 
-  // Preview cells if user has tapped a first letter and is hovering
-  const previewCells = useMemo(() => {
-    if (!first || !hover) return null;
-    const dr = Math.sign(hover.r - first.r);
-    const dc = Math.sign(hover.c - first.c);
-    const adr = Math.abs(hover.r - first.r);
-    const adc = Math.abs(hover.c - first.c);
+  // ── Selection helpers ──────────────────────────────────────────────────
+  const lineCells = useCallback((r1, c1, r2, c2) => {
+    const dr = Math.sign(r2 - r1);
+    const dc = Math.sign(c2 - c1);
+    const adr = Math.abs(r2 - r1);
+    const adc = Math.abs(c2 - c1);
     if (!(adr === 0 || adc === 0 || adr === adc)) return null;
     const len = Math.max(adr, adc) + 1;
-    const cells = new Set();
+    const cells = [];
     for (let i = 0; i < len; i++) {
-      const r = first.r + dr * i;
-      const c = first.c + dc * i;
-      cells.add(r * grid.size + c);
+      const r = r1 + dr * i;
+      const c = c1 + dc * i;
+      if (r < 0 || r >= size || c < 0 || c >= size) return null;
+      cells.push(r * size + c);
     }
     return cells;
-  }, [first, hover, grid.size]);
+  }, [size]);
 
-  const onCellTap = useCallback((r, c) => {
-    const idx = r * grid.size + c;
-    if (!first) {
-      setFirst({ r, c, idx });
-      return;
+  const extendsLine = useCallback((prev, newIdx) => {
+    if (prev.length === 0) return true;
+    const last = prev[prev.length - 1];
+    const lastR = Math.floor(last / size), lastC = last % size;
+    const nR = Math.floor(newIdx / size), nC = newIdx % size;
+    const dr = nR - lastR, dc = nC - lastC;
+    if (Math.abs(dr) > 1 || Math.abs(dc) > 1 || (dr === 0 && dc === 0)) return false;
+    if (prev.length >= 2) {
+      const prev2 = prev[prev.length - 2];
+      const p2R = Math.floor(prev2 / size), p2C = prev2 % size;
+      const prevDr = lastR - p2R, prevDc = lastC - p2C;
+      if (dr !== prevDr || dc !== prevDc) return false;
     }
-    if (first.r === r && first.c === c) {
-      // Tapped same cell → cancel
-      setFirst(null);
-      return;
+    return true;
+  }, [size]);
+
+  const tryMatch = useCallback((cells) => {
+    if (cells.length < 2) return null;
+    const word = cells.map(i => grid.letters[i]).join('');
+    const reversed = word.split('').reverse().join('');
+    for (const t of targetWords) {
+      if (word === t) return { word: t, cells };
+      if (reversed === t) return { word: t, cells: cells.slice().reverse() };
     }
-    // Try to match
-    const match = checkSelection(grid, first.r, first.c, r, c, targetWords);
-    if (match) {
-      onWordFound(match.word, match.cells);
-      setFirst(null);
-      setHover(null);
+    return null;
+  }, [grid.letters, targetWords]);
+
+  // ── Find cell index from a pointer position ────────────────────────────
+  const cellAtPoint = useCallback((x, y) => {
+    const el = document.elementFromPoint(x, y);
+    if (!el) return null;
+    const data = el.closest('[data-cell]');
+    if (!data) return null;
+    const idx = parseInt(data.getAttribute('data-cell'), 10);
+    if (!Number.isFinite(idx)) return null;
+    return { idx, r: Math.floor(idx / size), c: idx % size };
+  }, [size]);
+
+  // ── Pointer handlers ───────────────────────────────────────────────────
+  const onPointerDown = useCallback((e) => {
+    const hit = cellAtPoint(e.clientX, e.clientY);
+    if (!hit) return;
+    // Capture the pointer so subsequent move/up events come here even if user drags outside
+    wrapperRef.current?.setPointerCapture?.(e.pointerId);
+    dragRef.current = { active: true, startIdx: hit.idx, lastIdx: hit.idx, moved: false, pointerId: e.pointerId };
+    // Initial drag-line preview is just the starting cell
+    setDragLine([hit.idx]);
+  }, [cellAtPoint]);
+
+  const onPointerMove = useCallback((e) => {
+    const drag = dragRef.current;
+    if (!drag.active) return;
+    const hit = cellAtPoint(e.clientX, e.clientY);
+    if (!hit) return;
+    if (hit.idx === drag.lastIdx) return;
+    drag.lastIdx = hit.idx;
+    drag.moved = true;
+    // Recompute the line from start to current
+    const startR = Math.floor(drag.startIdx / size);
+    const startC = drag.startIdx % size;
+    const cells = lineCells(startR, startC, hit.r, hit.c);
+    setDragLine(cells || [drag.startIdx]);
+  }, [cellAtPoint, lineCells, size]);
+
+  const flashError = useCallback((cells) => {
+    setErrorCells(new Set(cells));
+    setTimeout(() => setErrorCells(null), 380);
+  }, []);
+
+  const onPointerUp = useCallback((e) => {
+    const drag = dragRef.current;
+    if (!drag.active) return;
+    wrapperRef.current?.releasePointerCapture?.(drag.pointerId);
+    dragRef.current = { active: false, startIdx: null, lastIdx: null, moved: false };
+    setDragLine(null);
+
+    if (drag.moved) {
+      // ── Drag selection ──
+      const startR = Math.floor(drag.startIdx / size);
+      const startC = drag.startIdx % size;
+      const endR = Math.floor(drag.lastIdx / size);
+      const endC = drag.lastIdx % size;
+      const cells = lineCells(startR, startC, endR, endC);
+      if (!cells) return;
+      const match = tryMatch(cells);
+      if (match) {
+        onWordFound(match.word, match.cells);
+        setSelection([]);
+      } else {
+        flashError(cells);
+        setSelection([]);
+      }
     } else {
-      // Brief error feedback then accept this cell as new first
-      setErrorIdx(idx);
-      setTimeout(() => setErrorIdx(null), 350);
-      setFirst({ r, c, idx });
+      // ── Tap-per-letter selection ──
+      const idx = drag.startIdx;
+      setSelection(prev => {
+        // Tapping the same last cell cancels
+        if (prev.length > 0 && prev[prev.length - 1] === idx) {
+          return [];
+        }
+        // Extend if adjacent + same direction
+        if (extendsLine(prev, idx)) {
+          const next = [...prev, idx];
+          // Try matching after each tap
+          const match = tryMatch(next);
+          if (match) {
+            // Schedule the parent state update outside the setter to avoid double-fire
+            queueMicrotask(() => onWordFound(match.word, match.cells));
+            return [];
+          }
+          return next;
+        }
+        // Doesn't extend — start a new selection at this cell
+        return [idx];
+      });
     }
-  }, [first, grid, targetWords, onWordFound]);
+  }, [extendsLine, flashError, lineCells, onWordFound, tryMatch, size]);
 
-  const onCellHover = useCallback((r, c) => {
-    if (!first) return;
-    setHover({ r, c });
-  }, [first]);
+  // ── Cleanup if component unmounts mid-drag ──
+  useEffect(() => () => { dragRef.current.active = false; }, []);
 
-  // Render
-  const cellSize = `min(${Math.floor(560 / grid.size)}px, calc((100vw - 56px) / ${grid.size}))`;
+  // Build set of cell indices that are currently highlighted (drag preview or tap selection)
+  const previewSet = dragLine ? new Set(dragLine) : new Set(selection);
 
+  // ── Render ─────────────────────────────────────────────────────────────
   return (
     <div
-      onPointerLeave={() => setHover(null)}
+      ref={wrapperRef}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerUp}
       style={{
         display: 'grid',
-        gridTemplateColumns: `repeat(${grid.size}, 1fr)`,
+        gridTemplateColumns: `repeat(${size}, 1fr)`,
         gap: 2,
         background: 'rgba(0,0,0,0.35)',
         padding: 8,
@@ -92,16 +201,15 @@ export default function WordSearchGrid({ grid, foundCells, targetWords, onWordFo
         border: `1px solid ${P.border}`,
         maxWidth: 580,
         margin: '0 auto',
-        touchAction: 'manipulation',
+        touchAction: 'none',
+        userSelect: 'none',
       }}
     >
       {grid.letters.map((letter, idx) => {
-        const r = Math.floor(idx / grid.size);
-        const c = idx % grid.size;
         const isFound = foundCells.has(idx);
-        const isFirst = first && first.idx === idx;
-        const isPreview = previewCells?.has(idx);
-        const isError = errorIdx === idx;
+        const isPreview = previewSet.has(idx);
+        const isStart = dragRef.current.active && idx === dragRef.current.startIdx;
+        const isError = errorCells?.has(idx);
         let bg = 'rgba(255,255,255,0.04)';
         let color = '#FAF6F0';
         let border = `1px solid rgba(255,255,255,0.06)`;
@@ -110,41 +218,35 @@ export default function WordSearchGrid({ grid, foundCells, targetWords, onWordFo
           color = '#1A1612';
           border = `1px solid rgba(201,169,110,0.5)`;
         } else if (isError) {
-          bg = 'rgba(220,80,80,0.35)';
+          bg = 'rgba(220,80,80,0.4)';
           border = `1px solid rgba(220,80,80,0.6)`;
-        } else if (isFirst) {
-          bg = 'rgba(232,212,160,0.55)';
-          color = '#1A1612';
-          border = `1px solid ${P.goldL}`;
         } else if (isPreview) {
-          bg = 'rgba(232,212,160,0.18)';
+          bg = isStart ? 'rgba(232,212,160,0.55)' : 'rgba(232,212,160,0.22)';
           border = `1px solid ${P.borderH}`;
         }
         return (
-          <button
+          <div
             key={idx}
-            onClick={() => onCellTap(r, c)}
-            onPointerEnter={() => onCellHover(r, c)}
+            data-cell={idx}
             style={{
-              width: cellSize,
-              height: cellSize,
               aspectRatio: '1 / 1',
               background: bg,
               color,
               border,
               borderRadius: 4,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
               cursor: 'pointer',
               fontFamily: SANS,
               fontWeight: 700,
-              fontSize: `min(${Math.floor(560 / grid.size * 0.5)}px, calc((100vw - 56px) / ${grid.size} * 0.5))`,
-              padding: 0,
-              transition: 'transform 0.08s',
-              transform: isFirst ? 'scale(1.08)' : 'scale(1)',
+              fontSize: `min(${Math.floor(560 / size * 0.5)}px, calc((100vw - 56px) / ${size} * 0.5))`,
               userSelect: 'none',
+              transition: 'background 0.08s',
             }}
           >
             {letter}
-          </button>
+          </div>
         );
       })}
     </div>
