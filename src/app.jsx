@@ -4082,10 +4082,21 @@ function AppInner(){
 
   /* ══ WELCOME — COZY OUTDOOR CABIN ════════════════ */
   if(screen==="welcome") return(
-    <div style={{minHeight:"100vh",width:"100%",position:"relative",overflow:"hidden",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-end"}}>
+    <div style={{minHeight:"100vh",width:"100%",position:"relative",overflow:"hidden",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-end",background:"#0A0806"}}>
       <style>{GFONTS}{CSS}</style>
+      <style>{`
+        /* Welcome cabin scene: use cover on portrait / phone screens (so the
+           cabin fills the screen edge-to-edge) and contain on landscape /
+           desktop screens (so the whole cabin is visible without being
+           chopped off horizontally). The dark page background fills any
+           letterbox space. */
+        .welcome-cabin-bg { object-fit: cover; }
+        @media (min-aspect-ratio: 1/1) {
+          .welcome-cabin-bg { object-fit: contain; }
+        }
+      `}</style>
       {/* Cabin background image — now an <img> so we can calculate rendered rect */}
-      <img ref={outdoorImgRef} src="/outdoor.webp" onLoad={recalcOutdoorRect} alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",objectPosition:"center 30%",zIndex:0,filter:"brightness(1.25)",transformOrigin:"50% 42%",animation:doorOpening?"walkToDoor 1.3s ease-in forwards":"none"}}/>
+      <img ref={outdoorImgRef} className="welcome-cabin-bg" src="/outdoor.webp" onLoad={recalcOutdoorRect} alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectPosition:"center 30%",zIndex:0,filter:"brightness(1.25)",transformOrigin:"50% 42%",animation:doorOpening?"walkToDoor 1.3s ease-in forwards":"none"}}/>
 
       {/* ── Glow overlays — positioned relative to actual rendered image rectangle ── */}
       {/* This container is sized/positioned to match the real image rect, so child */}

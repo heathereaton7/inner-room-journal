@@ -36,11 +36,20 @@ export class Camera {
     let desiredX = targetX - this.viewW / 2;
     let desiredY = targetY - this.viewH / 2;
 
-    // Clamp to world edges
-    const maxX = this.worldW - this.viewW;
-    const maxY = this.worldH - this.viewH;
-    desiredX = Math.max(0, Math.min(maxX, desiredX));
-    desiredY = Math.max(0, Math.min(maxY, desiredY));
+    // Clamp to world edges. When the viewport is BIGGER than the world
+    // (common on wide desktop monitors), `worldW - viewW` is negative —
+    // in that case we center the world inside the viewport instead of
+    // pinning it to the corner, so no empty void shows on the side.
+    if (this.viewW >= this.worldW) {
+      desiredX = (this.worldW - this.viewW) / 2; // negative → centers world
+    } else {
+      desiredX = Math.max(0, Math.min(this.worldW - this.viewW, desiredX));
+    }
+    if (this.viewH >= this.worldH) {
+      desiredY = (this.worldH - this.viewH) / 2;
+    } else {
+      desiredY = Math.max(0, Math.min(this.worldH - this.viewH, desiredY));
+    }
 
     // Smooth interpolation
     const dx = desiredX - this.x;
@@ -53,14 +62,24 @@ export class Camera {
 
   /** Snap camera instantly (used on first frame or teleport). */
   snapTo(targetX, targetY) {
-    this.x = Math.max(0, Math.min(
-      this.worldW - this.viewW,
-      targetX - this.viewW / 2
-    ));
-    this.y = Math.max(0, Math.min(
-      this.worldH - this.viewH,
-      targetY - this.viewH / 2
-    ));
+    // Same centering logic as follow() — center the world when the
+    // viewport is bigger than it, otherwise clamp to world edges.
+    if (this.viewW >= this.worldW) {
+      this.x = (this.worldW - this.viewW) / 2;
+    } else {
+      this.x = Math.max(0, Math.min(
+        this.worldW - this.viewW,
+        targetX - this.viewW / 2
+      ));
+    }
+    if (this.viewH >= this.worldH) {
+      this.y = (this.worldH - this.viewH) / 2;
+    } else {
+      this.y = Math.max(0, Math.min(
+        this.worldH - this.viewH,
+        targetY - this.viewH / 2
+      ));
+    }
   }
 
   /**
