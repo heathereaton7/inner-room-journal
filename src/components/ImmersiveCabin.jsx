@@ -207,21 +207,17 @@ export default function ImmersiveCabin(){
 
   return(
     <div ref={containerRef} style={{position:"absolute",inset:0,zIndex:0,overflow:"hidden",background:"#060402",cursor:"grab"}} onMouseDown={()=>{if(containerRef.current)containerRef.current.style.cursor="grabbing";}} onMouseUp={()=>{if(containerRef.current)containerRef.current.style.cursor="grab";}}>
-      <style>{`
-        /* Cabin interior image: cover on portrait/phone screens (image fills
-           the screen edge-to-edge as before). On landscape/desktop screens,
-           use contain so the whole scene — including the book on the desk
-           in the foreground — stays visible without being cropped. The dark
-           container background (#060402) fills any letterbox area. */
-        .cabin-bg-img { object-fit: cover; }
-        @media (min-aspect-ratio: 1/1) {
-          .cabin-bg-img { object-fit: contain; }
-        }
-      `}</style>
-      {/* Cabin image — oversized for parallax movement */}
+      {/* Cabin image — oversized for parallax movement.
+          object-fit: cover so the image fills the container completely
+          (the hotspots in CabinScreen are positioned relative to the
+          container and must overlap the visible image — using contain
+          on wide screens would leave them sitting in dark letterbox).
+          object-position: center bottom anchors the foreground (desk,
+          book, spiral staircase, rug) so on wide desktop screens the
+          top of the scene (skylight) gets cropped instead of the
+          interactive foreground. Mobile portrait looks identical. */}
       <img
         ref={imgRef}
-        className="cabin-bg-img"
         src={CABIN_FALLBACK_IMAGE}
         alt="Cabin interior"
         onLoad={()=>{imgLoaded.current=true;}}
@@ -230,6 +226,8 @@ export default function ImmersiveCabin(){
           top:0,left:0,
           width:`calc(100% + ${PARALLAX*2}px)`,
           height:`calc(100% + ${PARALLAX*2}px)`,
+          objectFit:"cover",
+          objectPosition:"center bottom",
           transform:`translate(${-PARALLAX}px,${-PARALLAX}px)`,
           willChange:"transform",
           userSelect:"none",
