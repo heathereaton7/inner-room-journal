@@ -251,27 +251,9 @@ export default function CabinScreen({
         <div style={{position:"absolute",inset:"-10%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,200,80,0.04),transparent 60%)",pointerEvents:"none"}}/>
       </button>
 
-      {/* 10. BOOKSHELF — desk shelves beneath the desktop surface → shelf books */}
-      {SHELF_BOOKS.filter(b=>b.id!=="prayers"&&b.id!=="dreams").map((book,i)=>{
-        const cv=BOOK_COVERS[book.id]||BOOK_COVERS.journal;
-        const isActive=deskBook===book.id;
-        // Books arranged along the desk shelving underneath the desktop
-        const bookPositions=[
-          {left:"10%",bottom:"2%",width:"7%",height:"6%"},   // book 1 — far left shelf
-          {left:"18%",bottom:"2%",width:"7%",height:"6%"},   // book 2
-          {left:"26%",bottom:"2%",width:"7%",height:"6%"},   // book 3
-          {left:"64%",bottom:"2%",width:"7%",height:"6%"},   // book 4 — right side shelf
-          {left:"72%",bottom:"2%",width:"7%",height:"6%"},   // book 5
-          {left:"80%",bottom:"2%",width:"7%",height:"6%"},   // book 6
-        ];
-        const pos=bookPositions[i]||bookPositions[0];
-        return(
-          <button key={book.id} className="shelf-hotspot" onClick={()=>selectShelfBook(book.id)}
-            style={{position:"absolute",left:pos.left,bottom:pos.bottom,width:pos.width,height:pos.height,zIndex:11,background:"transparent",border:"none",cursor:"pointer",borderRadius:"4px",animation:isActive?"none":"shelfGlow 4s ease-in-out infinite",animationDelay:`${i*0.3}s`}}>
-            {isActive&&<div style={{position:"absolute",inset:"-15%",borderRadius:"50%",background:`radial-gradient(circle,${cv.accent}25,transparent 65%)`,pointerEvents:"none"}}/>}
-          </button>
-        );
-      })}
+      {/* Shelf book hotspots removed — Scripture, Gratitude, Prophecy & Words,
+          and Becoming Her are now accessible from the "Choose Your Path" menu
+          inside the Inner Room Journal (alongside the other journals). */}
 
       {/* CURRENCY BALANCE — candles + coins (triple-tap = toggle debug hotspots) — always visible */}
       <div onClick={debugTripleTap} style={{position:"absolute",left:"3%",top:"4%",zIndex:12,background:"rgba(26,22,18,0.7)",backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",border:"1px solid rgba(212,180,100,0.15)",borderRadius:10,padding:"5px 12px",display:"flex",alignItems:"center",gap:10,animation:"fadeUp 1s 2s ease both",cursor:"default"}}>
@@ -560,6 +542,10 @@ export default function CabinScreen({
                         {id:"rooms",label:"Reflection Rooms",desc:"Guided daily reflections"},
                         {id:"dreams",label:"Dream Journal",desc:"Record your dreams"},
                         {id:"prayers",label:"Prayer Journal",desc:"Prayers that water your garden"},
+                        {id:"bible",label:"Scripture",desc:"Sit with the questions Jesus asked"},
+                        {id:"gratitude",label:"Gratitude",desc:"Name the small graces"},
+                        {id:"prophecy",label:"Prophecy & Words",desc:"Record words spoken over you"},
+                        {id:"becoming-her",label:"Becoming Her",desc:"90-day identity & habit journey"},
                         {id:"check-in",label:"Body & Mind Check-In",desc:"Notice what you're carrying"},
                         {id:"trackers",label:"Trackers",desc:"Bills, savings, and spending"},
                         {id:"diamond-art",label:"Diamond Art",desc:"Verse-by-verse art studio"},
@@ -568,7 +554,7 @@ export default function CabinScreen({
                         {id:"father-meditations",label:"Father's Meditations",desc:"Weekly verse, prayer, and declaration for dad"},
                         {id:"fertility-tracker",label:"Conception Tracker",desc:"Cycle, ovulation, and fertile window"},
                       ].map(opt=>(
-                        <button key={opt.id} onClick={()=>{if(opt.id==="check-in"){setBookOpen(false);setScreen("check-in");return;}if(opt.id==="trackers"){setBookOpen(false);setScreen("trackers");return;}if(opt.id==="diamond-art"){setBookOpen(false);setScreen("diamond-art");return;}if(opt.id==="word-search"){setBookOpen(false);setScreen("word-search");return;}if(opt.id==="pregnancy-meditations"){setBookOpen(false);setScreen("pregnancy-meditations");return;}if(opt.id==="father-meditations"){setBookOpen(false);setScreen("father-meditations");return;}if(opt.id==="fertility-tracker"){setBookOpen(false);setScreen("fertility-tracker");return;}setJournalSection(opt.id);setBookPage(2);setFlipDir("fwd");setBookText("");setBookSaveMsg("");setHistoryMode("list");}} style={{background:"rgba(139,109,69,0.06)",border:"1px solid rgba(139,109,69,0.15)",borderRadius:10,padding:"14px 16px",cursor:"pointer",display:"flex",alignItems:"center",gap:12,transition:"all .2s",textAlign:"left"}} onMouseEnter={e=>e.currentTarget.style.background="rgba(139,109,69,0.12)"} onMouseLeave={e=>e.currentTarget.style.background="rgba(139,109,69,0.06)"}>
+                        <button key={opt.id} onClick={()=>{if(opt.id==="check-in"){setBookOpen(false);setScreen("check-in");return;}if(opt.id==="trackers"){setBookOpen(false);setScreen("trackers");return;}if(opt.id==="diamond-art"){setBookOpen(false);setScreen("diamond-art");return;}if(opt.id==="word-search"){setBookOpen(false);setScreen("word-search");return;}if(opt.id==="pregnancy-meditations"){setBookOpen(false);setScreen("pregnancy-meditations");return;}if(opt.id==="father-meditations"){setBookOpen(false);setScreen("father-meditations");return;}if(opt.id==="fertility-tracker"){setBookOpen(false);setScreen("fertility-tracker");return;}if(opt.id==="bible"||opt.id==="gratitude"||opt.id==="prophecy"||opt.id==="becoming-her"){setBookOpen(false);selectShelfBook(opt.id);return;}setJournalSection(opt.id);setBookPage(2);setFlipDir("fwd");setBookText("");setBookSaveMsg("");setHistoryMode("list");}} style={{background:"rgba(139,109,69,0.06)",border:"1px solid rgba(139,109,69,0.15)",borderRadius:10,padding:"14px 16px",cursor:"pointer",display:"flex",alignItems:"center",gap:12,transition:"all .2s",textAlign:"left"}} onMouseEnter={e=>e.currentTarget.style.background="rgba(139,109,69,0.12)"} onMouseLeave={e=>e.currentTarget.style.background="rgba(139,109,69,0.06)"}>
                           <div>
                             <div style={{fontFamily:DISPLAY,fontSize:"0.92rem",fontWeight:700,color:"#3D2B18",marginBottom:2}}>{opt.label}</div>
                             <div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.76rem",color:"rgba(107,85,58,0.5)"}}>{opt.desc}</div>
