@@ -36,6 +36,7 @@ import GatheringPost from './screens/GatheringPost.jsx';
 import CreateGatheringPost from './screens/CreateGatheringPost.jsx';
 import UpperRoomSearch from './screens/UpperRoomSearch.jsx';
 import { generateAnonName, makeSearchTokens, GATHERING_SPACES } from './gatherings.js';
+import { ambientPlay, ambientStop, ambientMute, ambientUnmute, ambientIsPlaying, SOUND_LIBRARY, AMBIENT_TRACKS } from './systems/ambientSound.js';
 
 
 async function dbLoad(k){
@@ -324,82 +325,10 @@ const MARKET_BG_IMAGE="/market.webp";
 const KITCHEN_WINDOW_BG_IMAGE="/kitchen-window.webp";
 const UPPER_ROOM_BG_IMAGE="/upper-room-hall.webp";
 
-/* ═══════════════════════════════════════════════════
-   AMBIENT SOUND MANAGER — Global singleton
-   Only one ambient track plays at a time across all rooms.
-   Handles fade-in / fade-out, looping, and mute state.
-═══════════════════════════════════════════════════ */
-const _amb = { el: null, timer: null, id: null, target: 0 };
-
-function ambientPlay(src, { volume = 0.35, fadeMs = 2000, id = src } = {}) {
-  // Already playing this exact track — do nothing
-  if (_amb.id === id && _amb.el && !_amb.el.paused) return;
-  // Stop any existing track instantly before starting new one
-  ambientStop(0);
-  try {
-    const a = new Audio(src);
-    a.loop = true;
-    a.volume = 0;
-    a.preload = "auto";
-    _amb.el = a;
-    _amb.id = id;
-    _amb.target = volume;
-    const promise = a.play();
-    if (promise) promise.catch(() => {});
-    // Fade in
-    clearInterval(_amb.timer);
-    if (fadeMs <= 0) { a.volume = volume; return; }
-    const step = volume / (fadeMs / 50);
-    let v = 0;
-    _amb.timer = setInterval(() => {
-      v = Math.min(volume, v + step);
-      if (_amb.el === a) a.volume = v;
-      if (v >= volume) clearInterval(_amb.timer);
-    }, 50);
-  } catch (e) { /* audio not supported */ }
-}
-
-function ambientStop(fadeMs = 2000) {
-  const a = _amb.el;
-  if (!a) return;
-  clearInterval(_amb.timer);
-  if (fadeMs <= 0) {
-    a.pause(); try { a.src = ""; } catch (e) {}
-    _amb.el = null; _amb.id = null; return;
-  }
-  const startVol = a.volume || _amb.target;
-  const step = startVol / (fadeMs / 50);
-  let v = startVol;
-  _amb.timer = setInterval(() => {
-    v = Math.max(0, v - step);
-    a.volume = v;
-    if (v <= 0) {
-      clearInterval(_amb.timer);
-      a.pause(); try { a.src = ""; } catch (e) {}
-      if (_amb.el === a) { _amb.el = null; _amb.id = null; }
-    }
-  }, 50);
-}
-
-function ambientMute() {
-  if (_amb.el) { _amb.el.volume = 0; }
-}
-function ambientUnmute() {
-  if (_amb.el) { _amb.el.volume = _amb.target; }
-}
-function ambientIsPlaying(id) {
-  return _amb.id === id && _amb.el && !_amb.el.paused;
-}
-
-/* ── Sound Library — central catalog of all ambient sounds ── */
-const SOUND_LIBRARY = [
-  { id: "water-calm", name: "Flowing Water", description: "Calm waterfall and river stones", src: "/slrathna-sleep-water-calm-317558.mp3", volume: 0.35, room: "Kitchen Window" },
-  { id: "fire-crackle", name: "Fireplace", description: "Crackling hearth and warm embers", src: "/red_refrigerator--225630.mp3", volume: 0.30, room: "Cabin" },
-];
-/* Room-specific ambient tracks (auto-play when entering a room) */
-const AMBIENT_TRACKS = {
-  "kitchen-window": SOUND_LIBRARY.find(s=>s.id==="water-calm"),
-};
+/* Ambient sound system lives in ./systems/ambientSound.js so it can be
+   shared with screens that don't render BottomMenuDrawer (Word Search,
+   Diamond Art, etc.). `_amb` is the same window-backed singleton. */
+const _amb = window.__irjAmbient || (window.__irjAmbient = { el: null, timer: null, id: null, target: 0 });
 
 /* ═══════════════════════════════════════════════════
    ImmersiveMarket — Parallax village market with lantern glow, fireflies, string light shimmer

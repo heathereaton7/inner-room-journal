@@ -11,6 +11,7 @@ import CanvasDiamondBoard from '../components/CanvasDiamondBoard.jsx';
 import DiamondArtFrame from '../components/DiamondArtFrame.jsx';
 import ImportArtworkModal from '../components/ImportArtworkModal.jsx';
 import CottageBackground from '../components/CottageBackground.jsx';
+import SoundButton from '../components/SoundButton.jsx';
 
 const SERIF = "'Cormorant Garamond', Georgia, serif";
 const SANS = "'Inter', system-ui, -apple-system, sans-serif";
@@ -223,6 +224,7 @@ export default function DiamondArtScreen({
       overflow: 'hidden',
     }}>
       <CottageBackground />
+      <SoundButton />
       <Header
         title={view === 'gallery' ? 'Gallery' : view === 'paint' ? (template ? template.title : 'Freestyle') : view === 'complete' ? 'A new piece' : 'Art Studio'}
         onBack={() => {

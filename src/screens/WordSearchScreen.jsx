@@ -3,6 +3,7 @@ import { WORD_SEARCH_PUZZLES, getPuzzle, extractWords, verseWords } from '../dat
 import { generateGrid } from '../systems/wordSearchGen.js';
 import WordSearchGrid from '../components/WordSearchGrid.jsx';
 import CottageBackground from '../components/CottageBackground.jsx';
+import SoundButton from '../components/SoundButton.jsx';
 
 const SERIF = "'Cormorant Garamond', Georgia, serif";
 const SANS = "'Inter', system-ui, -apple-system, sans-serif";
@@ -70,6 +71,7 @@ export default function WordSearchScreen({ onBack, progress, onProgressChange })
       overflow: 'hidden',
     }}>
       <CottageBackground />
+      <SoundButton />
       <Header
         title={view === 'play' && activePuzzle ? activePuzzle.title : 'Word Search'}
         onBack={() => {
