@@ -32,6 +32,97 @@ export const BUILTIN_IMAGE_TEMPLATES = [
     cropFraction: { x: 0.0, y: 0.0, w: 1.0, h: 0.52 },
     defaultPreset: 'detailed',
   },
+
+  /* ── Pexels-sourced photos (free for commercial use, no attribution required) ── */
+
+  // Faith / Cross
+  {
+    id: 'builtin_three_crosses',
+    title: 'Three Crosses',
+    verse: 'For God so loved the world, that he gave his only begotten Son.',
+    reference: 'John 3:16',
+    sourceUrl: '/templates/cross_three.jpg',
+    theme: 'faith',
+    defaultPreset: 'detailed',
+  },
+  {
+    id: 'builtin_cross_seashore',
+    title: 'Cross by the Sea',
+    verse: 'The Lord on high is mightier than the noise of many waters.',
+    reference: 'Psalm 93:4',
+    sourceUrl: '/templates/cross_seashore.jpg',
+    theme: 'faith',
+    defaultPreset: 'detailed',
+  },
+
+  // Cozy cabins
+  {
+    id: 'builtin_cabin_aframe',
+    title: 'A-Frame in the Snow',
+    verse: 'He that dwelleth in the secret place of the most High shall abide under the shadow of the Almighty.',
+    reference: 'Psalm 91:1',
+    sourceUrl: '/templates/cabin_aframe.jpg',
+    theme: 'rest',
+    defaultPreset: 'detailed',
+  },
+  {
+    id: 'builtin_cabin_snow',
+    title: 'Cabin in the Snowy Forest',
+    verse: 'Though your sins be as scarlet, they shall be as white as snow.',
+    reference: 'Isaiah 1:18',
+    sourceUrl: '/templates/cabin_snow.jpg',
+    theme: 'rest',
+    defaultPreset: 'detailed',
+  },
+  {
+    id: 'builtin_cabin_misty',
+    title: 'Cabins in the Mist',
+    verse: 'Come unto me, all ye that labour and are heavy laden, and I will give you rest.',
+    reference: 'Matthew 11:28',
+    sourceUrl: '/templates/cabin_misty.jpg',
+    theme: 'rest',
+    defaultPreset: 'detailed',
+  },
+
+  // Nature
+  {
+    id: 'builtin_mountains_valley',
+    title: 'Green Valley in the Mountains',
+    verse: 'He maketh me to lie down in green pastures: he leadeth me beside the still waters.',
+    reference: 'Psalm 23:2',
+    sourceUrl: '/templates/mountains_valley.jpg',
+    theme: 'nature',
+    defaultPreset: 'detailed',
+  },
+  {
+    id: 'builtin_ocean_golden',
+    title: 'Calm Sea at Golden Hour',
+    verse: 'Peace I leave with you, my peace I give unto you.',
+    reference: 'John 14:27',
+    sourceUrl: '/templates/ocean_golden.jpg',
+    theme: 'nature',
+    defaultPreset: 'detailed',
+  },
+  {
+    id: 'builtin_wildflowers',
+    title: 'Wildflower Meadow',
+    verse: 'Consider the lilies of the field, how they grow; they toil not, neither do they spin.',
+    reference: 'Matthew 6:28',
+    sourceUrl: '/templates/wildflowers.jpg',
+    theme: 'nature',
+    defaultPreset: 'detailed',
+  },
+
+  // Motherhood
+  {
+    id: 'builtin_mother_flowers',
+    title: 'Mother and Child in the Flowers',
+    verse: 'Lo, children are an heritage of the Lord: and the fruit of the womb is his reward.',
+    reference: 'Psalm 127:3',
+    sourceUrl: '/templates/mother_flowers.jpg',
+    theme: 'motherhood',
+    defaultPreset: 'detailed',
+  },
 ];
 
 export function getBuiltinImageTemplate(id) {
