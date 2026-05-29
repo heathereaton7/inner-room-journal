@@ -123,6 +123,17 @@ export const BUILTIN_IMAGE_TEMPLATES = [
     theme: 'motherhood',
     defaultPreset: 'detailed',
   },
+
+  /* ── Custom Canva-generated illustrations (with verse baked in) ── */
+  {
+    id: 'builtin_cabin_psalm91',
+    title: 'Cabin at Twilight Glow',
+    verse: 'He that dwelleth in the secret place of the most High shall abide under the shadow of the Almighty.',
+    reference: 'Psalm 91:1',
+    sourceUrl: '/templates/cabin_psalm91.png',
+    theme: 'rest',
+    defaultPreset: 'detailed',
+  },
 ];
 
 export function getBuiltinImageTemplate(id) {
