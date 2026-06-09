@@ -54,6 +54,19 @@ export const ROOM_THEMES = [
       { left: '75%', top: '67%', color: '#FFC07A', size: 160, duration: 8.0 },
     ],
   },
+  {
+    id: 'rainy-spring',
+    name: 'Rainy Spring Day',
+    description: 'Misty rain on the glass over a blossoming valley',
+    tag: 'Seasonal',
+    src: '/rainyspring.png',
+    weather: 'rain',
+    window: { left: '24%', top: '2%', width: '74%', height: '62%', radius: '48% 48% 4% 4% / 28% 28% 3% 3%' },
+    candles: [
+      { left: '9%', top: '18%', color: '#FFB36A', size: 150, duration: 6.5 },
+      { left: '76%', top: '63%', color: '#FFC07A', size: 160, duration: 8.0 },
+    ],
+  },
 ];
 
 export const DEFAULT_ROOM_THEME = 'cottage-rain';
