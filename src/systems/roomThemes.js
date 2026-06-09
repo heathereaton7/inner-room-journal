@@ -83,6 +83,7 @@ export const ROOM_THEMES = [
       { left: '9%', top: '18%', color: '#FFB36A', size: 150, duration: 6.5 },
       { left: '76%', top: '63%', color: '#FFC07A', size: 160, duration: 8.0 },
     ],
+    cabin: '/rainyspringcabinmap.png',
   },
   {
     id: 'fall',
@@ -96,6 +97,7 @@ export const ROOM_THEMES = [
       { left: '9%', top: '18%', color: '#FFB36A', size: 150, duration: 6.5 },
       { left: '78%', top: '64%', color: '#FFC07A', size: 160, duration: 8.0 },
     ],
+    cabin: '/fallcabinmap.png',
   },
 ];
 
