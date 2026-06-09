@@ -501,11 +501,18 @@ function ImmersiveKitchen(){
   const animFrame=useRef(null);
   const kitchenParticles=useRef([]);
   const kitchenFireflies=useRef([]);
+  const windowSnow=useRef([]);
   const time=useRef(0);
   const imgRef=useRef(null);
 
   const PARALLAX=22;
   const SENSITIVITY=0.4;
+
+  // Snow falling outside the kitchen window — only when the active season's
+  // weather is 'snow' and it defines a kitchenWindow box (e.g. Christmas).
+  const snowWindow=(theme.weather==='snow'&&theme.kitchenWindow)?theme.kitchenWindow:null;
+  const snowWindowRef=useRef(null);
+  snowWindowRef.current=snowWindow; // keep the long-lived animation loop in sync with live season changes
 
   useEffect(()=>{
     // Warm embers / cooking steam particles
@@ -538,6 +545,23 @@ function ImmersiveKitchen(){
     }
     kitchenFireflies.current=ffs;
   },[]);
+
+  // Build snowflakes (normalized 0..1 within the window box) when the season snows.
+  useEffect(()=>{
+    if(!snowWindow){windowSnow.current=[];return;}
+    const flakes=[];
+    for(let i=0;i<80;i++){
+      flakes.push({
+        x:Math.random(),y:Math.random(),
+        r:Math.random()*1.6+0.6,
+        speed:Math.random()*0.003+0.0015,
+        sway:Math.random()*0.0022+0.0006,
+        phase:Math.random()*Math.PI*2,
+        opacity:Math.random()*0.5+0.3,
+      });
+    }
+    windowSnow.current=flakes;
+  },[snowWindow]);
 
   useEffect(()=>{
     let active=true;
@@ -606,6 +630,29 @@ function ImmersiveKitchen(){
             ctx.beginPath();ctx.arc(px,py,ff.size,0,Math.PI*2);ctx.fillStyle=`rgba(255,230,150,${a*0.8})`;ctx.fill();
           }
         });
+        // Snowfall clipped to the kitchen window glass (tracks the parallax offset)
+        const sw=snowWindowRef.current;
+        if(sw&&windowSnow.current.length){
+          const wx=(parseFloat(sw.left)/100)*w+offsetX.current+bx;
+          const wy=(parseFloat(sw.top)/100)*h+offsetY.current+by;
+          const ww=(parseFloat(sw.width)/100)*w;
+          const wh=(parseFloat(sw.height)/100)*h;
+          ctx.save();
+          ctx.beginPath();
+          const rTop=Math.min(ww,wh)*0.5;
+          if(ctx.roundRect) ctx.roundRect(wx,wy,ww,wh,[rTop,rTop,ww*0.04,ww*0.04]);
+          else ctx.rect(wx,wy,ww,wh);
+          ctx.clip();
+          windowSnow.current.forEach(f=>{
+            f.y+=f.speed; f.x+=Math.sin(time.current*0.001+f.phase)*f.sway;
+            if(f.y>1.03){f.y=-0.03;f.x=Math.random();}
+            if(f.x<-0.05)f.x=1.05; else if(f.x>1.05)f.x=-0.05;
+            const fx=wx+f.x*ww, fy=wy+f.y*wh;
+            ctx.beginPath();ctx.arc(fx,fy,f.r,0,Math.PI*2);
+            ctx.fillStyle=`rgba(245,250,255,${f.opacity})`;ctx.fill();
+          });
+          ctx.restore();
+        }
       }
       animFrame.current=requestAnimationFrame(loop);
     };

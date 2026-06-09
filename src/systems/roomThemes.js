@@ -53,6 +53,8 @@ export const ROOM_THEMES = [
       { left: '60%', top: '83%', color: '#FFD89A', size: 90,  duration: 7.2 },
     ],
     kitchen: '/christmaskitchenfinal.png',
+    // Arched window over the kitchen sink (viewport-% box) — snow falls here when weather==='snow'
+    kitchenWindow: { left: '52%', top: '5%', width: '46%', height: '53%' },
     cabin: '/christmascabinfinal.png',
     sounds: ['xmas-mistletoe', 'xmas-peppermint', 'xmas-seasonal'],
   },
