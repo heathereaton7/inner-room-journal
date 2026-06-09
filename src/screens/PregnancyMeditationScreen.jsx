@@ -31,8 +31,8 @@ const P = {
  * The 'conceive' variant is a themed (non-week) list for the trying-to-conceive
  * season: same card shape, but cards are titled themes instead of pregnancy weeks.
  */
-export default function PregnancyMeditationScreen({ onBack, progress, onProgressChange, variant = 'mother' }) {
-  const [view, setView] = useState('hub');   // 'hub' | 'card'
+export default function PregnancyMeditationScreen({ onBack, progress, onProgressChange, onOpenScripture, variant = 'mother' }) {
+  const [view, setView] = useState('hub');   // 'hub' | 'card' | 'study'
   const [activeWeek, setActiveWeek] = useState(null);
 
   const isConceive = variant === 'conceive';
@@ -78,12 +78,15 @@ export default function PregnancyMeditationScreen({ onBack, progress, onProgress
     }}>
       <CottageBackground />
       <Header
-        title={view === 'card' && activeMed
-          ? (isConceive ? activeMed.title : `Week ${activeWeek}`)
-          : screenTitle}
+        title={view === 'study'
+          ? 'Go Deeper'
+          : view === 'card' && activeMed
+            ? (isConceive ? activeMed.title : `Week ${activeWeek}`)
+            : screenTitle}
         onBack={() => {
-          if (view === 'hub') onBack();
-          else { setActiveWeek(null); setView('hub'); }
+          if (view === 'study') setView('card');
+          else if (view === 'card') { setActiveWeek(null); setView('hub'); }
+          else onBack();
         }}
       />
 
@@ -107,8 +110,16 @@ export default function PregnancyMeditationScreen({ onBack, progress, onProgress
           isConceive={isConceive}
           isCompleted={completed.has(activeWeek)}
           onToggleComplete={() => toggleComplete(activeWeek)}
+          onStudy={() => setView('study')}
           onNext={activeWeek < total ? () => setActiveWeek(activeWeek + 1) : null}
           onPrev={activeWeek > 1 ? () => setActiveWeek(activeWeek - 1) : null}
+        />
+      )}
+
+      {view === 'study' && activeMed && (
+        <StudyView
+          med={activeMed}
+          onOpenScripture={onOpenScripture}
         />
       )}
     </div>
@@ -285,7 +296,7 @@ function HubView({ meditations, tagline, isConceive, currentWeek, completed, onP
 }
 
 // ── Card view ────────────────────────────────────────────────────────────
-function CardView({ meditations, week, total, isConceive, isCompleted, onToggleComplete, onNext, onPrev }) {
+function CardView({ meditations, week, total, isConceive, isCompleted, onToggleComplete, onStudy, onNext, onPrev }) {
   const m = meditations.find(x => x.week === week);
   if (!m) return null;
   return (
@@ -312,6 +323,19 @@ function CardView({ meditations, week, total, isConceive, isCompleted, onToggleC
         <div style={{ fontFamily: SANS, fontSize: '0.78rem', color: P.gold, marginTop: 8, letterSpacing: '0.08em' }}>
           — {m.verse.reference} (KJV)
         </div>
+        <button
+          onClick={onStudy}
+          style={{
+            marginTop: 14, width: '100%',
+            background: 'rgba(232,212,160,0.14)',
+            border: `1px solid ${P.borderH}`,
+            color: P.goldL, borderRadius: 10,
+            padding: '11px 14px', cursor: 'pointer',
+            fontFamily: SANS, fontSize: '0.84rem', letterSpacing: '0.04em',
+          }}
+        >
+          Go deeper — study this passage →
+        </button>
       </Section>
 
       <Section label="Prayer">
@@ -380,6 +404,111 @@ function CardView({ meditations, week, total, isConceive, isCompleted, onToggleC
           {isConceive ? 'Next →' : 'Next week →'}
         </button>
       </div>
+    </main>
+  );
+}
+
+// ── Study view: in-depth study of one meditation ─────────────────────────
+function StudyView({ med, onOpenScripture }) {
+  const study = med.study || {};
+  const open = (ref) => { if (onOpenScripture) onOpenScripture(ref); };
+  return (
+    <main style={{ maxWidth: 620, margin: '0 auto', padding: '26px 20px 90px' }}>
+      <div style={{ textAlign: 'center', marginBottom: 22 }}>
+        <div style={{
+          fontFamily: SANS, fontSize: '0.7rem', letterSpacing: '0.18em',
+          color: P.sub, textTransform: 'uppercase', marginBottom: 6,
+        }}>
+          Bible Study
+        </div>
+        <div style={{
+          fontFamily: SERIF, fontStyle: 'italic',
+          fontSize: '1.5rem', color: P.goldL, lineHeight: 1.3,
+        }}>
+          {med.title}
+        </div>
+      </div>
+
+      {/* Focal passage */}
+      <Section label="The Passage">
+        <div style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: '1.12rem', lineHeight: 1.65, color: P.ink }}>
+          “{med.verse.text}”
+        </div>
+        <div style={{ fontFamily: SANS, fontSize: '0.78rem', color: P.gold, marginTop: 8, letterSpacing: '0.08em' }}>
+          — {med.verse.reference} (KJV)
+        </div>
+        <button
+          onClick={() => open(med.verse.reference)}
+          style={{
+            marginTop: 14, width: '100%',
+            background: 'rgba(232,212,160,0.14)',
+            border: `1px solid ${P.borderH}`,
+            color: P.goldL, borderRadius: 10,
+            padding: '11px 14px', cursor: 'pointer',
+            fontFamily: SANS, fontSize: '0.84rem', letterSpacing: '0.04em',
+          }}
+        >
+          Read the whole chapter in the Bible →
+        </button>
+      </Section>
+
+      {/* Context / commentary */}
+      {study.context && (
+        <Section label="Context & Meaning">
+          <div style={{ fontFamily: SERIF, fontSize: '1rem', lineHeight: 1.75, color: P.ink }}>
+            {study.context}
+          </div>
+        </Section>
+      )}
+
+      {/* Cross references — tappable to open in the Bible */}
+      {Array.isArray(study.crossRefs) && study.crossRefs.length > 0 && (
+        <Section label="Cross References">
+          <div style={{ fontFamily: SANS, fontSize: '0.76rem', color: P.sub, marginBottom: 12, lineHeight: 1.5 }}>
+            Tap a reference to open it in the Bible and let Scripture interpret Scripture.
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {study.crossRefs.map((ref, i) => (
+              <button
+                key={i}
+                onClick={() => open(ref)}
+                style={{
+                  background: 'rgba(255,255,255,0.04)',
+                  border: `1px solid ${P.border}`,
+                  color: P.goldL, borderRadius: 20,
+                  padding: '8px 16px', cursor: 'pointer',
+                  fontFamily: SANS, fontSize: '0.84rem',
+                }}
+                onMouseEnter={e => e.currentTarget.style.borderColor = P.borderH}
+                onMouseLeave={e => e.currentTarget.style.borderColor = P.border}
+              >
+                {ref} →
+              </button>
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {/* Reflection questions */}
+      {Array.isArray(study.questions) && study.questions.length > 0 && (
+        <Section label="For Reflection">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {study.questions.map((q, i) => (
+              <div key={i} style={{ display: 'flex', gap: 10 }}>
+                <div style={{ fontFamily: SERIF, fontSize: '1.05rem', color: P.gold, lineHeight: 1.6, minWidth: 18 }}>{i + 1}.</div>
+                <div style={{ fontFamily: SERIF, fontSize: '1rem', lineHeight: 1.65, color: P.ink }}>{q}</div>
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {/* Prayer carries over as a closing */}
+      <Section label="Pray It Back">
+        <div style={{ fontFamily: SERIF, fontSize: '1rem', lineHeight: 1.7, color: P.ink }}>
+          {med.prayer}
+        </div>
+      </Section>
     </main>
   );
 }

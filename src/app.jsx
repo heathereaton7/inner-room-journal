@@ -21,6 +21,7 @@ import DiamondArtScreen from './screens/DiamondArtScreen.jsx';
 import DiamondArtFrame from './components/DiamondArtFrame.jsx';
 import WordSearchScreen from './screens/WordSearchScreen.jsx';
 import PregnancyMeditationScreen from './screens/PregnancyMeditationScreen.jsx';
+import { parseReference } from './data/bibleBooks.js';
 import FertilityTrackerScreen from './screens/FertilityTrackerScreen.jsx';
 import VerseTranslationModal from './components/VerseTranslationModal.jsx';
 import TrackersScreen, { createEmptyTrackers } from './screens/TrackersScreen.jsx';
@@ -1818,6 +1819,23 @@ function AppInner(){
   useEffect(()=>{
     if(screen==="upper-room"&&!bibleDataRef.current) loadBible();
   },[screen,loadBible]);
+
+  // ── Open a Scripture reference in the Upper Room Bible reader ──
+  // Used by the meditation study pages ("Read the whole chapter in the Bible").
+  const openScriptureRef = useCallback(async(reference)=>{
+    const parsed=parseReference(reference);
+    if(!parsed) return;
+    const data=await loadBible();
+    if(!data) return;
+    const book=data[parsed.bookIdx];
+    const chapIdx=book&&parsed.chapIdx<book.chapters.length?parsed.chapIdx:0;
+    setBibleBook(parsed.bookIdx);
+    setBibleChapter(chapIdx);
+    setBibleView("reading");
+    setUpperRoomView("scriptures");
+    setPrevScreen(screen);
+    setScreen("upper-room");
+  },[loadBible,screen]);
 
   // ── Bible font size persistence ──
   useEffect(()=>{localStorage.setItem("irj-bible-fontsize",String(bibleFontSize));},[bibleFontSize]);
@@ -4674,6 +4692,7 @@ function AppInner(){
         onBack={()=>setScreen(prevScreen||"cabin")}
         progress={conceiveMeditations}
         onProgressChange={setConceiveMeditations}
+        onOpenScripture={openScriptureRef}
         variant="conceive"
       />
     );
@@ -4686,6 +4705,7 @@ function AppInner(){
         onBack={()=>setScreen(prevScreen||"cabin")}
         progress={pregnancyMeditations}
         onProgressChange={setPregnancyMeditations}
+        onOpenScripture={openScriptureRef}
         variant="mother"
       />
     );
@@ -4698,6 +4718,7 @@ function AppInner(){
         onBack={()=>setScreen(prevScreen||"cabin")}
         progress={fatherMeditations}
         onProgressChange={setFatherMeditations}
+        onOpenScripture={openScriptureRef}
         variant="father"
       />
     );
