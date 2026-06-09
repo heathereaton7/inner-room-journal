@@ -11,15 +11,49 @@ import { useRoomTheme } from '../systems/roomThemes.js';
 const FALLBACK_RATIO = 941 / 1672; // width / height of cabinmapfinalmain.png
 const ZOOM = 1.35;                 // how far the map is zoomed past "cover" (pan room)
 
+// The outdoor opening of the central door arch, as fractions of the MAP image.
+// Seasonal weather (snow/rain/leaves/petals) falls ONLY inside this box so it
+// reads as weather outside the door — never inside the cabin. All cabin maps
+// share the same hall layout, so one box works for every season.
+const DOOR = { left: 0.497, top: 0.35, w: 0.112, h: 0.145 };
+
+const WEATHER_COLORS = {
+  leaves: ['#C8742B', '#A8521F', '#D89A3A', '#9C3B1C', '#B5651D'],
+  petals: ['#F4C6D6', '#F7D9E3', '#E8A9C0', '#FBE4EC'],
+};
+
+// Build a particle set for the active season's weather. Positions are
+// normalized 0..1 within the door box; speeds are fractions of the box per frame.
+function makeWeather(type){
+  if(!type || type==='none') return [];
+  const count = type==='rain' ? 60 : type==='snow' ? 55 : type==='leaves' ? 26 : 34;
+  const arr=[];
+  for(let i=0;i<count;i++){
+    const base={ x:Math.random(), y:Math.random(), phase:Math.random()*Math.PI*2, opacity:Math.random()*0.45+0.4 };
+    if(type==='snow') arr.push({ ...base, vy:Math.random()*0.0022+0.0014, sway:Math.random()*0.0016+0.0005, r:Math.random()*1.3+0.5 });
+    else if(type==='rain') arr.push({ ...base, vy:Math.random()*0.016+0.018, tilt:Math.random()*0.0008+0.0003, len:Math.random()*7+5, opacity:Math.random()*0.3+0.25 });
+    else if(type==='leaves') arr.push({ ...base, vy:Math.random()*0.0024+0.0016, sway:Math.random()*0.004+0.002, size:Math.random()*2.5+2, rot:Math.random()*Math.PI*2, rotV:Math.random()*0.04-0.02, color:WEATHER_COLORS.leaves[i%WEATHER_COLORS.leaves.length] });
+    else arr.push({ ...base, vy:Math.random()*0.0022+0.0014, sway:Math.random()*0.0035+0.0018, size:Math.random()*2.2+1.6, rot:Math.random()*Math.PI*2, rotV:Math.random()*0.03-0.015, color:WEATHER_COLORS.petals[i%WEATHER_COLORS.petals.length] });
+  }
+  return arr;
+}
+
 export default function ImmersiveCabin(){
   const theme=useRoomTheme();
   const bgImage=theme.cabin||CABIN_FALLBACK_IMAGE;
   const containerRef=useRef(null);
   const layerRef=useRef(null);
   const canvasRef=useRef(null);
+  const doorCanvasRef=useRef(null);
   const animFrame=useRef(null);
   const particles=useRef([]);
+  const weatherP=useRef([]);
   const time=useRef(0);
+
+  // Active season's weather kept in a ref so the [] -deps animation loop reads it live.
+  const weather=theme.weather;
+  const weatherRef=useRef(weather);
+  weatherRef.current=weather;
 
   // Pan state (px). map = computed map box + clamp limits.
   const pan=useRef({ x:0, y:0 });
@@ -40,6 +74,7 @@ export default function ImmersiveCabin(){
     const minY=Math.min(0, vh-h);
     map.current={ w, h, minX, minY };
     if(layerRef.current){ layerRef.current.style.width=`${w}px`; layerRef.current.style.height=`${h}px`; }
+    if(doorCanvasRef.current){ doorCanvasRef.current.width=Math.round(w); doorCanvasRef.current.height=Math.round(h); }
     if(!didInit.current){
       // Open on the main floor (bottom), horizontally centered.
       target.current={ x:minX/2, y:minY };
@@ -67,6 +102,9 @@ export default function ImmersiveCabin(){
     }
     particles.current=pts;
   },[]);
+
+  // Rebuild door weather whenever the season's weather type changes.
+  useEffect(()=>{ weatherP.current=makeWeather(weather); },[weather]);
 
   // Drag to pan the map (touch + mouse).
   useEffect(()=>{
@@ -110,6 +148,44 @@ export default function ImmersiveCabin(){
       pan.current.y+=(target.current.y-pan.current.y)*0.12;
       if(layerRef.current){
         layerRef.current.style.transform=`translate(${pan.current.x}px,${pan.current.y}px)`;
+      }
+      // Seasonal weather — drawn on a canvas INSIDE the map layer (so it pans with
+      // the map) and clipped to the door arch so it only falls in the doorway.
+      const dcvs=doorCanvasRef.current;
+      const wType=weatherRef.current;
+      if(dcvs){
+        const dctx=dcvs.getContext("2d");
+        const W=dcvs.width, H=dcvs.height;
+        dctx.clearRect(0,0,W,H);
+        if(wType && wType!=="none" && weatherP.current.length){
+          const bx=DOOR.left*W, by=DOOR.top*H, bw=DOOR.w*W, bh=DOOR.h*H;
+          dctx.save();
+          dctx.beginPath();
+          const rTop=bw*0.5;
+          if(dctx.roundRect) dctx.roundRect(bx,by,bw,bh,[rTop,rTop,bw*0.08,bw*0.08]); else dctx.rect(bx,by,bw,bh);
+          dctx.clip();
+          weatherP.current.forEach(p=>{
+            p.y+=p.vy;
+            if(wType==="rain") p.x+=p.tilt; else p.x+=Math.sin(time.current*0.0012+p.phase)*p.sway;
+            if(p.rotV!==undefined) p.rot+=p.rotV;
+            if(p.y>1.04){ p.y=-0.04; p.x=Math.random(); }
+            if(p.x<-0.05) p.x=1.05; else if(p.x>1.05) p.x=-0.05;
+            const px=bx+p.x*bw, py=by+p.y*bh;
+            if(wType==="snow"){
+              dctx.beginPath(); dctx.arc(px,py,p.r,0,Math.PI*2);
+              dctx.fillStyle=`rgba(245,250,255,${p.opacity})`; dctx.fill();
+            } else if(wType==="rain"){
+              dctx.strokeStyle=`rgba(180,205,230,${p.opacity})`; dctx.lineWidth=1;
+              dctx.beginPath(); dctx.moveTo(px,py); dctx.lineTo(px+1.5,py+p.len); dctx.stroke();
+            } else { // leaves / petals
+              dctx.save(); dctx.translate(px,py); dctx.rotate(p.rot);
+              dctx.globalAlpha=p.opacity; dctx.fillStyle=p.color;
+              dctx.beginPath(); dctx.ellipse(0,0,p.size,p.size*0.55,0,0,Math.PI*2); dctx.fill();
+              dctx.globalAlpha=1; dctx.restore();
+            }
+          });
+          dctx.restore();
+        }
       }
       const cvs=canvasRef.current;
       if(cvs){
@@ -163,6 +239,8 @@ export default function ImmersiveCabin(){
           style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",userSelect:"none",WebkitUserDrag:"none",pointerEvents:"none",display:"block"}}
           draggable={false}
         />
+        {/* Seasonal weather in the doorway — sits inside the layer so it pans with the map */}
+        <canvas ref={doorCanvasRef} style={{position:"absolute",top:0,left:0,width:"100%",height:"100%",pointerEvents:"none"}}/>
       </div>
       {/* Floating dust particles (viewport-fixed ambience) */}
       <canvas ref={canvasRef} style={{position:"absolute",inset:0,pointerEvents:"none",zIndex:2}}/>
