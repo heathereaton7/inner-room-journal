@@ -6476,6 +6476,11 @@ function AppInner(){
         <CozyCreationsRoom/>
         {/* Cinematic vignette */}
         <div style={{position:"absolute",inset:0,pointerEvents:"none",background:"radial-gradient(ellipse at center, transparent 45%, rgba(8,6,4,0.5) 100%)"}}/>
+        {/* Easel canvas → Diamond Art */}
+        <button onClick={()=>{setPrevScreen("cozy-creations");setScreen("diamond-art");}} aria-label="Open Diamond Art"
+          style={{position:"absolute",left:"13%",top:"37%",width:"26%",height:"27%",zIndex:13,background:"transparent",border:"none",padding:0,cursor:"pointer",borderRadius:"6%",outline:"none",WebkitTapHighlightColor:"transparent"}}>
+          <div style={{position:"absolute",inset:"-6%",borderRadius:"10%",background:"radial-gradient(ellipse at 50% 50%, rgba(255,205,120,0.16) 0%, rgba(255,175,80,0.06) 48%, transparent 72%)",pointerEvents:"none",animation:"hotspotPulse 3s ease-in-out infinite"}}/>
+        </button>
         {/* Back to cabin */}
         <button onClick={()=>transitionToCabin()} style={{position:"absolute",top:28,left:22,zIndex:15,background:"rgba(10,6,4,0.50)",backdropFilter:"blur(14px)",WebkitBackdropFilter:"blur(14px)",border:"1px solid rgba(201,169,110,0.12)",borderRadius:999,padding:"8px 20px",cursor:"pointer",color:"rgba(255,248,232,0.6)",fontFamily:SANS,fontSize:"0.78rem",display:"inline-flex",alignItems:"center",gap:6}}>
           <span style={{fontSize:"0.7rem"}}>&#8592;</span> Cabin
