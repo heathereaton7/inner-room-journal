@@ -98,18 +98,29 @@ function WindowWeather({ mode, window: win }) {
     const ctx = canvas.getContext('2d');
     const isSnow = mode === 'snow';
     const isPetals = mode === 'petals';
-    const isDrift = isSnow || isPetals; // gravity-light particles that sway/drift
+    const isLeaves = mode === 'leaves';
+    const isFalling = isPetals || isLeaves; // rotating ellipse particles (petals/leaves)
+    const isDrift = isSnow || isFalling; // gravity-light particles that sway/drift
 
-    // Rain: slight wind to the left. Drift: nearly straight down.
-    const ANGLE = isDrift ? -0.05 : -0.22;
+    // Rain: slight wind to the left. Drift: nearly straight down (leaves drift more).
+    const ANGLE = isLeaves ? -0.12 : isDrift ? -0.05 : -0.22;
     const SIN = Math.sin(ANGLE);
     const COS = Math.cos(ANGLE);
 
     // Soft blossom tints for petals (pinks + cream)
     const PETAL_COLORS = ['255,214,224', '255,228,236', '250,240,245', '255,205,220'];
+    // Warm autumn tints for falling leaves
+    const LEAF_COLORS = ['198,93,38', '214,128,46', '166,68,38', '184,108,42', '150,86,44'];
+    const PALETTE = isLeaves ? LEAF_COLORS : PETAL_COLORS;
 
     // Three depth layers — [speed px/s, size px, alpha]
-    const LAYERS = isPetals
+    const LAYERS = isLeaves
+      ? [
+          { speed: 110, len: 8.0, width: 0, alpha: 0.9 }, // near leaf
+          { speed: 74,  len: 5.5, width: 0, alpha: 0.7 }, // mid
+          { speed: 46,  len: 3.6, width: 0, alpha: 0.5 }, // far
+        ]
+      : isPetals
       ? [
           { speed: 95, len: 5.5, width: 0, alpha: 0.85 }, // near petal
           { speed: 62, len: 3.8, width: 0, alpha: 0.6 },  // mid
@@ -142,14 +153,14 @@ function WindowWeather({ mode, window: win }) {
       d.len = layer.len * rand(0.8, 1.2);
       d.width = layer.width;
       d.alpha = layer.alpha * rand(0.7, 1.1);
-      // drift sway (snow + petals)
-      d.sway = rand(0.3, 1.0) * (isPetals ? 1.6 : 1);
+      // drift sway (snow + petals + leaves)
+      d.sway = rand(0.3, 1.0) * (isLeaves ? 2.2 : isPetals ? 1.6 : 1);
       d.swaySpeed = rand(0.6, 1.6);
       d.phase = rand(0, Math.PI * 2);
-      // petal rotation + shape
-      d.spin = rand(-1.4, 1.4);
+      // falling-particle rotation + shape
+      d.spin = rand(-1.4, 1.4) * (isLeaves ? 1.5 : 1);
       d.rot = rand(0, Math.PI * 2);
-      d.color = PETAL_COLORS[(Math.random() * PETAL_COLORS.length) | 0];
+      d.color = PALETTE[(Math.random() * PALETTE.length) | 0];
       return d;
     }
 
@@ -160,8 +171,8 @@ function WindowWeather({ mode, window: win }) {
       canvas.width = Math.round(w * dpr);
       canvas.height = Math.round(h * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      const density = isPetals ? 6000 : isSnow ? 4200 : 1100;
-      const cap = isPetals ? 150 : isSnow ? 220 : 360;
+      const density = isLeaves ? 9000 : isPetals ? 6000 : isSnow ? 4200 : 1100;
+      const cap = isLeaves ? 90 : isPetals ? 150 : isSnow ? 220 : 360;
       const count = Math.min(cap, Math.max(60, Math.round((w * h) / density)));
       parts = Array.from({ length: count }, () => spawn({}, false));
     }
@@ -176,17 +187,17 @@ function WindowWeather({ mode, window: win }) {
         if (isDrift) {
           d.phase += d.swaySpeed * dt;
           d.x += (Math.sin(d.phase) * d.sway + d.speed * SIN * 0.02) * dt * 30;
-          if (isPetals) d.rot += d.spin * dt;
+          if (isFalling) d.rot += d.spin * dt;
         } else {
           d.x += d.speed * SIN * dt;
         }
         if (d.y - d.len > h || d.x + d.len < 0 || d.x - d.len > w) { spawn(d, true); continue; }
-        if (isPetals) {
+        if (isFalling) {
           ctx.save();
           ctx.translate(d.x, d.y);
           ctx.rotate(d.rot);
           ctx.beginPath();
-          ctx.ellipse(0, 0, d.len, d.len * 0.55, 0, 0, Math.PI * 2);
+          ctx.ellipse(0, 0, d.len, d.len * (isLeaves ? 0.42 : 0.55), 0, 0, Math.PI * 2);
           ctx.fillStyle = `rgba(${d.color},${d.alpha})`;
           ctx.fill();
           ctx.restore();

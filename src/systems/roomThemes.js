@@ -67,6 +67,19 @@ export const ROOM_THEMES = [
       { left: '76%', top: '63%', color: '#FFC07A', size: 160, duration: 8.0 },
     ],
   },
+  {
+    id: 'fall',
+    name: 'Autumn Cabin',
+    description: 'Amber leaves drift over a golden waterfall valley',
+    tag: 'Seasonal',
+    src: '/fall.png',
+    weather: 'leaves',
+    window: { left: '26%', top: '2%', width: '72%', height: '64%', radius: '48% 48% 4% 4% / 28% 28% 3% 3%' },
+    candles: [
+      { left: '9%', top: '18%', color: '#FFB36A', size: 150, duration: 6.5 },
+      { left: '78%', top: '64%', color: '#FFC07A', size: 160, duration: 8.0 },
+    ],
+  },
 ];
 
 export const DEFAULT_ROOM_THEME = 'cottage-rain';
