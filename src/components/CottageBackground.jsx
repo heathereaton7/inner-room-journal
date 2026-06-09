@@ -1,9 +1,9 @@
-import { useMemo } from 'react';
+import { useEffect, useRef } from 'react';
 
 /**
  * CottageBackground — full-bleed rainy-cottage scene with two flickering
- * candle glows anchored to the lanterns in the painting, plus animated
- * rain falling on the arched window.
+ * candle glows anchored to the lanterns in the painting, plus canvas
+ * rain falling outside the arched window.
  *
  * Used as the atmospheric background for the Word Search and Diamond Art
  * screens. Renders fixed-position layers behind everything (zIndex 0), so
@@ -13,8 +13,8 @@ import { useMemo } from 'react';
  * for the right windowsill lantern) were calibrated to land on the actual
  * flame pixels in wordsearchbackgroundone.png.
  *
- * WINDOW_RAIN box is calibrated (viewport %) to sit over just the glass of
- * the arched window so raindrops only fall there, not on the cozy interior.
+ * WINDOW_RAIN box (viewport %) frames just the glass of the arched window so
+ * the rain only falls there, not on the cozy interior.
  */
 const WINDOW_RAIN = { left: '17%', top: '2%', width: '82%', height: '66%' };
 
@@ -36,15 +36,6 @@ export default function CottageBackground() {
           57%      { opacity: 0.86; transform: translate(-50%, -50%) scale(1.02); }
           78%      { opacity: 0.72; transform: translate(-50%, -50%) scale(0.99); }
         }
-        @keyframes window-rain-fall {
-          0%   { transform: translateY(-18vh) rotate(9deg); }
-          100% { transform: translateY(82vh) rotate(9deg); }
-        }
-        @keyframes window-glass-drip {
-          0%   { transform: translateY(-6%); opacity: 0; }
-          12%  { opacity: 0.85; }
-          100% { transform: translateY(116%); opacity: 0; }
-        }
       `}</style>
       <div style={{
         position: 'fixed', inset: 0, zIndex: -1,
@@ -54,7 +45,7 @@ export default function CottageBackground() {
         backgroundRepeat: 'no-repeat',
         pointerEvents: 'none',
       }} />
-      {/* Rain falling on the window glass (between the scene and the darken veil) */}
+      {/* Rain falling outside the window glass (behind the darken veil) */}
       <WindowRain />
       {/* Darken layer so foreground UI stays readable on top */}
       <div style={{
@@ -71,24 +62,98 @@ export default function CottageBackground() {
 }
 
 /**
- * WindowRain — fine sheet of falling rain streaks plus a few slow glass
- * droplets, clipped (overflow:hidden + arched border-radius) to the window
- * region so the effect only appears on the glass.
+ * WindowRain — canvas particle rain, clipped to the arched window region.
+ *
+ * Streaks fall fast on a slight diagonal. Three depth layers give parallax:
+ * the near layer is long / bright / fast, the far layer is short / faint /
+ * slow. Each streak is a tapered line (bright head, fading tail) so it reads
+ * as motion blur rather than a static dash. Recycled to the top once it
+ * passes the bottom of the window.
  */
 function WindowRain() {
-  const streaks = useMemo(() => Array.from({ length: 70 }, () => ({
-    left: Math.random() * 100,
-    delay: -(Math.random() * 1.8),
-    dur: 0.55 + Math.random() * 0.85,
-    len: 9 + Math.random() * 26,
-    opacity: 0.12 + Math.random() * 0.34,
-  })), []);
-  const drips = useMemo(() => Array.from({ length: 7 }, () => ({
-    left: 6 + Math.random() * 88,
-    delay: -(Math.random() * 7),
-    dur: 5 + Math.random() * 5,
-    size: 3 + Math.random() * 3,
-  })), []);
+  const canvasRef = useRef(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    // Slight diagonal: wind blows streaks to the left as they fall.
+    const ANGLE = -0.22; // radians from vertical
+    const SIN = Math.sin(ANGLE);
+    const COS = Math.cos(ANGLE);
+
+    // Three depth layers — [count factor, speed px/s, length px, width, alpha]
+    const LAYERS = [
+      { speed: 1500, len: 34, width: 1.8, alpha: 0.55 }, // near
+      { speed: 1050, len: 24, width: 1.3, alpha: 0.40 }, // mid
+      { speed: 720,  len: 16, width: 0.9, alpha: 0.26 }, // far
+    ];
+
+    let w = 0, h = 0, dpr = 1;
+    let drops = [];
+    let raf = 0;
+    let last = performance.now();
+
+    function rand(a, b) { return a + Math.random() * (b - a); }
+
+    function spawn(d, atTop) {
+      const layer = LAYERS[(Math.random() * LAYERS.length) | 0];
+      d.x = rand(-h * 0.3, w);          // start wide so the diagonal still fills the left edge
+      d.y = atTop ? rand(-h, 0) : rand(0, h);
+      d.speed = layer.speed * rand(0.85, 1.15);
+      d.len = layer.len * rand(0.8, 1.2);
+      d.width = layer.width;
+      d.alpha = layer.alpha * rand(0.7, 1.1);
+      return d;
+    }
+
+    function resize() {
+      const rect = canvas.getBoundingClientRect();
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      w = rect.width; h = rect.height;
+      canvas.width = Math.round(w * dpr);
+      canvas.height = Math.round(h * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      // Density scales with area (~1 streak per 1100 px²), capped for perf.
+      const count = Math.min(360, Math.max(80, Math.round((w * h) / 1100)));
+      drops = Array.from({ length: count }, () => spawn({}, false));
+    }
+
+    function frame(now) {
+      const dt = Math.min(0.05, (now - last) / 1000);
+      last = now;
+      ctx.clearRect(0, 0, w, h);
+      ctx.lineCap = 'round';
+      for (const d of drops) {
+        // advance along the fall direction
+        d.x += d.speed * SIN * dt;
+        d.y += d.speed * COS * dt;
+        if (d.y - d.len > h || d.x + d.len < 0) { spawn(d, true); continue; }
+        const tailX = d.x - SIN * d.len;
+        const tailY = d.y - COS * d.len;
+        const g = ctx.createLinearGradient(tailX, tailY, d.x, d.y);
+        g.addColorStop(0, 'rgba(200,220,255,0)');
+        g.addColorStop(1, `rgba(210,228,255,${d.alpha})`);
+        ctx.strokeStyle = g;
+        ctx.lineWidth = d.width;
+        ctx.beginPath();
+        ctx.moveTo(tailX, tailY);
+        ctx.lineTo(d.x, d.y);
+        ctx.stroke();
+      }
+      raf = requestAnimationFrame(frame);
+    }
+
+    resize();
+    window.addEventListener('resize', resize);
+    raf = requestAnimationFrame(frame);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('resize', resize);
+    };
+  }, []);
+
   return (
     <div style={{
       position: 'fixed',
@@ -99,33 +164,7 @@ function WindowRain() {
       pointerEvents: 'none',
       zIndex: -1,
     }}>
-      {streaks.map((d, i) => (
-        <span key={i} style={{
-          position: 'absolute',
-          left: `${d.left}%`,
-          top: 0,
-          width: 1.4,
-          height: d.len,
-          background: 'linear-gradient(to bottom, rgba(205,222,255,0), rgba(205,222,255,0.75))',
-          opacity: d.opacity,
-          animation: `window-rain-fall ${d.dur}s linear ${d.delay}s infinite`,
-          willChange: 'transform',
-        }} />
-      ))}
-      {drips.map((d, i) => (
-        <span key={`g${i}`} style={{
-          position: 'absolute',
-          left: `${d.left}%`,
-          top: 0,
-          width: d.size,
-          height: d.size * 1.5,
-          borderRadius: '50% 50% 55% 55%',
-          background: 'radial-gradient(circle at 35% 30%, rgba(235,243,255,0.55), rgba(180,200,235,0.25) 60%, transparent 75%)',
-          boxShadow: '0 1px 2px rgba(255,255,255,0.18)',
-          animation: `window-glass-drip ${d.dur}s ease-in ${d.delay}s infinite`,
-          willChange: 'transform, opacity',
-        }} />
-      ))}
+      <canvas ref={canvasRef} style={{ width: '100%', height: '100%', display: 'block' }} />
     </div>
   );
 }
