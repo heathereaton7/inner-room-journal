@@ -36,6 +36,10 @@ export default function CabinScreen({
   const [draggingDecor, setDraggingDecor] = useState(null);
   const [dragPos, setDragPos] = useState(null);
   const [showBag, setShowBag] = useState(false);
+  // Loft view: the OLD cozy-loft cabin interior (cabin-interior.png), reached
+  // via the upstairs middle door on the grand hall map. Holds the original
+  // loft hotspots (book→journal, staircase→rooftop, etc.).
+  const [loftView, setLoftView] = useState(false);
   const containerRef = useRef(null);
 
   const handleDecorTap = useCallback((itemId, e) => {
@@ -108,13 +112,20 @@ export default function CabinScreen({
       {/* ── Full-screen cabin background ── */}
       {/* cabinMode "immersive" = parallax fallback (temporary until real 3D cabin is built) */}
       {/* cabinMode "3d" = future React Three Fiber scene (swap in when GLB is ready) */}
-      {cabinMode==="3d"&&cabin3DReady?(
+      {loftView?(
+        /* OLD cabin landing — cozy loft interior, reached via the upstairs door */
+        <div style={{position:"absolute",inset:0,zIndex:0,background:"#060402",animation:"spaceFadeIn .5s ease"}}>
+          <img src="/cabin-interior.png" alt="Cabin loft" draggable={false} style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",userSelect:"none",WebkitUserDrag:"none",pointerEvents:"none"}}/>
+          {/* Cinematic vignette to match the hall */}
+          <div style={{position:"absolute",inset:0,pointerEvents:"none",background:"radial-gradient(ellipse at center, transparent 42%, rgba(8,6,4,0.5) 100%)"}}/>
+        </div>
+      ):cabinMode==="3d"&&cabin3DReady?(
         /* Future: <CabinScene3D/> — will render the real GLB model here */
         <div style={{position:"absolute",inset:0,background:"#060402",zIndex:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
           <span style={{color:"rgba(255,248,232,0.3)",fontFamily:SERIF,fontStyle:"italic",fontSize:"0.8rem"}}>3D cabin loading…</span>
         </div>
       ):(
-        <ImmersiveCabin onOpenRoom={(room)=>{ if(room==='cozy-creations') transitionToCozyCreations&&transitionToCozyCreations(); else if(room==='world-map') transitionToMap&&transitionToMap(); }}/>
+        <ImmersiveCabin onOpenRoom={(room)=>{ if(room==='cozy-creations') transitionToCozyCreations&&transitionToCozyCreations(); else if(room==='world-map') transitionToMap&&transitionToMap(); else if(room==='cabin-loft') setLoftView(true); }}/>
       )}
 
       {/* ── Walkable character ── */}
@@ -220,6 +231,8 @@ export default function CabinScreen({
           Glow class: "magic-hotspot" + animation:"magicGlow ..." for the enchanted look.
           The outer <div> with magicGlowOuter adds the soft radial aura around each hotspot. ─── */}
 
+      {/* ── OLD LOFT HOTSPOTS — only over the cozy-loft view (cabin-interior.png) ── */}
+      {loftView && (<>
       {/* 1. THE INNER ROOM BOOK — center of desk foreground → journal */}
       <button onClick={()=>transitionToJournal()} style={{position:"absolute",left:"28%",top:"74%",width:"38%",height:"14%",zIndex:11,background:"transparent",border:"none",padding:0,cursor:"pointer",borderRadius:"10px",outline:"none",WebkitTapHighlightColor:"transparent"}}>
         {/* Pulse glow on "The Inner Room" book */}
@@ -253,6 +266,14 @@ export default function CabinScreen({
       <button onClick={()=>setShowInsights(true)} style={{position:"absolute",left:"20%",right:"28%",top:"48%",height:"17%",zIndex:10,background:"transparent",border:"none",cursor:"pointer",borderRadius:"8px"}}>
         <div style={{position:"absolute",inset:"-10%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,200,80,0.04),transparent 60%)",pointerEvents:"none"}}/>
       </button>
+      </>)}
+
+      {/* Back to hall — only in the loft view */}
+      {loftView && (
+        <button onClick={()=>setLoftView(false)} style={{position:"absolute",left:"50%",bottom:"4%",transform:"translateX(-50%)",zIndex:14,background:"rgba(26,22,18,0.7)",backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",border:"1px solid rgba(201,169,110,0.18)",borderRadius:999,padding:"7px 18px",cursor:"pointer",color:"rgba(255,248,232,0.6)",fontFamily:SANS,fontSize:"0.72rem",display:"inline-flex",alignItems:"center",gap:6,animation:"fadeUp 0.8s ease both",boxShadow:"0 2px 12px rgba(0,0,0,0.3)"}}>
+          <span style={{fontSize:"0.7rem"}}>&#8595;</span> Back to the hall
+        </button>
+      )}
 
       {/* Shelf book hotspots removed — Scripture, Gratitude, Prophecy & Words,
           and Becoming Her are now accessible from the "Choose Your Path" menu

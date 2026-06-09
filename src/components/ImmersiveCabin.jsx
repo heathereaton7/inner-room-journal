@@ -24,6 +24,8 @@ const DOOR = { left: 0.497, top: 0.35, w: 0.112, h: 0.145 };
 const ROOM_DOORS = [
   { room: 'cozy-creations', label: 'Cozy Creations Room', left: 0.30, top: 0.335, w: 0.155, h: 0.17 },
   { room: 'world-map', label: 'World Map', left: 0.53, top: 0.34, w: 0.14, h: 0.17 },
+  // Upper-landing middle door → the OLD cozy-loft cabin interior (cabin-interior.png)
+  { room: 'cabin-loft', label: 'Old Cabin Loft', left: 0.43, top: 0.145, w: 0.14, h: 0.133 },
 ];
 
 const WEATHER_COLORS = {
