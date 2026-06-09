@@ -114,7 +114,7 @@ export default function CabinScreen({
           <span style={{color:"rgba(255,248,232,0.3)",fontFamily:SERIF,fontStyle:"italic",fontSize:"0.8rem"}}>3D cabin loading…</span>
         </div>
       ):(
-        <ImmersiveCabin onOpenRoom={(room)=>{ if(room==='cozy-creations') transitionToCozyCreations&&transitionToCozyCreations(); }}/>
+        <ImmersiveCabin onOpenRoom={(room)=>{ if(room==='cozy-creations') transitionToCozyCreations&&transitionToCozyCreations(); else if(room==='world-map') transitionToMap&&transitionToMap(); }}/>
       )}
 
       {/* ── Walkable character ── */}

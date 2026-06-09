@@ -23,6 +23,7 @@ const DOOR = { left: 0.497, top: 0.35, w: 0.112, h: 0.145 };
 // since they share the hall layout.
 const ROOM_DOORS = [
   { room: 'cozy-creations', label: 'Cozy Creations Room', left: 0.30, top: 0.335, w: 0.155, h: 0.17 },
+  { room: 'world-map', label: 'World Map', left: 0.53, top: 0.34, w: 0.14, h: 0.17 },
 ];
 
 const WEATHER_COLORS = {
