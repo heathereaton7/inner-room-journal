@@ -1,5 +1,6 @@
 import { useRef, useEffect } from 'react';
 import { CABIN_FALLBACK_IMAGE } from '../constants.js';
+import { useRoomTheme } from '../systems/roomThemes.js';
 
 // Cozy cabin loft — stone fireplace with roaring fire LEFT, large picture window CENTER
 // with pine forest & starry sky, open skylight TOP-CENTER, string lights across ceiling beams,
@@ -8,6 +9,8 @@ import { CABIN_FALLBACK_IMAGE } from '../constants.js';
 // notebook & pen LEFT of book, fluffy white rug CENTER FLOOR, candles on mantel + window seat.
 
 export default function ImmersiveCabin(){
+  const theme=useRoomTheme();
+  const bgImage=theme.cabin||CABIN_FALLBACK_IMAGE;
   const containerRef=useRef(null);
   const canvasRef=useRef(null);
   const offsetX=useRef(0);
@@ -218,7 +221,7 @@ export default function ImmersiveCabin(){
           interactive foreground. Mobile portrait looks identical. */}
       <img
         ref={imgRef}
-        src={CABIN_FALLBACK_IMAGE}
+        src={bgImage}
         alt="Cabin interior"
         onLoad={()=>{imgLoaded.current=true;}}
         style={{

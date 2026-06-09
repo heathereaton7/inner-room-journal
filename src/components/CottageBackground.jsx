@@ -1,41 +1,18 @@
-import { useEffect, useRef, useState } from 'react';
-import { ROOM_THEMES, DEFAULT_ROOM_THEME, ROOM_THEME_KEY, ROOM_THEME_EVENT, getRoomTheme } from '../systems/roomThemes.js';
+import { useEffect, useRef } from 'react';
+import { useRoomTheme } from '../systems/roomThemes.js';
 
 /**
  * CottageBackground — full-bleed cozy scene used as the atmospheric backdrop
  * for the Word Search, Diamond Art and meditation screens.
  *
- * The active scene is driven by the selected "Room Style" (see roomThemes.js).
+ * The active scene is driven by the selected "Season" (see roomThemes.js).
  * Each theme supplies the scene image plus weather over the window glass and
  * flickering candle glows anchored to the lanterns in the painting.
  *
  * Renders fixed-position layers behind everything (zIndex -1), so pages need
- * their own content above it. Listens for the ROOM_THEME_EVENT so swapping the
- * room in the menu re-renders the backdrop live.
+ * their own content above it. Uses the shared useRoomTheme() hook so swapping
+ * the season in the menu re-renders the backdrop live.
  */
-function useRoomTheme() {
-  const read = () => {
-    try {
-      const raw = localStorage.getItem(ROOM_THEME_KEY);
-      const id = raw ? JSON.parse(raw) : DEFAULT_ROOM_THEME;
-      return getRoomTheme(id);
-    } catch {
-      return getRoomTheme(DEFAULT_ROOM_THEME);
-    }
-  };
-  const [theme, setTheme] = useState(read);
-  useEffect(() => {
-    const h = () => setTheme(read());
-    window.addEventListener(ROOM_THEME_EVENT, h);
-    window.addEventListener('storage', h);
-    return () => {
-      window.removeEventListener(ROOM_THEME_EVENT, h);
-      window.removeEventListener('storage', h);
-    };
-  }, []);
-  return theme;
-}
-
 export default function CottageBackground() {
   const theme = useRoomTheme();
   return (

@@ -38,7 +38,7 @@ import CreateGatheringPost from './screens/CreateGatheringPost.jsx';
 import UpperRoomSearch from './screens/UpperRoomSearch.jsx';
 import { generateAnonName, makeSearchTokens, GATHERING_SPACES } from './gatherings.js';
 import { ambientPlay, ambientStop, ambientMute, ambientUnmute, ambientIsPlaying, SOUND_LIBRARY, AMBIENT_TRACKS } from './systems/ambientSound.js';
-import { ROOM_THEMES, DEFAULT_ROOM_THEME, ROOM_THEME_KEY, ROOM_THEME_EVENT } from './systems/roomThemes.js';
+import { ROOM_THEMES, DEFAULT_ROOM_THEME, ROOM_THEME_KEY, ROOM_THEME_EVENT, getRoomTheme, useRoomTheme } from './systems/roomThemes.js';
 
 
 async function dbLoad(k){
@@ -489,6 +489,8 @@ function ImmersiveMarket(){
 }
 
 function ImmersiveKitchen(){
+  const theme=useRoomTheme();
+  const bgImage=theme.kitchen||KITCHEN_BG_IMAGE;
   const containerRef=useRef(null);
   const canvasRef=useRef(null);
   const offsetX=useRef(0);
@@ -619,7 +621,7 @@ function ImmersiveKitchen(){
 
   return(
     <div ref={containerRef} style={{position:"absolute",inset:0,zIndex:0,overflow:"hidden",background:"#0A0604",cursor:"grab"}} onMouseDown={()=>{if(containerRef.current)containerRef.current.style.cursor="grabbing";}} onMouseUp={()=>{if(containerRef.current)containerRef.current.style.cursor="grab";}}>
-      <img ref={imgRef} src={KITCHEN_BG_IMAGE} alt="Kitchen" style={{position:"absolute",top:0,left:0,width:`calc(100% + ${PARALLAX*2}px)`,height:`calc(100% + ${PARALLAX*2}px)`,objectFit:"cover",transform:`translate(${-PARALLAX}px,${-PARALLAX}px)`,willChange:"transform",userSelect:"none",WebkitUserDrag:"none",pointerEvents:"none"}} draggable={false}/>
+      <img ref={imgRef} src={bgImage} alt="Kitchen" style={{position:"absolute",top:0,left:0,width:`calc(100% + ${PARALLAX*2}px)`,height:`calc(100% + ${PARALLAX*2}px)`,objectFit:"cover",transform:`translate(${-PARALLAX}px,${-PARALLAX}px)`,willChange:"transform",userSelect:"none",WebkitUserDrag:"none",pointerEvents:"none"}} draggable={false}/>
       {/* Stove fire glow — warm radial on upper-left fireplace */}
       <div style={{position:"absolute",left:"2%",top:"8%",width:"38%",height:"35%",pointerEvents:"none",zIndex:1,borderRadius:"40%",background:"radial-gradient(ellipse at 50% 65%,rgba(255,140,40,0.12) 0%,rgba(255,100,20,0.04) 45%,transparent 75%)",mixBlendMode:"screen",animation:"kitchenFireGlow 3s ease-in-out infinite"}}/>
       {/* Candle glow — scattered warm lights on stairs */}
@@ -3822,15 +3824,17 @@ function AppInner(){
                   <button onClick={()=>{ambientStop(800);setAmbientMuted(false);manualSoundRef.current=false;}} style={{background:"transparent",border:"1px solid rgba(255,100,100,0.15)",borderRadius:6,padding:"3px 8px",cursor:"pointer",color:"rgba(255,150,150,0.5)",fontSize:"0.62rem",fontFamily:SANS,fontWeight:600}}>Stop</button>
                 </div>
               )}
-              {/* Sound list */}
+              {/* Sound list — sounds belonging to the active season are highlighted */}
+              {(()=>{ const seasonSounds=getRoomTheme(roomTheme).sounds||[]; const seasonName=getRoomTheme(roomTheme).name; return(
               <div style={{display:"flex",flexDirection:"column",gap:6}}>
-                {SOUND_LIBRARY.map(sound=>{
+                {[...SOUND_LIBRARY].sort((a,b)=>(seasonSounds.includes(b.id)?1:0)-(seasonSounds.includes(a.id)?1:0)).map(sound=>{
                   const active=sIsPlaying(sound.id);
+                  const seasonal=seasonSounds.includes(sound.id);
                   return(
                     <button key={sound.id} onClick={()=>{
                       if(active){ambientStop(800);manualSoundRef.current=false;}
                       else{setAmbientMuted(false);manualSoundRef.current=true;ambientPlay(sound.src,{volume:sound.volume,fadeMs:1200,id:sound.id});}
-                    }} style={{display:"flex",alignItems:"center",gap:10,background:active?"rgba(90,138,106,0.08)":"rgba(255,255,255,0.03)",border:"1px solid "+(active?"rgba(90,138,106,0.2)":"rgba(201,169,110,0.08)"),borderRadius:10,padding:"10px 14px",cursor:"pointer",transition:"all 0.2s",width:"100%",textAlign:"left"}}>
+                    }} style={{display:"flex",alignItems:"center",gap:10,background:active?"rgba(90,138,106,0.08)":seasonal?"rgba(201,169,110,0.07)":"rgba(255,255,255,0.03)",border:"1px solid "+(active?"rgba(90,138,106,0.2)":seasonal?"rgba(201,169,110,0.3)":"rgba(201,169,110,0.08)"),borderRadius:10,padding:"10px 14px",cursor:"pointer",transition:"all 0.2s",width:"100%",textAlign:"left"}}>
                       <div style={{width:32,height:32,borderRadius:"50%",background:active?"rgba(90,138,106,0.2)":"rgba(201,169,110,0.08)",border:"1px solid "+(active?"rgba(90,138,106,0.35)":"rgba(201,169,110,0.15)"),display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
                         {active?<svg width="12" height="12" viewBox="0 0 24 24" fill="rgba(190,211,196,0.8)" stroke="none"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>:<svg width="12" height="12" viewBox="0 0 24 24" fill="rgba(201,169,110,0.7)" stroke="none"><polygon points="6,3 20,12 6,21"/></svg>}
                       </div>
@@ -3838,11 +3842,12 @@ function AppInner(){
                         <div style={{fontFamily:SERIF,fontSize:"0.82rem",color:active?"rgba(190,211,196,0.9)":B.goldL,fontWeight:500}}>{sound.name}</div>
                         <div style={{fontFamily:SANS,fontSize:"0.65rem",color:"rgba(255,248,232,0.25)",lineHeight:1.3}}>{sound.description}</div>
                       </div>
-                      <span style={{fontSize:"0.55rem",background:"rgba(201,169,110,0.06)",color:"rgba(201,169,110,0.4)",border:"1px solid rgba(201,169,110,0.1)",padding:"2px 6px",borderRadius:99,fontFamily:SANS,fontWeight:600,whiteSpace:"nowrap",flexShrink:0}}>{sound.room}</span>
+                      <span style={{fontSize:"0.55rem",background:seasonal?"rgba(201,169,110,0.18)":"rgba(201,169,110,0.06)",color:seasonal?B.goldL:"rgba(201,169,110,0.4)",border:"1px solid "+(seasonal?"rgba(201,169,110,0.4)":"rgba(201,169,110,0.1)"),padding:"2px 6px",borderRadius:99,fontFamily:SANS,fontWeight:600,whiteSpace:"nowrap",flexShrink:0}}>{seasonal?`${seasonName} season`:sound.room}</span>
                     </button>
                   );
                 })}
               </div>
+              );})()}
               {/* Mute toggle */}
               <button onClick={toggleAmbientMute} style={{display:"flex",alignItems:"center",gap:6,marginTop:8,padding:"6px 14px",background:"rgba(255,255,255,0.03)",border:"1px solid rgba(201,169,110,0.08)",borderRadius:8,cursor:"pointer"}}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={ambientMuted?"rgba(255,150,150,0.5)":"rgba(201,169,110,0.5)"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>{ambientMuted?<><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></>:<><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></>}</svg>
@@ -3851,16 +3856,16 @@ function AppInner(){
             </>)}
           </div>
 
-          {/* ── ROOM STYLE (collapsible) — backdrop for journaling & activity screens ── */}
+          {/* ── SEASON (collapsible) — global theme: re-skins the whole app ── */}
           <div style={{marginBottom:14}}>
             <button onClick={()=>setMenuRoomOpen(p=>!p)} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"rgba(255,255,255,0.03)",border:"1px solid rgba(201,169,110,0.08)",borderRadius:10,padding:"11px 14px",cursor:"pointer",transition:"all 0.2s",marginBottom:menuRoomOpen?10:0}}>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="rgba(201,169,110,0.5)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-              <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.78rem",color:B.goldL,flex:1,textAlign:"left"}}>Room Style</span>
+              <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.78rem",color:B.goldL,flex:1,textAlign:"left"}}>Season</span>
               {!menuRoomOpen&&<span style={{fontFamily:SANS,fontSize:"0.62rem",color:"rgba(201,169,110,0.45)"}}>{ROOM_THEMES.find(t=>t.id===roomTheme)?.name||""}</span>}
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(201,169,110,0.35)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{transition:"transform 0.25s",transform:menuRoomOpen?"rotate(180deg)":"rotate(0deg)"}}><polyline points="6 9 12 15 18 9"/></svg>
             </button>
             {menuRoomOpen&&(<>
-              <p style={{fontFamily:SANS,fontSize:"0.62rem",color:"rgba(255,248,232,0.3)",margin:"0 0 8px",lineHeight:1.4}}>Choose the room you sit in for journaling, diamond art, word search & more.</p>
+              <p style={{fontFamily:SANS,fontSize:"0.62rem",color:"rgba(255,248,232,0.3)",margin:"0 0 8px",lineHeight:1.4}}>Sets the season for the whole app — your cabin, kitchen, and activity rooms all change to match.</p>
               <div style={{display:"flex",flexDirection:"column",gap:6}}>
                 {ROOM_THEMES.map(theme=>{
                   const active=roomTheme===theme.id;
@@ -6436,7 +6441,7 @@ function AppInner(){
         {stoveZoom&&(
           <div style={{position:"fixed",inset:0,zIndex:9998,overflow:"hidden",pointerEvents:"all"}}>
             <div style={{position:"absolute",inset:0,transformOrigin:"8% 58%",animation:"walkToStoveZoom 1.2s cubic-bezier(0.4,0,0.2,1) forwards"}}>
-              <img src={KITCHEN_BG_IMAGE} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}} draggable={false}/>
+              <img src={getRoomTheme(roomTheme).kitchen||KITCHEN_BG_IMAGE} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}} draggable={false}/>
               {/* Fire glow intensifies during zoom */}
               <div style={{position:"absolute",left:"0%",top:"46%",width:"16%",height:"28%",borderRadius:"50%",background:"radial-gradient(ellipse at 55% 60%,rgba(255,140,40,0.30) 0%,rgba(255,100,20,0.10) 40%,transparent 70%)",mixBlendMode:"screen"}}/>
             </div>
@@ -6447,7 +6452,7 @@ function AppInner(){
         {windowZoom&&(
           <div style={{position:"fixed",inset:0,zIndex:9998,overflow:"hidden",pointerEvents:"all"}}>
             <div style={{position:"absolute",inset:0,transformOrigin:"50% 22%",animation:"walkToWindowZoom 1.2s cubic-bezier(0.4,0,0.2,1) forwards"}}>
-              <img src={KITCHEN_BG_IMAGE} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}} draggable={false}/>
+              <img src={getRoomTheme(roomTheme).kitchen||KITCHEN_BG_IMAGE} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}} draggable={false}/>
               {/* Window light intensifies during zoom */}
               <div style={{position:"absolute",left:"34%",top:"8%",width:"32%",height:"32%",borderRadius:"30%",background:"radial-gradient(ellipse at 50% 50%,rgba(180,220,255,0.25) 0%,rgba(140,190,240,0.08) 45%,transparent 70%)",mixBlendMode:"screen"}}/>
             </div>

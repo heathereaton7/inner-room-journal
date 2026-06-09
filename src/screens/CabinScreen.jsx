@@ -4,6 +4,7 @@ import { SHOP_ITEMS } from '../items.js';
 import { ITEMS, isPlaceable } from '../items.js';
 import { CSS } from '../styles.js';
 import ImmersiveCabin from '../components/ImmersiveCabin.jsx';
+import { useRoomTheme } from '../systems/roomThemes.js';
 import CharacterWalker from '../components/CharacterWalker.jsx';
 import BookSparkles from '../components/BookSparkles.jsx';
 import { moveItem, removeFromRoom, placeItem } from '../roomDecor.js';
@@ -29,6 +30,8 @@ export default function CabinScreen({
   playerRoom, onRoomChange, inventory, addToInventory, removeFromInventory,
   playerAppearance,
 }){
+  const roomThemeData = useRoomTheme();
+  const cabinBgImage = roomThemeData.cabin || CABIN_FALLBACK_IMAGE;
   const [selectedDecor, setSelectedDecor] = useState(null);
   const [draggingDecor, setDraggingDecor] = useState(null);
   const [dragPos, setDragPos] = useState(null);
@@ -834,7 +837,7 @@ export default function CabinScreen({
         <div style={{position:"fixed",inset:0,zIndex:9998,overflow:"hidden",pointerEvents:"all"}}>
           {/* Cabin zooms toward the desk/book area (center-foreground) */}
           <div style={{position:"absolute",inset:0,transformOrigin:"48% 80%",animation:"walkToJournalZoom 1.4s cubic-bezier(0.4,0,0.2,1) forwards"}}>
-            <img src={CABIN_FALLBACK_IMAGE} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}} draggable={false}/>
+            <img src={cabinBgImage} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}} draggable={false}/>
             {/* Warm glow intensifies on "The Inner Room" book during zoom */}
             <div style={{position:"absolute",left:"30%",top:"72%",width:"34%",height:"18%",borderRadius:"45%",background:"radial-gradient(ellipse at 50% 50%,rgba(255,215,130,0.35) 0%,rgba(255,190,90,0.12) 45%,transparent 72%)",mixBlendMode:"screen"}}/>
           </div>

@@ -1,17 +1,29 @@
+import { useState, useEffect } from 'react';
+
 /**
- * ROOM THEMES — selectable "style of room" backdrops for the cozy activity
- * screens (Word Search, Diamond Art, Pregnancy / Fertility meditations, etc.).
+ * ROOM THEMES — the app-wide SEASON catalog.
  *
- * Each theme drives <CottageBackground>: the full-bleed scene image plus its
- * atmospheric layers (weather over the window glass and flickering candle
- * glows anchored to the lanterns in the painting).
+ * Selecting a theme is a single global "Season" switch: it re-skins the WHOLE
+ * app so everything stays consistent (pick Christmas and the kitchen, cabin and
+ * activity backdrops all become Christmas — never mismatched).
  *
- * To add a new room: drop the image in /public, add one entry here, and it
- * automatically appears in the "Room Style" picker in the bottom menu.
+ * Each theme drives <CottageBackground>: the full-bleed activity scene image
+ * plus its atmospheric layers (weather over the window glass and flickering
+ * candle glows anchored to the lanterns in the painting).
+ *
+ * To add a new season: drop the image(s) in /public, add one entry here, and it
+ * automatically appears in the "Season" picker in the bottom menu.
  *
  *   window  — viewport-% box framing just the glass so weather only falls there
- *   weather — 'rain' | 'snow' | 'none'
+ *   weather — 'rain' | 'snow' | 'petals' | 'leaves' | 'none'
  *   candles — glow positions (viewport %) calibrated to the lantern flames
+ *
+ * Optional per-area asset overrides re-skin other screens for this season.
+ * When absent, that screen keeps its default image — so a season only needs
+ * art for the areas it has been painted for:
+ *   kitchen — full-screen kitchen background image
+ *   cabin   — full-screen cabin interior background image
+ *   sounds  — SOUND_LIBRARY ids highlighted as this season's music
  */
 export const ROOM_THEMES = [
   {
@@ -40,6 +52,9 @@ export const ROOM_THEMES = [
       { left: '78%', top: '66%', color: '#FFC07A', size: 165, duration: 8.0 },
       { left: '60%', top: '83%', color: '#FFD89A', size: 90,  duration: 7.2 },
     ],
+    kitchen: '/christmaskitchenfinal.png',
+    cabin: '/christmascabinfinal.png',
+    sounds: ['xmas-mistletoe', 'xmas-peppermint', 'xmas-seasonal'],
   },
   {
     id: 'spring',
@@ -89,4 +104,33 @@ export const ROOM_THEME_EVENT = 'room-theme-change';
 
 export function getRoomTheme(id) {
   return ROOM_THEMES.find(t => t.id === id) || ROOM_THEMES[0];
+}
+
+/**
+ * useRoomTheme — shared reactive hook returning the active season/theme object.
+ * Reads localStorage and stays live by listening for ROOM_THEME_EVENT (in-tab
+ * menu changes) and the 'storage' event (other tabs). Any screen can call this
+ * to re-skin itself for the current season without prop-threading.
+ */
+export function useRoomTheme() {
+  const read = () => {
+    try {
+      const raw = localStorage.getItem(ROOM_THEME_KEY);
+      const id = raw ? JSON.parse(raw) : DEFAULT_ROOM_THEME;
+      return getRoomTheme(id);
+    } catch {
+      return getRoomTheme(DEFAULT_ROOM_THEME);
+    }
+  };
+  const [theme, setTheme] = useState(read);
+  useEffect(() => {
+    const h = () => setTheme(read());
+    window.addEventListener(ROOM_THEME_EVENT, h);
+    window.addEventListener('storage', h);
+    return () => {
+      window.removeEventListener(ROOM_THEME_EVENT, h);
+      window.removeEventListener('storage', h);
+    };
+  }, []);
+  return theme;
 }
