@@ -41,6 +41,19 @@ export const ROOM_THEMES = [
       { left: '60%', top: '83%', color: '#FFD89A', size: 90,  duration: 7.2 },
     ],
   },
+  {
+    id: 'spring',
+    name: 'Spring Cottage',
+    description: 'Blossom petals drift past a sunlit waterfall',
+    tag: 'Seasonal',
+    src: '/spring.png',
+    weather: 'petals',
+    window: { left: '24%', top: '2%', width: '74%', height: '70%', radius: '48% 48% 4% 4% / 28% 28% 3% 3%' },
+    candles: [
+      { left: '9%', top: '18%', color: '#FFB36A', size: 150, duration: 6.5 },
+      { left: '75%', top: '67%', color: '#FFC07A', size: 160, duration: 8.0 },
+    ],
+  },
 ];
 
 export const DEFAULT_ROOM_THEME = 'cottage-rain';
