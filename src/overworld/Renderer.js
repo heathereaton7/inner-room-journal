@@ -1,5 +1,12 @@
 import { WORLD_W, WORLD_H } from './constants.js';
+import { AVATAR_NAV } from '../constants.js';
 import { resolveSprite, SPRITES } from './sprites.js';
+
+// ─── Tap markers (tap/pan navigation) ──────────────────────────────
+// Soft pulsing rings drawn at each enterable location so the user knows
+// where to tap when there is no walking avatar. Set per map.
+let _tapMarkers = []; // [{cx, cy, radius}]
+export function setTapMarkers(list) { _tapMarkers = list || []; }
 
 // ─── Map Background Layers ─────────────────────────────────────────
 // Multiple map images stacked vertically to form one seamless world.
@@ -252,17 +259,61 @@ export function render(ctx, grid, camera, player, zones, dt) {
     if (obj.zBase > playerZ) _drawObject(ctx, camera, obj);
   }
 
-  // Draw player
-  _drawPlayer(ctx, camera, player);
+  // Draw player (only when avatar navigation is enabled)
+  if (AVATAR_NAV) _drawPlayer(ctx, camera, player);
 
   // Draw objects IN FRONT of the player (player is behind them)
   for (const obj of _mapObjects) {
     if (obj.zBase <= playerZ) _drawObject(ctx, camera, obj);
   }
 
+  // ── Tap markers (shown instead of avatar for tap/pan navigation) ──
+  if (!AVATAR_NAV) _drawTapMarkers(ctx, camera);
+
   // ── Interaction prompt ──
-  if (zones.nearbyZone) {
+  if (AVATAR_NAV && zones.nearbyZone) {
     _drawInteractionPrompt(ctx, camera, zones.nearbyZone);
+  }
+}
+
+// ─── Tap markers ───────────────────────────────────────────────────
+// Soft pulsing gold rings at each enterable location, so the user can
+// see where to tap when there is no walking avatar.
+function _drawTapMarkers(ctx, camera) {
+  if (!_tapMarkers.length) return;
+  const vw = camera.viewW, vh = camera.viewH;
+  const pulse = 0.5 + 0.5 * Math.sin(ffTime * 2.4); // 0..1 slow breath
+
+  for (const m of _tapMarkers) {
+    const sx = m.cx - camera.x;
+    const sy = m.cy - camera.y;
+    if (sx < -120 || sx > vw + 120 || sy < -120 || sy > vh + 120) continue;
+
+    const baseR = 26 + 8 * pulse;
+    const outerR = baseR + 14 + 10 * pulse;
+
+    // Outer soft glow
+    const grad = ctx.createRadialGradient(sx, sy, baseR * 0.3, sx, sy, outerR);
+    grad.addColorStop(0, `rgba(255,210,130,${0.10 + 0.10 * pulse})`);
+    grad.addColorStop(0.6, 'rgba(255,185,90,0.05)');
+    grad.addColorStop(1, 'rgba(255,185,90,0)');
+    ctx.beginPath();
+    ctx.arc(sx, sy, outerR, 0, Math.PI * 2);
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    // Crisp ring
+    ctx.beginPath();
+    ctx.arc(sx, sy, baseR, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(255,225,160,${0.35 + 0.30 * pulse})`;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Center dot
+    ctx.beginPath();
+    ctx.arc(sx, sy, 3.5, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(255,240,200,${0.6 + 0.3 * pulse})`;
+    ctx.fill();
   }
 }
 

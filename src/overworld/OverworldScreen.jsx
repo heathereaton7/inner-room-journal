@@ -4,12 +4,21 @@ import { Camera } from './Camera.js';
 import { Player } from './Player.js';
 import { Input } from './Input.js';
 import { InteractionZones } from './InteractionZones.js';
-import { loadPlayerSprite, preloadSprite, render, initFireflies, setRendererWorldSize, setMapObjects } from './Renderer.js';
+import { loadPlayerSprite, preloadSprite, render, initFireflies, setRendererWorldSize, setMapObjects, setTapMarkers } from './Renderer.js';
 import { MapManager } from './MapManager.js';
 import { ALL_MAPS } from './maps/index.js';
 import { TILE } from './constants.js';
 import { resolveSprite, SPRITES } from './sprites.js';
 import Joystick from './Joystick.jsx';
+import { AVATAR_NAV } from '../constants.js';
+
+// Build the list of tappable markers (zones + door transitions) for the
+// current map, so the renderer can draw a pulsing ring at each location.
+function _refreshTapMarkers() {
+  const zones = (mapManager.getZones() || []).map(z => ({ cx: z.cx, cy: z.cy, radius: z.radius }));
+  const trans = (mapManager.current?.transitions || []).map(t => ({ cx: t.cx, cy: t.cy, radius: t.radius || 48 }));
+  setTapMarkers([...zones, ...trans]);
+}
 
 // Singleton MapManager (survives remounts)
 const mapManager = new MapManager();
@@ -64,6 +73,9 @@ export default function OverworldScreen({ onEnterLocation, playerPos, onPosChang
     // Store the active grid on the game ref for the update loop
     game.grid = mapManager.grid;
     game.currentMapId = mapId;
+
+    // Tap markers for the new map (tap/pan navigation)
+    _refreshTapMarkers();
 
     setCurrentMapId(mapId);
   }, []);
@@ -133,6 +145,7 @@ export default function OverworldScreen({ onEnterLocation, playerPos, onPosChang
     setRendererWorldSize(w, h);
     initFireflies(mapManager.current.cols < 30 ? 15 : 50);
     setMapObjects(mapManager.current.objects || []);
+    _refreshTapMarkers();
     input.attach();
     inputRef.current = input;
 
@@ -144,6 +157,11 @@ export default function OverworldScreen({ onEnterLocation, playerPos, onPosChang
 
     // Game loop
     loop.onUpdate = (dt) => {
+      // When avatar navigation is disabled, the camera is driven by
+      // finger-panning (see pointer handlers) — skip all player/zone
+      // logic but keep the loop alive for fireflies + marker pulse.
+      if (!AVATAR_NAV) return;
+
       const { dx, dy } = input.getDirection();
       player.update(dx, dy, dt, game.grid);
       camera.follow(player.x, player.y);
@@ -206,6 +224,73 @@ export default function OverworldScreen({ onEnterLocation, playerPos, onPosChang
     if (zone) enterZone(zone.screen);
   }, [enterZone]);
 
+  // ── Drag-to-pan + tap-to-enter (tap/pan navigation mode) ──
+  const dragRef = useRef(null);
+
+  const clampCamera = useCallback(() => {
+    const game = gameRef.current;
+    if (!game) return;
+    const cam = game.camera;
+    if (cam.viewW >= cam.worldW) cam.x = (cam.worldW - cam.viewW) / 2;
+    else cam.x = Math.max(0, Math.min(cam.worldW - cam.viewW, cam.x));
+    if (cam.viewH >= cam.worldH) cam.y = (cam.worldH - cam.viewH) / 2;
+    else cam.y = Math.max(0, Math.min(cam.worldH - cam.viewH, cam.y));
+  }, []);
+
+  const handlePointerDown = useCallback((e) => {
+    if (AVATAR_NAV) return;
+    const game = gameRef.current;
+    if (!game || transitioning) return;
+    dragRef.current = {
+      startX: e.clientX, startY: e.clientY,
+      camX: game.camera.x, camY: game.camera.y,
+      moved: 0, t0: performance.now(),
+    };
+  }, [transitioning]);
+
+  const handlePointerMove = useCallback((e) => {
+    if (AVATAR_NAV) return;
+    const d = dragRef.current;
+    const game = gameRef.current;
+    if (!d || !game) return;
+    const zoom = mapManager.getCamZoom();
+    const dx = e.clientX - d.startX;
+    const dy = e.clientY - d.startY;
+    d.moved = Math.max(d.moved, Math.abs(dx) + Math.abs(dy));
+    game.camera.x = d.camX - dx / zoom;
+    game.camera.y = d.camY - dy / zoom;
+    clampCamera();
+  }, [clampCamera]);
+
+  const handlePointerUp = useCallback((e) => {
+    if (AVATAR_NAV) return;
+    const d = dragRef.current;
+    dragRef.current = null;
+    const game = gameRef.current;
+    if (!d || !game || transitioning) return;
+
+    const dt = performance.now() - d.t0;
+    // Treat as a tap only if the finger barely moved and was quick.
+    if (d.moved > 10 || dt > 400) return;
+
+    const zoom = mapManager.getCamZoom();
+    const wx = e.clientX / zoom + game.camera.x;
+    const wy = e.clientY / zoom + game.camera.y;
+
+    // 1) Door transitions (e.g. into the market interior)
+    const tr = mapManager.checkTransitions(wx, wy);
+    if (tr) { handleTransition(tr.targetMap, tr.spawnId); return; }
+
+    // 2) Interaction zones (enter a screen)
+    let best = null, bestDist = Infinity;
+    for (const z of mapManager.getZones()) {
+      const ddx = wx - z.cx, ddy = wy - z.cy;
+      const dist = Math.sqrt(ddx * ddx + ddy * ddy);
+      if (dist < (z.radius || 48) && dist < bestDist) { best = z; bestDist = dist; }
+    }
+    if (best) enterZone(best.screen);
+  }, [transitioning, handleTransition, enterZone]);
+
   const handleEnterZone = useCallback(() => {
     if (promptZone) enterZone(promptZone.screen);
   }, [promptZone, enterZone]);
@@ -216,8 +301,12 @@ export default function OverworldScreen({ onEnterLocation, playerPos, onPosChang
     <div style={{ position: 'fixed', inset: 0, overflow: 'hidden', background: '#0A0806' }}>
       <canvas
         ref={canvasRef}
-        onClick={handleCanvasTap}
-        style={{ display: 'block', width: '100%', height: '100%' }}
+        onClick={AVATAR_NAV ? handleCanvasTap : undefined}
+        onPointerDown={AVATAR_NAV ? undefined : handlePointerDown}
+        onPointerMove={AVATAR_NAV ? undefined : handlePointerMove}
+        onPointerUp={AVATAR_NAV ? undefined : handlePointerUp}
+        onPointerCancel={AVATAR_NAV ? undefined : handlePointerUp}
+        style={{ display: 'block', width: '100%', height: '100%', touchAction: 'none' }}
       />
 
       {/* Transition fade overlay */}
@@ -230,8 +319,8 @@ export default function OverworldScreen({ onEnterLocation, playerPos, onPosChang
         }} />
       )}
 
-      {/* Floating interaction prompt */}
-      {promptZone && !transitioning && (
+      {/* Floating interaction prompt (avatar nav only) */}
+      {AVATAR_NAV && promptZone && !transitioning && (
         <button
           onClick={handleEnterZone}
           style={{
@@ -284,8 +373,8 @@ export default function OverworldScreen({ onEnterLocation, playerPos, onPosChang
         }
       `}</style>
 
-      {/* Virtual joystick */}
-      <Joystick inputRef={inputRef} />
+      {/* Virtual joystick (avatar nav only) */}
+      {AVATAR_NAV && <Joystick inputRef={inputRef} />}
     </div>
   );
 }

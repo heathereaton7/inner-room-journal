@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { GFONTS, B, SERIF, SANS, DISPLAY, SHELF_BOOKS, BOOK_COVERS, BOOK_CONTENT, REFLECTION_ROOMS, LOCKED_ROOM, JESUS_QUESTIONS, VIRAL_QS, th, wc, todayStr, nowTime, getBookPageCount, CABIN_FALLBACK_IMAGE } from '../constants.js';
+import { GFONTS, B, SERIF, SANS, DISPLAY, SHELF_BOOKS, BOOK_COVERS, BOOK_CONTENT, REFLECTION_ROOMS, LOCKED_ROOM, JESUS_QUESTIONS, VIRAL_QS, th, wc, todayStr, nowTime, getBookPageCount, CABIN_FALLBACK_IMAGE, AVATAR_NAV } from '../constants.js';
 import { SHOP_ITEMS } from '../items.js';
 import { ITEMS, isPlaceable } from '../items.js';
 import { CSS } from '../styles.js';
@@ -118,7 +118,7 @@ export default function CabinScreen({
       )}
 
       {/* ── Walkable character ── */}
-      {!bookOpen && !showBag && !windowPanel && !showInsights && (
+      {AVATAR_NAV && !bookOpen && !showBag && !windowPanel && !showInsights && (
         <CharacterWalker
           appearance={playerAppearance}
           spawnX={75}

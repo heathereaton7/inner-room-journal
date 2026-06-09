@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { GFONTS, B, SERIF, SANS, DISPLAY, SKYLIGHT_STAIRCASE_IMAGE } from '../constants.js';
+import { GFONTS, B, SERIF, SANS, DISPLAY, SKYLIGHT_STAIRCASE_IMAGE, AVATAR_NAV } from '../constants.js';
 import { CSS } from '../styles.js';
 import ImmersiveRooftop from '../components/ImmersiveRooftop.jsx';
 import CharacterWalker from '../components/CharacterWalker.jsx';
@@ -26,7 +26,7 @@ export default function RooftopLoungeScreen({
   spaceTransit, transitDir, transitionToCabin, transitionToGarden,
   skipClimb, candles, bank, playerAppearance,
 }){
-  const [climbPhase, setClimbPhase] = useState(skipClimb ? "done" : "climbing"); // "climbing" | "emerging" | "done"
+  const [climbPhase, setClimbPhase] = useState((!skipClimb && AVATAR_NAV) ? "climbing" : "done"); // "climbing" | "emerging" | "done"
   const spriteRef = useRef(null);
   const animRef = useRef(null);
   const pathIdx = useRef(0);
@@ -138,7 +138,7 @@ export default function RooftopLoungeScreen({
       </div>
 
       {/* ── Walkable character (appears after climb transition) ── */}
-      {climbPhase==="done" && (
+      {AVATAR_NAV && climbPhase==="done" && (
         <CharacterWalker
           appearance={playerAppearance}
           spawnX={skipClimb ? 85 : 50}

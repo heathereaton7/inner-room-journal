@@ -18,6 +18,15 @@ export const SANS    = "'DM Sans','Helvetica Neue',sans-serif";
 export const DISPLAY = "'Playfair Display','Georgia',serif";
 
 /* ═══════════════════════════════════════════════════
+   NAVIGATION MODE
+   AVATAR_NAV=false → tap/finger-pan navigation, no walking
+   avatar, no joystick (the current app default).
+   Flip to true to restore the original walkable avatar +
+   virtual joystick everywhere (code is preserved/dormant).
+═══════════════════════════════════════════════════ */
+export const AVATAR_NAV = false;
+
+/* ═══════════════════════════════════════════════════
    ROOM THEMES
 ═══════════════════════════════════════════════════ */
 export const RT = {

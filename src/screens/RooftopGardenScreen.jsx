@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { GFONTS, B, SERIF, SANS, DISPLAY } from '../constants.js';
+import { GFONTS, B, SERIF, SANS, DISPLAY, AVATAR_NAV } from '../constants.js';
 import { CSS } from '../styles.js';
 import ImmersiveGarden from '../components/ImmersiveGarden.jsx';
 import CharacterWalker from '../components/CharacterWalker.jsx';
@@ -142,7 +142,7 @@ export default function RooftopGardenScreen({
       )}
 
       {/* Walkable character — hidden in edit mode so taps go to grid */}
-      {!editMode && (
+      {AVATAR_NAV && !editMode && (
         <CharacterWalker
           appearance={playerAppearance}
           spawnX={50}
