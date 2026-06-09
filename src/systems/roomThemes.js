@@ -23,6 +23,7 @@ import { useState, useEffect } from 'react';
  * art for the areas it has been painted for:
  *   kitchen — full-screen kitchen background image
  *   cabin   — full-screen cabin interior background image
+ *   artRoom — full-screen "Cozy Creations Room" background image
  *   sounds  — SOUND_LIBRARY ids highlighted as this season's music
  */
 export const ROOM_THEMES = [
@@ -56,6 +57,7 @@ export const ROOM_THEMES = [
     // Arched window over the kitchen sink (viewport-% box) — snow falls here when weather==='snow'
     kitchenWindow: { left: '52%', top: '5%', width: '46%', height: '53%' },
     cabin: '/christmascabinmap.png',
+    artRoom: '/artroomchristmas.png',
     sounds: ['xmas-mistletoe', 'xmas-peppermint', 'xmas-seasonal'],
   },
   {
@@ -84,6 +86,7 @@ export const ROOM_THEMES = [
       { left: '76%', top: '63%', color: '#FFC07A', size: 160, duration: 8.0 },
     ],
     cabin: '/rainyspringcabinmap.png',
+    artRoom: '/artroomrainyspring.png',
   },
   {
     id: 'fall',
@@ -98,8 +101,13 @@ export const ROOM_THEMES = [
       { left: '78%', top: '64%', color: '#FFC07A', size: 160, duration: 8.0 },
     ],
     cabin: '/fallcabinmap.png',
+    artRoom: '/artroomfall.png',
   },
 ];
+
+// Default "Cozy Creations Room" background when the active season has no
+// artRoom override (cottage-rain, spring).
+export const COZY_CREATIONS_FALLBACK = '/cozyart.png';
 
 export const DEFAULT_ROOM_THEME = 'cottage-rain';
 

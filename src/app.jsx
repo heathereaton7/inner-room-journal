@@ -38,7 +38,7 @@ import CreateGatheringPost from './screens/CreateGatheringPost.jsx';
 import UpperRoomSearch from './screens/UpperRoomSearch.jsx';
 import { generateAnonName, makeSearchTokens, GATHERING_SPACES } from './gatherings.js';
 import { ambientPlay, ambientStop, ambientMute, ambientUnmute, ambientIsPlaying, SOUND_LIBRARY, AMBIENT_TRACKS } from './systems/ambientSound.js';
-import { ROOM_THEMES, DEFAULT_ROOM_THEME, ROOM_THEME_KEY, ROOM_THEME_EVENT, getRoomTheme, useRoomTheme } from './systems/roomThemes.js';
+import { ROOM_THEMES, DEFAULT_ROOM_THEME, ROOM_THEME_KEY, ROOM_THEME_EVENT, getRoomTheme, useRoomTheme, COZY_CREATIONS_FALLBACK } from './systems/roomThemes.js';
 
 
 async function dbLoad(k){
@@ -851,6 +851,14 @@ function ImmersiveStove(){
       <div style={{position:"absolute",inset:0,pointerEvents:"none",zIndex:3,background:"radial-gradient(ellipse at center 50%, transparent 20%, rgba(8,4,2,0.55) 100%)"}}/>
     </div>
   );
+}
+
+/* Cozy Creations Room background — seasonal art-studio scene. Reads the live
+   season via the shared hook so it re-skins instantly when the Season changes. */
+function CozyCreationsRoom(){
+  const theme=useRoomTheme();
+  const bg=theme.artRoom||COZY_CREATIONS_FALLBACK;
+  return <img src={bg} alt="Cozy Creations Room" draggable={false} style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",userSelect:"none",pointerEvents:"none"}}/>;
 }
 
 /* ═══════════════════════════════════════════════════
@@ -3461,6 +3469,10 @@ function AppInner(){
     setSpaceTransit(true); setTransitDir("toKitchen");
     setTimeout(()=>{setScreen("kitchen");setSpaceTransit(false);setTransitDir(null);},700);
   }
+  function transitionToCozyCreations(){
+    setSpaceTransit(true); setTransitDir("toRoom");
+    setTimeout(()=>{setScreen("cozy-creations");setSpaceTransit(false);setTransitDir(null);},700);
+  }
   function transitionToRooftop(){
     setSpaceTransit(true); setTransitDir("toRooftop");
     prevScreenRef.current=screen;
@@ -4564,6 +4576,7 @@ function AppInner(){
       spaceTransit={spaceTransit} transitDir={transitDir}
       transitionToMap={transitionToMap} transitionToKitchen={transitionToKitchen}
       transitionToRooftop={transitionToRooftop} transitionToJournal={transitionToJournal}
+      transitionToCozyCreations={transitionToCozyCreations}
       cabinMode={cabinMode} cabin3DReady={cabin3DReady}
       debugHotspots={debugHotspots} debugTripleTap={debugTripleTap}
       bookOpen={bookOpen} setBookOpen={setBookOpen} deskBook={deskBook}
@@ -6455,6 +6468,26 @@ function AppInner(){
 
   /* ══ MARKET — Placeholder ═══════════════════════ */
   /* ══ KITCHEN — Immersive downstairs kitchen with stove ══════════════ */
+  /* ══ COZY CREATIONS ROOM — seasonal art studio (off the cabin hall) ══ */
+  if(screen==="cozy-creations"){
+    return(
+      <div style={{position:"fixed",inset:0,overflow:"hidden",fontFamily:SANS,background:"#0A0604"}}>
+        <style>{GFONTS}{CSS}</style>
+        <CozyCreationsRoom/>
+        {/* Cinematic vignette */}
+        <div style={{position:"absolute",inset:0,pointerEvents:"none",background:"radial-gradient(ellipse at center, transparent 45%, rgba(8,6,4,0.5) 100%)"}}/>
+        {/* Back to cabin */}
+        <button onClick={()=>transitionToCabin()} style={{position:"absolute",top:28,left:22,zIndex:15,background:"rgba(10,6,4,0.50)",backdropFilter:"blur(14px)",WebkitBackdropFilter:"blur(14px)",border:"1px solid rgba(201,169,110,0.12)",borderRadius:999,padding:"8px 20px",cursor:"pointer",color:"rgba(255,248,232,0.6)",fontFamily:SANS,fontSize:"0.78rem",display:"inline-flex",alignItems:"center",gap:6}}>
+          <span style={{fontSize:"0.7rem"}}>&#8592;</span> Cabin
+        </button>
+        {/* Title */}
+        <div style={{position:"absolute",top:30,left:0,right:0,textAlign:"center",zIndex:14,pointerEvents:"none",fontFamily:DISPLAY,fontSize:"0.95rem",fontWeight:700,color:"rgba(255,240,210,0.7)",textShadow:"0 2px 10px rgba(0,0,0,0.7)",letterSpacing:"0.03em"}}>Cozy Creations Room</div>
+        {spaceTransit&&<div style={{position:"fixed",inset:0,zIndex:9999,background:"#0A0806",animation:"spaceFadeIn .6s ease both",pointerEvents:"all"}}/>}
+        <BottomMenuDrawer/>
+      </div>
+    );
+  }
+
   if(screen==="kitchen"){
     return(
       <div style={{position:"fixed",inset:0,overflow:"hidden",fontFamily:SANS,background:"#0A0604"}}>
@@ -7572,7 +7605,7 @@ function AppInner(){
   /* ── Global menu bar — renders the sound menu on EVERY screen.
        Skip screens that already render their own BottomMenuDrawer (avoid
        duplicates) and the initial setup/welcome screens. ── */
-  const __menuHasOwn = new Set(["cabin","journal","jesus","cards","hall","community","insights","map2","visit-farm","garden","shop","history","kitchen","stove","kitchen-window","market","upper-room"]);
+  const __menuHasOwn = new Set(["cabin","journal","jesus","cards","hall","community","insights","map2","visit-farm","garden","shop","history","kitchen","stove","kitchen-window","market","upper-room","cozy-creations"]);
   const __menuHidden = new Set(["loading","welcome","onboard","profile-onboard"]);
   return(<>
     {__screenJSX}

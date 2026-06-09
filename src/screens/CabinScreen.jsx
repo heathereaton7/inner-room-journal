@@ -10,7 +10,7 @@ import BookSparkles from '../components/BookSparkles.jsx';
 import { moveItem, removeFromRoom, placeItem } from '../roomDecor.js';
 
 export default function CabinScreen({
-  spaceTransit, transitDir, transitionToMap, transitionToKitchen, transitionToRooftop, transitionToJournal,
+  spaceTransit, transitDir, transitionToMap, transitionToKitchen, transitionToRooftop, transitionToJournal, transitionToCozyCreations,
   cabinMode, cabin3DReady, debugHotspots, debugTripleTap,
   bookOpen, setBookOpen, deskBook, shelfAnim, bookPage, flipDir, bookText, setBookText,
   bookSaveMsg, setBookSaveMsg, journalSection, setJournalSection, journalZoom,
@@ -114,7 +114,7 @@ export default function CabinScreen({
           <span style={{color:"rgba(255,248,232,0.3)",fontFamily:SERIF,fontStyle:"italic",fontSize:"0.8rem"}}>3D cabin loading…</span>
         </div>
       ):(
-        <ImmersiveCabin/>
+        <ImmersiveCabin onOpenRoom={(room)=>{ if(room==='cozy-creations') transitionToCozyCreations&&transitionToCozyCreations(); }}/>
       )}
 
       {/* ── Walkable character ── */}

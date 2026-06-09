@@ -17,6 +17,14 @@ const ZOOM = 1.35;                 // how far the map is zoomed past "cover" (pa
 // share the same hall layout, so one box works for every season.
 const DOOR = { left: 0.497, top: 0.35, w: 0.112, h: 0.145 };
 
+// Room doorways on the hall map (fractions of the MAP image). Each is a tappable
+// hotspot rendered INSIDE the pannable layer so it tracks the map as you drag.
+// `room` is the screen id the door leads to. Shared across all seasonal maps
+// since they share the hall layout.
+const ROOM_DOORS = [
+  { room: 'cozy-creations', label: 'Cozy Creations Room', left: 0.30, top: 0.335, w: 0.155, h: 0.17 },
+];
+
 const WEATHER_COLORS = {
   leaves: ['#C8742B', '#A8521F', '#D89A3A', '#9C3B1C', '#B5651D'],
   petals: ['#F4C6D6', '#F7D9E3', '#E8A9C0', '#FBE4EC'],
@@ -56,7 +64,7 @@ function makeWeather(type){
   return arr;
 }
 
-export default function ImmersiveCabin(){
+export default function ImmersiveCabin({ onOpenRoom }){
   const theme=useRoomTheme();
   const bgImage=theme.cabin||CABIN_FALLBACK_IMAGE;
   const containerRef=useRef(null);
@@ -295,6 +303,18 @@ export default function ImmersiveCabin(){
         <canvas ref={candleCanvasRef} style={{position:"absolute",top:0,left:0,width:"100%",height:"100%",pointerEvents:"none"}}/>
         {/* Seasonal weather in the doorway — sits inside the layer so it pans with the map */}
         <canvas ref={doorCanvasRef} style={{position:"absolute",top:0,left:0,width:"100%",height:"100%",pointerEvents:"none"}}/>
+        {/* Room doorway hotspots — % of the layer, so they pan with the map */}
+        {ROOM_DOORS.map(d=>(
+          <button
+            key={d.room}
+            onClick={(e)=>{ e.stopPropagation(); onOpenRoom&&onOpenRoom(d.room); }}
+            aria-label={d.label}
+            style={{position:"absolute",left:`${d.left*100}%`,top:`${d.top*100}%`,width:`${d.w*100}%`,height:`${d.h*100}%`,background:"transparent",border:"none",padding:0,cursor:"pointer",borderRadius:"45% 45% 8% 8%",outline:"none",WebkitTapHighlightColor:"transparent",zIndex:4}}
+          >
+            {/* Soft warm aura so the door reads as interactive */}
+            <div style={{position:"absolute",inset:"-8%",borderRadius:"45% 45% 12% 12%",background:"radial-gradient(ellipse at 50% 45%, rgba(255,205,120,0.18) 0%, rgba(255,175,80,0.07) 45%, transparent 72%)",pointerEvents:"none",animation:"hotspotPulse 3s ease-in-out infinite"}}/>
+          </button>
+        ))}
       </div>
       {/* Floating dust particles (viewport-fixed ambience) */}
       <canvas ref={canvasRef} style={{position:"absolute",inset:0,pointerEvents:"none",zIndex:2}}/>
