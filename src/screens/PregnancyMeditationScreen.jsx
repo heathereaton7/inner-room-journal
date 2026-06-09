@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { PREGNANCY_MEDITATIONS } from '../data/pregnancyMeditations.js';
 import { FATHER_MEDITATIONS } from '../data/fatherMeditations.js';
+import { CONCEIVE_MEDITATIONS } from '../data/conceiveMeditations.js';
 import CottageBackground from '../components/CottageBackground.jsx';
 
 const SERIF = "'Cormorant Garamond', Georgia, serif";
@@ -25,18 +26,30 @@ const P = {
  *   onBack()
  *   progress              — { currentWeek?: number, completed?: number[] }
  *   onProgressChange(next)
- *   variant               — 'mother' (default) | 'father'
+ *   variant               — 'mother' (default) | 'father' | 'conceive'
+ *
+ * The 'conceive' variant is a themed (non-week) list for the trying-to-conceive
+ * season: same card shape, but cards are titled themes instead of pregnancy weeks.
  */
 export default function PregnancyMeditationScreen({ onBack, progress, onProgressChange, variant = 'mother' }) {
   const [view, setView] = useState('hub');   // 'hub' | 'card'
   const [activeWeek, setActiveWeek] = useState(null);
 
-  const meditations = variant === 'father' ? FATHER_MEDITATIONS : PREGNANCY_MEDITATIONS;
-  const screenTitle = variant === 'father' ? 'Father\'s Meditations' : 'Pregnancy Meditations';
-  const tagline = variant === 'father'
-    ? 'A verse, prayer, and declaration for every week — written for the father.'
-    : 'A verse, a prayer, and an affirmation for every week of pregnancy';
+  const isConceive = variant === 'conceive';
+  const meditations = isConceive
+    ? CONCEIVE_MEDITATIONS
+    : variant === 'father' ? FATHER_MEDITATIONS : PREGNANCY_MEDITATIONS;
+  const total = meditations.length;
+  const screenTitle = isConceive
+    ? 'Trying to Conceive'
+    : variant === 'father' ? 'Father\'s Meditations' : 'Pregnancy Meditations';
+  const tagline = isConceive
+    ? 'A verse, a prayer, and an affirmation for the season of waiting and hoping'
+    : variant === 'father'
+      ? 'A verse, prayer, and declaration for every week — written for the father.'
+      : 'A verse, a prayer, and an affirmation for every week of pregnancy';
 
+  const activeMed = activeWeek ? meditations.find(x => x.week === activeWeek) : null;
   const currentWeek = progress?.currentWeek || null;
   const completed = new Set(progress?.completed || []);
 
@@ -65,7 +78,9 @@ export default function PregnancyMeditationScreen({ onBack, progress, onProgress
     }}>
       <CottageBackground />
       <Header
-        title={view === 'card' && activeWeek ? `Week ${activeWeek}` : screenTitle}
+        title={view === 'card' && activeMed
+          ? (isConceive ? activeMed.title : `Week ${activeWeek}`)
+          : screenTitle}
         onBack={() => {
           if (view === 'hub') onBack();
           else { setActiveWeek(null); setView('hub'); }
@@ -76,6 +91,7 @@ export default function PregnancyMeditationScreen({ onBack, progress, onProgress
         <HubView
           meditations={meditations}
           tagline={tagline}
+          isConceive={isConceive}
           currentWeek={currentWeek}
           completed={completed}
           onPick={openWeek}
@@ -87,9 +103,11 @@ export default function PregnancyMeditationScreen({ onBack, progress, onProgress
         <CardView
           meditations={meditations}
           week={activeWeek}
+          total={total}
+          isConceive={isConceive}
           isCompleted={completed.has(activeWeek)}
           onToggleComplete={() => toggleComplete(activeWeek)}
-          onNext={activeWeek < 40 ? () => setActiveWeek(activeWeek + 1) : null}
+          onNext={activeWeek < total ? () => setActiveWeek(activeWeek + 1) : null}
           onPrev={activeWeek > 1 ? () => setActiveWeek(activeWeek - 1) : null}
         />
       )}
@@ -122,15 +140,15 @@ function Header({ title, onBack }) {
   );
 }
 
-// ── Hub: 40-week grid ────────────────────────────────────────────────────
-function HubView({ meditations, tagline, currentWeek, completed, onPick, onSetCurrent }) {
+// ── Hub: 40-week grid (or themed list for conceive) ──────────────────────
+function HubView({ meditations, tagline, isConceive, currentWeek, completed, onPick, onSetCurrent }) {
   return (
     <main style={{ maxWidth: 720, margin: '0 auto', padding: '24px 20px 80px' }}>
       <p style={{
         fontFamily: SERIF, fontStyle: 'italic', color: P.goldL,
         fontSize: '1.04rem', textAlign: 'center', lineHeight: 1.55, marginBottom: 6,
       }}>
-        His word be a lamp unto thy feet through every week of this journey.
+        His word be a lamp unto thy feet through every step of this journey.
       </p>
       <p style={{
         fontFamily: SANS, fontSize: '0.78rem', color: P.sub,
@@ -138,6 +156,44 @@ function HubView({ meditations, tagline, currentWeek, completed, onPick, onSetCu
       }}>
         {tagline}
       </p>
+
+      {isConceive ? (
+        <>
+          <div style={{ fontFamily: SANS, fontSize: '0.72rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: P.sub, marginBottom: 10 }}>
+            Meditations
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {meditations.map(m => {
+              const isDone = completed.has(m.week);
+              return (
+                <button
+                  key={m.week}
+                  onClick={() => onPick(m.week)}
+                  style={{
+                    textAlign: 'left',
+                    background: isDone ? 'rgba(201,169,110,0.10)' : P.panel,
+                    border: `1px solid ${P.border}`,
+                    color: P.ink, borderRadius: 12,
+                    padding: '14px 16px', cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', gap: 12,
+                    transition: 'all 0.15s',
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.borderColor = P.borderH}
+                  onMouseLeave={e => e.currentTarget.style.borderColor = P.border}
+                >
+                  <div style={{ fontFamily: SERIF, fontSize: '1.1rem', color: P.gold, minWidth: 24 }}>{m.week}</div>
+                  <div style={{ flex: 1, fontFamily: SERIF, fontStyle: 'italic', fontSize: '1.08rem', color: isDone ? P.goldL : P.ink, lineHeight: 1.3 }}>
+                    {m.title}
+                  </div>
+                  {isDone && (
+                    <div style={{ fontFamily: SANS, fontSize: '0.7rem', color: P.gold, letterSpacing: '0.08em' }}>✓</div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </>
+      ) : (<>
 
       {/* Week selector */}
       <div style={{
@@ -223,12 +279,13 @@ function HubView({ meditations, tagline, currentWeek, completed, onPick, onSetCu
           );
         })}
       </div>
+      </>)}
     </main>
   );
 }
 
 // ── Card view ────────────────────────────────────────────────────────────
-function CardView({ meditations, week, isCompleted, onToggleComplete, onNext, onPrev }) {
+function CardView({ meditations, week, total, isConceive, isCompleted, onToggleComplete, onNext, onPrev }) {
   const m = meditations.find(x => x.week === week);
   if (!m) return null;
   return (
@@ -238,7 +295,7 @@ function CardView({ meditations, week, isCompleted, onToggleComplete, onNext, on
           fontFamily: SANS, fontSize: '0.7rem', letterSpacing: '0.18em',
           color: P.sub, textTransform: 'uppercase', marginBottom: 6,
         }}>
-          Week {week} of 40
+          {isConceive ? `Meditation ${week} of ${total}` : `Week ${week} of ${total}`}
         </div>
         <div style={{
           fontFamily: SERIF, fontStyle: 'italic',
@@ -305,7 +362,7 @@ function CardView({ meditations, week, isCompleted, onToggleComplete, onNext, on
             opacity: onPrev ? 1 : 0.4,
           }}
         >
-          ← Previous week
+          {isConceive ? '← Previous' : '← Previous week'}
         </button>
         <button
           onClick={onNext || (() => {})}
@@ -320,7 +377,7 @@ function CardView({ meditations, week, isCompleted, onToggleComplete, onNext, on
             opacity: onNext ? 1 : 0.4,
           }}
         >
-          Next week →
+          {isConceive ? 'Next →' : 'Next week →'}
         </button>
       </div>
     </main>
