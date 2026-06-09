@@ -78,6 +78,8 @@ export function ambientCurrentId() {
 export const SOUND_LIBRARY = [
   { id: "water-calm",   name: "Flowing Water", description: "Calm waterfall and river stones", src: "/slrathna-sleep-water-calm-317558.mp3", volume: 0.35, room: "Kitchen Window" },
   { id: "fire-crackle", name: "Fireplace",     description: "Crackling hearth and warm embers", src: "/red_refrigerator--225630.mp3",          volume: 0.30, room: "Cabin" },
+  { id: "rain-light",   name: "Light Rain",    description: "Gentle rainfall on the windows",    src: "/rain-light.m4a",                       volume: 0.35, room: "Outside" },
+  { id: "rain-heavy",   name: "Heavy Rain",    description: "Steady downpour and rolling rain",  src: "/rain-heavy.m4a",                       volume: 0.32, room: "Outside" },
 ];
 
 export const AMBIENT_TRACKS = {

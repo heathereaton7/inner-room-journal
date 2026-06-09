@@ -4072,6 +4072,10 @@ function AppInner(){
     </>);
   };
 
+  /* ── All screen branches are wrapped in this IIFE so the global menu bar
+       below can render on EVERY screen (the sound menu, like in the cabin). ── */
+  const __screenJSX = (() => {
+
   /* ══ LOADING ══════════════════════════════════════ */
   if(screen==="loading") return(
     <div style={{minHeight:"100vh",background:B.night,display:"flex",alignItems:"center",justifyContent:"center"}}>
@@ -7404,6 +7408,17 @@ function AppInner(){
   }
 
   return null;
+  })();
+
+  /* ── Global menu bar — renders the sound menu on EVERY screen.
+       Skip screens that already render their own BottomMenuDrawer (avoid
+       duplicates) and the initial setup/welcome screens. ── */
+  const __menuHasOwn = new Set(["cabin","journal","jesus","cards","hall","community","insights","map2","visit-farm","garden","shop","history","kitchen","stove","kitchen-window","market","upper-room"]);
+  const __menuHidden = new Set(["loading","welcome","onboard","profile-onboard"]);
+  return(<>
+    {__screenJSX}
+    {!__menuHasOwn.has(screen) && !__menuHidden.has(screen) && <BottomMenuDrawer/>}
+  </>);
 }
 
 export default function App(){return<ErrorBoundary><AppInner/></ErrorBoundary>;}
