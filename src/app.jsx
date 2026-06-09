@@ -2077,6 +2077,9 @@ function AppInner(){
       const localAnimals=await dbLoad("irj-animals")||[];
       const localMissions=await dbLoad("irj-missions")||null;
       const localPremium=await dbLoad("irj-premium")||false;
+      const localDiamondArt=await dbLoad("irj-diamond-art")||{};
+      const localArtGallery=await dbLoad("irj-art-gallery")||[];
+      const localImportedTemplates=await dbLoad("irj-imported-templates")||{};
 
       const mergedEntries=mergeById(localEntries,cloud.entries||[]);
       const mergedPrayers=mergeById(localPrayers,cloud.prayerPosts||[]);
@@ -2131,6 +2134,27 @@ function AppInner(){
         };
       }
 
+      // Diamond Art in-progress: keyed by templateId/freeKey. Keep whichever
+      // copy of each piece was saved most recently (falls back to fill count).
+      const cloudDiamondArt=cloud.diamondArt||{};
+      const mergedDiamondArt={...cloudDiamondArt};
+      Object.keys(localDiamondArt).forEach(key=>{
+        const lp=localDiamondArt[key], cp=mergedDiamondArt[key];
+        if(!cp){mergedDiamondArt[key]=lp;return;}
+        const lt=lp?.lastSavedAt||0, ct=cp?.lastSavedAt||0;
+        if(lt!==ct){mergedDiamondArt[key]=lt>ct?lp:cp;return;}
+        const fill=p=>Array.isArray(p?.cells)?p.cells.reduce((n,c)=>n+(c?1:0),0):0;
+        mergedDiamondArt[key]=fill(lp)>=fill(cp)?lp:cp;
+      });
+      // Completed gallery pieces: union by id.
+      const mergedArtGallery=mergeById(localArtGallery,cloud.artGallery||[]);
+      // Imported templates: union of both, local wins on id conflict.
+      const mergedImportedTemplates={...(cloud.importedTemplates||{}),...localImportedTemplates};
+
+      localStorage.setItem("irj-diamond-art",JSON.stringify(mergedDiamondArt));
+      localStorage.setItem("irj-art-gallery",JSON.stringify(mergedArtGallery));
+      localStorage.setItem("irj-imported-templates",JSON.stringify(mergedImportedTemplates));
+
       localStorage.setItem("irj-entries",JSON.stringify(mergedEntries));
       localStorage.setItem("irj-prayer",JSON.stringify(mergedPrayers));
       localStorage.setItem("irj-saved-cards",JSON.stringify(mergedCards));
@@ -2166,8 +2190,11 @@ function AppInner(){
         animals:mergedAnimals,
         missions:mergedMissions,
         isPremium:mergedPremium,
+        diamondArt:mergedDiamondArt,
+        artGallery:mergedArtGallery,
+        importedTemplates:mergedImportedTemplates,
         lastSyncedAt:new Date().toISOString(),
-      });
+      },{merge:true});
 
       setEntries(mergedEntries);
       setPrayerPosts(mergedPrayers);
@@ -2185,6 +2212,9 @@ function AppInner(){
       setAnimals(mergedAnimals);
       setMissions(mergedMissions);
       setIsPremium(!!mergedPremium);
+      setDiamondArtRaw(mergedDiamondArt);
+      setArtGalleryRaw(mergedArtGallery);
+      setImportedTemplatesRaw(mergedImportedTemplates);
 
       let s=0,d=new Date(),map={};
       mergedEntries.forEach(e=>{map[e.date]=true;});
