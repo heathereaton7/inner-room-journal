@@ -530,7 +530,7 @@ export const WEEKLY_MISSIONS=[
   {id:"weekly_checkin_3",    label:"Show up 3 times",   description:"Complete 3 check-ins this week", target:3, reward:{candles:15}},
 ];
 
-export const CABIN_FALLBACK_IMAGE="/cabin-interior.png";
+export const CABIN_FALLBACK_IMAGE="/cabinmapfinalmain.png";
 export const SKYLIGHT_STAIRCASE_IMAGE="/FINALSKYLIGHT.png";
 export const ROOFTOP_LOUNGE_IMAGE="/FINALROOFTOP.png";
 export const ROOFTOP_GARDEN_IMAGE="/Stone terrace at twilight waterfall view.png";
