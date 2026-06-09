@@ -22,6 +22,24 @@ const WEATHER_COLORS = {
   petals: ['#F4C6D6', '#F7D9E3', '#E8A9C0', '#FBE4EC'],
 };
 
+// Candle flames in the hall, as fractions of the MAP image. A soft warm glow
+// is drawn on each and flickers like a flame — in EVERY season (candles are
+// always lit, independent of weather). All cabin maps share this layout, so one
+// set of positions works for all seasons. `size` is the glow radius as a
+// fraction of the map width.
+const CANDLES = [
+  { x: 0.335, y: 0.585, size: 0.017 }, // center table — candle (left)
+  { x: 0.378, y: 0.572, size: 0.015 }, // center table — candle (right)
+  { x: 0.402, y: 0.452, size: 0.019 }, // floor lantern, left of door arch
+  { x: 0.652, y: 0.452, size: 0.019 }, // floor lantern, right of door arch
+  { x: 0.132, y: 0.165, size: 0.019 }, // hanging lantern, top-left wall
+  { x: 0.692, y: 0.150, size: 0.015 }, // wall sconce, top-right
+  { x: 0.778, y: 0.132, size: 0.014 }, // wall sconce, top-right (upper)
+  { x: 0.205, y: 0.450, size: 0.016 }, // mantel candle by the fireplace
+  { x: 0.122, y: 0.728, size: 0.021 }, // table lamp, bottom-left
+  { x: 0.832, y: 0.618, size: 0.018 }, // hanging lantern, mid-right
+];
+
 // Build a particle set for the active season's weather. Positions are
 // normalized 0..1 within the door box; speeds are fractions of the box per frame.
 function makeWeather(type){
@@ -45,9 +63,11 @@ export default function ImmersiveCabin(){
   const layerRef=useRef(null);
   const canvasRef=useRef(null);
   const doorCanvasRef=useRef(null);
+  const candleCanvasRef=useRef(null);
   const animFrame=useRef(null);
   const particles=useRef([]);
   const weatherP=useRef([]);
+  const candleFlick=useRef([]);
   const time=useRef(0);
 
   // Active season's weather kept in a ref so the [] -deps animation loop reads it live.
@@ -75,6 +95,7 @@ export default function ImmersiveCabin(){
     map.current={ w, h, minX, minY };
     if(layerRef.current){ layerRef.current.style.width=`${w}px`; layerRef.current.style.height=`${h}px`; }
     if(doorCanvasRef.current){ doorCanvasRef.current.width=Math.round(w); doorCanvasRef.current.height=Math.round(h); }
+    if(candleCanvasRef.current){ candleCanvasRef.current.width=Math.round(w); candleCanvasRef.current.height=Math.round(h); }
     if(!didInit.current){
       // Open on the main floor (bottom), horizontally centered.
       target.current={ x:minX/2, y:minY };
@@ -105,6 +126,11 @@ export default function ImmersiveCabin(){
 
   // Rebuild door weather whenever the season's weather type changes.
   useEffect(()=>{ weatherP.current=makeWeather(weather); },[weather]);
+
+  // Give every candle its own flicker phase + speed so flames waver out of sync.
+  useEffect(()=>{
+    candleFlick.current=CANDLES.map(()=>({ phase:Math.random()*Math.PI*2, speed:Math.random()*0.004+0.004 }));
+  },[]);
 
   // Drag to pan the map (touch + mouse).
   useEffect(()=>{
@@ -187,6 +213,32 @@ export default function ImmersiveCabin(){
           dctx.restore();
         }
       }
+      // Candle flames — soft warm glow on each candle, flickering in all seasons.
+      // Drawn on a canvas INSIDE the map layer so the glows track the pan, and
+      // composited additively so they read as light over the painted flames.
+      const ccvs=candleCanvasRef.current;
+      if(ccvs){
+        const cctx=ccvs.getContext("2d");
+        const W=ccvs.width, H=ccvs.height;
+        cctx.clearRect(0,0,W,H);
+        const prevOp=cctx.globalCompositeOperation;
+        cctx.globalCompositeOperation="lighter";
+        const t=time.current;
+        CANDLES.forEach((c,i)=>{
+          const f=candleFlick.current[i]||{phase:0,speed:0.006};
+          // Subtle waver (slow) plus a faster tremor — stays within ~0.78..1.0.
+          const flick=0.84+0.10*Math.sin(t*f.speed+f.phase)+0.05*Math.sin(t*f.speed*2.7+f.phase*1.7);
+          const cx=c.x*W, cy=c.y*H;
+          const r=Math.max(2, c.size*W*flick);
+          const g=cctx.createRadialGradient(cx,cy,0,cx,cy,r);
+          g.addColorStop(0,`rgba(255,214,140,${0.50*flick})`);
+          g.addColorStop(0.45,`rgba(255,160,70,${0.22*flick})`);
+          g.addColorStop(1,"rgba(255,140,50,0)");
+          cctx.fillStyle=g;
+          cctx.beginPath(); cctx.arc(cx,cy,r,0,Math.PI*2); cctx.fill();
+        });
+        cctx.globalCompositeOperation=prevOp;
+      }
       const cvs=canvasRef.current;
       if(cvs){
         const ctx=cvs.getContext("2d");
@@ -239,6 +291,8 @@ export default function ImmersiveCabin(){
           style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",userSelect:"none",WebkitUserDrag:"none",pointerEvents:"none",display:"block"}}
           draggable={false}
         />
+        {/* Candle flames — flickering glow on each candle, inside the layer so it pans with the map */}
+        <canvas ref={candleCanvasRef} style={{position:"absolute",top:0,left:0,width:"100%",height:"100%",pointerEvents:"none"}}/>
         {/* Seasonal weather in the doorway — sits inside the layer so it pans with the map */}
         <canvas ref={doorCanvasRef} style={{position:"absolute",top:0,left:0,width:"100%",height:"100%",pointerEvents:"none"}}/>
       </div>
