@@ -80,6 +80,9 @@ export const SOUND_LIBRARY = [
   { id: "fire-crackle", name: "Fireplace",     description: "Crackling hearth and warm embers", src: "/red_refrigerator--225630.mp3",          volume: 0.30, room: "Cabin" },
   { id: "rain-light",   name: "Light Rain",    description: "Gentle rainfall on the windows",    src: "/rain-light.m4a",                       volume: 0.35, room: "Outside" },
   { id: "rain-heavy",   name: "Heavy Rain",    description: "Steady downpour and rolling rain",  src: "/rain-heavy.m4a",                       volume: 0.32, room: "Outside" },
+  { id: "xmas-mistletoe",  name: "Don't Forget the Mistletoe", description: "Cozy Christmas melody by the fire", src: "/christmas-mistletoe.m4a",  volume: 0.40, room: "Christmas Cabin" },
+  { id: "xmas-peppermint", name: "Peppermint Pieces",          description: "Sweet, twinkling seasonal tune",    src: "/christmas-peppermint.m4a", volume: 0.40, room: "Christmas Cabin" },
+  { id: "xmas-seasonal",   name: "Seasonal League",            description: "Festive snowfall Christmas music",  src: "/christmas-seasonal.m4a",   volume: 0.40, room: "Christmas Cabin" },
 ];
 
 export const AMBIENT_TRACKS = {
