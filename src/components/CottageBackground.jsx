@@ -1,24 +1,43 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { ROOM_THEMES, DEFAULT_ROOM_THEME, ROOM_THEME_KEY, ROOM_THEME_EVENT, getRoomTheme } from '../systems/roomThemes.js';
 
 /**
- * CottageBackground — full-bleed rainy-cottage scene with two flickering
- * candle glows anchored to the lanterns in the painting, plus canvas
- * rain falling outside the arched window.
+ * CottageBackground — full-bleed cozy scene used as the atmospheric backdrop
+ * for the Word Search, Diamond Art and meditation screens.
  *
- * Used as the atmospheric background for the Word Search and Diamond Art
- * screens. Renders fixed-position layers behind everything (zIndex 0), so
- * pages need their own content above it.
+ * The active scene is driven by the selected "Room Style" (see roomThemes.js).
+ * Each theme supplies the scene image plus weather over the window glass and
+ * flickering candle glows anchored to the lanterns in the painting.
  *
- * The two candle positions (9% / 18% for the left copper lantern, 78% / 65%
- * for the right windowsill lantern) were calibrated to land on the actual
- * flame pixels in wordsearchbackgroundone.png.
- *
- * WINDOW_RAIN box (viewport %) frames just the glass of the arched window so
- * the rain only falls there, not on the cozy interior.
+ * Renders fixed-position layers behind everything (zIndex -1), so pages need
+ * their own content above it. Listens for the ROOM_THEME_EVENT so swapping the
+ * room in the menu re-renders the backdrop live.
  */
-const WINDOW_RAIN = { left: '17%', top: '2%', width: '82%', height: '66%' };
+function useRoomTheme() {
+  const read = () => {
+    try {
+      const raw = localStorage.getItem(ROOM_THEME_KEY);
+      const id = raw ? JSON.parse(raw) : DEFAULT_ROOM_THEME;
+      return getRoomTheme(id);
+    } catch {
+      return getRoomTheme(DEFAULT_ROOM_THEME);
+    }
+  };
+  const [theme, setTheme] = useState(read);
+  useEffect(() => {
+    const h = () => setTheme(read());
+    window.addEventListener(ROOM_THEME_EVENT, h);
+    window.addEventListener('storage', h);
+    return () => {
+      window.removeEventListener(ROOM_THEME_EVENT, h);
+      window.removeEventListener('storage', h);
+    };
+  }, []);
+  return theme;
+}
 
 export default function CottageBackground() {
+  const theme = useRoomTheme();
   return (
     <>
       <style>{`
@@ -39,59 +58,66 @@ export default function CottageBackground() {
       `}</style>
       <div style={{
         position: 'fixed', inset: 0, zIndex: -1,
-        backgroundImage: 'url(/wordsearchbackgroundone.png)',
+        backgroundImage: `url(${theme.src})`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat',
         pointerEvents: 'none',
       }} />
-      {/* Rain falling outside the window glass (behind the darken veil) */}
-      <WindowRain />
+      {/* Weather falling outside the window glass (behind the darken veil) */}
+      {theme.weather && theme.weather !== 'none' && theme.window && (
+        <WindowWeather mode={theme.weather} window={theme.window} />
+      )}
       {/* Darken layer so foreground UI stays readable on top */}
       <div style={{
         position: 'fixed', inset: 0, zIndex: -1,
         background: 'linear-gradient(180deg, rgba(10,8,6,0.55) 0%, rgba(10,8,6,0.72) 60%, rgba(10,8,6,0.82) 100%)',
         pointerEvents: 'none',
       }} />
-      {/* Left-wall copper lantern */}
-      <CandleGlow left="9%" top="18%" color="#FFB36A" size={170} keyframe="cottage-flicker-a" duration={6.5} />
-      {/* Right windowsill lantern */}
-      <CandleGlow left="78%" top="65%" color="#FFC07A" size={180} keyframe="cottage-flicker-b" duration={8.0} />
+      {(theme.candles || []).map((c, i) => (
+        <CandleGlow key={i} {...c} keyframe={i % 2 ? 'cottage-flicker-b' : 'cottage-flicker-a'} />
+      ))}
     </>
   );
 }
 
 /**
- * WindowRain — canvas particle rain, clipped to the arched window region.
+ * WindowWeather — canvas particle weather, clipped to the arched window region.
  *
- * Streaks fall fast on a slight diagonal. Three depth layers give parallax:
- * the near layer is long / bright / fast, the far layer is short / faint /
- * slow. Each streak is a tapered line (bright head, fading tail) so it reads
- * as motion blur rather than a static dash. Recycled to the top once it
- * passes the bottom of the window.
+ * mode='rain': fast diagonal streaks with motion-blur tails, three depth layers.
+ * mode='snow': slow round flakes drifting on a gentle sine sway, three depth
+ *              layers (near flakes large / bright / fast, far flakes tiny / faint).
+ * Particles recycle to the top once they leave the window.
  */
-function WindowRain() {
+function WindowWeather({ mode, window: win }) {
   const canvasRef = useRef(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
+    const isSnow = mode === 'snow';
 
-    // Slight diagonal: wind blows streaks to the left as they fall.
-    const ANGLE = -0.22; // radians from vertical
+    // Rain: slight wind to the left. Snow: nearly straight down.
+    const ANGLE = isSnow ? -0.05 : -0.22;
     const SIN = Math.sin(ANGLE);
     const COS = Math.cos(ANGLE);
 
-    // Three depth layers — [count factor, speed px/s, length px, width, alpha]
-    const LAYERS = [
-      { speed: 1500, len: 34, width: 1.8, alpha: 0.55 }, // near
-      { speed: 1050, len: 24, width: 1.3, alpha: 0.40 }, // mid
-      { speed: 720,  len: 16, width: 0.9, alpha: 0.26 }, // far
-    ];
+    // Three depth layers — [speed px/s, size px, alpha]
+    const LAYERS = isSnow
+      ? [
+          { speed: 70,  len: 3.4, width: 0, alpha: 0.85 }, // near flake
+          { speed: 48,  len: 2.3, width: 0, alpha: 0.6 },  // mid
+          { speed: 30,  len: 1.4, width: 0, alpha: 0.4 },  // far
+        ]
+      : [
+          { speed: 1500, len: 34, width: 1.8, alpha: 0.55 }, // near
+          { speed: 1050, len: 24, width: 1.3, alpha: 0.40 }, // mid
+          { speed: 720,  len: 16, width: 0.9, alpha: 0.26 }, // far
+        ];
 
     let w = 0, h = 0, dpr = 1;
-    let drops = [];
+    let parts = [];
     let raf = 0;
     let last = performance.now();
 
@@ -99,12 +125,16 @@ function WindowRain() {
 
     function spawn(d, atTop) {
       const layer = LAYERS[(Math.random() * LAYERS.length) | 0];
-      d.x = rand(-h * 0.3, w);          // start wide so the diagonal still fills the left edge
-      d.y = atTop ? rand(-h, 0) : rand(0, h);
+      d.x = rand(-h * 0.3, w);
+      d.y = atTop ? rand(-h * 0.2, 0) : rand(0, h);
       d.speed = layer.speed * rand(0.85, 1.15);
       d.len = layer.len * rand(0.8, 1.2);
       d.width = layer.width;
       d.alpha = layer.alpha * rand(0.7, 1.1);
+      // snow sway
+      d.sway = rand(0.3, 1.0);
+      d.swaySpeed = rand(0.6, 1.6);
+      d.phase = rand(0, Math.PI * 2);
       return d;
     }
 
@@ -115,9 +145,10 @@ function WindowRain() {
       canvas.width = Math.round(w * dpr);
       canvas.height = Math.round(h * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      // Density scales with area (~1 streak per 1100 px²), capped for perf.
-      const count = Math.min(360, Math.max(80, Math.round((w * h) / 1100)));
-      drops = Array.from({ length: count }, () => spawn({}, false));
+      const density = isSnow ? 4200 : 1100;
+      const cap = isSnow ? 220 : 360;
+      const count = Math.min(cap, Math.max(60, Math.round((w * h) / density)));
+      parts = Array.from({ length: count }, () => spawn({}, false));
     }
 
     function frame(now) {
@@ -125,22 +156,33 @@ function WindowRain() {
       last = now;
       ctx.clearRect(0, 0, w, h);
       ctx.lineCap = 'round';
-      for (const d of drops) {
-        // advance along the fall direction
-        d.x += d.speed * SIN * dt;
+      for (const d of parts) {
         d.y += d.speed * COS * dt;
-        if (d.y - d.len > h || d.x + d.len < 0) { spawn(d, true); continue; }
-        const tailX = d.x - SIN * d.len;
-        const tailY = d.y - COS * d.len;
-        const g = ctx.createLinearGradient(tailX, tailY, d.x, d.y);
-        g.addColorStop(0, 'rgba(200,220,255,0)');
-        g.addColorStop(1, `rgba(210,228,255,${d.alpha})`);
-        ctx.strokeStyle = g;
-        ctx.lineWidth = d.width;
-        ctx.beginPath();
-        ctx.moveTo(tailX, tailY);
-        ctx.lineTo(d.x, d.y);
-        ctx.stroke();
+        if (isSnow) {
+          d.phase += d.swaySpeed * dt;
+          d.x += (Math.sin(d.phase) * d.sway + d.speed * SIN * 0.02) * dt * 30;
+        } else {
+          d.x += d.speed * SIN * dt;
+        }
+        if (d.y - d.len > h || d.x + d.len < 0 || d.x - d.len > w) { spawn(d, true); continue; }
+        if (isSnow) {
+          ctx.beginPath();
+          ctx.arc(d.x, d.y, d.len, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(245,250,255,${d.alpha})`;
+          ctx.fill();
+        } else {
+          const tailX = d.x - SIN * d.len;
+          const tailY = d.y - COS * d.len;
+          const g = ctx.createLinearGradient(tailX, tailY, d.x, d.y);
+          g.addColorStop(0, 'rgba(200,220,255,0)');
+          g.addColorStop(1, `rgba(210,228,255,${d.alpha})`);
+          ctx.strokeStyle = g;
+          ctx.lineWidth = d.width;
+          ctx.beginPath();
+          ctx.moveTo(tailX, tailY);
+          ctx.lineTo(d.x, d.y);
+          ctx.stroke();
+        }
       }
       raf = requestAnimationFrame(frame);
     }
@@ -152,15 +194,15 @@ function WindowRain() {
       cancelAnimationFrame(raf);
       window.removeEventListener('resize', resize);
     };
-  }, []);
+  }, [mode]);
 
   return (
     <div style={{
       position: 'fixed',
-      left: WINDOW_RAIN.left, top: WINDOW_RAIN.top,
-      width: WINDOW_RAIN.width, height: WINDOW_RAIN.height,
+      left: win.left, top: win.top,
+      width: win.width, height: win.height,
       overflow: 'hidden',
-      borderRadius: '48% 48% 5% 5% / 30% 30% 4% 4%',
+      borderRadius: win.radius,
       pointerEvents: 'none',
       zIndex: -1,
     }}>

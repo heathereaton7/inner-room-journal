@@ -38,6 +38,7 @@ import CreateGatheringPost from './screens/CreateGatheringPost.jsx';
 import UpperRoomSearch from './screens/UpperRoomSearch.jsx';
 import { generateAnonName, makeSearchTokens, GATHERING_SPACES } from './gatherings.js';
 import { ambientPlay, ambientStop, ambientMute, ambientUnmute, ambientIsPlaying, SOUND_LIBRARY, AMBIENT_TRACKS } from './systems/ambientSound.js';
+import { ROOM_THEMES, DEFAULT_ROOM_THEME, ROOM_THEME_KEY, ROOM_THEME_EVENT } from './systems/roomThemes.js';
 
 
 async function dbLoad(k){
@@ -52,7 +53,7 @@ async function dbSave(k,v){
     localStorage.setItem(k,JSON.stringify(v));
     // Dual-write to Firestore when signed in
     if(auth?.currentUser){
-      const fieldMap={"irj-entries":"entries","irj-prayer":"prayerPosts","irj-saved-cards":"savedCards","irj-onboarded":"isOnboarded","irj-candles":"candles","irj-prayed":"prayedFor","irj-owned-items":"ownedItems","irj-garden":"gardenPlots","irj-inventory":"inventory","irj-saved-verses":"savedVerses","irj-bank":"bank","irj-sell-basket":"sellBasket","irj-farm-plots":"farmPlots","irj-animals":"animals","irj-missions":"missions","irj-premium":"isPremium","irj-becoming-her":"becomingHer","irj-trackers":"trackers","irj-pregnancy":"pregnancy","irj-garden-grid":"gardenGrid","irj-unlocks":"unlocks","irj-diamond-art":"diamondArt","irj-art-gallery":"artGallery","irj-imported-templates":"importedTemplates","irj-word-search":"wordSearch","irj-pregnancy-meditations":"pregnancyMeditations","irj-father-meditations":"fatherMeditations","irj-conceive-meditations":"conceiveMeditations","irj-fertility":"fertility"};
+      const fieldMap={"irj-entries":"entries","irj-prayer":"prayerPosts","irj-saved-cards":"savedCards","irj-onboarded":"isOnboarded","irj-candles":"candles","irj-prayed":"prayedFor","irj-owned-items":"ownedItems","irj-garden":"gardenPlots","irj-inventory":"inventory","irj-saved-verses":"savedVerses","irj-bank":"bank","irj-sell-basket":"sellBasket","irj-farm-plots":"farmPlots","irj-animals":"animals","irj-missions":"missions","irj-premium":"isPremium","irj-becoming-her":"becomingHer","irj-trackers":"trackers","irj-pregnancy":"pregnancy","irj-garden-grid":"gardenGrid","irj-unlocks":"unlocks","irj-diamond-art":"diamondArt","irj-art-gallery":"artGallery","irj-imported-templates":"importedTemplates","irj-word-search":"wordSearch","irj-pregnancy-meditations":"pregnancyMeditations","irj-father-meditations":"fatherMeditations","irj-conceive-meditations":"conceiveMeditations","irj-fertility":"fertility","irj-room-theme":"roomTheme"};
       const field=fieldMap[k];
       if(field){
         const userRef=doc(db,"users",auth.currentUser.uid);
@@ -1616,6 +1617,8 @@ function AppInner(){
   const manualSoundRef = useRef(false); // true when user picked a sound from the menu drawer
   const [menuOpen,       setMenuOpen]     = useState(false); // bottom menu drawer open/closed
   const [menuSoundsOpen, setMenuSoundsOpen] = useState(false); // sounds section expanded in drawer
+  const [menuRoomOpen,   setMenuRoomOpen]   = useState(false); // room-style section expanded in drawer
+  const [roomTheme,      setRoomTheme]      = useState(()=>{ try{return JSON.parse(localStorage.getItem(ROOM_THEME_KEY))||DEFAULT_ROOM_THEME;}catch{return DEFAULT_ROOM_THEME;} }); // selected activity-room backdrop
 
   // ── Bible reader (Upper Room) ──
   const [bibleView,     setBibleView]     = useState(null);   // null|"books"|"chapters"|"reading"
@@ -3845,6 +3848,40 @@ function AppInner(){
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={ambientMuted?"rgba(255,150,150,0.5)":"rgba(201,169,110,0.5)"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>{ambientMuted?<><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></>:<><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></>}</svg>
                 <span style={{fontFamily:SANS,fontSize:"0.68rem",color:ambientMuted?"rgba(255,150,150,0.5)":"rgba(255,248,232,0.35)",fontWeight:600}}>{ambientMuted?"Unmute":"Mute"}</span>
               </button>
+            </>)}
+          </div>
+
+          {/* ── ROOM STYLE (collapsible) — backdrop for journaling & activity screens ── */}
+          <div style={{marginBottom:14}}>
+            <button onClick={()=>setMenuRoomOpen(p=>!p)} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"rgba(255,255,255,0.03)",border:"1px solid rgba(201,169,110,0.08)",borderRadius:10,padding:"11px 14px",cursor:"pointer",transition:"all 0.2s",marginBottom:menuRoomOpen?10:0}}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="rgba(201,169,110,0.5)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+              <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.78rem",color:B.goldL,flex:1,textAlign:"left"}}>Room Style</span>
+              {!menuRoomOpen&&<span style={{fontFamily:SANS,fontSize:"0.62rem",color:"rgba(201,169,110,0.45)"}}>{ROOM_THEMES.find(t=>t.id===roomTheme)?.name||""}</span>}
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(201,169,110,0.35)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{transition:"transform 0.25s",transform:menuRoomOpen?"rotate(180deg)":"rotate(0deg)"}}><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            {menuRoomOpen&&(<>
+              <p style={{fontFamily:SANS,fontSize:"0.62rem",color:"rgba(255,248,232,0.3)",margin:"0 0 8px",lineHeight:1.4}}>Choose the room you sit in for journaling, diamond art, word search & more.</p>
+              <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                {ROOM_THEMES.map(theme=>{
+                  const active=roomTheme===theme.id;
+                  return(
+                    <button key={theme.id} onClick={()=>{
+                      setRoomTheme(theme.id);
+                      dbSave(ROOM_THEME_KEY,theme.id);
+                      try{window.dispatchEvent(new Event(ROOM_THEME_EVENT));}catch{}
+                    }} style={{display:"flex",alignItems:"center",gap:10,background:active?"rgba(201,169,110,0.1)":"rgba(255,255,255,0.03)",border:"1px solid "+(active?"rgba(201,169,110,0.32)":"rgba(201,169,110,0.08)"),borderRadius:10,padding:"8px 10px",cursor:"pointer",transition:"all 0.2s",width:"100%",textAlign:"left"}}>
+                      <div style={{width:54,height:40,borderRadius:7,backgroundImage:`url(${theme.src})`,backgroundSize:"cover",backgroundPosition:"center",border:"1px solid "+(active?"rgba(201,169,110,0.4)":"rgba(201,169,110,0.15)"),flexShrink:0}}/>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontFamily:SERIF,fontSize:"0.82rem",color:active?B.goldL:"rgba(255,248,232,0.7)",fontWeight:500}}>{theme.name}</div>
+                        <div style={{fontFamily:SANS,fontSize:"0.62rem",color:"rgba(255,248,232,0.28)",lineHeight:1.3}}>{theme.description}</div>
+                      </div>
+                      {active
+                        ?<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.gold} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}><polyline points="20 6 9 17 4 12"/></svg>
+                        :<span style={{fontSize:"0.55rem",background:"rgba(201,169,110,0.06)",color:"rgba(201,169,110,0.4)",border:"1px solid rgba(201,169,110,0.1)",padding:"2px 6px",borderRadius:99,fontFamily:SANS,fontWeight:600,whiteSpace:"nowrap",flexShrink:0}}>{theme.tag}</span>}
+                    </button>
+                  );
+                })}
+              </div>
             </>)}
           </div>
 
