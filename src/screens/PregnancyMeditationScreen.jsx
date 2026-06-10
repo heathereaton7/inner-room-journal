@@ -3,6 +3,7 @@ import { PREGNANCY_MEDITATIONS } from '../data/pregnancyMeditations.js';
 import { FATHER_MEDITATIONS } from '../data/fatherMeditations.js';
 import { CONCEIVE_MEDITATIONS } from '../data/conceiveMeditations.js';
 import CottageBackground from '../components/CottageBackground.jsx';
+import MeditationWordSearch from '../components/MeditationWordSearch.jsx';
 
 const SERIF = "'Cormorant Garamond', Georgia, serif";
 const SANS = "'Inter', system-ui, -apple-system, sans-serif";
@@ -32,7 +33,7 @@ const P = {
  * season: same card shape, but cards are titled themes instead of pregnancy weeks.
  */
 export default function PregnancyMeditationScreen({ onBack, progress, onProgressChange, onOpenScripture, variant = 'mother' }) {
-  const [view, setView] = useState('hub');   // 'hub' | 'card' | 'study'
+  const [view, setView] = useState('hub');   // 'hub' | 'card' | 'study' | 'wordsearch'
   const [activeWeek, setActiveWeek] = useState(null);
 
   const isConceive = variant === 'conceive';
@@ -80,11 +81,13 @@ export default function PregnancyMeditationScreen({ onBack, progress, onProgress
       <Header
         title={view === 'study'
           ? 'Go Deeper'
-          : view === 'card' && activeMed
-            ? (isConceive ? activeMed.title : `Week ${activeWeek}`)
-            : screenTitle}
+          : view === 'wordsearch'
+            ? 'Word Search'
+            : view === 'card' && activeMed
+              ? (isConceive ? activeMed.title : `Week ${activeWeek}`)
+              : screenTitle}
         onBack={() => {
-          if (view === 'study') setView('card');
+          if (view === 'study' || view === 'wordsearch') setView('card');
           else if (view === 'card') { setActiveWeek(null); setView('hub'); }
           else onBack();
         }}
@@ -111,6 +114,7 @@ export default function PregnancyMeditationScreen({ onBack, progress, onProgress
           isCompleted={completed.has(activeWeek)}
           onToggleComplete={() => toggleComplete(activeWeek)}
           onStudy={() => setView('study')}
+          onWordSearch={() => setView('wordsearch')}
           onNext={activeWeek < total ? () => setActiveWeek(activeWeek + 1) : null}
           onPrev={activeWeek > 1 ? () => setActiveWeek(activeWeek - 1) : null}
         />
@@ -120,6 +124,14 @@ export default function PregnancyMeditationScreen({ onBack, progress, onProgress
         <StudyView
           med={activeMed}
           onOpenScripture={onOpenScripture}
+        />
+      )}
+
+      {view === 'wordsearch' && activeMed && (
+        <MeditationWordSearch
+          med={activeMed}
+          seedId={`${variant}-${activeWeek}`}
+          onBack={() => setView('card')}
         />
       )}
     </div>
@@ -296,7 +308,7 @@ function HubView({ meditations, tagline, isConceive, currentWeek, completed, onP
 }
 
 // ── Card view ────────────────────────────────────────────────────────────
-function CardView({ meditations, week, total, isConceive, isCompleted, onToggleComplete, onStudy, onNext, onPrev }) {
+function CardView({ meditations, week, total, isConceive, isCompleted, onToggleComplete, onStudy, onWordSearch, onNext, onPrev }) {
   const m = meditations.find(x => x.week === week);
   if (!m) return null;
   return (
@@ -353,6 +365,19 @@ function CardView({ meditations, week, total, isConceive, isCompleted, onToggleC
         }}>
           {m.affirmation}
         </div>
+        <button
+          onClick={onWordSearch}
+          style={{
+            marginTop: 16, width: '100%',
+            background: 'rgba(232,212,160,0.14)',
+            border: `1px solid ${P.borderH}`,
+            color: P.goldL, borderRadius: 10,
+            padding: '11px 14px', cursor: 'pointer',
+            fontFamily: SANS, fontSize: '0.84rem', letterSpacing: '0.04em',
+          }}
+        >
+          Meditate on it — play the word search →
+        </button>
       </Section>
 
       {/* Mark complete */}
