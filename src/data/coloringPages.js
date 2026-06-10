@@ -68,6 +68,14 @@ export const COLORING_PAGES = [
     category: 'adults',
     src: encodeURI('/coloring pages/Lakeside Cabin Retreat.png'),
   },
+  {
+    id: 'loved-jesus-says-so',
+    title: "I'm Loved",
+    verse: 'See what great love the Father has lavished on us, that we should be called children of God!',
+    reference: '1 John 3:1',
+    category: 'adults',
+    src: encodeURI('/coloring pages/Im Loved Jesus Says So.png'),
+  },
 ];
 
 export function getColoringPage(id) {
