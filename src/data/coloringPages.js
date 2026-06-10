@@ -44,6 +44,14 @@ export const COLORING_PAGES = [
     category: 'adults',
     src: encodeURI('/coloring pages/Cozy Nursery Nook.png'),
   },
+  {
+    id: 'quiet-hope',
+    title: 'A Quiet Hope',
+    verse: 'For this child I prayed, and the Lord has granted me what I asked of him.',
+    reference: '1 Samuel 1:27',
+    category: 'adults',
+    src: encodeURI('/coloring pages/Bathroom Sink Stillness.png'),
+  },
 ];
 
 export function getColoringPage(id) {
