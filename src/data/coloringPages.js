@@ -29,6 +29,14 @@ export const COLORING_PAGES = [
     src: encodeURI('/coloring pages/Be Still and Know.png'),
   },
   {
+    id: 'desert-camp',
+    title: 'Desert Wandering',
+    verse: 'See, I am doing a new thing!\u2026 I am making a way in the wilderness and streams in the wasteland.',
+    reference: 'Isaiah 43:19',
+    category: 'adults',
+    src: encodeURI('/coloring pages/Desert Camp.png'),
+  },
+  {
     id: 'winnebago-adventure',
     title: 'Winnebago Adventure',
     verse: 'Be strong and courageous\u2026 for the Lord your God will be with you wherever you go.',
