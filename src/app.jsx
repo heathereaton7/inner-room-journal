@@ -21,6 +21,7 @@ import DiamondArtScreen from './screens/DiamondArtScreen.jsx';
 import ColoringScreen from './screens/ColoringScreen.jsx';
 import DiamondArtFrame from './components/DiamondArtFrame.jsx';
 import WordSearchScreen from './screens/WordSearchScreen.jsx';
+import HiddenObjectScreen from './screens/HiddenObjectScreen.jsx';
 import PregnancyMeditationScreen from './screens/PregnancyMeditationScreen.jsx';
 import { parseReference } from './data/bibleBooks.js';
 import FertilityTrackerScreen from './screens/FertilityTrackerScreen.jsx';
@@ -54,7 +55,7 @@ async function dbSave(k,v){
     localStorage.setItem(k,JSON.stringify(v));
     // Dual-write to Firestore when signed in
     if(auth?.currentUser){
-      const fieldMap={"irj-entries":"entries","irj-prayer":"prayerPosts","irj-saved-cards":"savedCards","irj-onboarded":"isOnboarded","irj-candles":"candles","irj-prayed":"prayedFor","irj-owned-items":"ownedItems","irj-garden":"gardenPlots","irj-inventory":"inventory","irj-saved-verses":"savedVerses","irj-bank":"bank","irj-sell-basket":"sellBasket","irj-farm-plots":"farmPlots","irj-animals":"animals","irj-missions":"missions","irj-premium":"isPremium","irj-becoming-her":"becomingHer","irj-trackers":"trackers","irj-pregnancy":"pregnancy","irj-garden-grid":"gardenGrid","irj-unlocks":"unlocks","irj-diamond-art":"diamondArt","irj-art-gallery":"artGallery","irj-imported-templates":"importedTemplates","irj-word-search":"wordSearch","irj-pregnancy-meditations":"pregnancyMeditations","irj-father-meditations":"fatherMeditations","irj-conceive-meditations":"conceiveMeditations","irj-fertility":"fertility","irj-room-theme":"roomTheme","irj-coloring":"coloring"};
+      const fieldMap={"irj-entries":"entries","irj-prayer":"prayerPosts","irj-saved-cards":"savedCards","irj-onboarded":"isOnboarded","irj-candles":"candles","irj-prayed":"prayedFor","irj-owned-items":"ownedItems","irj-garden":"gardenPlots","irj-inventory":"inventory","irj-saved-verses":"savedVerses","irj-bank":"bank","irj-sell-basket":"sellBasket","irj-farm-plots":"farmPlots","irj-animals":"animals","irj-missions":"missions","irj-premium":"isPremium","irj-becoming-her":"becomingHer","irj-trackers":"trackers","irj-pregnancy":"pregnancy","irj-garden-grid":"gardenGrid","irj-unlocks":"unlocks","irj-diamond-art":"diamondArt","irj-art-gallery":"artGallery","irj-imported-templates":"importedTemplates","irj-word-search":"wordSearch","irj-hidden-object":"hiddenObject","irj-pregnancy-meditations":"pregnancyMeditations","irj-father-meditations":"fatherMeditations","irj-conceive-meditations":"conceiveMeditations","irj-fertility":"fertility","irj-room-theme":"roomTheme","irj-coloring":"coloring"};
       const field=fieldMap[k];
       if(field){
         const userRef=doc(db,"users",auth.currentUser.uid);
@@ -1733,12 +1734,14 @@ function AppInner(){
   const [artGallery, setArtGalleryRaw] = useState([]); // Completed diamond art pieces
   const [importedTemplates, setImportedTemplatesRaw] = useState({}); // User-imported AI-generated artwork templates
   const [wordSearch, setWordSearchRaw] = useState({}); // Word search puzzle progress keyed by puzzleId
+  const [hiddenObject, setHiddenObjectRaw] = useState({}); // Hidden object scene progress keyed by sceneId
   const [pregnancyMeditations, setPregnancyMeditationsRaw] = useState({}); // Pregnancy meditation card progress { currentWeek, completed }
   const [fatherMeditations, setFatherMeditationsRaw] = useState({});       // Father's weekly meditation progress { currentWeek, completed }
   const [conceiveMeditations, setConceiveMeditationsRaw] = useState({});    // Trying-to-conceive meditation progress { completed }
   const [fertility, setFertilityRaw] = useState({});                       // Fertility / TTC tracker { periodStarts, cycleLength, periodLength, notes }
   const [coloring, setColoringRaw] = useState({});                         // Coloring page progress keyed by pageId { imageData, updatedAt }
   const [craftChooser, setCraftChooser] = useState(false);                 // "What would you like to create?" modal in the art studio
+  const [puzzleChooser, setPuzzleChooser] = useState(false);               // "Pick a puzzle" modal (Word Search / Hidden Object) at the desk
   const [activeGatheringSpace, setActiveGatheringSpace] = useState(null);
   const [gatheringPosts, setGatheringPosts] = useState([]);
   const [gatheringLoading, setGatheringLoading] = useState(false);
@@ -1974,6 +1977,7 @@ function AppInner(){
       const ag   = await dbLoad("irj-art-gallery") || [];
       const itp  = await dbLoad("irj-imported-templates") || {};
       const ws   = await dbLoad("irj-word-search") || {};
+      const ho   = await dbLoad("irj-hidden-object") || {};
       const pm2  = await dbLoad("irj-pregnancy-meditations") || {};
       const fm   = await dbLoad("irj-father-meditations") || {};
       const cm   = await dbLoad("irj-conceive-meditations") || {};
@@ -2007,6 +2011,7 @@ function AppInner(){
       if(ag) setArtGalleryRaw(ag);
       if(itp) setImportedTemplatesRaw(itp);
       if(ws) setWordSearchRaw(ws);
+      if(ho) setHiddenObjectRaw(ho);
       if(pm2) setPregnancyMeditationsRaw(pm2);
       if(fm) setFatherMeditationsRaw(fm);
       if(cm) setConceiveMeditationsRaw(cm);
@@ -2555,6 +2560,10 @@ function AppInner(){
   function setWordSearch(next){
     setWordSearchRaw(next);
     dbSave("irj-word-search",next);
+  }
+  function setHiddenObject(next){
+    setHiddenObjectRaw(next);
+    dbSave("irj-hidden-object",next);
   }
   function setPregnancyMeditations(next){
     setPregnancyMeditationsRaw(next);
@@ -4807,6 +4816,17 @@ function AppInner(){
     );
   }
 
+  /* ══ HIDDEN OBJECT ════════════════════════════════ */
+  if(screen==="hidden-object"){
+    return(
+      <HiddenObjectScreen
+        onBack={()=>setScreen(prevScreen||"cabin")}
+        progress={hiddenObject}
+        onProgressChange={setHiddenObject}
+      />
+    );
+  }
+
   /* ══ TRYING TO CONCEIVE MEDITATIONS ════════════════ */
   if(screen==="conceive-meditations"){
     return(
@@ -6501,8 +6521,8 @@ function AppInner(){
           style={{position:"absolute",left:"13%",top:"37%",width:"26%",height:"27%",zIndex:13,background:"transparent",border:"none",padding:0,cursor:"pointer",borderRadius:"6%",outline:"none",WebkitTapHighlightColor:"transparent"}}>
           <div style={{position:"absolute",inset:"-6%",borderRadius:"10%",background:"radial-gradient(ellipse at 50% 50%, rgba(255,205,120,0.16) 0%, rgba(255,175,80,0.06) 48%, transparent 72%)",pointerEvents:"none",animation:"hotspotPulse 3s ease-in-out infinite"}}/>
         </button>
-        {/* Desk → Word Search */}
-        <button onClick={()=>{setPrevScreen("cozy-creations");setScreen("word-search");}} aria-label="Open Word Search"
+        {/* Desk → choose Word Search or Hidden Object */}
+        <button onClick={()=>setPuzzleChooser(true)} aria-label="Choose a puzzle"
           style={{position:"absolute",left:"60%",top:"55%",width:"38%",height:"30%",zIndex:13,background:"transparent",border:"none",padding:0,cursor:"pointer",borderRadius:"6%",outline:"none",WebkitTapHighlightColor:"transparent"}}>
           <div style={{position:"absolute",inset:"-6%",borderRadius:"10%",background:"radial-gradient(ellipse at 50% 45%, rgba(255,205,120,0.16) 0%, rgba(255,175,80,0.06) 48%, transparent 72%)",pointerEvents:"none",animation:"hotspotPulse 3s ease-in-out infinite"}}/>
         </button>
@@ -6532,6 +6552,28 @@ function AppInner(){
                 ))}
               </div>
               <button onClick={()=>setCraftChooser(false)} style={{display:"block",margin:"18px auto 0",background:"transparent",border:"none",color:"rgba(232,212,160,0.5)",fontFamily:SANS,fontSize:"0.78rem",cursor:"pointer"}}>Maybe later</button>
+            </div>
+          </div>
+        )}
+        {puzzleChooser&&(
+          <div onClick={()=>setPuzzleChooser(false)} style={{position:"fixed",inset:0,zIndex:9998,background:"rgba(8,6,4,0.72)",backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
+            <div onClick={e=>e.stopPropagation()} style={{maxWidth:440,width:"100%",background:"linear-gradient(180deg, rgba(30,22,16,0.96), rgba(20,15,11,0.96))",border:"1px solid rgba(201,169,110,0.28)",borderRadius:20,padding:"26px 22px 24px",boxShadow:"0 24px 60px rgba(0,0,0,0.6)"}}>
+              <div style={{fontFamily:DISPLAY,fontStyle:"italic",color:"#E8D4A0",fontSize:"1.4rem",textAlign:"center",marginBottom:4}}>Which puzzle today?</div>
+              <div style={{fontFamily:SANS,fontSize:"0.74rem",color:"rgba(232,212,160,0.55)",textAlign:"center",letterSpacing:"0.05em",marginBottom:22}}>Search the Word, or search the scene</div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+                {[
+                  {key:"word-search",label:"Word Search",desc:"Find every word of a verse",emoji:"&#9635;"},
+                  {key:"hidden-object",label:"Hidden Object",desc:"Spot hidden treasures in a scene",emoji:"&#128269;"},
+                ].map(opt=>(
+                  <button key={opt.key} onClick={()=>{setPuzzleChooser(false);setPrevScreen("cozy-creations");setScreen(opt.key);}}
+                    style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(201,169,110,0.22)",borderRadius:14,padding:"20px 14px",cursor:"pointer",color:"#FAF6F0",textAlign:"center",transition:"all 0.15s"}}>
+                    <div style={{fontSize:"1.8rem",color:"#C9A96E",marginBottom:8}} dangerouslySetInnerHTML={{__html:opt.emoji}}/>
+                    <div style={{fontFamily:DISPLAY,fontStyle:"italic",color:"#E8D4A0",fontSize:"1.08rem",marginBottom:4}}>{opt.label}</div>
+                    <div style={{fontFamily:SANS,fontSize:"0.66rem",color:"rgba(232,212,160,0.5)",lineHeight:1.4}}>{opt.desc}</div>
+                  </button>
+                ))}
+              </div>
+              <button onClick={()=>setPuzzleChooser(false)} style={{display:"block",margin:"18px auto 0",background:"transparent",border:"none",color:"rgba(232,212,160,0.5)",fontFamily:SANS,fontSize:"0.78rem",cursor:"pointer"}}>Maybe later</button>
             </div>
           </div>
         )}
