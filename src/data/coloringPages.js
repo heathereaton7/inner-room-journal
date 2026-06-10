@@ -29,6 +29,14 @@ export const COLORING_PAGES = [
     src: encodeURI('/coloring pages/Be Still and Know.png'),
   },
   {
+    id: 'winnebago-adventure',
+    title: 'Winnebago Adventure',
+    verse: 'Be strong and courageous\u2026 for the Lord your God will be with you wherever you go.',
+    reference: 'Joshua 1:9',
+    category: 'adults',
+    src: encodeURI('/coloring pages/Winnebago Adventure.png'),
+  },
+  {
     id: 'mountain-camper',
     title: 'Mountain Getaway',
     verse: 'I lift up my eyes to the mountains\u2014where does my help come from? My help comes from the Lord.',
