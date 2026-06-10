@@ -21,6 +21,14 @@ export const COLORING_CATEGORIES = [
 
 export const COLORING_PAGES = [
   {
+    id: 'hidden-waterfall',
+    title: 'Hidden Waterfall',
+    verse: 'He leads me beside still waters. He restores my soul.',
+    reference: 'Psalm 23:2-3',
+    category: 'adults',
+    src: encodeURI('/coloring pages/Hidden Waterfall.png'),
+  },
+  {
     id: 'fall-log-cabin',
     title: 'Fall Log Cabin',
     verse: 'Better is a little with the fear of the Lord than great treasure and trouble with it.',
