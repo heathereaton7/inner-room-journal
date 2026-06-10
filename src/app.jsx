@@ -18,6 +18,7 @@ import NotificationsScreen from './screens/NotificationsScreen.jsx';
 import CheckInScreen from './screens/CheckInScreen.jsx';
 import BecomingHerScreen from './screens/BecomingHerScreen.jsx';
 import DiamondArtScreen from './screens/DiamondArtScreen.jsx';
+import ColoringScreen from './screens/ColoringScreen.jsx';
 import DiamondArtFrame from './components/DiamondArtFrame.jsx';
 import WordSearchScreen from './screens/WordSearchScreen.jsx';
 import PregnancyMeditationScreen from './screens/PregnancyMeditationScreen.jsx';
@@ -53,7 +54,7 @@ async function dbSave(k,v){
     localStorage.setItem(k,JSON.stringify(v));
     // Dual-write to Firestore when signed in
     if(auth?.currentUser){
-      const fieldMap={"irj-entries":"entries","irj-prayer":"prayerPosts","irj-saved-cards":"savedCards","irj-onboarded":"isOnboarded","irj-candles":"candles","irj-prayed":"prayedFor","irj-owned-items":"ownedItems","irj-garden":"gardenPlots","irj-inventory":"inventory","irj-saved-verses":"savedVerses","irj-bank":"bank","irj-sell-basket":"sellBasket","irj-farm-plots":"farmPlots","irj-animals":"animals","irj-missions":"missions","irj-premium":"isPremium","irj-becoming-her":"becomingHer","irj-trackers":"trackers","irj-pregnancy":"pregnancy","irj-garden-grid":"gardenGrid","irj-unlocks":"unlocks","irj-diamond-art":"diamondArt","irj-art-gallery":"artGallery","irj-imported-templates":"importedTemplates","irj-word-search":"wordSearch","irj-pregnancy-meditations":"pregnancyMeditations","irj-father-meditations":"fatherMeditations","irj-conceive-meditations":"conceiveMeditations","irj-fertility":"fertility","irj-room-theme":"roomTheme"};
+      const fieldMap={"irj-entries":"entries","irj-prayer":"prayerPosts","irj-saved-cards":"savedCards","irj-onboarded":"isOnboarded","irj-candles":"candles","irj-prayed":"prayedFor","irj-owned-items":"ownedItems","irj-garden":"gardenPlots","irj-inventory":"inventory","irj-saved-verses":"savedVerses","irj-bank":"bank","irj-sell-basket":"sellBasket","irj-farm-plots":"farmPlots","irj-animals":"animals","irj-missions":"missions","irj-premium":"isPremium","irj-becoming-her":"becomingHer","irj-trackers":"trackers","irj-pregnancy":"pregnancy","irj-garden-grid":"gardenGrid","irj-unlocks":"unlocks","irj-diamond-art":"diamondArt","irj-art-gallery":"artGallery","irj-imported-templates":"importedTemplates","irj-word-search":"wordSearch","irj-pregnancy-meditations":"pregnancyMeditations","irj-father-meditations":"fatherMeditations","irj-conceive-meditations":"conceiveMeditations","irj-fertility":"fertility","irj-room-theme":"roomTheme","irj-coloring":"coloring"};
       const field=fieldMap[k];
       if(field){
         const userRef=doc(db,"users",auth.currentUser.uid);
@@ -1736,6 +1737,8 @@ function AppInner(){
   const [fatherMeditations, setFatherMeditationsRaw] = useState({});       // Father's weekly meditation progress { currentWeek, completed }
   const [conceiveMeditations, setConceiveMeditationsRaw] = useState({});    // Trying-to-conceive meditation progress { completed }
   const [fertility, setFertilityRaw] = useState({});                       // Fertility / TTC tracker { periodStarts, cycleLength, periodLength, notes }
+  const [coloring, setColoringRaw] = useState({});                         // Coloring page progress keyed by pageId { imageData, updatedAt }
+  const [craftChooser, setCraftChooser] = useState(false);                 // "What would you like to create?" modal in the art studio
   const [activeGatheringSpace, setActiveGatheringSpace] = useState(null);
   const [gatheringPosts, setGatheringPosts] = useState([]);
   const [gatheringLoading, setGatheringLoading] = useState(false);
@@ -1975,6 +1978,7 @@ function AppInner(){
       const fm   = await dbLoad("irj-father-meditations") || {};
       const cm   = await dbLoad("irj-conceive-meditations") || {};
       const fert = await dbLoad("irj-fertility") || {};
+      const col  = await dbLoad("irj-coloring") || {};
       // Migrate prayers: add status/answeredDate/category if missing
       let migrated=false;
       const mpp=pp.map(p=>{
@@ -2007,6 +2011,7 @@ function AppInner(){
       if(fm) setFatherMeditationsRaw(fm);
       if(cm) setConceiveMeditationsRaw(cm);
       if(fert) setFertilityRaw(fert);
+      if(col) setColoringRaw(col);
       // Safety: if user has done check-ins but candle was lost in migration, restore it
       const hasCheckins=Object.keys(localStorage).some(k=>k.startsWith("irj-checkins-"));
       const candlePlaced=migratedRoom.placed?.some(p=>p.id==="candle");
@@ -2566,6 +2571,10 @@ function AppInner(){
   function setFertility(next){
     setFertilityRaw(next);
     dbSave("irj-fertility",next);
+  }
+  function setColoring(next){
+    setColoringRaw(next);
+    dbSave("irj-coloring",next);
   }
 
   // ── CANDLE ECONOMY ──
@@ -4776,6 +4785,17 @@ function AppInner(){
     );
   }
 
+  /* ══ COLORING ═════════════════════════════════════ */
+  if(screen==="coloring"){
+    return(
+      <ColoringScreen
+        onBack={()=>setScreen(prevScreen||"cozy-creations")}
+        coloring={coloring}
+        setColoring={setColoring}
+      />
+    );
+  }
+
   /* ══ WORD SEARCH ══════════════════════════════════ */
   if(screen==="word-search"){
     return(
@@ -6476,8 +6496,8 @@ function AppInner(){
         <CozyCreationsRoom/>
         {/* Cinematic vignette */}
         <div style={{position:"absolute",inset:0,pointerEvents:"none",background:"radial-gradient(ellipse at center, transparent 45%, rgba(8,6,4,0.5) 100%)"}}/>
-        {/* Easel canvas → Diamond Art */}
-        <button onClick={()=>{setPrevScreen("cozy-creations");setScreen("diamond-art");}} aria-label="Open Diamond Art"
+        {/* Easel canvas → choose Diamond Art or Coloring */}
+        <button onClick={()=>setCraftChooser(true)} aria-label="Choose an art activity"
           style={{position:"absolute",left:"13%",top:"37%",width:"26%",height:"27%",zIndex:13,background:"transparent",border:"none",padding:0,cursor:"pointer",borderRadius:"6%",outline:"none",WebkitTapHighlightColor:"transparent"}}>
           <div style={{position:"absolute",inset:"-6%",borderRadius:"10%",background:"radial-gradient(ellipse at 50% 50%, rgba(255,205,120,0.16) 0%, rgba(255,175,80,0.06) 48%, transparent 72%)",pointerEvents:"none",animation:"hotspotPulse 3s ease-in-out infinite"}}/>
         </button>
@@ -6493,6 +6513,28 @@ function AppInner(){
         {/* Title */}
         <div style={{position:"absolute",top:30,left:0,right:0,textAlign:"center",zIndex:14,pointerEvents:"none",fontFamily:DISPLAY,fontSize:"0.95rem",fontWeight:700,color:"rgba(255,240,210,0.7)",textShadow:"0 2px 10px rgba(0,0,0,0.7)",letterSpacing:"0.03em"}}>Cozy Creations Room</div>
         {spaceTransit&&<div style={{position:"fixed",inset:0,zIndex:9999,background:"#0A0806",animation:"spaceFadeIn .6s ease both",pointerEvents:"all"}}/>}
+        {craftChooser&&(
+          <div onClick={()=>setCraftChooser(false)} style={{position:"fixed",inset:0,zIndex:9998,background:"rgba(8,6,4,0.72)",backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
+            <div onClick={e=>e.stopPropagation()} style={{maxWidth:440,width:"100%",background:"linear-gradient(180deg, rgba(30,22,16,0.96), rgba(20,15,11,0.96))",border:"1px solid rgba(201,169,110,0.28)",borderRadius:20,padding:"26px 22px 24px",boxShadow:"0 24px 60px rgba(0,0,0,0.6)"}}>
+              <div style={{fontFamily:DISPLAY,fontStyle:"italic",color:"#E8D4A0",fontSize:"1.4rem",textAlign:"center",marginBottom:4}}>What would you like to create?</div>
+              <div style={{fontFamily:SANS,fontSize:"0.74rem",color:"rgba(232,212,160,0.55)",textAlign:"center",letterSpacing:"0.05em",marginBottom:22}}>Choose your craft for today</div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+                {[
+                  {key:"diamond-art",label:"Diamond Art",desc:"Place sparkling gems by number",emoji:"&#9672;"},
+                  {key:"coloring",label:"Coloring",desc:"Tap to fill with glitter color",emoji:"&#10047;"},
+                ].map(opt=>(
+                  <button key={opt.key} onClick={()=>{setCraftChooser(false);setPrevScreen("cozy-creations");setScreen(opt.key);}}
+                    style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(201,169,110,0.22)",borderRadius:14,padding:"20px 14px",cursor:"pointer",color:"#FAF6F0",textAlign:"center",transition:"all 0.15s"}}>
+                    <div style={{fontSize:"1.8rem",color:"#C9A96E",marginBottom:8}} dangerouslySetInnerHTML={{__html:opt.emoji}}/>
+                    <div style={{fontFamily:DISPLAY,fontStyle:"italic",color:"#E8D4A0",fontSize:"1.08rem",marginBottom:4}}>{opt.label}</div>
+                    <div style={{fontFamily:SANS,fontSize:"0.66rem",color:"rgba(232,212,160,0.5)",lineHeight:1.4}}>{opt.desc}</div>
+                  </button>
+                ))}
+              </div>
+              <button onClick={()=>setCraftChooser(false)} style={{display:"block",margin:"18px auto 0",background:"transparent",border:"none",color:"rgba(232,212,160,0.5)",fontFamily:SANS,fontSize:"0.78rem",cursor:"pointer"}}>Maybe later</button>
+            </div>
+          </div>
+        )}
         <BottomMenuDrawer/>
       </div>
     );
