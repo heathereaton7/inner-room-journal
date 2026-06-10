@@ -36,6 +36,14 @@ export const COLORING_PAGES = [
     category: 'adults',
     src: encodeURI('/coloring pages/Four Sparrows at the Birdbath.png'),
   },
+  {
+    id: 'cozy-nursery',
+    title: 'Cozy Nursery',
+    verse: 'Children are a heritage from the Lord, offspring a reward from him.',
+    reference: 'Psalm 127:3',
+    category: 'adults',
+    src: encodeURI('/coloring pages/Cozy Nursery Nook.png'),
+  },
 ];
 
 export function getColoringPage(id) {
