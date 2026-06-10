@@ -5,9 +5,19 @@
  * drawn on a canvas and the user flood-fills the enclosed white areas with the
  * glitter palette. Saved pictures are keyed by `id` (see app.jsx `coloring`).
  *
+ * Pages are grouped into two collections by `category`: 'kids' (simpler art)
+ * and 'adults' (intricate art). The Coloring screen shows a Kids / Adults
+ * chooser first, then the pages for that collection.
+ *
  * To add a page: drop the line art in `public/coloring pages/` and add an entry
- * here. `src` is URL-encoded so spaces in the filename load correctly.
+ * here with the right `category`. `src` is URL-encoded so spaces in the
+ * filename load correctly.
  */
+
+export const COLORING_CATEGORIES = [
+  { id: 'kids', label: 'Kids', blurb: 'Simple, playful pages to fill with color' },
+  { id: 'adults', label: 'Adults', blurb: 'Intricate art for unhurried, restful coloring' },
+];
 
 export const COLORING_PAGES = [
   {
@@ -15,10 +25,15 @@ export const COLORING_PAGES = [
     title: 'Serene Garden',
     verse: 'Consider the lilies of the field, how they grow.',
     reference: 'Matthew 6:28',
+    category: 'adults',
     src: encodeURI('/coloring pages/Serene Abundant Garden Scene.png'),
   },
 ];
 
 export function getColoringPage(id) {
   return COLORING_PAGES.find(p => p.id === id);
+}
+
+export function getPagesByCategory(category) {
+  return COLORING_PAGES.filter(p => p.category === category);
 }
