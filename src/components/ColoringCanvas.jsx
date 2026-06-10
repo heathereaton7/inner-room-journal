@@ -11,10 +11,29 @@ const P = {
   goldL: '#E8D4A0',
 };
 
-// "Glitter gel pen" palette (exact swatches requested).
+// Coloring palette — lots of colors with light → dark shades of each family so
+// pages can be shaded, not just flat-filled. Grouped by hue (each row a family).
 const PALETTE = [
-  '#ff4d9d', '#e23ad0', '#9b4dff', '#3d6bff', '#16d0e8', '#0fd9a8', '#5ce86b', '#ffd23d',
-  '#ff8c33', '#ff4d4d', '#13b06a', '#23d3c4', '#ff5cc8', '#6a2cc7', '#e8b923', '#b9c2d0',
+  // Pinks / magentas
+  '#ffd9ec', '#ff9ccb', '#ff5cb0', '#ff1f8e', '#d4146e', '#8f0d49',
+  // Reds / corals
+  '#ffd2cc', '#ff8f7a', '#ff4d4d', '#e02020', '#a81414', '#6e0d0d',
+  // Oranges / peaches
+  '#ffe6c2', '#ffc266', '#ff9a2e', '#f5780a', '#c25600', '#8a3d00',
+  // Yellows / golds
+  '#fff6c2', '#ffe680', '#ffd23d', '#f5b800', '#c99200', '#8f6800',
+  // Greens
+  '#d6f5cc', '#9ee87a', '#5ce86b', '#23c44a', '#13903a', '#0a5e26',
+  // Teals / aquas
+  '#cdf6f0', '#7fe6dd', '#23d3c4', '#10b0a4', '#0a7d75', '#064f4a',
+  // Blues
+  '#cfe2ff', '#7faaff', '#3d6bff', '#1f47d4', '#1330a0', '#0b1d66',
+  // Purples / violets
+  '#ecd6ff', '#c49cff', '#9b4dff', '#7a2cd4', '#5618a0', '#360c66',
+  // Browns / tans / earth (great for sparrows, branches, soil)
+  '#f0e0c8', '#dcc39a', '#c79a5e', '#a6713a', '#7a4d24', '#4d2f15',
+  // Neutrals (greys, stone, white, black)
+  '#ffffff', '#e2e6ea', '#b9c2d0', '#8a93a3', '#4a4f59', '#1a1c20',
 ];
 
 // Pixels in the source art darker than this are treated as line "walls" the

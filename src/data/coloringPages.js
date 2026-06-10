@@ -28,6 +28,14 @@ export const COLORING_PAGES = [
     category: 'adults',
     src: encodeURI('/coloring pages/Serene Abundant Garden Scene.png'),
   },
+  {
+    id: 'sparrows-birdbath',
+    title: 'Four Sparrows',
+    verse: 'Are not two sparrows sold for a penny? Yet not one of them falls to the ground outside your Father\u2019s care.',
+    reference: 'Matthew 10:29',
+    category: 'adults',
+    src: encodeURI('/coloring pages/Four Sparrows at the Birdbath.png'),
+  },
 ];
 
 export function getColoringPage(id) {
