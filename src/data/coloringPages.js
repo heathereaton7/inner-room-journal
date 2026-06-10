@@ -21,6 +21,14 @@ export const COLORING_CATEGORIES = [
 
 export const COLORING_PAGES = [
   {
+    id: 'be-still-know',
+    title: 'Be Still and Know',
+    verse: 'Be still, and know that I am God.',
+    reference: 'Psalm 46:10',
+    category: 'adults',
+    src: encodeURI('/coloring pages/Be Still and Know.png'),
+  },
+  {
     id: 'garden-serene',
     title: 'Serene Garden',
     verse: 'Consider the lilies of the field, how they grow.',
