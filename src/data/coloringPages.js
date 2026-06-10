@@ -53,14 +53,6 @@ export const COLORING_PAGES = [
     src: encodeURI('/coloring pages/Bathroom Sink Stillness.png'),
   },
   {
-    id: 'beach-friendship',
-    title: 'The Friend I Want to Be',
-    verse: 'A friend loves at all times, and a brother is born for a time of adversity.',
-    reference: 'Proverbs 17:17',
-    category: 'adults',
-    src: encodeURI('/coloring pages/Beach Sunrise Friendship.png'),
-  },
-  {
     id: 'lakeside-cabin',
     title: 'Lakeside Cabin',
     verse: 'He makes me lie down in green pastures, he leads me beside quiet waters.',
