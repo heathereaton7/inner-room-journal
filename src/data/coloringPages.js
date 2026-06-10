@@ -21,6 +21,14 @@ export const COLORING_CATEGORIES = [
 
 export const COLORING_PAGES = [
   {
+    id: 'campfire-companion',
+    title: 'Campfire Companion',
+    verse: 'A friend loves at all times, and a brother is born for a time of adversity.',
+    reference: 'Proverbs 17:17',
+    category: 'adults',
+    src: encodeURI('/coloring pages/Campfire Companion.png'),
+  },
+  {
     id: 'poolside-paradise',
     title: 'Poolside Paradise',
     verse: 'This is the day the Lord has made; let us rejoice and be glad in it.',
