@@ -21,6 +21,22 @@ export const COLORING_CATEGORIES = [
 
 export const COLORING_PAGES = [
   {
+    id: 'poolside-paradise',
+    title: 'Poolside Paradise',
+    verse: 'This is the day the Lord has made; let us rejoice and be glad in it.',
+    reference: 'Psalm 118:24',
+    category: 'adults',
+    src: encodeURI('/coloring pages/Poolside Paradise.png'),
+  },
+  {
+    id: 'desert-snake',
+    title: 'Desert Serpent',
+    verse: 'You will tread on the lion and the cobra; you will trample the great lion and the serpent.',
+    reference: 'Psalm 91:13',
+    category: 'adults',
+    src: encodeURI('/coloring pages/Desert Snake.png'),
+  },
+  {
     id: 'be-still-know',
     title: 'Be Still and Know',
     verse: 'Be still, and know that I am God.',
