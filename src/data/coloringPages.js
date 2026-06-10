@@ -21,6 +21,22 @@ export const COLORING_CATEGORIES = [
 
 export const COLORING_PAGES = [
   {
+    id: 'autumn-path',
+    title: 'Autumn Path',
+    verse: 'For everything there is a season, and a time for every matter under heaven.',
+    reference: 'Ecclesiastes 3:1',
+    category: 'adults',
+    src: encodeURI('/coloring pages/Autumn Path.png'),
+  },
+  {
+    id: 'christmas-village',
+    title: 'Christmas Village',
+    verse: 'For unto us a child is born, unto us a son is given.',
+    reference: 'Isaiah 9:6',
+    category: 'adults',
+    src: encodeURI('/coloring pages/Christmas Village.png'),
+  },
+  {
     id: 'campfire-companion',
     title: 'Campfire Companion',
     verse: 'A friend loves at all times, and a brother is born for a time of adversity.',
