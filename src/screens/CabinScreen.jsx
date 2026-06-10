@@ -40,6 +40,24 @@ export default function CabinScreen({
   // via the upstairs middle door on the grand hall map. Holds the original
   // loft hotspots (book→journal, staircase→rooftop, etc.).
   const [loftView, setLoftView] = useState(false);
+  // Desk-book chooser: tapping the book on the desk opens a swipeable picker of
+  // books. Slide 0 = Journals (the Inner Room journal); slide 1 = Meditations
+  // (a cover you'll design in Canva → /meditations-cover.png, with Psalm 1:2).
+  const [bookChooser, setBookChooser] = useState(false);
+  const [chooserIdx, setChooserIdx] = useState(0); // 0 = Journals, 1 = Meditations
+  const [medOpen, setMedOpen] = useState(false);   // Meditations cover + verse view
+  const [medImgOk, setMedImgOk] = useState(false); // true once /meditations-cover.png loads
+  const chooserTouch = useRef({ x: 0, y: 0 });
+  const openBookChooser = useCallback(() => { setChooserIdx(0); setBookChooser(true); }, []);
+  const chooserStart = useCallback((e) => { chooserTouch.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }; }, []);
+  const chooserEnd = useCallback((e) => {
+    const dx = e.changedTouches[0].clientX - chooserTouch.current.x;
+    const dy = e.changedTouches[0].clientY - chooserTouch.current.y;
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) {
+      if (dx < 0) setChooserIdx(i => Math.min(1, i + 1));
+      else setChooserIdx(i => Math.max(0, i - 1));
+    }
+  }, []);
   const containerRef = useRef(null);
 
   const handleDecorTap = useCallback((itemId, e) => {
@@ -233,8 +251,8 @@ export default function CabinScreen({
 
       {/* ── OLD LOFT HOTSPOTS — only over the cozy-loft view (cabin-interior.png) ── */}
       {loftView && (<>
-      {/* 1. THE INNER ROOM BOOK — center of desk foreground → journal */}
-      <button onClick={()=>transitionToJournal()} style={{position:"absolute",left:"28%",top:"74%",width:"38%",height:"14%",zIndex:11,background:"transparent",border:"none",padding:0,cursor:"pointer",borderRadius:"10px",outline:"none",WebkitTapHighlightColor:"transparent"}}>
+      {/* 1. THE INNER ROOM BOOK — center of desk foreground → book chooser (Journals / Meditations) */}
+      <button onClick={()=>openBookChooser()} style={{position:"absolute",left:"28%",top:"74%",width:"38%",height:"14%",zIndex:11,background:"transparent",border:"none",padding:0,cursor:"pointer",borderRadius:"10px",outline:"none",WebkitTapHighlightColor:"transparent"}}>
         {/* Pulse glow on "The Inner Room" book */}
         <div style={{position:"absolute",left:"20%",top:"5%",width:"60%",height:"90%",borderRadius:"45%",background:"radial-gradient(ellipse at 50% 50%,rgba(255,215,130,0.30) 0%,rgba(255,190,90,0.10) 45%,transparent 72%)",pointerEvents:"none",animation:"hotspotPulse 2.8s ease-in-out infinite"}}/>
         <div style={{position:"absolute",left:"30%",top:"15%",width:"40%",height:"70%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,245,180,0.20) 0%,transparent 55%)",pointerEvents:"none",animation:"hotspotPulse 3.3s ease-in-out infinite",animationDelay:"0.8s"}}/>
@@ -519,6 +537,90 @@ export default function CabinScreen({
               <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.72rem",color:"rgba(255,248,232,0.2)"}}>Tap outside to close</p>
             </div>
           </>}
+        </div>
+      </div>}
+
+      {/* ═══ DESK-BOOK CHOOSER — swipe between Journals & Meditations ═══ */}
+      {bookChooser&&<div style={{position:"fixed",inset:0,zIndex:120}}>
+        {/* Backdrop */}
+        <div onClick={()=>setBookChooser(false)} style={{position:"absolute",inset:0,background:"rgba(10,8,6,0.80)",backdropFilter:"blur(4px)",WebkitBackdropFilter:"blur(4px)",animation:"spaceFadeIn .3s ease"}}/>
+        <BookSparkles/>
+        {/* Heading */}
+        <div style={{position:"absolute",top:"6.5%",left:0,right:0,textAlign:"center",zIndex:3,animation:"fadeUp .6s ease both",pointerEvents:"none"}}>
+          <h2 style={{fontFamily:DISPLAY,fontSize:"clamp(1.35rem,5.5vw,1.75rem)",fontWeight:700,color:B.goldL,margin:0,letterSpacing:"0.04em"}}>Your Books</h2>
+          <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.8rem",color:"rgba(255,248,232,0.5)",margin:"6px 0 0"}}>Swipe to choose · tap to open</p>
+        </div>
+        {/* Carousel viewport */}
+        <div onTouchStart={chooserStart} onTouchEnd={chooserEnd} style={{position:"absolute",inset:0,overflow:"hidden",zIndex:2}}>
+          <div style={{display:"flex",width:"100%",height:"100%",transform:`translateX(-${chooserIdx*100}%)`,transition:"transform .45s cubic-bezier(.22,1,.36,1)"}}>
+            {/* ── Slide 0: JOURNALS ── */}
+            <div style={{flex:"0 0 100%",height:"100%",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:18}}>
+              <button onClick={()=>{setBookChooser(false);transitionToJournal();}} style={{width:"min(60vw,240px)",aspectRatio:"2 / 3",borderRadius:"4px 11px 11px 4px",border:"none",padding:0,cursor:"pointer",position:"relative",overflow:"hidden",boxShadow:"0 16px 44px rgba(0,0,0,0.6), 0 0 0 1px rgba(201,169,110,0.22)",animation:"bookOpenAnim .5s cubic-bezier(.22,1,.36,1) both"}}>
+                <img src="/journalondesk.png" alt="The Inner Room journal" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",objectPosition:"center 46%"}} draggable={false}/>
+                {/* Spine + edge sheen for a book feel */}
+                <div style={{position:"absolute",left:0,top:0,bottom:0,width:14,background:"linear-gradient(90deg,rgba(20,12,4,0.55),rgba(20,12,4,0.12),transparent)",pointerEvents:"none"}}/>
+                <div style={{position:"absolute",inset:0,boxShadow:"inset 0 0 50px rgba(0,0,0,0.35)",borderRadius:"inherit",pointerEvents:"none"}}/>
+              </button>
+              <div style={{textAlign:"center",animation:"fadeUp .6s .1s ease both"}}>
+                <div style={{fontFamily:DISPLAY,fontSize:"1.15rem",fontWeight:700,color:B.goldL,letterSpacing:"0.04em"}}>Journals</div>
+                <div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.78rem",color:"rgba(255,248,232,0.45)",marginTop:3}}>The Inner Room journal</div>
+              </div>
+            </div>
+            {/* ── Slide 1: MEDITATIONS ── */}
+            <div style={{flex:"0 0 100%",height:"100%",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:18}}>
+              <button onClick={()=>{setBookChooser(false);setMedOpen(true);}} style={{width:"min(60vw,240px)",aspectRatio:"2 / 3",borderRadius:"4px 11px 11px 4px",border:"none",padding:0,cursor:"pointer",position:"relative",overflow:"hidden",background:"linear-gradient(160deg,#33230F 0%,#2A1B0C 45%,#1E1307 100%)",boxShadow:"0 16px 44px rgba(0,0,0,0.6), 0 0 0 1px rgba(201,169,110,0.22)",animation:"bookOpenAnim .5s cubic-bezier(.22,1,.36,1) both"}}>
+                {/* Themed placeholder cover (shown until your Canva /meditations-cover.png exists) */}
+                <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center",padding:"16% 13%"}}>
+                  <div style={{position:"absolute",inset:"7%",border:"1px solid rgba(201,169,110,0.38)",borderRadius:6,boxShadow:"inset 0 0 26px rgba(201,169,110,0.12)",pointerEvents:"none"}}/>
+                  <div style={{position:"absolute",inset:"9.5%",border:"1px solid rgba(201,169,110,0.18)",borderRadius:4,pointerEvents:"none"}}/>
+                  <span style={{fontSize:"1.45rem",marginBottom:10}}>🕯️</span>
+                  <div style={{fontFamily:DISPLAY,fontSize:"clamp(1.05rem,4.6vw,1.35rem)",fontWeight:700,color:"#E8C98A",letterSpacing:"0.07em"}}>Meditations</div>
+                  <div style={{width:34,height:1,background:"linear-gradient(90deg,transparent,#C9A96E,transparent)",margin:"11px 0"}}/>
+                  <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.68rem",lineHeight:1.65,color:"rgba(245,230,200,0.78)",margin:0}}>&ldquo;…in his law doth he meditate day and night.&rdquo;</p>
+                  <div style={{fontFamily:SANS,fontSize:"0.56rem",letterSpacing:"0.12em",color:"rgba(201,169,110,0.6)",marginTop:9}}>PSALM 1:2 · KJV</div>
+                </div>
+                {/* Swappable Canva design — covers the placeholder once the file is added */}
+                <img src="/meditations-cover.png" alt="Meditations" onLoad={()=>setMedImgOk(true)} onError={()=>{}} style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",display:medImgOk?"block":"none"}} draggable={false}/>
+                <div style={{position:"absolute",left:0,top:0,bottom:0,width:14,background:"linear-gradient(90deg,rgba(20,12,4,0.55),rgba(20,12,4,0.12),transparent)",pointerEvents:"none"}}/>
+              </button>
+              <div style={{textAlign:"center",animation:"fadeUp .6s .1s ease both"}}>
+                <div style={{fontFamily:DISPLAY,fontSize:"1.15rem",fontWeight:700,color:B.goldL,letterSpacing:"0.04em"}}>Meditations</div>
+                <div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.78rem",color:"rgba(255,248,232,0.45)",marginTop:3}}>Meditate on His word, day and night</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        {/* Prev / next chevrons */}
+        {chooserIdx>0&&<button onClick={()=>setChooserIdx(i=>Math.max(0,i-1))} aria-label="Previous book" style={{position:"absolute",left:"3%",top:"50%",transform:"translateY(-50%)",zIndex:4,width:40,height:40,borderRadius:"50%",background:"rgba(26,22,18,0.6)",border:"1px solid rgba(201,169,110,0.2)",color:B.goldL,fontSize:"1.4rem",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(6px)",WebkitBackdropFilter:"blur(6px)"}}>&#8249;</button>}
+        {chooserIdx<1&&<button onClick={()=>setChooserIdx(i=>Math.min(1,i+1))} aria-label="Next book" style={{position:"absolute",right:"3%",top:"50%",transform:"translateY(-50%)",zIndex:4,width:40,height:40,borderRadius:"50%",background:"rgba(26,22,18,0.6)",border:"1px solid rgba(201,169,110,0.2)",color:B.goldL,fontSize:"1.4rem",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(6px)",WebkitBackdropFilter:"blur(6px)"}}>&#8250;</button>}
+        {/* Dots */}
+        <div style={{position:"absolute",bottom:"7%",left:0,right:0,display:"flex",justifyContent:"center",gap:9,zIndex:4}}>
+          {[0,1].map(i=>(<button key={i} onClick={()=>setChooserIdx(i)} aria-label={`Book ${i+1}`} style={{width:9,height:9,borderRadius:"50%",border:"none",cursor:"pointer",padding:0,background:chooserIdx===i?B.goldL:"rgba(255,248,232,0.25)",transition:"background .25s"}}/>))}
+        </div>
+        {/* Close */}
+        <button onClick={()=>setBookChooser(false)} aria-label="Close" style={{position:"absolute",top:"6%",right:"5%",zIndex:5,width:34,height:34,borderRadius:"50%",background:"rgba(26,22,18,0.6)",border:"1px solid rgba(201,169,110,0.18)",color:"rgba(255,248,232,0.6)",fontSize:"0.85rem",cursor:"pointer",backdropFilter:"blur(6px)",WebkitBackdropFilter:"blur(6px)"}}>&#10005;</button>
+      </div>}
+
+      {/* ═══ MEDITATIONS — cover + verse (content coming soon) ═══ */}
+      {medOpen&&<div style={{position:"fixed",inset:0,zIndex:125}}>
+        <div onClick={()=>setMedOpen(false)} style={{position:"absolute",inset:0,background:"rgba(10,8,6,0.78)",backdropFilter:"blur(3px)",WebkitBackdropFilter:"blur(3px)",animation:"spaceFadeIn .3s ease"}}/>
+        <BookSparkles/>
+        <div style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",width:"min(88vw,420px)",height:"min(78vh,640px)",animation:"bookOpenAnim .5s cubic-bezier(.22,1,.36,1) both",display:"flex",flexDirection:"column"}}>
+          {/* Leather spine */}
+          <div style={{position:"absolute",left:-6,top:4,bottom:4,width:13,background:"linear-gradient(90deg,#2E1E10,#4A3220,#3D2B18,#2E1E10)",borderRadius:"4px 0 0 4px",boxShadow:"2px 0 12px rgba(0,0,0,0.4)",zIndex:3}}/>
+          <div style={{position:"absolute",right:-3,top:8,bottom:8,width:6,background:"linear-gradient(90deg,#E8D5B0,#DCC89C,#D4BF90)",borderRadius:"0 2px 2px 0",zIndex:1}}/>
+          {/* Cream page */}
+          <div style={{flex:1,background:"linear-gradient(155deg,#F5E6C8 0%,#ECD9B5 35%,#E4CFA5 70%,#DCC89C 100%)",borderRadius:"3px 10px 10px 3px",position:"relative",overflow:"hidden",boxShadow:"0 4px 30px rgba(0,0,0,0.4), inset 0 0 80px rgba(139,109,69,0.12)"}}>
+            <div style={{position:"relative",zIndex:2,height:"100%",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center",padding:"34px 28px",overflowY:"auto",WebkitOverflowScrolling:"touch"}}>
+              <span style={{fontSize:"1.7rem",marginBottom:14}}>🕯️</span>
+              <h2 style={{fontFamily:DISPLAY,fontSize:"clamp(1.5rem,6vw,1.9rem)",fontWeight:700,color:"#3D2B18",margin:"0 0 4px",letterSpacing:"0.04em"}}>Meditations</h2>
+              <div style={{width:54,height:1,background:"linear-gradient(90deg,transparent,#8B6D45,transparent)",margin:"12px 0 22px"}}/>
+              <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(1.02rem,4vw,1.18rem)",color:"#4A3826",lineHeight:1.75,maxWidth:300,margin:0}}>&ldquo;But his delight is in the law of the LORD; and in his law doth he meditate day and night.&rdquo;</p>
+              <div style={{fontFamily:SANS,fontSize:"0.72rem",letterSpacing:"0.1em",color:"rgba(107,85,58,0.7)",marginTop:14}}>PSALM 1:2 · KJV</div>
+              <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.82rem",color:"rgba(107,85,58,0.55)",marginTop:30,lineHeight:1.6,maxWidth:260}}>A book of guided meditations is being prepared. Coming soon.</p>
+              <button onClick={()=>{setMedOpen(false);setChooserIdx(1);setBookChooser(true);}} style={{marginTop:26,background:"linear-gradient(135deg,rgba(93,74,46,0.1),rgba(93,74,46,0.04))",border:"1px solid rgba(93,74,46,0.22)",color:"#5C4A2E",padding:"10px 26px",borderRadius:8,fontFamily:SERIF,fontStyle:"italic",fontSize:"0.82rem",cursor:"pointer"}}>&#8249; Back to your books</button>
+            </div>
+          </div>
         </div>
       </div>}
 
