@@ -29,6 +29,14 @@ export const COLORING_PAGES = [
     src: encodeURI('/coloring pages/Be Still and Know.png'),
   },
   {
+    id: 'mountain-camper',
+    title: 'Mountain Getaway',
+    verse: 'I lift up my eyes to the mountains\u2014where does my help come from? My help comes from the Lord.',
+    reference: 'Psalm 121:1-2',
+    category: 'adults',
+    src: encodeURI('/coloring pages/Mountain Camper Van.png'),
+  },
+  {
     id: 'garden-serene',
     title: 'Serene Garden',
     verse: 'Consider the lilies of the field, how they grow.',
