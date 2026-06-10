@@ -601,7 +601,7 @@ export default function CabinScreen({
         <button onClick={()=>setBookChooser(false)} aria-label="Close" style={{position:"absolute",top:"6%",right:"5%",zIndex:5,width:34,height:34,borderRadius:"50%",background:"rgba(26,22,18,0.6)",border:"1px solid rgba(201,169,110,0.18)",color:"rgba(255,248,232,0.6)",fontSize:"0.85rem",cursor:"pointer",backdropFilter:"blur(6px)",WebkitBackdropFilter:"blur(6px)"}}>&#10005;</button>
       </div>}
 
-      {/* ═══ MEDITATIONS — cover + verse (content coming soon) ═══ */}
+      {/* ═══ MEDITATIONS — verse + list of all meditations in the app ═══ */}
       {medOpen&&<div style={{position:"fixed",inset:0,zIndex:125}}>
         <div onClick={()=>setMedOpen(false)} style={{position:"absolute",inset:0,background:"rgba(10,8,6,0.78)",backdropFilter:"blur(3px)",WebkitBackdropFilter:"blur(3px)",animation:"spaceFadeIn .3s ease"}}/>
         <BookSparkles/>
@@ -611,14 +611,25 @@ export default function CabinScreen({
           <div style={{position:"absolute",right:-3,top:8,bottom:8,width:6,background:"linear-gradient(90deg,#E8D5B0,#DCC89C,#D4BF90)",borderRadius:"0 2px 2px 0",zIndex:1}}/>
           {/* Cream page */}
           <div style={{flex:1,background:"linear-gradient(155deg,#F5E6C8 0%,#ECD9B5 35%,#E4CFA5 70%,#DCC89C 100%)",borderRadius:"3px 10px 10px 3px",position:"relative",overflow:"hidden",boxShadow:"0 4px 30px rgba(0,0,0,0.4), inset 0 0 80px rgba(139,109,69,0.12)"}}>
-            <div style={{position:"relative",zIndex:2,height:"100%",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center",padding:"34px 28px",overflowY:"auto",WebkitOverflowScrolling:"touch"}}>
-              <span style={{fontSize:"1.7rem",marginBottom:14}}>🕯️</span>
-              <h2 style={{fontFamily:DISPLAY,fontSize:"clamp(1.5rem,6vw,1.9rem)",fontWeight:700,color:"#3D2B18",margin:"0 0 4px",letterSpacing:"0.04em"}}>Meditations</h2>
-              <div style={{width:54,height:1,background:"linear-gradient(90deg,transparent,#8B6D45,transparent)",margin:"12px 0 22px"}}/>
-              <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(1.02rem,4vw,1.18rem)",color:"#4A3826",lineHeight:1.75,maxWidth:300,margin:0}}>&ldquo;But his delight is in the law of the LORD; and in his law doth he meditate day and night.&rdquo;</p>
-              <div style={{fontFamily:SANS,fontSize:"0.72rem",letterSpacing:"0.1em",color:"rgba(107,85,58,0.7)",marginTop:14}}>PSALM 1:2 · KJV</div>
-              <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.82rem",color:"rgba(107,85,58,0.55)",marginTop:30,lineHeight:1.6,maxWidth:260}}>A book of guided meditations is being prepared. Coming soon.</p>
-              <button onClick={()=>{setMedOpen(false);setChooserIdx(1);setBookChooser(true);}} style={{marginTop:26,background:"linear-gradient(135deg,rgba(93,74,46,0.1),rgba(93,74,46,0.04))",border:"1px solid rgba(93,74,46,0.22)",color:"#5C4A2E",padding:"10px 26px",borderRadius:8,fontFamily:SERIF,fontStyle:"italic",fontSize:"0.82rem",cursor:"pointer"}}>&#8249; Back to your books</button>
+            <div style={{position:"relative",zIndex:2,height:"100%",display:"flex",flexDirection:"column",alignItems:"center",padding:"30px 24px 24px",overflowY:"auto",WebkitOverflowScrolling:"touch"}}>
+              <span style={{fontSize:"1.5rem",marginBottom:8}}>🕯️</span>
+              <h2 style={{fontFamily:DISPLAY,fontSize:"clamp(1.4rem,5.5vw,1.75rem)",fontWeight:700,color:"#3D2B18",margin:"0 0 6px",letterSpacing:"0.04em",textAlign:"center"}}>Meditations</h2>
+              <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.82rem",color:"#4A3826",lineHeight:1.6,maxWidth:280,margin:"0 0 2px",textAlign:"center"}}>&ldquo;…in his law doth he meditate day and night.&rdquo;</p>
+              <div style={{fontFamily:SANS,fontSize:"0.62rem",letterSpacing:"0.1em",color:"rgba(107,85,58,0.6)"}}>PSALM 1:2 · KJV</div>
+              <div style={{width:54,height:1,background:"linear-gradient(90deg,transparent,#8B6D45,transparent)",margin:"16px 0 18px"}}/>
+              <div style={{width:"100%",maxWidth:340,display:"flex",flexDirection:"column",gap:11}}>
+                {[
+                  {id:"conceive-meditations",label:"Trying to Conceive",desc:"Verses to meditate on while you wait and hope"},
+                  {id:"pregnancy-meditations",label:"Pregnancy Meditations",desc:"A verse, prayer, and affirmation each week"},
+                  {id:"father-meditations",label:"Father's Meditations",desc:"Weekly verse, prayer, and declaration for dad"},
+                ].map(m=>(
+                  <button key={m.id} onClick={()=>{setMedOpen(false);setBookChooser(false);setScreen(m.id);}} style={{background:"rgba(139,109,69,0.06)",border:"1px solid rgba(139,109,69,0.18)",borderRadius:10,padding:"13px 16px",cursor:"pointer",textAlign:"left",transition:"all .2s"}} onMouseEnter={e=>e.currentTarget.style.background="rgba(139,109,69,0.12)"} onMouseLeave={e=>e.currentTarget.style.background="rgba(139,109,69,0.06)"}>
+                    <div style={{fontFamily:DISPLAY,fontSize:"0.95rem",fontWeight:700,color:"#3D2B18",marginBottom:2}}>{m.label}</div>
+                    <div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.76rem",color:"rgba(107,85,58,0.55)"}}>{m.desc}</div>
+                  </button>
+                ))}
+              </div>
+              <button onClick={()=>{setMedOpen(false);setChooserIdx(1);setBookChooser(true);}} style={{marginTop:20,background:"linear-gradient(135deg,rgba(93,74,46,0.1),rgba(93,74,46,0.04))",border:"1px solid rgba(93,74,46,0.22)",color:"#5C4A2E",padding:"10px 26px",borderRadius:8,fontFamily:SERIF,fontStyle:"italic",fontSize:"0.82rem",cursor:"pointer"}}>&#8249; Back to your books</button>
             </div>
           </div>
         </div>
@@ -674,12 +685,9 @@ export default function CabinScreen({
                         {id:"becoming-her",label:"Becoming Her",desc:"90-day identity & habit journey"},
                         {id:"check-in",label:"Body & Mind Check-In",desc:"Notice what you're carrying"},
                         {id:"trackers",label:"Trackers",desc:"Bills, savings, and spending"},
-                        {id:"conceive-meditations",label:"Trying to Conceive",desc:"Verses to meditate on while you wait and hope"},
-                        {id:"pregnancy-meditations",label:"Pregnancy Meditations",desc:"A verse, prayer, and affirmation each week"},
-                        {id:"father-meditations",label:"Father's Meditations",desc:"Weekly verse, prayer, and declaration for dad"},
                         {id:"fertility-tracker",label:"Conception Tracker",desc:"Cycle, ovulation, and fertile window"},
                       ].map(opt=>(
-                        <button key={opt.id} onClick={()=>{if(opt.id==="check-in"){setBookOpen(false);setScreen("check-in");return;}if(opt.id==="trackers"){setBookOpen(false);setScreen("trackers");return;}if(opt.id==="conceive-meditations"){setBookOpen(false);setScreen("conceive-meditations");return;}if(opt.id==="pregnancy-meditations"){setBookOpen(false);setScreen("pregnancy-meditations");return;}if(opt.id==="father-meditations"){setBookOpen(false);setScreen("father-meditations");return;}if(opt.id==="fertility-tracker"){setBookOpen(false);setScreen("fertility-tracker");return;}if(opt.id==="bible"||opt.id==="gratitude"||opt.id==="prophecy"||opt.id==="becoming-her"){setBookOpen(false);selectShelfBook(opt.id);return;}setJournalSection(opt.id);setBookPage(2);setFlipDir("fwd");setBookText("");setBookSaveMsg("");setHistoryMode("list");}} style={{background:"rgba(139,109,69,0.06)",border:"1px solid rgba(139,109,69,0.15)",borderRadius:10,padding:"14px 16px",cursor:"pointer",display:"flex",alignItems:"center",gap:12,transition:"all .2s",textAlign:"left"}} onMouseEnter={e=>e.currentTarget.style.background="rgba(139,109,69,0.12)"} onMouseLeave={e=>e.currentTarget.style.background="rgba(139,109,69,0.06)"}>
+                        <button key={opt.id} onClick={()=>{if(opt.id==="check-in"){setBookOpen(false);setScreen("check-in");return;}if(opt.id==="trackers"){setBookOpen(false);setScreen("trackers");return;}if(opt.id==="fertility-tracker"){setBookOpen(false);setScreen("fertility-tracker");return;}if(opt.id==="bible"||opt.id==="gratitude"||opt.id==="prophecy"||opt.id==="becoming-her"){setBookOpen(false);selectShelfBook(opt.id);return;}setJournalSection(opt.id);setBookPage(2);setFlipDir("fwd");setBookText("");setBookSaveMsg("");setHistoryMode("list");}} style={{background:"rgba(139,109,69,0.06)",border:"1px solid rgba(139,109,69,0.15)",borderRadius:10,padding:"14px 16px",cursor:"pointer",display:"flex",alignItems:"center",gap:12,transition:"all .2s",textAlign:"left"}} onMouseEnter={e=>e.currentTarget.style.background="rgba(139,109,69,0.12)"} onMouseLeave={e=>e.currentTarget.style.background="rgba(139,109,69,0.06)"}>
                           <div>
                             <div style={{fontFamily:DISPLAY,fontSize:"0.92rem",fontWeight:700,color:"#3D2B18",marginBottom:2}}>{opt.label}</div>
                             <div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.76rem",color:"rgba(107,85,58,0.5)"}}>{opt.desc}</div>
