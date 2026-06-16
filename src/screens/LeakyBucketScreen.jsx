@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import CottageBackground from '../components/CottageBackground.jsx';
 import SoundButton from '../components/SoundButton.jsx';
+import MeditationWordSearch from '../components/MeditationWordSearch.jsx';
 
 const SERIF = "'Cormorant Garamond', Georgia, serif";
 const SANS = "'Inter', system-ui, -apple-system, sans-serif";
@@ -114,7 +115,9 @@ export default function LeakyBucketScreen({ onBack, reflections = [], setReflect
         />
       )}
 
-      {step === 7 && <TakeItWithYou onDone={onBack} />}
+      {step === 7 && <TakeItWithYou onNext={() => setStep(8)} onDone={onBack} />}
+
+      {step === 8 && <WordSearchHub onDone={onBack} />}
     </div>
   );
 }
@@ -792,7 +795,7 @@ const SHARE_TEXT =
 const SHARE_URL = 'https://innerroomjournal.com';
 
 /* ── Step 6: Take it with you (wallpapers, Bible, share) ──────── */
-function TakeItWithYou({ onDone }) {
+function TakeItWithYou({ onNext, onDone }) {
   const [active, setActive] = useState(null); // wallpaper opened full-screen
   const [shareMsg, setShareMsg] = useState('');
 
@@ -880,6 +883,19 @@ function TakeItWithYou({ onDone }) {
         )}
       </section>
 
+      {/* Continue to the word-search hub */}
+      <button onClick={onNext}
+        style={{
+          marginTop: 2,
+          background: `linear-gradient(135deg, ${P.water}, ${P.waterD})`,
+          border: 'none', borderRadius: 14, padding: '15px 30px', cursor: 'pointer',
+          color: '#fff', fontFamily: SANS, fontWeight: 600, fontSize: '0.95rem',
+          boxShadow: '0 10px 28px rgba(60,127,160,0.4)',
+          animation: 'fadeUp .6s .25s ease both',
+        }}>
+        Hide the word in your heart →
+      </button>
+
       <button onClick={onDone} style={{
         marginTop: 2, background: 'transparent', border: 'none', cursor: 'pointer',
         color: P.sub, fontFamily: SANS, fontSize: '0.82rem', padding: '4px 10px',
@@ -889,6 +905,90 @@ function TakeItWithYou({ onDone }) {
 
       {/* Full-screen wallpaper viewer with save */}
       {active && <WallpaperViewer wp={active} onClose={() => setActive(null)} />}
+    </div>
+  );
+}
+
+/* ── Step 8: Word-search hub (the 4 core verses) ─────────────── */
+// Each entry is shaped like the meditation "med" object MeditationWordSearch
+// expects: { title, verse:{ text }, affirmation }. The puzzle's hidden words
+// come from the verse + affirmation; finding them all reveals the affirmation.
+const WS_VERSES = [
+  { key: 'jeremiah', title: 'Jeremiah 2:13', verse: { text: JER_213 }, affirmation: 'In Him, you are full — and you hold.' },
+  { key: 'john',     title: TRUTHS[0].ref, verse: { text: TRUTHS[0].text }, affirmation: TRUTHS[0].truth },
+  { key: 'ephesians',title: TRUTHS[1].ref, verse: { text: TRUTHS[1].text }, affirmation: TRUTHS[1].truth },
+  { key: 'romans',   title: TRUTHS[2].ref, verse: { text: TRUTHS[2].text }, affirmation: TRUTHS[2].truth },
+];
+
+function WordSearchHub({ onDone }) {
+  const [active, setActive] = useState(null); // index of the open puzzle, or null for the list
+
+  if (active !== null) {
+    const v = WS_VERSES[active];
+    return (
+      <div style={{ position: 'relative', zIndex: 2, minHeight: 'calc(100vh - 50px)', padding: '6px 0 20px' }}>
+        <div style={{ maxWidth: 620, margin: '0 auto', padding: '0 16px' }}>
+          <button onClick={() => setActive(null)}
+            style={{
+              background: 'transparent', border: `1px solid ${P.border}`, borderRadius: 999,
+              padding: '7px 14px', cursor: 'pointer', color: P.goldL,
+              fontFamily: SANS, fontSize: '0.78rem',
+            }}>
+            ← Choose another verse
+          </button>
+        </div>
+        <MeditationWordSearch med={v} seedId={`leaky-bucket-${v.key}`} onBack={() => setActive(null)} />
+      </div>
+    );
+  }
+
+  return (
+    <div style={{
+      position: 'relative', zIndex: 2, minHeight: 'calc(100vh - 50px)',
+      display: 'flex', flexDirection: 'column', alignItems: 'center',
+      padding: '24px 20px 48px', gap: 20,
+    }}>
+      <div style={{ textAlign: 'center', maxWidth: 480, animation: 'fadeUp .5s ease both' }}>
+        <div style={{ fontFamily: SANS, fontSize: '0.62rem', letterSpacing: '0.2em', color: P.sub, textTransform: 'uppercase' }}>
+          Hide it in your heart
+        </div>
+        <h2 style={{ fontFamily: SERIF, fontStyle: 'italic', fontWeight: 600, fontSize: 'clamp(1.5rem,6vw,2rem)', color: P.goldL, margin: '8px 0 0' }}>
+          Word searches
+        </h2>
+        <p style={{ fontFamily: SERIF, fontSize: '1rem', lineHeight: 1.6, color: 'rgba(245,238,225,0.85)', margin: '10px 0 0' }}>
+          Sit with each verse a little longer. Find every word — and the truth
+          will rise to meet you as a blessing.
+        </p>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%', maxWidth: 460 }}>
+        {WS_VERSES.map((v, i) => (
+          <button key={v.key} onClick={() => setActive(i)}
+            style={{
+              textAlign: 'left', cursor: 'pointer',
+              background: 'rgba(0,0,0,0.28)', border: `1px solid ${P.border}`,
+              borderLeft: `3px solid ${P.water}`, borderRadius: 12, padding: '14px 16px',
+              color: P.ink, animation: `fadeUp .5s ${0.1 + i * 0.08}s ease both`,
+            }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontFamily: SANS, fontSize: '0.62rem', letterSpacing: '0.14em', color: P.gold, textTransform: 'uppercase' }}>
+                {v.title} · KJV
+              </span>
+              <span style={{ color: P.gold, fontSize: '1.1rem' }}>→</span>
+            </div>
+            <div style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: '1.02rem', lineHeight: 1.45, color: P.goldL, marginTop: 6 }}>
+              {v.affirmation}
+            </div>
+          </button>
+        ))}
+      </div>
+
+      <button onClick={onDone} style={{
+        marginTop: 4, background: 'transparent', border: 'none', cursor: 'pointer',
+        color: P.sub, fontFamily: SANS, fontSize: '0.82rem', padding: '4px 10px',
+      }}>
+        Return to the cabin
+      </button>
     </div>
   );
 }
