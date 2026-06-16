@@ -19,6 +19,7 @@ import CheckInScreen from './screens/CheckInScreen.jsx';
 import BecomingHerScreen from './screens/BecomingHerScreen.jsx';
 import DiamondArtScreen from './screens/DiamondArtScreen.jsx';
 import ColoringScreen from './screens/ColoringScreen.jsx';
+import LeakyBucketScreen from './screens/LeakyBucketScreen.jsx';
 import DiamondArtFrame from './components/DiamondArtFrame.jsx';
 import WordSearchScreen from './screens/WordSearchScreen.jsx';
 import HiddenObjectScreen from './screens/HiddenObjectScreen.jsx';
@@ -55,7 +56,7 @@ async function dbSave(k,v){
     localStorage.setItem(k,JSON.stringify(v));
     // Dual-write to Firestore when signed in
     if(auth?.currentUser){
-      const fieldMap={"irj-entries":"entries","irj-prayer":"prayerPosts","irj-saved-cards":"savedCards","irj-onboarded":"isOnboarded","irj-candles":"candles","irj-prayed":"prayedFor","irj-owned-items":"ownedItems","irj-garden":"gardenPlots","irj-inventory":"inventory","irj-saved-verses":"savedVerses","irj-bank":"bank","irj-sell-basket":"sellBasket","irj-farm-plots":"farmPlots","irj-animals":"animals","irj-missions":"missions","irj-premium":"isPremium","irj-becoming-her":"becomingHer","irj-trackers":"trackers","irj-pregnancy":"pregnancy","irj-garden-grid":"gardenGrid","irj-unlocks":"unlocks","irj-diamond-art":"diamondArt","irj-art-gallery":"artGallery","irj-imported-templates":"importedTemplates","irj-word-search":"wordSearch","irj-hidden-object":"hiddenObject","irj-pregnancy-meditations":"pregnancyMeditations","irj-father-meditations":"fatherMeditations","irj-conceive-meditations":"conceiveMeditations","irj-fertility":"fertility","irj-room-theme":"roomTheme","irj-coloring":"coloring"};
+      const fieldMap={"irj-entries":"entries","irj-prayer":"prayerPosts","irj-saved-cards":"savedCards","irj-onboarded":"isOnboarded","irj-candles":"candles","irj-prayed":"prayedFor","irj-owned-items":"ownedItems","irj-garden":"gardenPlots","irj-inventory":"inventory","irj-saved-verses":"savedVerses","irj-bank":"bank","irj-sell-basket":"sellBasket","irj-farm-plots":"farmPlots","irj-animals":"animals","irj-missions":"missions","irj-premium":"isPremium","irj-becoming-her":"becomingHer","irj-trackers":"trackers","irj-pregnancy":"pregnancy","irj-garden-grid":"gardenGrid","irj-unlocks":"unlocks","irj-diamond-art":"diamondArt","irj-art-gallery":"artGallery","irj-imported-templates":"importedTemplates","irj-word-search":"wordSearch","irj-hidden-object":"hiddenObject","irj-pregnancy-meditations":"pregnancyMeditations","irj-father-meditations":"fatherMeditations","irj-conceive-meditations":"conceiveMeditations","irj-fertility":"fertility","irj-room-theme":"roomTheme","irj-coloring":"coloring","irj-leaky-bucket":"leakyBucket"};
       const field=fieldMap[k];
       if(field){
         const userRef=doc(db,"users",auth.currentUser.uid);
@@ -1740,6 +1741,7 @@ function AppInner(){
   const [conceiveMeditations, setConceiveMeditationsRaw] = useState({});    // Trying-to-conceive meditation progress { completed }
   const [fertility, setFertilityRaw] = useState({});                       // Fertility / TTC tracker { periodStarts, cycleLength, periodLength, notes }
   const [coloring, setColoringRaw] = useState({});                         // Coloring page progress keyed by pageId { imageData, updatedAt }
+  const [leakyBucket, setLeakyBucketRaw] = useState([]);                    // Leaky Bucket (Episode 1) saved reflections [{ id, sources, plugs, reflection, createdAt, theme }]
   const [craftChooser, setCraftChooser] = useState(false);                 // "What would you like to create?" modal in the art studio
   const [puzzleChooser, setPuzzleChooser] = useState(false);               // "Pick a puzzle" modal (Word Search / Hidden Object) at the desk
   const [activeGatheringSpace, setActiveGatheringSpace] = useState(null);
@@ -1983,6 +1985,7 @@ function AppInner(){
       const cm   = await dbLoad("irj-conceive-meditations") || {};
       const fert = await dbLoad("irj-fertility") || {};
       const col  = await dbLoad("irj-coloring") || {};
+      const lb   = await dbLoad("irj-leaky-bucket") || [];
       // Migrate prayers: add status/answeredDate/category if missing
       let migrated=false;
       const mpp=pp.map(p=>{
@@ -2017,6 +2020,7 @@ function AppInner(){
       if(cm) setConceiveMeditationsRaw(cm);
       if(fert) setFertilityRaw(fert);
       if(col) setColoringRaw(col);
+      if(lb) setLeakyBucketRaw(lb);
       // Safety: if user has done check-ins but candle was lost in migration, restore it
       const hasCheckins=Object.keys(localStorage).some(k=>k.startsWith("irj-checkins-"));
       const candlePlaced=migratedRoom.placed?.some(p=>p.id==="candle");
@@ -2584,6 +2588,10 @@ function AppInner(){
   function setColoring(next){
     setColoringRaw(next);
     dbSave("irj-coloring",next);
+  }
+  function setLeakyBucket(next){
+    setLeakyBucketRaw(next);
+    dbSave("irj-leaky-bucket",next);
   }
 
   // ── CANDLE ECONOMY ──
@@ -4802,6 +4810,13 @@ function AppInner(){
         coloring={coloring}
         setColoring={setColoring}
       />
+    );
+  }
+
+  /* ══ LEAKY BUCKET (Episode 1) ════════════════════ */
+  if(screen==="leaky-bucket"){
+    return(
+      <LeakyBucketScreen onBack={()=>setScreen("cabin")} reflections={leakyBucket} setReflections={setLeakyBucket} />
     );
   }
 

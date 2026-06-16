@@ -47,6 +47,7 @@ export default function CabinScreen({
   const [chooserIdx, setChooserIdx] = useState(0); // 0 = Journals, 1 = Meditations
   const [medOpen, setMedOpen] = useState(false);   // Meditations cover + verse view
   const [medImgOk, setMedImgOk] = useState(false); // true once /meditations-cover.png loads
+  const [lbImgOk, setLbImgOk] = useState(false);   // true once /leakybucket.png loads
   const chooserTouch = useRef({ x: 0, y: 0 });
   const openBookChooser = useCallback(() => { setChooserIdx(0); setBookChooser(true); }, []);
   const chooserStart = useCallback((e) => { chooserTouch.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }; }, []);
@@ -588,14 +589,42 @@ export default function CabinScreen({
                 <div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.78rem",color:"rgba(255,248,232,0.45)",marginTop:3}}>Meditate on His word, day and night</div>
               </div>
             </div>
+            {/* ── Slide 2: THE LEAKY BUCKET ── */}
+            <div style={{flex:"0 0 100%",height:"100%",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:18}}>
+              <button onClick={()=>{setBookChooser(false);setScreen("leaky-bucket");}} style={{width:"min(60vw,240px)",aspectRatio:"2 / 3",borderRadius:"4px 11px 11px 4px",border:"none",padding:0,cursor:"pointer",position:"relative",overflow:"hidden",background:"linear-gradient(160deg,#27414C 0%,#1C313A 48%,#13242B 100%)",boxShadow:"0 16px 44px rgba(0,0,0,0.6), 0 0 0 1px rgba(201,169,110,0.22)",animation:"bookOpenAnim .5s cubic-bezier(.22,1,.36,1) both"}}>
+                <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center",padding:"16% 13%"}}>
+                  <div style={{position:"absolute",inset:"7%",border:"1px solid rgba(201,169,110,0.38)",borderRadius:6,boxShadow:"inset 0 0 26px rgba(95,168,201,0.14)",pointerEvents:"none"}}/>
+                  <div style={{position:"absolute",inset:"9.5%",border:"1px solid rgba(201,169,110,0.18)",borderRadius:4,pointerEvents:"none"}}/>
+                  <span style={{fontSize:"1.45rem",marginBottom:10}}>🪣</span>
+                  <div style={{fontFamily:DISPLAY,fontSize:"clamp(1.0rem,4.4vw,1.3rem)",fontWeight:700,color:"#E8C98A",letterSpacing:"0.05em"}}>The Leaky Bucket</div>
+                  <div style={{width:34,height:1,background:"linear-gradient(90deg,transparent,#C9A96E,transparent)",margin:"11px 0"}}/>
+                  <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.68rem",lineHeight:1.65,color:"rgba(245,230,200,0.78)",margin:0}}>&ldquo;…broken cisterns, that can hold no water.&rdquo;</p>
+                  <div style={{fontFamily:SANS,fontSize:"0.56rem",letterSpacing:"0.12em",color:"rgba(201,169,110,0.6)",marginTop:9}}>JEREMIAH 2:13 · KJV</div>
+                </div>
+                {/* Photographic cover — covers the placeholder once the file loads */}
+                <img src="/leakybucket.png" alt="The Leaky Bucket" onLoad={()=>setLbImgOk(true)} onError={()=>{}} style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",display:lbImgOk?"block":"none"}} draggable={false}/>
+                {/* Title plate over the photo */}
+                {lbImgOk&&<div style={{position:"absolute",left:0,right:0,bottom:0,padding:"34% 12% 12%",background:"linear-gradient(to top,rgba(8,10,12,0.92) 8%,rgba(8,10,12,0.6) 50%,transparent)",pointerEvents:"none",textAlign:"center"}}>
+                  <div style={{fontFamily:DISPLAY,fontSize:"clamp(1.0rem,4.4vw,1.3rem)",fontWeight:700,color:"#E8C98A",letterSpacing:"0.05em"}}>The Leaky Bucket</div>
+                  <div style={{width:34,height:1,background:"linear-gradient(90deg,transparent,#C9A96E,transparent)",margin:"8px auto"}}/>
+                  <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.66rem",lineHeight:1.55,color:"rgba(245,230,200,0.85)",margin:0}}>&ldquo;…broken cisterns, that can hold no water.&rdquo;</p>
+                  <div style={{fontFamily:SANS,fontSize:"0.54rem",letterSpacing:"0.12em",color:"rgba(201,169,110,0.7)",marginTop:7}}>JEREMIAH 2:13 · KJV</div>
+                </div>}
+                <div style={{position:"absolute",left:0,top:0,bottom:0,width:14,background:"linear-gradient(90deg,rgba(20,12,4,0.55),rgba(20,12,4,0.12),transparent)",pointerEvents:"none",zIndex:2}}/>
+              </button>
+              <div style={{textAlign:"center",animation:"fadeUp .6s .1s ease both"}}>
+                <div style={{fontFamily:DISPLAY,fontSize:"1.15rem",fontWeight:700,color:B.goldL,letterSpacing:"0.04em"}}>The Leaky Bucket</div>
+                <div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.78rem",color:"rgba(255,248,232,0.45)",marginTop:3}}>Episode One · what truly holds</div>
+              </div>
+            </div>
           </div>
         </div>
         {/* Prev / next chevrons */}
         {chooserIdx>0&&<button onClick={()=>setChooserIdx(i=>Math.max(0,i-1))} aria-label="Previous book" style={{position:"absolute",left:"3%",top:"50%",transform:"translateY(-50%)",zIndex:4,width:40,height:40,borderRadius:"50%",background:"rgba(26,22,18,0.6)",border:"1px solid rgba(201,169,110,0.2)",color:B.goldL,fontSize:"1.4rem",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(6px)",WebkitBackdropFilter:"blur(6px)"}}>&#8249;</button>}
-        {chooserIdx<1&&<button onClick={()=>setChooserIdx(i=>Math.min(1,i+1))} aria-label="Next book" style={{position:"absolute",right:"3%",top:"50%",transform:"translateY(-50%)",zIndex:4,width:40,height:40,borderRadius:"50%",background:"rgba(26,22,18,0.6)",border:"1px solid rgba(201,169,110,0.2)",color:B.goldL,fontSize:"1.4rem",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(6px)",WebkitBackdropFilter:"blur(6px)"}}>&#8250;</button>}
+        {chooserIdx<2&&<button onClick={()=>setChooserIdx(i=>Math.min(2,i+1))} aria-label="Next book" style={{position:"absolute",right:"3%",top:"50%",transform:"translateY(-50%)",zIndex:4,width:40,height:40,borderRadius:"50%",background:"rgba(26,22,18,0.6)",border:"1px solid rgba(201,169,110,0.2)",color:B.goldL,fontSize:"1.4rem",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(6px)",WebkitBackdropFilter:"blur(6px)"}}>&#8250;</button>}
         {/* Dots */}
         <div style={{position:"absolute",bottom:"7%",left:0,right:0,display:"flex",justifyContent:"center",gap:9,zIndex:4}}>
-          {[0,1].map(i=>(<button key={i} onClick={()=>setChooserIdx(i)} aria-label={`Book ${i+1}`} style={{width:9,height:9,borderRadius:"50%",border:"none",cursor:"pointer",padding:0,background:chooserIdx===i?B.goldL:"rgba(255,248,232,0.25)",transition:"background .25s"}}/>))}
+          {[0,1,2].map(i=>(<button key={i} onClick={()=>setChooserIdx(i)} aria-label={`Book ${i+1}`} style={{width:9,height:9,borderRadius:"50%",border:"none",cursor:"pointer",padding:0,background:chooserIdx===i?B.goldL:"rgba(255,248,232,0.25)",transition:"background .25s"}}/>))}
         </div>
         {/* Close */}
         <button onClick={()=>setBookChooser(false)} aria-label="Close" style={{position:"absolute",top:"6%",right:"5%",zIndex:5,width:34,height:34,borderRadius:"50%",background:"rgba(26,22,18,0.6)",border:"1px solid rgba(201,169,110,0.18)",color:"rgba(255,248,232,0.6)",fontSize:"0.85rem",cursor:"pointer",backdropFilter:"blur(6px)",WebkitBackdropFilter:"blur(6px)"}}>&#10005;</button>
