@@ -107,7 +107,14 @@ export default function LeakyBucketScreen({ onBack, reflections = [], setReflect
         />
       )}
 
-      {step === 6 && <TakeItWithYou onDone={onBack} />}
+      {step === 6 && (
+        <RepentanceStep
+          onNext={() => setStep(7)}
+          onDone={onBack}
+        />
+      )}
+
+      {step === 7 && <TakeItWithYou onDone={onBack} />}
     </div>
   );
 }
@@ -502,14 +509,11 @@ const REPENTANCE_NOTES = [
   { ref: 'Psalm 51:17', verse: 'A broken and a contrite heart, O God, thou wilt not despise.', plain: 'A humble, honest heart is exactly what He welcomes.' },
 ];
 
-/* ── It holds (Step 5) — repentance + reflection + save ──────── */
+/* ── It holds (Step 5) — reflection + save ───────────────────── */
 function ItHoldsStep({ sources, plugged, reflections, onSave, onNext, onDone }) {
   const [draft, setDraft] = useState('');
   const [saved, setSaved] = useState(false);
-  const [prayerId, setPrayerId] = useState('anchor'); // which prayer is shown
-  const [notesOpen, setNotesOpen] = useState(false);    // "what repentance means" panel
   const allPlugged = HOLES.map(h => h.id); // all three sealed by the time we reach here
-  const prayer = PRAYERS.find(p => p.id === prayerId) || PRAYERS[0];
 
   const save = () => {
     const text = draft.trim();
@@ -521,7 +525,6 @@ function ItHoldsStep({ sources, plugged, reflections, onSave, onNext, onDone }) 
       id: `lb-${Date.now()}`,
       sources,
       plugs: usedTruths,
-      prayer: { id: prayer.id, label: prayer.label, text: prayer.text },
       reflection: text,
       createdAt: new Date().toISOString(),
       theme: 'leaky-bucket/episode-1',
@@ -557,86 +560,6 @@ function ItHoldsStep({ sources, plugged, reflections, onSave, onNext, onDone }) 
       }}>
         &ldquo;He is the fountain of living waters. In Him, you are full &mdash; and you hold.&rdquo;
       </p>
-
-      {/* Prayer of repentance (offered, never required) */}
-      <section style={{ width: '100%', maxWidth: 480, animation: 'fadeUp .6s .22s ease both' }}>
-        <div style={{ textAlign: 'center', marginBottom: 12 }}>
-          <div style={{ fontFamily: SANS, fontSize: '0.66rem', letterSpacing: '0.16em', color: P.gold, textTransform: 'uppercase' }}>
-            A turning back
-          </div>
-          <p style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: '1rem', lineHeight: 1.55, color: 'rgba(245,238,225,0.82)', margin: '7px 0 0' }}>
-            Pray this with me &mdash; or in your own words. There's no rush, and no wrong way.
-          </p>
-        </div>
-
-        {/* Pick the prayer that fits */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginBottom: 12 }}>
-          {PRAYERS.map(p => {
-            const on = p.id === prayerId;
-            return (
-              <button key={p.id} onClick={() => setPrayerId(p.id)}
-                style={{
-                  background: on ? 'rgba(141,161,123,0.18)' : P.panel,
-                  border: `1px solid ${on ? 'rgba(141,161,123,0.6)' : P.border}`,
-                  borderRadius: 999, padding: '8px 14px', cursor: 'pointer',
-                  color: on ? '#CDE0BD' : P.ink, fontFamily: SANS, fontSize: '0.8rem',
-                  fontWeight: on ? 600 : 400, transition: 'all .2s',
-                }}>
-                {p.label}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* The prayer itself */}
-        <div style={{
-          background: 'rgba(0,0,0,0.26)', border: `1px solid ${P.border}`,
-          borderLeft: `3px solid ${P.sage}`, borderRadius: 14, padding: '16px 18px',
-        }}>
-          <p style={{ fontFamily: SERIF, fontSize: '1.06rem', lineHeight: 1.72, color: '#F0E6D2', margin: 0 }}>
-            {prayer.text}
-          </p>
-        </div>
-
-        {/* What repentance means (tappable) */}
-        <button onClick={() => setNotesOpen(o => !o)}
-          style={{
-            marginTop: 12, width: '100%',
-            background: 'transparent', border: `1px solid ${P.border}`, borderRadius: 12,
-            padding: '12px 14px', cursor: 'pointer', display: 'flex',
-            alignItems: 'center', justifyContent: 'space-between',
-            color: P.goldL, fontFamily: SANS, fontSize: '0.84rem',
-          }}>
-          <span>What does repentance actually mean?</span>
-          <span style={{ color: P.gold, fontSize: '0.9rem' }}>{notesOpen ? '–' : '+'}</span>
-        </button>
-        {notesOpen && (
-          <div style={{ marginTop: 12, animation: 'fadeUp .4s ease both' }}>
-            <p style={{ fontFamily: SERIF, fontSize: '0.98rem', lineHeight: 1.65, color: 'rgba(245,238,225,0.85)', margin: '0 0 14px' }}>
-              Repentance isn't groveling or self-punishment. In Scripture it's a turn &mdash; a
-              change of direction: turning <em>away</em> from what drains you, and turning <em>back</em> toward God.
-            </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {REPENTANCE_NOTES.map(n => (
-                <div key={n.ref} style={{
-                  background: 'rgba(0,0,0,0.22)', border: `1px solid ${P.border}`,
-                  borderRadius: 12, padding: '12px 14px',
-                }}>
-                  <p style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: '0.92rem', lineHeight: 1.55, color: '#F0E6D2', margin: 0 }}>
-                    &ldquo;{n.verse}&rdquo;
-                  </p>
-                  <div style={{ fontFamily: SANS, fontSize: '0.58rem', letterSpacing: '0.14em', color: P.gold, textTransform: 'uppercase', margin: '8px 0 6px' }}>
-                    {n.ref} · KJV
-                  </div>
-                  <p style={{ fontFamily: SANS, fontSize: '0.8rem', lineHeight: 1.5, color: 'rgba(245,238,225,0.72)', margin: 0 }}>
-                    {n.plain}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </section>
 
       {/* Reflection box */}
       <div style={{ width: '100%', maxWidth: 460, animation: 'fadeUp .6s .25s ease both' }}>
@@ -700,6 +623,124 @@ function ItHoldsStep({ sources, plugged, reflections, onSave, onNext, onDone }) 
           </div>
         </div>
       )}
+
+      <button
+        onClick={onNext}
+        style={{
+          marginTop: 6,
+          background: `linear-gradient(135deg, ${P.water}, ${P.waterD})`,
+          border: 'none', borderRadius: 14, padding: '15px 34px', cursor: 'pointer',
+          color: '#fff', fontFamily: SANS, fontWeight: 600, fontSize: '0.95rem',
+          boxShadow: '0 10px 28px rgba(60,127,160,0.4)',
+        }}>
+        Continue →
+      </button>
+
+      <button onClick={onDone} style={{
+        background: 'transparent', border: 'none', cursor: 'pointer',
+        color: P.sub, fontFamily: SANS, fontSize: '0.82rem', padding: '4px 10px',
+      }}>
+        Return to the cabin
+      </button>
+    </div>
+  );
+}
+
+/* ── A turning back (Step 6) — repentance prayer + explainer ─── */
+function RepentanceStep({ onNext, onDone }) {
+  const [prayerId, setPrayerId] = useState('anchor'); // which prayer is shown
+  const [notesOpen, setNotesOpen] = useState(false);   // "what repentance means" panel
+  const prayer = PRAYERS.find(p => p.id === prayerId) || PRAYERS[0];
+
+  return (
+    <div style={{
+      position: 'relative', zIndex: 2, minHeight: 'calc(100vh - 50px)',
+      display: 'flex', flexDirection: 'column', alignItems: 'center',
+      padding: '22px 20px 48px', gap: 18,
+    }}>
+      <div style={{ textAlign: 'center', maxWidth: 480, animation: 'fadeUp .5s ease both' }}>
+        <div style={{ fontFamily: SANS, fontSize: '0.66rem', letterSpacing: '0.16em', color: P.gold, textTransform: 'uppercase' }}>
+          A turning back
+        </div>
+        <h2 style={{ fontFamily: SERIF, fontStyle: 'italic', fontWeight: 600, fontSize: 'clamp(1.4rem,5.5vw,1.9rem)', color: P.goldL, margin: '8px 0 0' }}>
+          Come home to the fountain.
+        </h2>
+        <p style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: '1rem', lineHeight: 1.55, color: 'rgba(245,238,225,0.82)', margin: '10px 0 0' }}>
+          Pray this with me &mdash; or in your own words. There's no rush, and no wrong way.
+        </p>
+      </div>
+
+      {/* Pick the prayer that fits */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', maxWidth: 480 }}>
+        {PRAYERS.map(p => {
+          const on = p.id === prayerId;
+          return (
+            <button key={p.id} onClick={() => setPrayerId(p.id)}
+              style={{
+                background: on ? 'rgba(141,161,123,0.18)' : P.panel,
+                border: `1px solid ${on ? 'rgba(141,161,123,0.6)' : P.border}`,
+                borderRadius: 999, padding: '8px 14px', cursor: 'pointer',
+                color: on ? '#CDE0BD' : P.ink, fontFamily: SANS, fontSize: '0.8rem',
+                fontWeight: on ? 600 : 400, transition: 'all .2s',
+              }}>
+              {p.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* The prayer itself */}
+      <div style={{
+        width: '100%', maxWidth: 480,
+        background: 'rgba(0,0,0,0.26)', border: `1px solid ${P.border}`,
+        borderLeft: `3px solid ${P.sage}`, borderRadius: 14, padding: '16px 18px',
+        animation: 'fadeUp .6s .12s ease both',
+      }}>
+        <p style={{ fontFamily: SERIF, fontSize: '1.06rem', lineHeight: 1.72, color: '#F0E6D2', margin: 0 }}>
+          {prayer.text}
+        </p>
+      </div>
+
+      {/* What repentance means (tappable) */}
+      <div style={{ width: '100%', maxWidth: 480 }}>
+        <button onClick={() => setNotesOpen(o => !o)}
+          style={{
+            width: '100%',
+            background: 'transparent', border: `1px solid ${P.border}`, borderRadius: 12,
+            padding: '12px 14px', cursor: 'pointer', display: 'flex',
+            alignItems: 'center', justifyContent: 'space-between',
+            color: P.goldL, fontFamily: SANS, fontSize: '0.84rem',
+          }}>
+          <span>What does repentance actually mean?</span>
+          <span style={{ color: P.gold, fontSize: '0.9rem' }}>{notesOpen ? '–' : '+'}</span>
+        </button>
+        {notesOpen && (
+          <div style={{ marginTop: 12, animation: 'fadeUp .4s ease both' }}>
+            <p style={{ fontFamily: SERIF, fontSize: '0.98rem', lineHeight: 1.65, color: 'rgba(245,238,225,0.85)', margin: '0 0 14px' }}>
+              Repentance isn't groveling or self-punishment. In Scripture it's a turn &mdash; a
+              change of direction: turning <em>away</em> from what drains you, and turning <em>back</em> toward God.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {REPENTANCE_NOTES.map(n => (
+                <div key={n.ref} style={{
+                  background: 'rgba(0,0,0,0.22)', border: `1px solid ${P.border}`,
+                  borderRadius: 12, padding: '12px 14px',
+                }}>
+                  <p style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: '0.92rem', lineHeight: 1.55, color: '#F0E6D2', margin: 0 }}>
+                    &ldquo;{n.verse}&rdquo;
+                  </p>
+                  <div style={{ fontFamily: SANS, fontSize: '0.58rem', letterSpacing: '0.14em', color: P.gold, textTransform: 'uppercase', margin: '8px 0 6px' }}>
+                    {n.ref} · KJV
+                  </div>
+                  <p style={{ fontFamily: SANS, fontSize: '0.8rem', lineHeight: 1.5, color: 'rgba(245,238,225,0.72)', margin: 0 }}>
+                    {n.plain}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
 
       <button
         onClick={onNext}
