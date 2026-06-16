@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import CottageBackground from '../components/CottageBackground.jsx';
 import SoundButton from '../components/SoundButton.jsx';
-import MeditationWordSearch from '../components/MeditationWordSearch.jsx';
+import VerseWordSearch from '../components/VerseWordSearch.jsx';
 
 const SERIF = "'Cormorant Garamond', Georgia, serif";
 const SANS = "'Inter', system-ui, -apple-system, sans-serif";
@@ -910,9 +910,9 @@ function TakeItWithYou({ onNext, onDone }) {
 }
 
 /* ── Step 8: Word-search hub (the 4 core verses) ─────────────── */
-// Each entry is shaped like the meditation "med" object MeditationWordSearch
-// expects: { title, verse:{ text }, affirmation }. The puzzle's hidden words
-// come from the verse + affirmation; finding them all reveals the affirmation.
+// Each entry is shaped like the "med" object VerseWordSearch expects:
+// { title, verse:{ text }, affirmation }. The verse is shown in full with its
+// key words as blanks; finding each word in the grid fills the verse back in.
 const WS_VERSES = [
   { key: 'jeremiah', title: 'Jeremiah 2:13', verse: { text: JER_213 }, affirmation: 'In Him, you are full — and you hold.' },
   { key: 'john',     title: TRUTHS[0].ref, verse: { text: TRUTHS[0].text }, affirmation: TRUTHS[0].truth },
@@ -937,7 +937,7 @@ function WordSearchHub({ onDone }) {
             ← Choose another verse
           </button>
         </div>
-        <MeditationWordSearch med={v} seedId={`leaky-bucket-${v.key}`} onBack={() => setActive(null)} />
+        <VerseWordSearch med={v} seedId={`leaky-bucket-${v.key}`} />
       </div>
     );
   }
