@@ -211,12 +211,32 @@ export default function VerseWordSearch({ med, seedId }) {
         onWordFound={onWordFound}
       />
 
-      <div style={{
-        margin: '18px auto 0', maxWidth: 580, textAlign: 'center',
-        fontSize: '0.66rem', fontFamily: SANS, fontWeight: 600,
-        letterSpacing: '0.14em', color: P.sub, textTransform: 'uppercase',
-      }}>
-        {isComplete ? 'Verse complete' : `${remaining.length} word${remaining.length === 1 ? '' : 's'} to find`}
+      {/* Word bank — the words to search for */}
+      <div style={{ margin: '20px auto 0', maxWidth: 580 }}>
+        <div style={{
+          fontSize: '0.66rem', fontFamily: SANS, fontWeight: 600,
+          letterSpacing: '0.14em', color: P.sub, textTransform: 'uppercase',
+          marginBottom: 10, textAlign: 'center',
+        }}>
+          {isComplete ? 'Verse complete' : `Words to find · ${remaining.length} left`}
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, justifyContent: 'center' }}>
+          {words.map((w) => {
+            const isFound = foundSet.has(w);
+            return (
+              <span key={w} style={{
+                padding: '4px 10px', borderRadius: 14,
+                background: isFound ? 'rgba(201,169,110,0.18)' : 'rgba(255,255,255,0.04)',
+                color: isFound ? P.goldL : P.ink,
+                fontSize: '0.78rem', fontFamily: SANS, fontWeight: 600,
+                textDecoration: isFound ? 'line-through' : 'none',
+                textDecorationColor: 'rgba(201,169,110,0.6)',
+                border: `1px solid ${isFound ? 'rgba(201,169,110,0.35)' : P.border}`,
+                letterSpacing: '0.04em', transition: 'all 0.2s',
+              }}>{w}</span>
+            );
+          })}
+        </div>
       </div>
 
       {toast && (
