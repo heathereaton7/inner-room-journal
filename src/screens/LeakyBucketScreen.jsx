@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import CottageBackground from '../components/CottageBackground.jsx';
 import SoundButton from '../components/SoundButton.jsx';
 
@@ -102,9 +102,12 @@ export default function LeakyBucketScreen({ onBack, reflections = [], setReflect
           plugged={plugged}
           reflections={reflections}
           onSave={(entry) => setReflections([entry, ...reflections])}
+          onNext={() => setStep(6)}
           onDone={onBack}
         />
       )}
+
+      {step === 6 && <TakeItWithYou onDone={onBack} />}
     </div>
   );
 }
@@ -463,11 +466,50 @@ function PlugStep({ plugged, onPlug, onContinue }) {
   );
 }
 
-/* ── It holds (Step 5) — reflection + save ───────────────────── */
-function ItHoldsStep({ sources, plugged, reflections, onSave, onDone }) {
+/* ── Prayers of repentance (offered, never required) ─────────── */
+// "Pray this with me — or in your own words." Anchor shows by default.
+const PRAYERS = [
+  {
+    id: 'anchor',
+    label: 'Broken cisterns',
+    text: "God, I'm tired. I've been trying to fill myself with things that keep leaking out — chasing approval, proving I'm enough, holding it all together on my own — and I'm empty. I'm sorry for walking away from You and digging my own wells. I don't want to do that anymore. I'm turning back to You. You're the only thing that's ever actually held me. Fill me. Be my source. I'm done settling for cracked cisterns. Amen.",
+  },
+  {
+    id: 'worth',
+    label: 'Worth & approval',
+    text: "Lord, I've been letting other people decide whether I matter. I measure myself by what I get done and who approves of me, and it's never enough. I'm sorry. I don't want to live like that anymore. Remind me I was Yours before I did a single thing right. I lay it down. Amen.",
+  },
+  {
+    id: 'fear',
+    label: 'Fear & the waiting',
+    text: "Father, I'm carrying so much fear about things I can't control. I keep gripping them, trying to manage what was never mine to manage. I'm sorry for trusting my worry more than I trust You. I hand it all over — the waiting, the what-ifs, every bit of it. Your thoughts toward me are peace. Help me rest there. Amen.",
+  },
+  {
+    id: 'drift',
+    label: 'Coming back',
+    text: "God, I've drifted. I kept You at arm's length and tried to do life on my own, and I feel the distance now. I'm sorry. Thank You that You're not standing there with Your arms crossed — You're already running toward me. I'm coming home. Meet me here. Amen.",
+  },
+];
+
+// "What repentance means" — KJV verse + plain-English meaning under each.
+const REPENTANCE_NOTES = [
+  { ref: 'Acts 3:19', verse: 'Repent ye therefore, and be converted, that your sins may be blotted out, when the times of refreshing shall come from the presence of the Lord.', plain: 'Turning back refreshes you; it isn\u2019t punishment.' },
+  { ref: 'Romans 2:4', verse: '\u2026the goodness of God leadeth thee to repentance.', plain: 'His kindness draws you, not shame.' },
+  { ref: 'Joel 2:13', verse: 'Rend your heart, and not your garments, and turn unto the LORD your God: for he is gracious and merciful.', plain: 'It\u2019s about the heart, not a performance.' },
+  { ref: '2 Corinthians 7:10', verse: 'For godly sorrow worketh repentance to salvation\u2026 but the sorrow of the world worketh death.', plain: 'The right kind of sorrow moves you forward instead of crushing you.' },
+  { ref: '1 John 1:9', verse: 'If we confess our sins, he is faithful and just to forgive us our sins, and to cleanse us from all unrighteousness.', plain: 'Confession is met with washing, not a lecture.' },
+  { ref: 'Isaiah 55:1,7', verse: 'Ho, every one that thirsteth, come ye to the waters\u2026 let him return unto the LORD\u2026 for he will abundantly pardon.', plain: 'Thirsty people, come home to the fountain; He pardons abundantly.' },
+  { ref: 'Psalm 51:17', verse: 'A broken and a contrite heart, O God, thou wilt not despise.', plain: 'A humble, honest heart is exactly what He welcomes.' },
+];
+
+/* ── It holds (Step 5) — repentance + reflection + save ──────── */
+function ItHoldsStep({ sources, plugged, reflections, onSave, onNext, onDone }) {
   const [draft, setDraft] = useState('');
   const [saved, setSaved] = useState(false);
+  const [prayerId, setPrayerId] = useState('anchor'); // which prayer is shown
+  const [notesOpen, setNotesOpen] = useState(false);    // "what repentance means" panel
   const allPlugged = HOLES.map(h => h.id); // all three sealed by the time we reach here
+  const prayer = PRAYERS.find(p => p.id === prayerId) || PRAYERS[0];
 
   const save = () => {
     const text = draft.trim();
@@ -479,6 +521,7 @@ function ItHoldsStep({ sources, plugged, reflections, onSave, onDone }) {
       id: `lb-${Date.now()}`,
       sources,
       plugs: usedTruths,
+      prayer: { id: prayer.id, label: prayer.label, text: prayer.text },
       reflection: text,
       createdAt: new Date().toISOString(),
       theme: 'leaky-bucket/episode-1',
@@ -514,6 +557,86 @@ function ItHoldsStep({ sources, plugged, reflections, onSave, onDone }) {
       }}>
         &ldquo;He is the fountain of living waters. In Him, you are full &mdash; and you hold.&rdquo;
       </p>
+
+      {/* Prayer of repentance (offered, never required) */}
+      <section style={{ width: '100%', maxWidth: 480, animation: 'fadeUp .6s .22s ease both' }}>
+        <div style={{ textAlign: 'center', marginBottom: 12 }}>
+          <div style={{ fontFamily: SANS, fontSize: '0.66rem', letterSpacing: '0.16em', color: P.gold, textTransform: 'uppercase' }}>
+            A turning back
+          </div>
+          <p style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: '1rem', lineHeight: 1.55, color: 'rgba(245,238,225,0.82)', margin: '7px 0 0' }}>
+            Pray this with me &mdash; or in your own words. There's no rush, and no wrong way.
+          </p>
+        </div>
+
+        {/* Pick the prayer that fits */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginBottom: 12 }}>
+          {PRAYERS.map(p => {
+            const on = p.id === prayerId;
+            return (
+              <button key={p.id} onClick={() => setPrayerId(p.id)}
+                style={{
+                  background: on ? 'rgba(141,161,123,0.18)' : P.panel,
+                  border: `1px solid ${on ? 'rgba(141,161,123,0.6)' : P.border}`,
+                  borderRadius: 999, padding: '8px 14px', cursor: 'pointer',
+                  color: on ? '#CDE0BD' : P.ink, fontFamily: SANS, fontSize: '0.8rem',
+                  fontWeight: on ? 600 : 400, transition: 'all .2s',
+                }}>
+                {p.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* The prayer itself */}
+        <div style={{
+          background: 'rgba(0,0,0,0.26)', border: `1px solid ${P.border}`,
+          borderLeft: `3px solid ${P.sage}`, borderRadius: 14, padding: '16px 18px',
+        }}>
+          <p style={{ fontFamily: SERIF, fontSize: '1.06rem', lineHeight: 1.72, color: '#F0E6D2', margin: 0 }}>
+            {prayer.text}
+          </p>
+        </div>
+
+        {/* What repentance means (tappable) */}
+        <button onClick={() => setNotesOpen(o => !o)}
+          style={{
+            marginTop: 12, width: '100%',
+            background: 'transparent', border: `1px solid ${P.border}`, borderRadius: 12,
+            padding: '12px 14px', cursor: 'pointer', display: 'flex',
+            alignItems: 'center', justifyContent: 'space-between',
+            color: P.goldL, fontFamily: SANS, fontSize: '0.84rem',
+          }}>
+          <span>What does repentance actually mean?</span>
+          <span style={{ color: P.gold, fontSize: '0.9rem' }}>{notesOpen ? '–' : '+'}</span>
+        </button>
+        {notesOpen && (
+          <div style={{ marginTop: 12, animation: 'fadeUp .4s ease both' }}>
+            <p style={{ fontFamily: SERIF, fontSize: '0.98rem', lineHeight: 1.65, color: 'rgba(245,238,225,0.85)', margin: '0 0 14px' }}>
+              Repentance isn't groveling or self-punishment. In Scripture it's a turn &mdash; a
+              change of direction: turning <em>away</em> from what drains you, and turning <em>back</em> toward God.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {REPENTANCE_NOTES.map(n => (
+                <div key={n.ref} style={{
+                  background: 'rgba(0,0,0,0.22)', border: `1px solid ${P.border}`,
+                  borderRadius: 12, padding: '12px 14px',
+                }}>
+                  <p style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: '0.92rem', lineHeight: 1.55, color: '#F0E6D2', margin: 0 }}>
+                    &ldquo;{n.verse}&rdquo;
+                  </p>
+                  <div style={{ fontFamily: SANS, fontSize: '0.58rem', letterSpacing: '0.14em', color: P.gold, textTransform: 'uppercase', margin: '8px 0 6px' }}>
+                    {n.ref} · KJV
+                  </div>
+                  <p style={{ fontFamily: SANS, fontSize: '0.8rem', lineHeight: 1.5, color: 'rgba(245,238,225,0.72)', margin: 0 }}>
+                    {n.plain}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </section>
 
       {/* Reflection box */}
       <div style={{ width: '100%', maxWidth: 460, animation: 'fadeUp .6s .25s ease both' }}>
@@ -578,9 +701,21 @@ function ItHoldsStep({ sources, plugged, reflections, onSave, onDone }) {
         </div>
       )}
 
+      <button
+        onClick={onNext}
+        style={{
+          marginTop: 6,
+          background: `linear-gradient(135deg, ${P.water}, ${P.waterD})`,
+          border: 'none', borderRadius: 14, padding: '15px 34px', cursor: 'pointer',
+          color: '#fff', fontFamily: SANS, fontWeight: 600, fontSize: '0.95rem',
+          boxShadow: '0 10px 28px rgba(60,127,160,0.4)',
+        }}>
+        Take it with you →
+      </button>
+
       <button onClick={onDone} style={{
-        marginTop: 4, background: P.panel, border: `1px solid ${P.border}`, borderRadius: 12,
-        padding: '13px 30px', cursor: 'pointer', color: P.goldL, fontFamily: SANS, fontSize: '0.88rem',
+        background: 'transparent', border: 'none', cursor: 'pointer',
+        color: P.sub, fontFamily: SANS, fontSize: '0.82rem', padding: '4px 10px',
       }}>
         Return to the cabin
       </button>
@@ -592,6 +727,238 @@ function formatDate(iso) {
   try {
     return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
   } catch { return ''; }
+}
+
+/* ── Step 6 data: wallpapers + Bible links ───────────────────── */
+// Each wallpaper is generated in-app on a canvas, so no image files are needed.
+const WALLPAPERS = [
+  { id: 'hold', line: 'In Him, you are full — and you hold.', ref: 'Jeremiah 2:13', c1: '#1C313A', c2: '#0E1B20' },
+  { id: 'living', line: 'He is living water. Drink, and never thirst again.', ref: 'John 4:14', c1: '#2C5A6E', c2: '#15303B' },
+  { id: 'chosen', line: 'He chose you before you had done a single thing.', ref: 'Ephesians 1:4–5', c1: '#3A2F1C', c2: '#1E180E' },
+  { id: 'nothing', line: 'Nothing can separate you from His love.', ref: 'Romans 8:38–39', c1: '#2E3A28', c2: '#161D12' },
+];
+
+// Bible.com (YouVersion) — KJV is version 1. Opens app or web reader.
+const BIBLE_LINKS = [
+  { label: 'Jeremiah 2:13', url: 'https://www.bible.com/bible/1/JER.2.13' },
+  { label: 'John 4:14', url: 'https://www.bible.com/bible/1/JHN.4.14' },
+  { label: 'Ephesians 1:4–5', url: 'https://www.bible.com/bible/1/EPH.1.4' },
+  { label: 'Romans 8:38–39', url: 'https://www.bible.com/bible/1/ROM.8.38' },
+];
+
+const SHARE_TEXT =
+  '"He is the fountain of living waters." — Jeremiah 2:13\n\nI just worked through The Leaky Bucket in the Inner Room Journal — a reminder that only He can truly fill us.';
+const SHARE_URL = 'https://innerroomjournal.com';
+
+/* ── Step 6: Take it with you (wallpapers, Bible, share) ──────── */
+function TakeItWithYou({ onDone }) {
+  const [active, setActive] = useState(null); // wallpaper opened full-screen
+  const [shareMsg, setShareMsg] = useState('');
+
+  const share = async () => {
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: 'The Leaky Bucket', text: SHARE_TEXT, url: SHARE_URL });
+        return;
+      }
+      await navigator.clipboard.writeText(`${SHARE_TEXT}\n${SHARE_URL}`);
+      setShareMsg('Copied — paste it to a friend.');
+      setTimeout(() => setShareMsg(''), 2600);
+    } catch {
+      // user cancelled the share sheet — no action needed
+    }
+  };
+
+  return (
+    <div style={{
+      position: 'relative', zIndex: 2, minHeight: 'calc(100vh - 50px)',
+      display: 'flex', flexDirection: 'column', alignItems: 'center',
+      padding: '22px 20px 48px', gap: 22,
+    }}>
+      <div style={{ textAlign: 'center', maxWidth: 480, animation: 'fadeUp .5s ease both' }}>
+        <h2 style={{ fontFamily: SERIF, fontStyle: 'italic', fontWeight: 600, fontSize: 'clamp(1.5rem,6vw,2rem)', color: P.goldL, margin: 0 }}>
+          Take it with you.
+        </h2>
+        <p style={{ fontFamily: SERIF, fontSize: '1rem', lineHeight: 1.6, color: 'rgba(245,238,225,0.85)', margin: '10px 0 0' }}>
+          Carry the truth into your day. Set a reminder on your phone, open the
+          word for yourself, or pass it to someone who needs it.
+        </p>
+      </div>
+
+      {/* Wallpapers */}
+      <section style={{ width: '100%', maxWidth: 480, animation: 'fadeUp .6s .1s ease both' }}>
+        <div style={{ fontFamily: SANS, fontSize: '0.66rem', letterSpacing: '0.16em', color: P.gold, textTransform: 'uppercase', marginBottom: 12, textAlign: 'center' }}>
+          Phone wallpapers
+        </div>
+        <div style={{ display: 'flex', gap: 12, overflowX: 'auto', padding: '2px 2px 8px', WebkitOverflowScrolling: 'touch' }}>
+          {WALLPAPERS.map(w => (
+            <button key={w.id} onClick={() => setActive(w)} aria-label={`Open ${w.ref} wallpaper`}
+              style={{ flex: '0 0 auto', border: 'none', padding: 0, cursor: 'pointer', borderRadius: 14, background: 'transparent' }}>
+              <WallpaperCanvas wp={w} width={116} />
+            </button>
+          ))}
+        </div>
+        <p style={{ fontFamily: SANS, fontSize: '0.74rem', color: P.sub, textAlign: 'center', margin: '4px 0 0' }}>
+          Tap a design to save it to your phone.
+        </p>
+      </section>
+
+      {/* Read it in the Bible */}
+      <section style={{ width: '100%', maxWidth: 460, animation: 'fadeUp .6s .15s ease both' }}>
+        <div style={{ fontFamily: SANS, fontSize: '0.66rem', letterSpacing: '0.16em', color: P.gold, textTransform: 'uppercase', marginBottom: 12, textAlign: 'center' }}>
+          Read it in the Bible
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 9, justifyContent: 'center' }}>
+          {BIBLE_LINKS.map(b => (
+            <a key={b.url} href={b.url} target="_blank" rel="noopener noreferrer"
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6, textDecoration: 'none',
+                background: P.panel, border: `1px solid ${P.border}`, borderRadius: 999,
+                padding: '10px 16px', color: P.ink, fontFamily: SANS, fontSize: '0.84rem',
+              }}>
+              {b.label} <span style={{ color: P.gold, fontSize: '0.78rem' }}>↗</span>
+            </a>
+          ))}
+        </div>
+      </section>
+
+      {/* Share */}
+      <section style={{ width: '100%', maxWidth: 420, textAlign: 'center', animation: 'fadeUp .6s .2s ease both' }}>
+        <button onClick={share}
+          style={{
+            width: '100%',
+            background: `linear-gradient(135deg, ${P.sage}, #6E8460)`,
+            border: 'none', borderRadius: 14, padding: '15px 0', cursor: 'pointer',
+            color: '#fff', fontFamily: SANS, fontWeight: 600, fontSize: '0.95rem',
+            boxShadow: '0 10px 28px rgba(110,132,96,0.4)',
+          }}>
+          Share this with someone
+        </button>
+        {shareMsg && (
+          <p style={{ fontFamily: SANS, fontSize: '0.78rem', color: P.sage, margin: '10px 0 0' }}>{shareMsg}</p>
+        )}
+      </section>
+
+      <button onClick={onDone} style={{
+        marginTop: 2, background: 'transparent', border: 'none', cursor: 'pointer',
+        color: P.sub, fontFamily: SANS, fontSize: '0.82rem', padding: '4px 10px',
+      }}>
+        Return to the cabin
+      </button>
+
+      {/* Full-screen wallpaper viewer with save */}
+      {active && <WallpaperViewer wp={active} onClose={() => setActive(null)} />}
+    </div>
+  );
+}
+
+/* Draws a wallpaper on a canvas (single source for preview + download) */
+function drawWallpaper(canvas, wp) {
+  const W = 1080, H = 2160;
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  // Background gradient
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, wp.c1); g.addColorStop(1, wp.c2);
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  // Soft inner frame
+  ctx.strokeStyle = 'rgba(201,169,110,0.35)'; ctx.lineWidth = 3;
+  ctx.strokeRect(72, 72, W - 144, H - 144);
+  // Verse text (word-wrapped, centered)
+  ctx.fillStyle = '#F3E9D2';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = 'italic 600 78px Georgia, serif';
+  const words = wp.line.split(' ');
+  const maxW = W - 260;
+  const lines = []; let cur = '';
+  for (const word of words) {
+    const test = cur ? `${cur} ${word}` : word;
+    if (ctx.measureText(test).width > maxW && cur) { lines.push(cur); cur = word; }
+    else cur = test;
+  }
+  if (cur) lines.push(cur);
+  const lh = 104;
+  let y = H / 2 - ((lines.length - 1) * lh) / 2;
+  for (const ln of lines) { ctx.fillText(ln, W / 2, y); y += lh; }
+  // Divider + reference
+  ctx.strokeStyle = 'rgba(201,169,110,0.7)'; ctx.lineWidth = 2;
+  const divY = y + 26;
+  ctx.beginPath(); ctx.moveTo(W / 2 - 60, divY); ctx.lineTo(W / 2 + 60, divY); ctx.stroke();
+  ctx.fillStyle = 'rgba(201,169,110,0.9)';
+  ctx.font = '500 40px Georgia, serif';
+  ctx.fillText(wp.ref.toUpperCase() + '  ·  KJV', W / 2, divY + 56);
+  // Footer
+  ctx.fillStyle = 'rgba(245,233,210,0.45)';
+  ctx.font = '400 32px Georgia, serif';
+  ctx.fillText('innerroomjournal.com', W / 2, H - 130);
+}
+
+function WallpaperCanvas({ wp, width = 116 }) {
+  const canvasRef = useRef(null);
+  useEffect(() => { if (canvasRef.current) drawWallpaper(canvasRef.current, wp); }, [wp]);
+  return (
+    <canvas
+      ref={canvasRef}
+      style={{
+        width, height: width * 2, borderRadius: 14, display: 'block',
+        boxShadow: '0 10px 26px rgba(0,0,0,0.5), 0 0 0 1px rgba(201,169,110,0.22)',
+      }}
+    />
+  );
+}
+
+function WallpaperViewer({ wp, onClose }) {
+  const canvasRef = useRef(null);
+  const [hint, setHint] = useState('');
+  useEffect(() => { if (canvasRef.current) drawWallpaper(canvasRef.current, wp); }, [wp]);
+
+  const download = () => {
+    try {
+      const url = canvasRef.current.toDataURL('image/png');
+      const a = document.createElement('a');
+      a.href = url; a.download = `leaky-bucket-${wp.id}.png`;
+      document.body.appendChild(a); a.click(); a.remove();
+      setHint('Saved. On a phone: press & hold the image to set it as your wallpaper.');
+      setTimeout(() => setHint(''), 4000);
+    } catch {
+      setHint('Press & hold the image to save it.');
+    }
+  };
+
+  return (
+    <div onClick={onClose} style={{
+      position: 'fixed', inset: 0, zIndex: 130,
+      background: 'rgba(8,6,4,0.92)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+      padding: '24px 20px', gap: 16, animation: 'spaceFadeIn .25s ease',
+    }}>
+      <canvas
+        ref={canvasRef}
+        onClick={e => e.stopPropagation()}
+        style={{
+          maxHeight: '64vh', width: 'auto', borderRadius: 18,
+          boxShadow: '0 20px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(201,169,110,0.25)',
+        }}
+      />
+      <div onClick={e => e.stopPropagation()} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+        <button onClick={download} style={{
+          background: `linear-gradient(135deg, ${P.water}, ${P.waterD})`,
+          border: 'none', borderRadius: 14, padding: '14px 40px', cursor: 'pointer',
+          color: '#fff', fontFamily: SANS, fontWeight: 600, fontSize: '0.95rem',
+          boxShadow: '0 10px 28px rgba(60,127,160,0.4)',
+        }}>
+          Save to my phone
+        </button>
+        {hint
+          ? <p style={{ fontFamily: SANS, fontSize: '0.78rem', color: P.goldL, textAlign: 'center', maxWidth: 320, margin: 0 }}>{hint}</p>
+          : <p style={{ fontFamily: SANS, fontSize: '0.74rem', color: 'rgba(245,238,225,0.55)', textAlign: 'center', maxWidth: 320, margin: 0 }}>On a phone you can also press &amp; hold the image to save it.</p>}
+        <button onClick={onClose} style={{
+          background: 'transparent', border: 'none', cursor: 'pointer',
+          color: P.sub, fontFamily: SANS, fontSize: '0.82rem', padding: '4px 10px',
+        }}>Close</button>
+      </div>
+    </div>
+  );
 }
 
 // The three holes in the cistern (shared by the leak + plug steps)
