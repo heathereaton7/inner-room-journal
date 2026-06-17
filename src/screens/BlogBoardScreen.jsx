@@ -5,7 +5,6 @@ import {
   fetchPublishedPosts, fetchAllPosts, formatPostDate,
   BLOG, BLOG_SERIF, BLOG_SANS,
 } from '../systems/blog.js';
-import { useRoomTheme } from '../systems/roomThemes.js';
 
 /**
  * THE PORCH BOARD — the readable bulletin-board close-up (screen B of 3).
@@ -23,11 +22,12 @@ const TILTS = [-2.4, 1.8, -1.4, 2.2, -2.0, 1.3, -1.7, 2.0];
 const PINS = ['#C0413B', '#5E7560', '#A99779', '#C8A39B', '#7E6B97', '#C9A96E'];
 const VISIBLE = 5; // newest posts shown before the "Older posts" reveal
 
-// zoominporch.png is shown objectFit:cover. Rain falls ONLY in the open-air
-// view (sky / trees / lake) on the right, never on the covered porch. Values
-// are fractions of the natural image; the cover crop is undone each frame.
-const BG_W = 1082, BG_H = 1453;
-const RAIN_BOX = { left: 0.69, top: 0.11, width: 0.31, height: 0.52 };
+// Same backdrop as the porch landing (porchforreal.png), shown objectFit:cover
+// under a heavy dark veil so the blog notes read clearly. Rain falls ONLY in the
+// open-air window view on the right. Values are fractions of the natural image;
+// the cover crop is undone each frame.
+const BG_W = 1083, BG_H = 1445;
+const RAIN_BOX = { left: 0.55, top: 0.115, width: 0.45, height: 0.42 };
 
 export default function BlogBoardScreen({ user, onOpenPost, onWrite, onBack, onJoin }) {
   const [posts, setPosts] = useState([]);
@@ -36,9 +36,8 @@ export default function BlogBoardScreen({ user, onOpenPost, onWrite, onBack, onJ
   const [showOlder, setShowOlder] = useState(false);
   const [showDrafts, setShowDrafts] = useState(false);
   const owner = isBlogOwner(user);
-  const theme = useRoomTheme();
-  const boardSrc = theme.porchBoard || '/blog/zoominporch.png';
-  const weather = theme.weather === 'snow' ? 'snow' : 'rain';
+  const boardSrc = '/porchforreal.png';
+  const weather = 'rain';
   const rainCanvasRef = useRef(null);
   const rainRef = useRef([]);
 
@@ -209,11 +208,11 @@ export default function BlogBoardScreen({ user, onOpenPost, onWrite, onBack, onJ
         position: 'absolute', inset: 0, width: '100%', height: '100%',
         objectFit: 'cover', objectPosition: 'center', userSelect: 'none', pointerEvents: 'none',
       }} />
-      {/* legibility scrim — darker at the edges, gentle wash over the middle */}
+      {/* heavy dark veil so the blog notes read clearly over the porch photo */}
       <div style={{
         position: 'absolute', inset: 0, pointerEvents: 'none',
         background:
-          'linear-gradient(to bottom, rgba(8,6,4,0.62) 0%, rgba(8,6,4,0.18) 22%, rgba(8,6,4,0.18) 70%, rgba(8,6,4,0.7) 100%)',
+          'linear-gradient(to bottom, rgba(6,5,4,0.84) 0%, rgba(6,5,4,0.72) 28%, rgba(6,5,4,0.72) 70%, rgba(6,5,4,0.88) 100%)',
       }} />
       {/* live rain over the scene */}
       <canvas ref={rainCanvasRef} style={{
