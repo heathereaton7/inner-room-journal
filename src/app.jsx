@@ -2483,6 +2483,10 @@ function AppInner(){
     await signOut(auth);
     setUser(null);
     setSyncStatus(null);
+    // Return to the original first screen — they must sign in again to get back in.
+    fadeOutAmbient();
+    setOnboardStep(0);
+    setScreen("welcome");
   }
 
   async function persistEntries(list){
