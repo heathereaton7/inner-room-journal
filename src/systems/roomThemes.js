@@ -21,10 +21,12 @@ import { useState, useEffect } from 'react';
  * Optional per-area asset overrides re-skin other screens for this season.
  * When absent, that screen keeps its default image — so a season only needs
  * art for the areas it has been painted for:
- *   kitchen — full-screen kitchen background image
- *   cabin   — full-screen cabin interior background image
- *   artRoom — full-screen "Cozy Creations Room" background image
- *   sounds  — SOUND_LIBRARY ids highlighted as this season's music
+ *   kitchen    — full-screen kitchen background image
+ *   cabin      — full-screen cabin interior background image
+ *   artRoom    — full-screen "Cozy Creations Room" background image
+ *   porch      — the porch blog entry photo (screen A)
+ *   porchBoard — the readable bulletin-board close-up photo (screen B)
+ *   sounds     — SOUND_LIBRARY ids highlighted as this season's music
  */
 export const ROOM_THEMES = [
   {
@@ -60,6 +62,8 @@ export const ROOM_THEMES = [
     kitchenWindow: { left: '52%', top: '5%', width: '46%', height: '53%' },
     cabin: '/christmascabinmap.png',
     artRoom: '/artroomchristmas.png',
+    porch: '/porchchristmas.png',
+    porchBoard: '/christmasboardzoomed.png',
     sounds: ['xmas-mistletoe', 'xmas-peppermint', 'xmas-seasonal'],
   },
   {
@@ -107,6 +111,8 @@ export const ROOM_THEMES = [
     ],
     cabin: '/fallcabinmap.png',
     artRoom: '/artroomfall.png',
+    porch: '/porchfall.png',
+    porchBoard: '/fallporchzoom.png',
   },
 ];
 

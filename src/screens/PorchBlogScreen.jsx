@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { GFONTS } from '../constants.js';
 import { BLOG, BLOG_SERIF, BLOG_SANS } from '../systems/blog.js';
+import { useRoomTheme } from '../systems/roomThemes.js';
 
 /**
  * PORCH — the atmospheric entry to the blog (screen A of 3).
@@ -32,6 +33,9 @@ const CANDLES = [
 ];
 
 export default function PorchBlogScreen({ onOpenBoard, onBack }) {
+  const theme = useRoomTheme();
+  const porchSrc = theme.porch || '/frontporch.png';
+  const weather = theme.weather === 'snow' ? 'snow' : 'rain'; // porch open-air: snow for Christmas, rain otherwise
   const wrapRef = useRef(null);
   const imgRef = useRef(null);
   const canvasRef = useRef(null);
@@ -79,13 +83,24 @@ export default function PorchBlogScreen({ onOpenBoard, onBack }) {
     canvas.height = Math.round(H * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    if (!rainRef.current.length) {
-      rainRef.current = Array.from({ length: 95 }, () => ({
-        x: Math.random(), y: Math.random(),
-        len: 0.03 + Math.random() * 0.05,
-        sp: 0.010 + Math.random() * 0.016,
-        w: Math.random() < 0.5 ? 1 : 1.4,
-      }));
+    // Rebuild particles when the weather type changes (snow drifts, rain streaks).
+    if (!rainRef.current.length || rainRef.current.type !== weather) {
+      const arr = weather === 'snow'
+        ? Array.from({ length: 80 }, () => ({
+            x: Math.random(), y: Math.random(),
+            r: 0.004 + Math.random() * 0.006,            // dot radius (fraction of box)
+            sp: 0.0025 + Math.random() * 0.004,          // gentle fall
+            sway: 0.4 + Math.random() * 0.8,             // horizontal drift speed
+            phase: Math.random() * Math.PI * 2,
+          }))
+        : Array.from({ length: 95 }, () => ({
+            x: Math.random(), y: Math.random(),
+            len: 0.03 + Math.random() * 0.05,
+            sp: 0.010 + Math.random() * 0.016,
+            w: Math.random() < 0.5 ? 1 : 1.4,
+          }));
+      arr.type = weather;
+      rainRef.current = arr;
     }
     if (!candleRef.current.length) {
       candleRef.current = CANDLES.map(() => ({ phase: Math.random() * Math.PI * 2, speed: 4 + Math.random() * 3 }));
@@ -95,20 +110,34 @@ export default function PorchBlogScreen({ onOpenBoard, onBack }) {
     let raf;
     const draw = (t) => {
       ctx.clearRect(0, 0, W, H);
-      // rain (only within the open-air box)
+      // weather (only within the open-air box)
       const rb = { x: RAIN_BOX.left * W, y: RAIN_BOX.top * H, w: RAIN_BOX.width * W, h: RAIN_BOX.height * H };
-      ctx.strokeStyle = 'rgba(190,205,225,0.32)';
-      ctx.lineCap = 'round';
-      for (const d of rainRef.current) {
-        if (!reduce) { d.y += d.sp; if (d.y > 1) { d.y = -d.len; d.x = Math.random(); } }
-        const px = rb.x + d.x * rb.w;
-        const py = rb.y + d.y * rb.h;
-        const ll = d.len * rb.h;
-        ctx.lineWidth = d.w;
-        ctx.beginPath();
-        ctx.moveTo(px, py);
-        ctx.lineTo(px - ll * 0.16, py + ll);
-        ctx.stroke();
+      const tw = t / 1000;
+      if (weather === 'snow') {
+        ctx.fillStyle = 'rgba(244,248,255,0.85)';
+        for (const d of rainRef.current) {
+          if (!reduce) { d.y += d.sp; if (d.y > 1) { d.y = -0.02; d.x = Math.random(); } }
+          const drift = Math.sin(tw * d.sway + d.phase) * 0.02;
+          const px = rb.x + (d.x + drift) * rb.w;
+          const py = rb.y + d.y * rb.h;
+          ctx.beginPath();
+          ctx.arc(px, py, d.r * Math.min(rb.w, rb.h), 0, Math.PI * 2);
+          ctx.fill();
+        }
+      } else {
+        ctx.strokeStyle = 'rgba(190,205,225,0.32)';
+        ctx.lineCap = 'round';
+        for (const d of rainRef.current) {
+          if (!reduce) { d.y += d.sp; if (d.y > 1) { d.y = -d.len; d.x = Math.random(); } }
+          const px = rb.x + d.x * rb.w;
+          const py = rb.y + d.y * rb.h;
+          const ll = d.len * rb.h;
+          ctx.lineWidth = d.w;
+          ctx.beginPath();
+          ctx.moveTo(px, py);
+          ctx.lineTo(px - ll * 0.16, py + ll);
+          ctx.stroke();
+        }
       }
       // flames (additive warm glow)
       ctx.globalCompositeOperation = 'lighter';
@@ -130,7 +159,7 @@ export default function PorchBlogScreen({ onOpenBoard, onBack }) {
     };
     raf = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(raf);
-  }, [imgRect]);
+  }, [imgRect, weather]);
 
   return (
     <div ref={wrapRef} style={{ position: 'fixed', inset: 0, overflow: 'hidden', fontFamily: BLOG_SANS, background: '#15110d' }}>
@@ -145,14 +174,14 @@ export default function PorchBlogScreen({ onOpenBoard, onBack }) {
       `}</style>
 
       {/* Blurred fill so any letterbox bars read as part of the scene */}
-      <img src="/frontporch.png" alt="" draggable={false} style={{
+      <img src={porchSrc} alt="" draggable={false} style={{
         position: 'absolute', inset: 0, width: '100%', height: '100%',
         objectFit: 'cover', filter: 'blur(22px) brightness(0.45)',
         transform: 'scale(1.1)', userSelect: 'none', pointerEvents: 'none',
       }} />
 
       {/* The whole porch photo, un-cropped */}
-      <img ref={imgRef} src="/frontporch.png" alt="A cozy cabin porch with a bulletin board" draggable={false}
+      <img ref={imgRef} key={porchSrc} src={porchSrc} alt="A cozy cabin porch with a bulletin board" draggable={false}
         onLoad={recompute}
         style={{
           position: 'absolute', inset: 0, width: '100%', height: '100%',

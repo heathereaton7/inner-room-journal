@@ -5,6 +5,7 @@ import {
   fetchPublishedPosts, fetchAllPosts, formatPostDate,
   BLOG, BLOG_SERIF, BLOG_SANS,
 } from '../systems/blog.js';
+import { useRoomTheme } from '../systems/roomThemes.js';
 
 /**
  * THE PORCH BOARD — the readable bulletin-board close-up (screen B of 3).
@@ -35,6 +36,9 @@ export default function BlogBoardScreen({ user, onOpenPost, onWrite, onBack, onJ
   const [showOlder, setShowOlder] = useState(false);
   const [showDrafts, setShowDrafts] = useState(false);
   const owner = isBlogOwner(user);
+  const theme = useRoomTheme();
+  const boardSrc = theme.porchBoard || '/blog/zoominporch.png';
+  const weather = theme.weather === 'snow' ? 'snow' : 'rain';
   const rainCanvasRef = useRef(null);
   const rainRef = useRef([]);
 
@@ -52,18 +56,28 @@ export default function BlogBoardScreen({ user, onOpenPost, onWrite, onBack, onJ
     resize();
     window.addEventListener('resize', resize);
 
-    if (!rainRef.current.length) {
-      rainRef.current = Array.from({ length: 70 }, () => ({
-        x: Math.random(), y: Math.random(),
-        len: 0.04 + Math.random() * 0.06,
-        sp: 0.012 + Math.random() * 0.018,
-        w: Math.random() < 0.5 ? 1 : 1.4,
-      }));
+    if (!rainRef.current.length || rainRef.current.type !== weather) {
+      const arr = weather === 'snow'
+        ? Array.from({ length: 60 }, () => ({
+            x: Math.random(), y: Math.random(),
+            r: 0.004 + Math.random() * 0.007,
+            sp: 0.003 + Math.random() * 0.0045,
+            sway: 0.4 + Math.random() * 0.8,
+            phase: Math.random() * Math.PI * 2,
+          }))
+        : Array.from({ length: 70 }, () => ({
+            x: Math.random(), y: Math.random(),
+            len: 0.04 + Math.random() * 0.06,
+            sp: 0.012 + Math.random() * 0.018,
+            w: Math.random() < 0.5 ? 1 : 1.4,
+          }));
+      arr.type = weather;
+      rainRef.current = arr;
     }
 
     const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     let raf;
-    const draw = () => {
+    const draw = (t) => {
       const W = window.innerWidth, H = window.innerHeight;
       ctx.clearRect(0, 0, W, H);
       // Undo the cover crop to find where the open-air view sits on screen.
@@ -78,23 +92,36 @@ export default function BlogBoardScreen({ user, onOpenPost, onWrite, onBack, onJ
       ctx.beginPath();
       ctx.rect(bx, by, bw, bh);
       ctx.clip();
-      ctx.strokeStyle = 'rgba(190,205,225,0.32)';
-      ctx.lineCap = 'round';
-      for (const d of rainRef.current) {
-        if (!reduce) { d.y += d.sp; if (d.y > 1) { d.y = -d.len; d.x = Math.random(); } }
-        const px = bx + d.x * bw, py = by + d.y * bh, ll = d.len * bh;
-        ctx.lineWidth = d.w;
-        ctx.beginPath();
-        ctx.moveTo(px, py);
-        ctx.lineTo(px - ll * 0.16, py + ll);
-        ctx.stroke();
+      if (weather === 'snow') {
+        const tw = (t || 0) / 1000;
+        ctx.fillStyle = 'rgba(244,248,255,0.85)';
+        for (const d of rainRef.current) {
+          if (!reduce) { d.y += d.sp; if (d.y > 1) { d.y = -0.02; d.x = Math.random(); } }
+          const drift = Math.sin(tw * d.sway + d.phase) * 0.02;
+          const px = bx + (d.x + drift) * bw, py = by + d.y * bh;
+          ctx.beginPath();
+          ctx.arc(px, py, d.r * Math.min(bw, bh), 0, Math.PI * 2);
+          ctx.fill();
+        }
+      } else {
+        ctx.strokeStyle = 'rgba(190,205,225,0.32)';
+        ctx.lineCap = 'round';
+        for (const d of rainRef.current) {
+          if (!reduce) { d.y += d.sp; if (d.y > 1) { d.y = -d.len; d.x = Math.random(); } }
+          const px = bx + d.x * bw, py = by + d.y * bh, ll = d.len * bh;
+          ctx.lineWidth = d.w;
+          ctx.beginPath();
+          ctx.moveTo(px, py);
+          ctx.lineTo(px - ll * 0.16, py + ll);
+          ctx.stroke();
+        }
       }
       ctx.restore();
       raf = requestAnimationFrame(draw);
     };
     raf = requestAnimationFrame(draw);
     return () => { cancelAnimationFrame(raf); window.removeEventListener('resize', resize); };
-  }, []);
+  }, [weather]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -178,7 +205,7 @@ export default function BlogBoardScreen({ user, onOpenPost, onWrite, onBack, onJ
       `}</style>
 
       {/* moody cabin-porch photo backdrop */}
-      <img src="/blog/zoominporch.png" alt="" draggable={false} style={{
+      <img src={boardSrc} alt="" draggable={false} style={{
         position: 'absolute', inset: 0, width: '100%', height: '100%',
         objectFit: 'cover', objectPosition: 'center', userSelect: 'none', pointerEvents: 'none',
       }} />
