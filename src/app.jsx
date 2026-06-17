@@ -7963,9 +7963,57 @@ function AppInner(){
        duplicates) and the initial setup/welcome screens. ── */
   const __menuHasOwn = new Set(["cabin","journal","jesus","cards","hall","community","insights","map2","visit-farm","garden","shop","history","kitchen","stove","kitchen-window","market","upper-room","cozy-creations"]);
   const __menuHidden = new Set(["loading","welcome","onboard","profile-onboard","blog-post","write-blog"]);
+  /* ── Global profile / sign-out panel — the menu's "Profile" button sets
+       windowPanel="profile" on every screen, but only CabinScreen renders the
+       panel. Render it globally (except on the cabin, which has its own) so the
+       user can reach their profile + sign out from anywhere (e.g. the porch). ── */
+  const __profilePanel = (windowPanel==="profile" && screen!=="cabin") && (
+    <div style={{position:"fixed",inset:0,zIndex:300}}>
+      <div onClick={()=>setWindowPanel(null)} style={{position:"absolute",inset:0,background:"rgba(10,8,6,0.5)",animation:"spaceFadeIn .25s ease"}}/>
+      <div style={{position:"absolute",left:0,top:0,bottom:0,width:"min(82vw,360px)",background:"linear-gradient(180deg,rgba(26,22,18,0.96),rgba(20,16,12,0.98))",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderRight:"1px solid rgba(201,169,110,0.15)",animation:"windowPanelSlideLeft .35s ease both",display:"flex",flexDirection:"column",padding:"48px 28px 36px"}}>
+        <button onClick={()=>setWindowPanel(null)} style={{position:"absolute",top:16,right:16,width:32,height:32,borderRadius:"50%",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(201,169,110,0.15)",color:"rgba(255,248,232,0.5)",fontSize:"0.75rem",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
+        <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:24}}>
+          {user?.photoURL?(<img src={user.photoURL} alt="" referrerPolicy="no-referrer" style={{width:52,height:52,borderRadius:"50%",border:"2px solid rgba(201,169,110,0.3)",objectFit:"cover"}}/>):(<div style={{width:52,height:52,borderRadius:"50%",background:"rgba(201,169,110,0.12)",border:"2px solid rgba(201,169,110,0.25)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.4rem",color:B.goldL,fontFamily:DISPLAY,fontWeight:700}}>{user?.displayName?.[0]||"?"}</div>)}
+          <div>
+            <h3 style={{fontFamily:DISPLAY,fontSize:"1.15rem",fontWeight:700,color:"#FFF8E8",margin:"0 0 3px"}}>{user?.displayName||"Journaler"}</h3>
+            <div style={{fontFamily:SANS,fontSize:"0.7rem",color:"rgba(255,248,232,0.4)"}}>{user?.email}</div>
+          </div>
+        </div>
+        <div style={{width:"100%",height:1,background:"linear-gradient(90deg,rgba(201,169,110,0.3),transparent)",marginBottom:22}}/>
+        <div style={{display:"flex",gap:10,marginBottom:18}}>
+          <div style={{flex:1,background:"rgba(255,255,255,0.03)",border:"1px solid rgba(201,169,110,0.08)",borderRadius:10,padding:"12px 14px",textAlign:"center"}}>
+            <div style={{fontFamily:DISPLAY,fontSize:"1.3rem",fontWeight:700,color:B.goldL}}>{entries.length}</div>
+            <div style={{fontFamily:SANS,fontSize:"0.62rem",color:"rgba(255,248,232,0.35)",marginTop:2}}>Reflections</div>
+          </div>
+          <div style={{flex:1,background:"rgba(255,255,255,0.03)",border:"1px solid rgba(201,169,110,0.08)",borderRadius:10,padding:"12px 14px",textAlign:"center"}}>
+            <div style={{fontFamily:DISPLAY,fontSize:"1.3rem",fontWeight:700,color:B.goldL}}>{streak}</div>
+            <div style={{fontFamily:SANS,fontSize:"0.62rem",color:"rgba(255,248,232,0.35)",marginTop:2}}>Day streak</div>
+          </div>
+          <div style={{flex:1,background:"rgba(255,255,255,0.03)",border:"1px solid rgba(201,169,110,0.08)",borderRadius:10,padding:"12px 14px",textAlign:"center"}}>
+            <div style={{fontFamily:DISPLAY,fontSize:"1.3rem",fontWeight:700,color:B.goldL}}>{prayerPosts.length}</div>
+            <div style={{fontFamily:SANS,fontSize:"0.62rem",color:"rgba(255,248,232,0.35)",marginTop:2}}>Prayers</div>
+          </div>
+        </div>
+        <button onClick={()=>{setWindowPanel(null);goToHistory();}} style={{width:"100%",background:"rgba(255,255,255,0.04)",border:"1px solid rgba(201,169,110,0.15)",borderRadius:10,padding:"13px 18px",color:B.goldL,fontFamily:SANS,fontSize:"0.82rem",cursor:"pointer",transition:"all .2s",marginBottom:8,display:"flex",alignItems:"center",gap:10}}>
+          <span style={{fontSize:"1rem"}}>📖</span> Reflection History
+        </button>
+        <div style={{flex:1}}/>
+        <button onClick={()=>{setWindowPanel(null);setScreen("edit-profile");}} style={{width:"100%",background:"rgba(255,255,255,0.04)",border:"1px solid rgba(201,169,110,0.15)",borderRadius:10,padding:"13px 18px",color:B.goldL,fontFamily:SANS,fontSize:"0.82rem",cursor:"pointer",transition:"all .2s",marginTop:12,display:"flex",alignItems:"center",gap:10}}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(201,169,110,0.5)" strokeWidth="1.8"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          Edit Profile
+        </button>
+        <button onClick={()=>{handleSignOut();setWindowPanel(null);}} style={{width:"100%",background:"rgba(255,255,255,0.04)",border:"1px solid rgba(201,169,110,0.15)",borderRadius:10,padding:"13px 18px",color:"rgba(255,248,232,0.45)",fontFamily:SANS,fontSize:"0.82rem",cursor:"pointer",transition:"all .2s",marginTop:8}}>Sign out</button>
+        <div style={{textAlign:"center",marginTop:14}}>
+          <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.68rem",color:"rgba(255,248,232,0.15)"}}>Tap outside to close</p>
+        </div>
+      </div>
+    </div>
+  );
+
   return(<>
     {__screenJSX}
     {!__menuHasOwn.has(screen) && !__menuHidden.has(screen) && <BottomMenuDrawer/>}
+    {__profilePanel}
   </>);
 }
 
