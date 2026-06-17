@@ -229,6 +229,7 @@ export default function PorchBlogScreen({ user, onOpenPost, onWrite, onBack }) {
         style={{
           position: 'absolute', inset: 0, width: '100%', height: '100%',
           objectFit: 'contain', objectPosition: 'center', userSelect: 'none', pointerEvents: 'none',
+          filter: 'brightness(1.2) contrast(1.02)',
         }} />
 
       {/* Light vignette only at top + bottom for control legibility */}
@@ -287,7 +288,7 @@ export default function PorchBlogScreen({ user, onOpenPost, onWrite, onBack }) {
 
       {/* Owner-only drafts — tucked into the bottom of the scene */}
       {owner && drafts.length > 0 && (
-        <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, zIndex: 20, padding: '0 16px 18px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+        <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, zIndex: 20, padding: '0 16px 64px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
           <button onClick={() => setShowDrafts((v) => !v)} style={{
             background: 'rgba(20,16,12,0.6)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
             border: '1px solid rgba(250,248,244,0.3)', borderRadius: 999, padding: '7px 16px',

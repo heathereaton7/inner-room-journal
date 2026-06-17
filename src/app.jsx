@@ -2836,7 +2836,10 @@ function AppInner(){
         setPlayerRoom(mr);dbSave("irj-room",mr);
       }
       setIsOnboarded(true);dbSave("irj-onboarded",true);
-      setScreen("cabin");
+      // Only land on the cabin from a pre-app screen (initial sign-in). Auth
+      // re-fires (token refresh, refocus) must NOT yank the user out of
+      // whatever screen they're already on (e.g. the porch).
+      setScreen(s=>(s==="loading"||s==="welcome"||s==="onboard"||s==="profile-onboard")?"cabin":s);
     }catch(e){console.warn("ensureUserProfile error:",e);}
   }
 
@@ -7753,7 +7756,7 @@ function AppInner(){
        Skip screens that already render their own BottomMenuDrawer (avoid
        duplicates) and the initial setup/welcome screens. ── */
   const __menuHasOwn = new Set(["cabin","journal","jesus","cards","hall","community","insights","map2","visit-farm","garden","shop","history","kitchen","stove","kitchen-window","market","upper-room","cozy-creations"]);
-  const __menuHidden = new Set(["loading","welcome","onboard","profile-onboard","porch","blog-post","write-blog"]);
+  const __menuHidden = new Set(["loading","welcome","onboard","profile-onboard","blog-post","write-blog"]);
   return(<>
     {__screenJSX}
     {!__menuHasOwn.has(screen) && !__menuHidden.has(screen) && <BottomMenuDrawer/>}
