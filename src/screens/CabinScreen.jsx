@@ -4,6 +4,7 @@ import { SHOP_ITEMS } from '../items.js';
 import { ITEMS, isPlaceable } from '../items.js';
 import { CSS } from '../styles.js';
 import { useRoomTheme, INNER_ROOM_LANDING_FALLBACK } from '../systems/roomThemes.js';
+import { WindowWeather, CandleGlow } from '../components/CottageBackground.jsx';
 import CharacterWalker from '../components/CharacterWalker.jsx';
 import BookSparkles from '../components/BookSparkles.jsx';
 import { moveItem, removeFromRoom, placeItem } from '../roomDecor.js';
@@ -144,8 +145,18 @@ export default function CabinScreen({
            which opens your books (Journals / Meditations / Leaky Bucket). */
         <div style={{position:"absolute",inset:0,zIndex:0,background:"#0A0806",animation:"spaceFadeIn .6s ease"}}>
           <img src={landingBgImage} alt="The Inner Room" draggable={false} style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",objectPosition:"center 72%",userSelect:"none",WebkitUserDrag:"none",pointerEvents:"none"}}/>
+          {/* Seasonal weather (rain by default) falling on the window glass */}
+          {roomThemeData.weather && roomThemeData.weather !== 'none' && (
+            <WindowWeather
+              mode={roomThemeData.weather}
+              window={{ left:"34%", top:"0%", width:"66%", height:"56%", radius:"0px" }}
+              absolute zIndex={1}
+            />
+          )}
+          {/* Flickering candle flame glow on the desk candle */}
+          <CandleGlow left="62%" top="66%" color="rgba(255,200,120,0.95)" size={110} keyframe="cottage-flicker-a" duration={5.5} absolute zIndex={2} />
           {/* Soft cinematic vignette */}
-          <div style={{position:"absolute",inset:0,pointerEvents:"none",background:"radial-gradient(ellipse at 60% 80%, transparent 40%, rgba(8,6,4,0.42) 100%)"}}/>
+          <div style={{position:"absolute",inset:0,pointerEvents:"none",zIndex:3,background:"radial-gradient(ellipse at 60% 80%, transparent 40%, rgba(8,6,4,0.42) 100%)"}}/>
 
           {/* THE ONLY HOTSPOT — "The Inner Room" book on the desk → your books */}
           <button onClick={()=>openBookChooser()} aria-label="Open The Inner Room book" style={{position:"absolute",left:"50%",top:"80%",width:"46%",height:"19%",zIndex:11,background:"transparent",border:"none",padding:0,cursor:"pointer",borderRadius:"12px",outline:"none",WebkitTapHighlightColor:"transparent"}}>

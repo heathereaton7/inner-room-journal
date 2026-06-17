@@ -17,22 +17,6 @@ export default function CottageBackground() {
   const theme = useRoomTheme();
   return (
     <>
-      <style>{`
-        @keyframes cottage-flicker-a {
-          0%, 100% { opacity: 0.85; transform: translate(-50%, -50%) scale(1); }
-          22%      { opacity: 0.74; transform: translate(-50%, -50%) scale(0.98); }
-          42%      { opacity: 0.92; transform: translate(-50%, -50%) scale(1.03); }
-          63%      { opacity: 0.78; transform: translate(-50%, -50%) scale(0.99); }
-          84%      { opacity: 0.88; transform: translate(-50%, -50%) scale(1.02); }
-        }
-        @keyframes cottage-flicker-b {
-          0%, 100% { opacity: 0.78; transform: translate(-50%, -50%) scale(1); }
-          19%      { opacity: 0.92; transform: translate(-50%, -50%) scale(1.04); }
-          38%      { opacity: 0.68; transform: translate(-50%, -50%) scale(0.97); }
-          57%      { opacity: 0.86; transform: translate(-50%, -50%) scale(1.02); }
-          78%      { opacity: 0.72; transform: translate(-50%, -50%) scale(0.99); }
-        }
-      `}</style>
       <div style={{
         position: 'fixed', inset: 0, zIndex: -1,
         backgroundImage: `url(${theme.src})`,
@@ -66,7 +50,7 @@ export default function CottageBackground() {
  *              layers (near flakes large / bright / fast, far flakes tiny / faint).
  * Particles recycle to the top once they leave the window.
  */
-function WindowWeather({ mode, window: win }) {
+export function WindowWeather({ mode, window: win, absolute = false, zIndex = -1 }) {
   const canvasRef = useRef(null);
 
   useEffect(() => {
@@ -211,29 +195,29 @@ function WindowWeather({ mode, window: win }) {
 
   return (
     <div style={{
-      position: 'fixed',
+      position: absolute ? 'absolute' : 'fixed',
       left: win.left, top: win.top,
       width: win.width, height: win.height,
       overflow: 'hidden',
       borderRadius: win.radius,
       pointerEvents: 'none',
-      zIndex: -1,
+      zIndex,
     }}>
       <canvas ref={canvasRef} style={{ width: '100%', height: '100%', display: 'block' }} />
     </div>
   );
 }
 
-function CandleGlow({ left, top, color, size, keyframe, duration }) {
+export function CandleGlow({ left, top, color, size, keyframe, duration, absolute = false, zIndex = -1 }) {
   return (
     <div style={{
-      position: 'fixed', left, top,
+      position: absolute ? 'absolute' : 'fixed', left, top,
       width: size, height: size,
       transform: 'translate(-50%, -50%)',
       background: `radial-gradient(circle, ${color} 0%, rgba(255,180,90,0.4) 22%, rgba(255,150,60,0.15) 50%, transparent 75%)`,
       mixBlendMode: 'screen',
       pointerEvents: 'none',
-      zIndex: -1,
+      zIndex,
       filter: 'blur(2px)',
       animation: `${keyframe} ${duration}s ease-in-out infinite`,
     }} />
