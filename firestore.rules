@@ -87,6 +87,16 @@ service cloud.firestore {
       allow update, delete: if isBlogOwner();
     }
 
+    // ── Mailing list ──
+    // Each signed-in user owns their own subscriber doc (id == uid) and may
+    // create/update it (name, email, marketing consent). Only the site owner
+    // may read the full list (for CSV export). No one may delete.
+    match /subscribers/{userId} {
+      allow read:           if isBlogOwner();
+      allow create, update: if request.auth != null && request.auth.uid == userId;
+      allow delete:         if false;
+    }
+
     // Notifications — recipient can read + mark as read, authenticated can create
     match /notifications/{notificationId} {
       allow read: if request.auth != null

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback, Component } from "react";
-import { auth, db, functions, googleProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged, doc, getDoc, setDoc, collection, getDocs, query, where, orderBy, limit, addDoc, deleteDoc, serverTimestamp, Timestamp, onSnapshot, httpsCallable } from "./firebase.js";
+import { auth, db, functions, googleProvider, signInWithPopup, signInWithRedirect, getRedirectResult, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, updateProfile, signOut, onAuthStateChanged, doc, getDoc, setDoc, collection, getDocs, query, where, orderBy, limit, addDoc, deleteDoc, serverTimestamp, Timestamp, onSnapshot, httpsCallable } from "./firebase.js";
 import { OverworldScreen } from './overworld/index.js';
 import { resolveSprite } from './overworld/sprites.js';
 import { DEFAULT_ROOM, migrateRoom, placeItem, isPlacedInRoom } from './roomDecor.js';
@@ -7,7 +7,7 @@ import { ITEMS, isOwned, isArtItemId, getArtItemDef } from './items.js';
 import { createEmptyGrid, serializeGrid, deserializeGrid } from './systems/GardenGrid.js';
 import { canUnlockRabbit } from './systems/rabbitUnlock.js';
 /* R3F imports removed — ImmersiveCabin uses pure DOM/Canvas2D for performance */
-import { GFONTS, B, SERIF, SANS, DISPLAY, RT, th, REFLECTION_ROOMS, COMMUNITY_ROOMS, LOCKED_ROOM, JESUS_QUESTIONS, QUESTION_SETS, ALL_CARD_QS, CARD_THEMES, CARD_RATIOS, VERSE_THEMES, VIRAL_QS, SAMPLE_PRAYERS, SHELF_BOOKS, BOOK_COVERS, BOOK_CONTENT, getBookPageCount, todayStr, nowTime, entryTime, isoDate, wc, shuffle, THEME_WORDS, aggregateThemes, EMOTION_WORDS, LIFE_THEMES, FAITH_WORDS, SCRIPTURE_PATTERN, IDENTITY_NEG, IDENTITY_POS, GROWTH_MARKERS, STOP_WORDS, EMOTION_COLORS, computeInsights, computeWeeklyDigest, computeSeasonalSummary, computeFutureYou, SHOP_ITEMS, GARDEN_PLANTS, GROWTH_STAGES, PRAYER_BONUS_MINS, CRAFTING_STATIONS, ITEM_CATALOG, KITCHEN_RECIPES, NPC_TRADES, FARM_PLANTS, ANIMAL_TYPES, MAX_ANIMALS, DAILY_MISSIONS, WEEKLY_MISSIONS, getWeekStart, CABIN_FALLBACK_IMAGE, PREMIUM_DAILY_MISSIONS, PREMIUM_WEEKLY_MISSIONS, PREMIUM_GARDEN_PLANTS, PREMIUM_FARM_PLANTS, PREMIUM_ANIMALS, PREMIUM_PROMPTS, PREMIUM_SHOP_ITEMS, PLUS_BENEFITS } from './constants.js';
+import { GFONTS, B, SERIF, SANS, DISPLAY, RT, th, REFLECTION_ROOMS, COMMUNITY_ROOMS, LOCKED_ROOM, JESUS_QUESTIONS, QUESTION_SETS, ALL_CARD_QS, CARD_THEMES, CARD_RATIOS, VERSE_THEMES, VIRAL_QS, SAMPLE_PRAYERS, SHELF_BOOKS, BOOK_COVERS, BOOK_CONTENT, getBookPageCount, todayStr, nowTime, entryTime, isoDate, wc, shuffle, THEME_WORDS, aggregateThemes, EMOTION_WORDS, LIFE_THEMES, FAITH_WORDS, SCRIPTURE_PATTERN, IDENTITY_NEG, IDENTITY_POS, GROWTH_MARKERS, STOP_WORDS, EMOTION_COLORS, computeInsights, computeWeeklyDigest, computeSeasonalSummary, computeFutureYou, SHOP_ITEMS, GARDEN_PLANTS, GROWTH_STAGES, PRAYER_BONUS_MINS, CRAFTING_STATIONS, ITEM_CATALOG, KITCHEN_RECIPES, NPC_TRADES, FARM_PLANTS, ANIMAL_TYPES, MAX_ANIMALS, DAILY_MISSIONS, WEEKLY_MISSIONS, getWeekStart, CABIN_FALLBACK_IMAGE, PREMIUM_DAILY_MISSIONS, PREMIUM_WEEKLY_MISSIONS, PREMIUM_GARDEN_PLANTS, PREMIUM_FARM_PLANTS, PREMIUM_ANIMALS, PREMIUM_PROMPTS, PREMIUM_SHOP_ITEMS, PLUS_BENEFITS, BLOG_OWNER_EMAIL, isBlogOwner } from './constants.js';
 import { CSS } from './styles.js';
 import ImmersiveCabin from './components/ImmersiveCabin.jsx';
 import BookSparkles from './components/BookSparkles.jsx';
@@ -1770,6 +1770,16 @@ function AppInner(){
   const [usernameError,      setUsernameError]      = useState("");
   const [usernameChecking,   setUsernameChecking]   = useState(false);
   const [usernameAvailable,  setUsernameAvailable]  = useState(false);
+  // ── Auth / mailing list ──
+  const [authMode,           setAuthMode]           = useState("choose"); // "choose"|"email"
+  const [emailSignupMode,    setEmailSignupMode]    = useState(true);     // true=create account, false=log in
+  const [authEmail,          setAuthEmail]          = useState("");
+  const [authPassword,       setAuthPassword]       = useState("");
+  const [authName,           setAuthName]           = useState("");
+  const [authError,          setAuthError]          = useState("");
+  const [authBusy,           setAuthBusy]           = useState(false);
+  const [marketingConsent,   setMarketingConsent]   = useState(false);
+  const signupSourceRef = useRef("app"); // set from ?ref= on mount
   const [farmerSearch,      setFarmerSearch]       = useState("");
   const [farmerResults,     setFarmerResults]     = useState([]);
   const [communityLoading,  setCommunityLoading]  = useState(false);
@@ -2054,6 +2064,14 @@ function AppInner(){
     })();
   },[]);
 
+  // ── SIGNUP SOURCE (e.g. blog link: innerroomjournal.com/?ref=blog) ──
+  useEffect(()=>{
+    try{
+      const ref=new URLSearchParams(window.location.search).get("ref");
+      if(ref) signupSourceRef.current=ref.toLowerCase().slice(0,40);
+    }catch(e){}
+  },[]);
+
   // ── AUTH LISTENER ──
   useEffect(()=>{
     if(!auth) { setAuthLoading(false); return; }
@@ -2331,15 +2349,121 @@ function AppInner(){
   }
 
   async function handleGoogleSignIn(){
-    if(!auth){console.error("Auth not initialized");return;}
-    try{ await signInWithPopup(auth,googleProvider); }
+    if(!auth){console.error("Auth not initialized");return false;}
+    try{ await signInWithPopup(auth,googleProvider); return true; }
     catch(err){
       console.error("Google Sign-In error:",err.code,err.message);
       if(err.code==="auth/popup-blocked"||err.code==="auth/popup-closed-by-user"){
         try{ await signInWithRedirect(auth,googleProvider); }
         catch(e2){ console.error("Redirect fallback error:",e2.code,e2.message); }
       }
+      return false;
     }
+  }
+
+  // Friendly message for the most common Firebase auth error codes
+  function authErrorMessage(code){
+    switch(code){
+      case "auth/invalid-email": return "That email doesn't look right.";
+      case "auth/email-already-in-use": return "An account already exists for that email. Try logging in.";
+      case "auth/weak-password": return "Password should be at least 6 characters.";
+      case "auth/user-not-found":
+      case "auth/wrong-password":
+      case "auth/invalid-credential": return "Email or password is incorrect.";
+      case "auth/too-many-requests": return "Too many attempts. Please wait a moment and try again.";
+      default: return "Something went wrong. Please try again.";
+    }
+  }
+
+  async function handleEmailSignUp(email,password,name){
+    if(!auth){setAuthError("Sign-in is unavailable right now.");return false;}
+    setAuthBusy(true);setAuthError("");
+    try{
+      const cred=await createUserWithEmailAndPassword(auth,email.trim(),password);
+      if(name&&name.trim()){ try{ await updateProfile(cred.user,{displayName:name.trim()}); }catch(e){} }
+      setAuthBusy(false);
+      return true;
+    }catch(err){
+      console.error("Email sign-up error:",err.code,err.message);
+      setAuthError(authErrorMessage(err.code));setAuthBusy(false);
+      return false;
+    }
+  }
+
+  async function handleEmailSignIn(email,password){
+    if(!auth){setAuthError("Sign-in is unavailable right now.");return false;}
+    setAuthBusy(true);setAuthError("");
+    try{
+      await signInWithEmailAndPassword(auth,email.trim(),password);
+      setAuthBusy(false);
+      return true;
+    }catch(err){
+      console.error("Email sign-in error:",err.code,err.message);
+      setAuthError(authErrorMessage(err.code));setAuthBusy(false);
+      return false;
+    }
+  }
+
+  async function handlePasswordReset(email){
+    if(!auth||!email||!email.trim()){setAuthError("Enter your email first, then tap reset.");return;}
+    try{
+      await sendPasswordResetEmail(auth,email.trim());
+      setAuthError("");setToast({msg:"Password reset email sent."});
+    }catch(err){
+      console.error("Password reset error:",err.code,err.message);
+      setAuthError(authErrorMessage(err.code));
+    }
+  }
+
+  // Mailing-list subscriber record (name + email + explicit marketing consent).
+  // Stored for every signed-in user; `marketingConsent` gates who may be emailed.
+  async function saveSubscriber(uid){
+    if(!db||!uid||!auth?.currentUser) return;
+    try{
+      const u=auth.currentUser;
+      const email=u.email||"";
+      const ref=doc(db,"subscribers",uid);
+      const existing=await getDoc(ref);
+      const base={
+        uid,
+        name:(u.displayName||setupUsername||"").trim(),
+        email,
+        emailLower:email.toLowerCase(),
+        provider:(u.providerData?.[0]?.providerId)||"unknown",
+        marketingConsent:!!marketingConsent,
+        consentedAt:serverTimestamp(),
+        source:signupSourceRef.current||"app",
+        updatedAt:serverTimestamp(),
+      };
+      if(existing.exists()){
+        await setDoc(ref,base,{merge:true});
+      }else{
+        await setDoc(ref,{...base,unsubscribedAt:null,createdAt:serverTimestamp()});
+      }
+    }catch(e){console.warn("saveSubscriber error:",e);}
+  }
+
+  // Build + download the mailing list as CSV (owner only)
+  async function exportSubscribersCsv(){
+    if(!db){setToast({msg:"Database unavailable."});return;}
+    try{
+      const snap=await getDocs(collection(db,"subscribers"));
+      const esc=(v)=>{const s=(v==null?"":String(v)).replace(/"/g,'""');return `"${s}"`;};
+      const rows=[["name","email","marketingConsent","source","provider","consentedAt"]];
+      snap.forEach(d=>{
+        const x=d.data();
+        const ts=x.consentedAt?.toDate?x.consentedAt.toDate().toISOString():"";
+        rows.push([x.name||"",x.email||"",x.marketingConsent?"yes":"no",x.source||"",x.provider||"",ts]);
+      });
+      const csv=rows.map(r=>r.map(esc).join(",")).join("\r\n");
+      const blob=new Blob([csv],{type:"text/csv;charset=utf-8;"});
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement("a");
+      a.href=url;a.download=`inner-room-subscribers-${isoDate(new Date())}.csv`;
+      document.body.appendChild(a);a.click();document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      setToast({msg:`Exported ${snap.size} subscriber${snap.size===1?"":"s"}.`});
+    }catch(e){console.warn("exportSubscribersCsv error:",e);setToast({msg:"Export failed."});}
   }
 
   async function handleSignOut(){
@@ -2768,13 +2892,16 @@ function AppInner(){
         level:1,lastLogin:serverTimestamp(),farmPublic:true,avatarUrl:null,
         followersCount:0,followingCount:0,postsCount:0,
         joinedAt:serverTimestamp(),lastPostAt:null,anonymous:false,
+        marketingConsent:!!marketingConsent,consentedAt:serverTimestamp(),
       };
       if(snap.exists()){
         // Existing user migration — merge new fields
-        await setDoc(profileRef,{username:setupUsername,usernameLower:setupUsername.toLowerCase(),gender:setupGender,bio:setupBio||snap.data().bio||"",anonymous:false,lastLogin:serverTimestamp()},{merge:true});
+        await setDoc(profileRef,{username:setupUsername,usernameLower:setupUsername.toLowerCase(),gender:setupGender,bio:setupBio||snap.data().bio||"",anonymous:false,lastLogin:serverTimestamp(),marketingConsent:!!marketingConsent,consentedAt:serverTimestamp()},{merge:true});
       } else {
         await setDoc(profileRef,data);
       }
+      // Mailing-list record (name + email + explicit consent)
+      await saveSubscriber(uid);
       const updated=await getDoc(profileRef);
       setUserProfile({id:uid,...updated.data()});
       const app={base:setupGender,outfit:"default"};
@@ -3892,6 +4019,14 @@ function AppInner(){
             <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.82rem",color:B.goldL}}>World Map</span>
           </button>
 
+          {/* ── OWNER: export mailing list ── */}
+          {isBlogOwner(user)&&(
+            <button onClick={()=>{exportSubscribersCsv();}} style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,width:"100%",background:"rgba(90,138,106,0.08)",border:"1px solid rgba(90,138,106,0.25)",borderRadius:10,padding:"12px 14px",cursor:"pointer",marginBottom:14,transition:"all 0.2s"}}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="rgba(190,211,196,0.7)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.8rem",color:"rgba(190,211,196,0.85)"}}>Export email list (CSV)</span>
+            </button>
+          )}
+
           {/* ── SOUNDS (collapsible) ── */}
           <div style={{marginBottom:14}}>
             {/* Sounds header — tap to expand/collapse */}
@@ -4495,18 +4630,48 @@ function AppInner(){
                 There's a place for you here.
               </h1>
               <p className="fu3" style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.82rem,2.8vw,0.95rem)",color:"rgba(255,248,232,0.5)",margin:"0 0 28px",textAlign:"center",maxWidth:"300px",lineHeight:1.65,letterSpacing:"0.02em"}}>
-                Save your journey, or step in as a guest.
+                Make yourself at home — your journey is saved and waiting.
               </p>
-              <button className="fu3 door-btn" onClick={async()=>{await handleGoogleSignIn();setOnboardStep(1);}} style={{width:"100%",maxWidth:"320px",background:"linear-gradient(135deg,rgba(201,169,110,0.22),rgba(201,169,110,0.06))",backdropFilter:"blur(10px)",WebkitBackdropFilter:"blur(10px)",border:"1px solid rgba(201,169,110,0.45)",color:"#FFF8E8",padding:"15px 0",borderRadius:"16px",cursor:"pointer",fontSize:"0.9rem",fontFamily:SERIF,fontWeight:600,letterSpacing:"0.06em",fontStyle:"italic",marginBottom:"4px",transition:"all 0.3s",boxShadow:"0 4px 24px rgba(0,0,0,0.3)"}}>
-                Move in
-              </button>
-              <p style={{fontFamily:SANS,fontSize:"0.64rem",color:"rgba(255,248,232,0.28)",textAlign:"center",margin:"0 0 14px",letterSpacing:"0.03em"}}>Save your journal and join the community</p>
-              <button className="fu4" onClick={()=>setOnboardStep(1)} style={{width:"100%",maxWidth:"320px",background:"transparent",border:"1px solid rgba(255,248,232,0.12)",borderRadius:"16px",padding:"13px 0",cursor:"pointer",color:"rgba(255,248,232,0.45)",fontFamily:SERIF,fontStyle:"italic",fontSize:"0.85rem",letterSpacing:"0.05em",marginBottom:"14px",transition:"all 0.3s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor="rgba(255,248,232,0.25)";e.currentTarget.style.color="rgba(255,248,232,0.65)";}} onMouseLeave={e=>{e.currentTarget.style.borderColor="rgba(255,248,232,0.12)";e.currentTarget.style.color="rgba(255,248,232,0.45)";}}>
-                Continue as guest
-              </button>
-              <p className="fu4" style={{fontFamily:SANS,fontSize:"0.62rem",color:"rgba(255,248,232,0.18)",textAlign:"center",margin:0,lineHeight:1.5,letterSpacing:"0.03em",maxWidth:"280px"}}>
-                Without moving in, your journal stays on this device and community features are unavailable.
-              </p>
+
+              {authMode==="choose"&&(<>
+                <button className="fu3 door-btn" onClick={async()=>{const ok=await handleGoogleSignIn();if(ok)setOnboardStep(1);}} style={{width:"100%",maxWidth:"320px",background:"linear-gradient(135deg,rgba(201,169,110,0.22),rgba(201,169,110,0.06))",backdropFilter:"blur(10px)",WebkitBackdropFilter:"blur(10px)",border:"1px solid rgba(201,169,110,0.45)",color:"#FFF8E8",padding:"15px 0",borderRadius:"16px",cursor:"pointer",fontSize:"0.9rem",fontFamily:SERIF,fontWeight:600,letterSpacing:"0.06em",fontStyle:"italic",marginBottom:"12px",transition:"all 0.3s",boxShadow:"0 4px 24px rgba(0,0,0,0.3)"}}>
+                  Continue with Google
+                </button>
+                <button className="fu4" onClick={()=>{setAuthMode("email");setAuthError("");}} style={{width:"100%",maxWidth:"320px",background:"transparent",border:"1px solid rgba(255,248,232,0.12)",borderRadius:"16px",padding:"13px 0",cursor:"pointer",color:"rgba(255,248,232,0.55)",fontFamily:SERIF,fontStyle:"italic",fontSize:"0.85rem",letterSpacing:"0.05em",marginBottom:"14px",transition:"all 0.3s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor="rgba(255,248,232,0.25)";e.currentTarget.style.color="rgba(255,248,232,0.75)";}} onMouseLeave={e=>{e.currentTarget.style.borderColor="rgba(255,248,232,0.12)";e.currentTarget.style.color="rgba(255,248,232,0.55)";}}>
+                  Use email instead
+                </button>
+                <p className="fu4" style={{fontFamily:SANS,fontSize:"0.62rem",color:"rgba(255,248,232,0.22)",textAlign:"center",margin:0,lineHeight:1.5,letterSpacing:"0.03em",maxWidth:"280px"}}>
+                  By continuing you agree to our Privacy Policy. We never sell your information.
+                </p>
+              </>)}
+
+              {authMode==="email"&&(
+                <div className="fu" style={{width:"100%",maxWidth:"320px",display:"flex",flexDirection:"column",alignItems:"stretch"}}>
+                  {emailSignupMode&&(
+                    <input value={authName} onChange={e=>setAuthName(e.target.value.slice(0,40))} placeholder="Your name" autoCapitalize="words" style={{boxSizing:"border-box",background:"transparent",border:"none",borderBottom:"1px solid rgba(201,169,110,0.35)",padding:"10px 4px",marginBottom:"14px",color:"#FFF8E8",fontFamily:SERIF,fontStyle:"italic",fontSize:"1rem",outline:"none",textAlign:"center"}}/>
+                  )}
+                  <input type="email" value={authEmail} onChange={e=>setAuthEmail(e.target.value.trim())} placeholder="Email" autoCapitalize="none" autoCorrect="off" spellCheck={false} style={{boxSizing:"border-box",background:"transparent",border:"none",borderBottom:"1px solid rgba(201,169,110,0.35)",padding:"10px 4px",marginBottom:"14px",color:"#FFF8E8",fontFamily:SERIF,fontStyle:"italic",fontSize:"1rem",outline:"none",textAlign:"center"}}/>
+                  <input type="password" value={authPassword} onChange={e=>setAuthPassword(e.target.value)} placeholder="Password" style={{boxSizing:"border-box",background:"transparent",border:"none",borderBottom:"1px solid rgba(201,169,110,0.35)",padding:"10px 4px",marginBottom:"6px",color:"#FFF8E8",fontFamily:SERIF,fontStyle:"italic",fontSize:"1rem",outline:"none",textAlign:"center"}}/>
+                  {authError&&<p style={{fontFamily:SANS,fontSize:"0.7rem",color:"rgba(220,120,120,0.8)",margin:"6px 0 0",textAlign:"center"}}>{authError}</p>}
+                  <button disabled={authBusy||!authEmail||!authPassword} onClick={async()=>{
+                    const ok=emailSignupMode?await handleEmailSignUp(authEmail,authPassword,authName):await handleEmailSignIn(authEmail,authPassword);
+                    if(ok){ if(emailSignupMode&&authName.trim())setSetupUsername(prev=>prev||authName.trim().replace(/[^a-zA-Z0-9_]/g,"").slice(0,20)); setOnboardStep(1); }
+                  }} className={(!authBusy&&authEmail&&authPassword)?"door-btn":""} style={{marginTop:"18px",background:(!authBusy&&authEmail&&authPassword)?"linear-gradient(135deg,rgba(201,169,110,0.22),rgba(201,169,110,0.06))":"transparent",border:`1px solid ${(!authBusy&&authEmail&&authPassword)?"rgba(201,169,110,0.45)":"rgba(255,248,232,0.1)"}`,color:(!authBusy&&authEmail&&authPassword)?"#FFF8E8":"rgba(255,248,232,0.25)",padding:"14px 0",borderRadius:"16px",cursor:(!authBusy&&authEmail&&authPassword)?"pointer":"default",fontSize:"0.9rem",fontFamily:SERIF,fontWeight:600,fontStyle:"italic",letterSpacing:"0.06em",transition:"all 0.3s"}}>
+                    {authBusy?"One moment...":(emailSignupMode?"Create my account":"Log in")}
+                  </button>
+                  <button onClick={()=>{setEmailSignupMode(m=>!m);setAuthError("");}} style={{marginTop:"14px",background:"transparent",border:"none",cursor:"pointer",color:"rgba(255,248,232,0.5)",fontFamily:SERIF,fontStyle:"italic",fontSize:"0.78rem",letterSpacing:"0.04em"}}>
+                    {emailSignupMode?"Already have an account? Log in":"New here? Create an account"}
+                  </button>
+                  {!emailSignupMode&&(
+                    <button onClick={()=>handlePasswordReset(authEmail)} style={{marginTop:"8px",background:"transparent",border:"none",cursor:"pointer",color:"rgba(255,248,232,0.35)",fontFamily:SANS,fontSize:"0.7rem",letterSpacing:"0.03em"}}>
+                      Forgot password?
+                    </button>
+                  )}
+                  <button onClick={()=>{setAuthMode("choose");setAuthError("");}} style={{marginTop:"12px",background:"transparent",border:"none",cursor:"pointer",color:"rgba(255,248,232,0.3)",fontFamily:SERIF,fontStyle:"italic",fontSize:"0.76rem",letterSpacing:"0.05em"}}>
+                    Back
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -4531,6 +4696,12 @@ function AppInner(){
                 {usernameError&&<p style={{fontFamily:SANS,fontSize:"0.7rem",color:"rgba(220,120,120,0.75)",margin:"4px 0 0",textAlign:"center"}}>{usernameError}</p>}
                 {!usernameError&&<p style={{fontFamily:SANS,fontSize:"0.62rem",color:"rgba(255,248,232,0.2)",margin:"4px 0 0",textAlign:"center",letterSpacing:"0.04em"}}>Letters, numbers, and underscores</p>}
                 <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.68rem",color:"rgba(255,248,232,0.15)",margin:"8px 0 0",textAlign:"center",letterSpacing:"0.03em"}}>This name will be seen in the community</p>
+                <button onClick={()=>setMarketingConsent(c=>!c)} style={{marginTop:"22px",width:"100%",display:"flex",alignItems:"flex-start",gap:"10px",background:"transparent",border:"none",cursor:"pointer",textAlign:"left",padding:0}}>
+                  <span style={{flexShrink:0,width:"20px",height:"20px",marginTop:"1px",borderRadius:"5px",border:`1.5px solid ${marketingConsent?"rgba(201,169,110,0.8)":"rgba(255,248,232,0.3)"}`,background:marketingConsent?"rgba(201,169,110,0.22)":"transparent",display:"flex",alignItems:"center",justifyContent:"center",transition:"all 0.2s"}}>
+                    {marketingConsent&&<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#FFF8E8" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}
+                  </span>
+                  <span style={{fontFamily:SANS,fontSize:"0.72rem",color:"rgba(255,248,232,0.5)",lineHeight:1.5,letterSpacing:"0.02em"}}>Email me about new videos, blog posts, music &amp; merch <span style={{color:"rgba(255,248,232,0.3)"}}>(optional — unsubscribe anytime)</span></span>
+                </button>
                 <button onClick={()=>{if(step1Ok)setOnboardStep(2);}} disabled={!step1Ok} className={step1Ok?"door-btn":""} style={{marginTop:"28px",background:step1Ok?"linear-gradient(135deg,rgba(201,169,110,0.22),rgba(201,169,110,0.06))":"transparent",border:`1px solid ${step1Ok?"rgba(201,169,110,0.45)":"rgba(255,248,232,0.08)"}`,borderRadius:"28px",padding:"13px 44px",cursor:step1Ok?"pointer":"default",color:step1Ok?"#FFF8E8":"rgba(255,248,232,0.2)",fontFamily:SERIF,fontStyle:"italic",fontWeight:600,fontSize:"0.88rem",letterSpacing:"0.1em",transition:"all 0.3s"}}>
                   Continue
                 </button>
