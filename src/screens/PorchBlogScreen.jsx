@@ -28,7 +28,7 @@ const FRAME = { left: 0.115, top: 0.165, width: 0.275, height: 0.355 };
 
 // Where rain falls in the photo — only the open-air view beyond the porch
 // (the covered left side stays dry). Fractions of the displayed image.
-const RAIN_BOX = { left: 0.45, top: 0.04, width: 0.55, height: 0.66 };
+const RAIN_BOX = { left: 0.45, top: 0.04, width: 0.55, height: 0.47 };
 
 // Flame sources in the photo (hanging lantern, table candle, floor lantern, and
 // the steadier wall lamp over the board). Fractions of the displayed image.
