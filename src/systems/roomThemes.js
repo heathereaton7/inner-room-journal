@@ -33,6 +33,7 @@ export const ROOM_THEMES = [
     description: 'Candlelit nook with rain on the glass',
     tag: 'Cozy',
     src: '/wordsearchbackgroundone.png',
+    landing: '/innerroomspring.png',
     weather: 'rain',
     window: { left: '17%', top: '2%', width: '82%', height: '66%', radius: '48% 48% 5% 5% / 30% 30% 4% 4%' },
     candles: [
@@ -46,6 +47,7 @@ export const ROOM_THEMES = [
     description: 'Snowfall, string lights & cocoa by the window',
     tag: 'Holiday',
     src: '/christmas.png',
+    landing: '/innerroomchristmas.png',
     weather: 'snow',
     window: { left: '25%', top: '2%', width: '73%', height: '67%', radius: '48% 48% 4% 4% / 28% 28% 3% 3%' },
     candles: [
@@ -66,6 +68,7 @@ export const ROOM_THEMES = [
     description: 'Blossom petals drift past a sunlit waterfall',
     tag: 'Seasonal',
     src: '/spring.png',
+    landing: '/innerroomspring.png',
     weather: 'petals',
     window: { left: '24%', top: '2%', width: '74%', height: '70%', radius: '48% 48% 4% 4% / 28% 28% 3% 3%' },
     candles: [
@@ -79,6 +82,7 @@ export const ROOM_THEMES = [
     description: 'Misty rain on the glass over a blossoming valley',
     tag: 'Seasonal',
     src: '/rainyspring.png',
+    landing: '/innerroomspring.png',
     weather: 'rain',
     window: { left: '24%', top: '2%', width: '74%', height: '62%', radius: '48% 48% 4% 4% / 28% 28% 3% 3%' },
     candles: [
@@ -94,6 +98,7 @@ export const ROOM_THEMES = [
     description: 'Amber leaves drift over a golden waterfall valley',
     tag: 'Seasonal',
     src: '/fall.png',
+    landing: '/innerroomfall.png',
     weather: 'leaves',
     window: { left: '26%', top: '2%', width: '72%', height: '64%', radius: '48% 48% 4% 4% / 28% 28% 3% 3%' },
     candles: [
@@ -108,6 +113,11 @@ export const ROOM_THEMES = [
 // Default "Cozy Creations Room" background when the active season has no
 // artRoom override (cottage-rain, spring).
 export const COZY_CREATIONS_FALLBACK = '/cozyart.png';
+
+// Default cabin LANDING image (the cozy "Inner Room" reading nook) when the
+// active season has no `landing` override. Seasons each point at their own
+// painted nook; this rainy-spring nook is the all-weather default.
+export const INNER_ROOM_LANDING_FALLBACK = '/innerroomspring.png';
 
 export const DEFAULT_ROOM_THEME = 'cottage-rain';
 

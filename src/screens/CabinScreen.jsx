@@ -3,8 +3,7 @@ import { GFONTS, B, SERIF, SANS, DISPLAY, SHELF_BOOKS, BOOK_COVERS, BOOK_CONTENT
 import { SHOP_ITEMS } from '../items.js';
 import { ITEMS, isPlaceable } from '../items.js';
 import { CSS } from '../styles.js';
-import ImmersiveCabin from '../components/ImmersiveCabin.jsx';
-import { useRoomTheme } from '../systems/roomThemes.js';
+import { useRoomTheme, INNER_ROOM_LANDING_FALLBACK } from '../systems/roomThemes.js';
 import CharacterWalker from '../components/CharacterWalker.jsx';
 import BookSparkles from '../components/BookSparkles.jsx';
 import { moveItem, removeFromRoom, placeItem } from '../roomDecor.js';
@@ -32,6 +31,12 @@ export default function CabinScreen({
 }){
   const roomThemeData = useRoomTheme();
   const cabinBgImage = roomThemeData.cabin || CABIN_FALLBACK_IMAGE;
+  // The cabin landing is now the cozy "Inner Room" reading nook (per-season).
+  const landingBgImage = roomThemeData.landing || INNER_ROOM_LANDING_FALLBACK;
+  // Cabin corner chrome (Back to village pill, Kitchen button, currency badge)
+  // is hidden on the nook landing for now — only the desk book is tappable.
+  // Flip to true to bring the old cabin navigation back.
+  const SHOW_CABIN_CHROME = false;
   const [selectedDecor, setSelectedDecor] = useState(null);
   const [draggingDecor, setDraggingDecor] = useState(null);
   const [dragPos, setDragPos] = useState(null);
@@ -48,17 +53,7 @@ export default function CabinScreen({
   const [medOpen, setMedOpen] = useState(false);   // Meditations cover + verse view
   const [medImgOk, setMedImgOk] = useState(false); // true once /meditations-cover.png loads
   const [lbImgOk, setLbImgOk] = useState(false);   // true once /leakybucket.png loads
-  const chooserTouch = useRef({ x: 0, y: 0 });
   const openBookChooser = useCallback(() => { setChooserIdx(0); setBookChooser(true); }, []);
-  const chooserStart = useCallback((e) => { chooserTouch.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }; }, []);
-  const chooserEnd = useCallback((e) => {
-    const dx = e.changedTouches[0].clientX - chooserTouch.current.x;
-    const dy = e.changedTouches[0].clientY - chooserTouch.current.y;
-    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) {
-      if (dx < 0) setChooserIdx(i => Math.min(1, i + 1));
-      else setChooserIdx(i => Math.max(0, i - 1));
-    }
-  }, []);
   const containerRef = useRef(null);
 
   const handleDecorTap = useCallback((itemId, e) => {
@@ -144,7 +139,20 @@ export default function CabinScreen({
           <span style={{color:"rgba(255,248,232,0.3)",fontFamily:SERIF,fontStyle:"italic",fontSize:"0.8rem"}}>3D cabin loading…</span>
         </div>
       ):(
-        <ImmersiveCabin onOpenRoom={(room)=>{ if(room==='cozy-creations') transitionToCozyCreations&&transitionToCozyCreations(); else if(room==='world-map') transitionToMap&&transitionToMap(); else if(room==='cabin-loft') setLoftView(true); }}/>
+        /* Cabin landing — the cozy "Inner Room" reading nook (per-season).
+           The only interactive spot is "The Inner Room" book on the desk,
+           which opens your books (Journals / Meditations / Leaky Bucket). */
+        <div style={{position:"absolute",inset:0,zIndex:0,background:"#0A0806",animation:"spaceFadeIn .6s ease"}}>
+          <img src={landingBgImage} alt="The Inner Room" draggable={false} style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",objectPosition:"center 72%",userSelect:"none",WebkitUserDrag:"none",pointerEvents:"none"}}/>
+          {/* Soft cinematic vignette */}
+          <div style={{position:"absolute",inset:0,pointerEvents:"none",background:"radial-gradient(ellipse at 60% 80%, transparent 40%, rgba(8,6,4,0.42) 100%)"}}/>
+
+          {/* THE ONLY HOTSPOT — "The Inner Room" book on the desk → your books */}
+          <button onClick={()=>openBookChooser()} aria-label="Open The Inner Room book" style={{position:"absolute",left:"50%",top:"80%",width:"46%",height:"19%",zIndex:11,background:"transparent",border:"none",padding:0,cursor:"pointer",borderRadius:"12px",outline:"none",WebkitTapHighlightColor:"transparent"}}>
+            <div style={{position:"absolute",left:"14%",top:"6%",width:"72%",height:"88%",borderRadius:"45%",background:"radial-gradient(ellipse at 50% 50%,rgba(255,215,130,0.28) 0%,rgba(255,190,90,0.10) 45%,transparent 72%)",pointerEvents:"none",animation:"hotspotPulse 2.8s ease-in-out infinite"}}/>
+            <div style={{position:"absolute",left:"28%",top:"18%",width:"44%",height:"64%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,245,180,0.18) 0%,transparent 55%)",pointerEvents:"none",animation:"hotspotPulse 3.3s ease-in-out infinite",animationDelay:"0.8s"}}/>
+          </button>
+        </div>
       )}
 
       {/* ── Walkable character ── */}
@@ -298,7 +306,8 @@ export default function CabinScreen({
           and Becoming Her are now accessible from the "Choose Your Path" menu
           inside the Inner Room Journal (alongside the other journals). */}
 
-      {/* CURRENCY BALANCE — candles + coins (triple-tap = toggle debug hotspots) — always visible */}
+      {/* CURRENCY BALANCE — candles + coins (triple-tap = toggle debug hotspots) */}
+      {SHOW_CABIN_CHROME && (
       <div onClick={debugTripleTap} style={{position:"absolute",left:"3%",top:"4%",zIndex:12,background:"rgba(26,22,18,0.7)",backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",border:"1px solid rgba(212,180,100,0.15)",borderRadius:10,padding:"5px 12px",display:"flex",alignItems:"center",gap:10,animation:"fadeUp 1s 2s ease both",cursor:"default"}}>
         <div style={{display:"flex",alignItems:"center",gap:4}}>
           <span style={{fontSize:"0.8rem"}}>🕯️</span>
@@ -310,11 +319,14 @@ export default function CabinScreen({
           <span style={{fontFamily:DISPLAY,fontSize:"0.82rem",fontWeight:700,color:"rgba(255,210,120,0.85)"}}>{bank.coins}</span>
         </div>
       </div>
+      )}
 
       {/* Back to village — top-right navigation */}
+      {SHOW_CABIN_CHROME && (
       <button onClick={()=>transitionToMap()} style={{position:"absolute",right:"3%",top:"4%",zIndex:12,background:"rgba(26,22,18,0.6)",backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",border:"1px solid rgba(201,169,110,0.15)",borderRadius:999,padding:"6px 16px",cursor:"pointer",color:"rgba(255,248,232,0.55)",fontFamily:SANS,fontSize:"0.7rem",transition:"all 0.2s",display:"inline-flex",alignItems:"center",gap:5,animation:"fadeUp 1s 2s ease both",boxShadow:"0 2px 12px rgba(0,0,0,0.25)"}}>
         <span style={{fontSize:"0.65rem"}}>&#8592;</span> Back to village
       </button>
+      )}
 
       {/* ═══ HOTSPOT DEBUG OVERLAY (2D only) ═══ */}
       {debugHotspots&&<>
@@ -546,30 +558,31 @@ export default function CabinScreen({
         {/* Backdrop */}
         <div onClick={()=>setBookChooser(false)} style={{position:"absolute",inset:0,background:"rgba(10,8,6,0.80)",backdropFilter:"blur(4px)",WebkitBackdropFilter:"blur(4px)",animation:"spaceFadeIn .3s ease"}}/>
         <BookSparkles/>
-        {/* Heading */}
-        <div style={{position:"absolute",top:"6.5%",left:0,right:0,textAlign:"center",zIndex:3,animation:"fadeUp .6s ease both",pointerEvents:"none"}}>
-          <h2 style={{fontFamily:DISPLAY,fontSize:"clamp(1.35rem,5.5vw,1.75rem)",fontWeight:700,color:B.goldL,margin:0,letterSpacing:"0.04em"}}>Your Books</h2>
-          <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.8rem",color:"rgba(255,248,232,0.5)",margin:"6px 0 0"}}>Swipe to choose · tap to open</p>
-        </div>
-        {/* Carousel viewport */}
-        <div onTouchStart={chooserStart} onTouchEnd={chooserEnd} style={{position:"absolute",inset:0,overflow:"hidden",zIndex:2}}>
-          <div style={{display:"flex",width:"100%",height:"100%",transform:`translateX(-${chooserIdx*100}%)`,transition:"transform .45s cubic-bezier(.22,1,.36,1)"}}>
-            {/* ── Slide 0: JOURNALS ── */}
-            <div style={{flex:"0 0 100%",height:"100%",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:18}}>
-              <button onClick={()=>{setBookChooser(false);transitionToJournal();}} style={{width:"min(60vw,240px)",aspectRatio:"2 / 3",borderRadius:"4px 11px 11px 4px",border:"none",padding:0,cursor:"pointer",position:"relative",overflow:"hidden",boxShadow:"0 16px 44px rgba(0,0,0,0.6), 0 0 0 1px rgba(201,169,110,0.22)",animation:"bookOpenAnim .5s cubic-bezier(.22,1,.36,1) both"}}>
+        {/* Centered column: heading above the books, books laid out side by side */}
+        <div style={{position:"absolute",inset:0,zIndex:2,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:"clamp(18px,5vh,38px)",padding:"9% 14px 8%",overflowY:"auto"}}>
+          {/* Heading */}
+          <div style={{textAlign:"center",flexShrink:0,animation:"fadeUp .6s ease both",pointerEvents:"none"}}>
+            <h2 style={{fontFamily:DISPLAY,fontSize:"clamp(1.35rem,5.5vw,1.75rem)",fontWeight:700,color:B.goldL,margin:0,letterSpacing:"0.04em"}}>Your Books</h2>
+            <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.8rem",color:"rgba(255,248,232,0.5)",margin:"6px 0 0"}}>Tap a book to open</p>
+          </div>
+          {/* Books — side by side */}
+          <div style={{display:"flex",flexWrap:"wrap",alignItems:"flex-start",justifyContent:"center",gap:"clamp(12px,3.5vw,30px)",width:"100%",maxWidth:560}}>
+            {/* ── Book 1: JOURNALS ── */}
+            <div style={{width:"clamp(96px,27vw,172px)",display:"flex",flexDirection:"column",alignItems:"center",gap:12}}>
+              <button onClick={()=>{setBookChooser(false);transitionToJournal();}} style={{width:"100%",aspectRatio:"2 / 3",borderRadius:"4px 11px 11px 4px",border:"none",padding:0,cursor:"pointer",position:"relative",overflow:"hidden",boxShadow:"0 16px 44px rgba(0,0,0,0.6), 0 0 0 1px rgba(201,169,110,0.22)",animation:"fadeUp .5s ease both"}}>
                 <img src="/journalondesk.png" alt="The Inner Room journal" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",objectPosition:"center 46%"}} draggable={false}/>
                 {/* Spine + edge sheen for a book feel */}
                 <div style={{position:"absolute",left:0,top:0,bottom:0,width:14,background:"linear-gradient(90deg,rgba(20,12,4,0.55),rgba(20,12,4,0.12),transparent)",pointerEvents:"none"}}/>
                 <div style={{position:"absolute",inset:0,boxShadow:"inset 0 0 50px rgba(0,0,0,0.35)",borderRadius:"inherit",pointerEvents:"none"}}/>
               </button>
               <div style={{textAlign:"center",animation:"fadeUp .6s .1s ease both"}}>
-                <div style={{fontFamily:DISPLAY,fontSize:"1.15rem",fontWeight:700,color:B.goldL,letterSpacing:"0.04em"}}>Journals</div>
-                <div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.78rem",color:"rgba(255,248,232,0.45)",marginTop:3}}>The Inner Room journal</div>
+                <div style={{fontFamily:DISPLAY,fontSize:"0.92rem",fontWeight:700,color:B.goldL,letterSpacing:"0.03em"}}>Journals</div>
+                <div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.64rem",color:"rgba(255,248,232,0.45)",marginTop:3,lineHeight:1.35}}>The Inner Room journal</div>
               </div>
             </div>
-            {/* ── Slide 1: MEDITATIONS ── */}
-            <div style={{flex:"0 0 100%",height:"100%",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:18}}>
-              <button onClick={()=>{setBookChooser(false);setMedOpen(true);}} style={{width:"min(60vw,240px)",aspectRatio:"2 / 3",borderRadius:"4px 11px 11px 4px",border:"none",padding:0,cursor:"pointer",position:"relative",overflow:"hidden",background:"linear-gradient(160deg,#33230F 0%,#2A1B0C 45%,#1E1307 100%)",boxShadow:"0 16px 44px rgba(0,0,0,0.6), 0 0 0 1px rgba(201,169,110,0.22)",animation:"bookOpenAnim .5s cubic-bezier(.22,1,.36,1) both"}}>
+            {/* ── Book 2: MEDITATIONS ── */}
+            <div style={{width:"clamp(96px,27vw,172px)",display:"flex",flexDirection:"column",alignItems:"center",gap:12}}>
+              <button onClick={()=>{setBookChooser(false);setMedOpen(true);}} style={{width:"100%",aspectRatio:"2 / 3",borderRadius:"4px 11px 11px 4px",border:"none",padding:0,cursor:"pointer",position:"relative",overflow:"hidden",background:"linear-gradient(160deg,#33230F 0%,#2A1B0C 45%,#1E1307 100%)",boxShadow:"0 16px 44px rgba(0,0,0,0.6), 0 0 0 1px rgba(201,169,110,0.22)",animation:"fadeUp .5s ease both"}}>
                 {/* Themed placeholder cover (shown until your Canva /meditations-cover.png exists) */}
                 <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center",padding:"16% 13%"}}>
                   <div style={{position:"absolute",inset:"7%",border:"1px solid rgba(201,169,110,0.38)",borderRadius:6,boxShadow:"inset 0 0 26px rgba(201,169,110,0.12)",pointerEvents:"none"}}/>
@@ -585,13 +598,13 @@ export default function CabinScreen({
                 <div style={{position:"absolute",left:0,top:0,bottom:0,width:14,background:"linear-gradient(90deg,rgba(20,12,4,0.55),rgba(20,12,4,0.12),transparent)",pointerEvents:"none"}}/>
               </button>
               <div style={{textAlign:"center",animation:"fadeUp .6s .1s ease both"}}>
-                <div style={{fontFamily:DISPLAY,fontSize:"1.15rem",fontWeight:700,color:B.goldL,letterSpacing:"0.04em"}}>Meditations</div>
-                <div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.78rem",color:"rgba(255,248,232,0.45)",marginTop:3}}>Meditate on His word, day and night</div>
+                <div style={{fontFamily:DISPLAY,fontSize:"0.92rem",fontWeight:700,color:B.goldL,letterSpacing:"0.03em"}}>Meditations</div>
+                <div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.64rem",color:"rgba(255,248,232,0.45)",marginTop:3,lineHeight:1.35}}>Meditate on His word, day and night</div>
               </div>
             </div>
-            {/* ── Slide 2: THE LEAKY BUCKET ── */}
-            <div style={{flex:"0 0 100%",height:"100%",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:18}}>
-              <button onClick={()=>{setBookChooser(false);setScreen("leaky-bucket");}} style={{width:"min(60vw,240px)",aspectRatio:"2 / 3",borderRadius:"4px 11px 11px 4px",border:"none",padding:0,cursor:"pointer",position:"relative",overflow:"hidden",background:"linear-gradient(160deg,#27414C 0%,#1C313A 48%,#13242B 100%)",boxShadow:"0 16px 44px rgba(0,0,0,0.6), 0 0 0 1px rgba(201,169,110,0.22)",animation:"bookOpenAnim .5s cubic-bezier(.22,1,.36,1) both"}}>
+            {/* ── Book 3: THE LEAKY BUCKET ── */}
+            <div style={{width:"clamp(96px,27vw,172px)",display:"flex",flexDirection:"column",alignItems:"center",gap:12}}>
+              <button onClick={()=>{setBookChooser(false);setScreen("leaky-bucket");}} style={{width:"100%",aspectRatio:"2 / 3",borderRadius:"4px 11px 11px 4px",border:"none",padding:0,cursor:"pointer",position:"relative",overflow:"hidden",background:"linear-gradient(160deg,#27414C 0%,#1C313A 48%,#13242B 100%)",boxShadow:"0 16px 44px rgba(0,0,0,0.6), 0 0 0 1px rgba(201,169,110,0.22)",animation:"fadeUp .5s ease both"}}>
                 <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center",padding:"16% 13%"}}>
                   <div style={{position:"absolute",inset:"7%",border:"1px solid rgba(201,169,110,0.38)",borderRadius:6,boxShadow:"inset 0 0 26px rgba(95,168,201,0.14)",pointerEvents:"none"}}/>
                   <div style={{position:"absolute",inset:"9.5%",border:"1px solid rgba(201,169,110,0.18)",borderRadius:4,pointerEvents:"none"}}/>
@@ -613,18 +626,11 @@ export default function CabinScreen({
                 <div style={{position:"absolute",left:0,top:0,bottom:0,width:14,background:"linear-gradient(90deg,rgba(20,12,4,0.55),rgba(20,12,4,0.12),transparent)",pointerEvents:"none",zIndex:2}}/>
               </button>
               <div style={{textAlign:"center",animation:"fadeUp .6s .1s ease both"}}>
-                <div style={{fontFamily:DISPLAY,fontSize:"1.15rem",fontWeight:700,color:B.goldL,letterSpacing:"0.04em"}}>The Leaky Bucket</div>
-                <div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.78rem",color:"rgba(255,248,232,0.45)",marginTop:3}}>Episode One · what truly holds</div>
+                <div style={{fontFamily:DISPLAY,fontSize:"0.92rem",fontWeight:700,color:B.goldL,letterSpacing:"0.03em"}}>The Leaky Bucket</div>
+                <div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.64rem",color:"rgba(255,248,232,0.45)",marginTop:3,lineHeight:1.35}}>Episode One · what truly holds</div>
               </div>
             </div>
           </div>
-        </div>
-        {/* Prev / next chevrons */}
-        {chooserIdx>0&&<button onClick={()=>setChooserIdx(i=>Math.max(0,i-1))} aria-label="Previous book" style={{position:"absolute",left:"3%",top:"50%",transform:"translateY(-50%)",zIndex:4,width:40,height:40,borderRadius:"50%",background:"rgba(26,22,18,0.6)",border:"1px solid rgba(201,169,110,0.2)",color:B.goldL,fontSize:"1.4rem",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(6px)",WebkitBackdropFilter:"blur(6px)"}}>&#8249;</button>}
-        {chooserIdx<2&&<button onClick={()=>setChooserIdx(i=>Math.min(2,i+1))} aria-label="Next book" style={{position:"absolute",right:"3%",top:"50%",transform:"translateY(-50%)",zIndex:4,width:40,height:40,borderRadius:"50%",background:"rgba(26,22,18,0.6)",border:"1px solid rgba(201,169,110,0.2)",color:B.goldL,fontSize:"1.4rem",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(6px)",WebkitBackdropFilter:"blur(6px)"}}>&#8250;</button>}
-        {/* Dots */}
-        <div style={{position:"absolute",bottom:"7%",left:0,right:0,display:"flex",justifyContent:"center",gap:9,zIndex:4}}>
-          {[0,1,2].map(i=>(<button key={i} onClick={()=>setChooserIdx(i)} aria-label={`Book ${i+1}`} style={{width:9,height:9,borderRadius:"50%",border:"none",cursor:"pointer",padding:0,background:chooserIdx===i?B.goldL:"rgba(255,248,232,0.25)",transition:"background .25s"}}/>))}
         </div>
         {/* Close */}
         <button onClick={()=>setBookChooser(false)} aria-label="Close" style={{position:"absolute",top:"6%",right:"5%",zIndex:5,width:34,height:34,borderRadius:"50%",background:"rgba(26,22,18,0.6)",border:"1px solid rgba(201,169,110,0.18)",color:"rgba(255,248,232,0.6)",fontSize:"0.85rem",cursor:"pointer",backdropFilter:"blur(6px)",WebkitBackdropFilter:"blur(6px)"}}>&#10005;</button>
@@ -1011,7 +1017,7 @@ export default function CabinScreen({
       )}
 
       {/* Kitchen — bottom right quick access */}
-      {!bookOpen&&!showInsights&&!shelfAnim&&(
+      {SHOW_CABIN_CHROME&&!bookOpen&&!showInsights&&!shelfAnim&&(
         <button onClick={()=>transitionToKitchen()} style={{position:"fixed",bottom:32,right:24,zIndex:12,background:"rgba(26,22,18,0.7)",backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",border:"1px solid rgba(201,169,110,0.15)",borderRadius:14,padding:"10px 18px",cursor:"pointer",color:"rgba(255,248,232,0.55)",fontFamily:SANS,fontSize:"0.72rem",fontWeight:600,transition:"all 0.2s",display:"flex",alignItems:"center",gap:6,animation:"fadeUp 1s 1s ease both",boxShadow:"0 2px 12px rgba(0,0,0,0.3)"}}>
           <span style={{fontSize:"0.8rem",opacity:0.7}}>&#8595;</span> Kitchen
         </button>
