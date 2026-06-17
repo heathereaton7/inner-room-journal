@@ -26,6 +26,19 @@ const PINS = ['#C0413B', '#5E7560', '#A99779', '#C8A39B', '#7E6B97', '#C9A96E'];
 // Notes are pinned within this rectangle so they sit on the real board.
 const FRAME = { left: 0.115, top: 0.165, width: 0.275, height: 0.355 };
 
+// Where rain falls in the photo — only the open-air view beyond the porch
+// (the covered left side stays dry). Fractions of the displayed image.
+const RAIN_BOX = { left: 0.45, top: 0.04, width: 0.55, height: 0.66 };
+
+// Flame sources in the photo (hanging lantern, table candle, floor lantern, and
+// the steadier wall lamp over the board). Fractions of the displayed image.
+const CANDLES = [
+  { x: 0.585, y: 0.330, r: 0.070, base: 0.62, amp: 0.34 }, // hanging lantern (center)
+  { x: 0.905, y: 0.675, r: 0.055, base: 0.60, amp: 0.34 }, // candle on the side table
+  { x: 0.095, y: 0.860, r: 0.060, base: 0.55, amp: 0.32 }, // lantern on the floor
+  { x: 0.235, y: 0.155, r: 0.075, base: 0.50, amp: 0.12 }, // wall lamp over the board
+];
+
 export default function PorchBlogScreen({ user, onOpenPost, onWrite, onBack }) {
   const [posts, setPosts] = useState([]);
   const [drafts, setDrafts] = useState([]);
@@ -35,9 +48,13 @@ export default function PorchBlogScreen({ user, onOpenPost, onWrite, onBack }) {
 
   const wrapRef = useRef(null);
   const imgRef = useRef(null);
+  const canvasRef = useRef(null);
+  const rainRef = useRef([]);
+  const candleRef = useRef([]);
   const [frameBox, setFrameBox] = useState(null); // {left,top,width,height} px
+  const [imgRect, setImgRect] = useState(null);    // displayed photo rect, px
 
-  // Map the FRAME fractions onto the on-screen rectangle of the contained image.
+  // Map fractions onto the on-screen rectangle of the contained image.
   const recompute = useCallback(() => {
     const wrap = wrapRef.current;
     const img = imgRef.current;
@@ -49,6 +66,7 @@ export default function PorchBlogScreen({ user, onOpenPost, onWrite, onBack }) {
     let dispW, dispH, offX, offY;
     if (cw / ch > ratio) { dispH = ch; dispW = ch * ratio; offX = (cw - dispW) / 2; offY = 0; }
     else { dispW = cw; dispH = cw / ratio; offX = 0; offY = (ch - dispH) / 2; }
+    setImgRect({ left: offX, top: offY, width: dispW, height: dispH });
     setFrameBox({
       left: offX + FRAME.left * dispW,
       top: offY + FRAME.top * dispH,
@@ -62,6 +80,71 @@ export default function PorchBlogScreen({ user, onOpenPost, onWrite, onBack }) {
     window.addEventListener('resize', recompute);
     return () => window.removeEventListener('resize', recompute);
   }, [recompute]);
+
+  // Rain in the open-air view + flickering flames, painted over the photo.
+  useEffect(() => {
+    if (!imgRect) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const W = imgRect.width, H = imgRect.height;
+    canvas.width = Math.round(W * dpr);
+    canvas.height = Math.round(H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    if (!rainRef.current.length) {
+      rainRef.current = Array.from({ length: 95 }, () => ({
+        x: Math.random(), y: Math.random(),
+        len: 0.03 + Math.random() * 0.05,
+        sp: 0.010 + Math.random() * 0.016,
+        w: Math.random() < 0.5 ? 1 : 1.4,
+      }));
+    }
+    if (!candleRef.current.length) {
+      candleRef.current = CANDLES.map(() => ({ phase: Math.random() * Math.PI * 2, speed: 4 + Math.random() * 3 }));
+    }
+
+    const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let raf;
+    const draw = (t) => {
+      ctx.clearRect(0, 0, W, H);
+      // rain (only within the open-air box)
+      const rb = { x: RAIN_BOX.left * W, y: RAIN_BOX.top * H, w: RAIN_BOX.width * W, h: RAIN_BOX.height * H };
+      ctx.strokeStyle = 'rgba(190,205,225,0.32)';
+      ctx.lineCap = 'round';
+      for (const d of rainRef.current) {
+        if (!reduce) { d.y += d.sp; if (d.y > 1) { d.y = -d.len; d.x = Math.random(); } }
+        const px = rb.x + d.x * rb.w;
+        const py = rb.y + d.y * rb.h;
+        const ll = d.len * rb.h;
+        ctx.lineWidth = d.w;
+        ctx.beginPath();
+        ctx.moveTo(px, py);
+        ctx.lineTo(px - ll * 0.16, py + ll);
+        ctx.stroke();
+      }
+      // flames (additive warm glow)
+      ctx.globalCompositeOperation = 'lighter';
+      const tt = t / 1000;
+      CANDLES.forEach((c, i) => {
+        const s = candleRef.current[i];
+        let flick = c.base + Math.sin(tt * s.speed + s.phase) * c.amp * 0.5 + (reduce ? 0 : (Math.random() - 0.5) * c.amp * 0.5);
+        flick = Math.max(0.15, Math.min(1, flick));
+        const cx = c.x * W, cy = c.y * H, rad = c.r * Math.min(W, H) * 2.2;
+        const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, rad);
+        g.addColorStop(0, `rgba(255,205,120,${0.55 * flick})`);
+        g.addColorStop(0.45, `rgba(255,160,70,${0.20 * flick})`);
+        g.addColorStop(1, 'rgba(255,140,50,0)');
+        ctx.fillStyle = g;
+        ctx.fillRect(cx - rad, cy - rad, rad * 2, rad * 2);
+      });
+      ctx.globalCompositeOperation = 'source-over';
+      raf = requestAnimationFrame(draw);
+    };
+    raf = requestAnimationFrame(draw);
+    return () => cancelAnimationFrame(raf);
+  }, [imgRect]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -153,6 +236,15 @@ export default function PorchBlogScreen({ user, onOpenPost, onWrite, onBack }) {
         position: 'absolute', inset: 0, pointerEvents: 'none',
         background: 'linear-gradient(to bottom, rgba(10,8,6,0.55) 0%, rgba(10,8,6,0) 16%, rgba(10,8,6,0) 82%, rgba(10,8,6,0.55) 100%)',
       }} />
+
+      {/* Live rain + candle flicker, aligned to the photo */}
+      {imgRect && (
+        <canvas ref={canvasRef} style={{
+          position: 'absolute', left: imgRect.left, top: imgRect.top,
+          width: imgRect.width, height: imgRect.height,
+          zIndex: 4, pointerEvents: 'none',
+        }} />
+      )}
 
       {/* Header controls */}
       <div style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 20, padding: '16px 16px 8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
