@@ -22,6 +22,12 @@ const TILTS = [-2.4, 1.8, -1.4, 2.2, -2.0, 1.3, -1.7, 2.0];
 const PINS = ['#C0413B', '#5E7560', '#A99779', '#C8A39B', '#7E6B97', '#C9A96E'];
 const VISIBLE = 5; // newest posts shown before the "Older posts" reveal
 
+// zoominporch.png is shown objectFit:cover. Rain falls ONLY in the open-air
+// view (sky / trees / lake) on the right, never on the covered porch. Values
+// are fractions of the natural image; the cover crop is undone each frame.
+const BG_W = 1082, BG_H = 1453;
+const RAIN_BOX = { left: 0.69, top: 0.11, width: 0.31, height: 0.52 };
+
 export default function BlogBoardScreen({ user, onOpenPost, onWrite, onBack }) {
   const [posts, setPosts] = useState([]);
   const [drafts, setDrafts] = useState([]);
@@ -32,7 +38,7 @@ export default function BlogBoardScreen({ user, onOpenPost, onWrite, onBack }) {
   const rainCanvasRef = useRef(null);
   const rainRef = useRef([]);
 
-  // Soft rain drifting over the whole porch scene, matching the porch entry.
+  // Soft rain confined to the open-air view (sky / trees / lake), never the porch.
   useEffect(() => {
     const canvas = rainCanvasRef.current;
     if (!canvas) return;
@@ -47,10 +53,10 @@ export default function BlogBoardScreen({ user, onOpenPost, onWrite, onBack }) {
     window.addEventListener('resize', resize);
 
     if (!rainRef.current.length) {
-      rainRef.current = Array.from({ length: 90 }, () => ({
+      rainRef.current = Array.from({ length: 70 }, () => ({
         x: Math.random(), y: Math.random(),
-        len: 0.03 + Math.random() * 0.05,
-        sp: 0.010 + Math.random() * 0.016,
+        len: 0.04 + Math.random() * 0.06,
+        sp: 0.012 + Math.random() * 0.018,
         w: Math.random() < 0.5 ? 1 : 1.4,
       }));
     }
@@ -60,17 +66,30 @@ export default function BlogBoardScreen({ user, onOpenPost, onWrite, onBack }) {
     const draw = () => {
       const W = window.innerWidth, H = window.innerHeight;
       ctx.clearRect(0, 0, W, H);
-      ctx.strokeStyle = 'rgba(190,205,225,0.26)';
+      // Undo the cover crop to find where the open-air view sits on screen.
+      const scale = Math.max(W / BG_W, H / BG_H);
+      const dispW = BG_W * scale, dispH = BG_H * scale;
+      const offX = (W - dispW) / 2, offY = (H - dispH) / 2;
+      const bx = offX + RAIN_BOX.left * dispW;
+      const by = offY + RAIN_BOX.top * dispH;
+      const bw = RAIN_BOX.width * dispW;
+      const bh = RAIN_BOX.height * dispH;
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(bx, by, bw, bh);
+      ctx.clip();
+      ctx.strokeStyle = 'rgba(190,205,225,0.32)';
       ctx.lineCap = 'round';
       for (const d of rainRef.current) {
         if (!reduce) { d.y += d.sp; if (d.y > 1) { d.y = -d.len; d.x = Math.random(); } }
-        const px = d.x * W, py = d.y * H, ll = d.len * H;
+        const px = bx + d.x * bw, py = by + d.y * bh, ll = d.len * bh;
         ctx.lineWidth = d.w;
         ctx.beginPath();
         ctx.moveTo(px, py);
         ctx.lineTo(px - ll * 0.16, py + ll);
         ctx.stroke();
       }
+      ctx.restore();
       raf = requestAnimationFrame(draw);
     };
     raf = requestAnimationFrame(draw);
