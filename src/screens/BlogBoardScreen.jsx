@@ -103,10 +103,7 @@ export default function BlogBoardScreen({ user, onOpenPost, onWrite, onBack }) {
   return (
     <div style={{
       position: 'fixed', inset: 0, overflow: 'hidden', fontFamily: BLOG_SANS,
-      animation: 'blogFadeIn .35s ease both',
-      // warm cork board surface with a little depth + speckle
-      background:
-        'radial-gradient(ellipse at 50% -10%, #C0905C 0%, #AE7D4D 42%, #8E6233 100%)',
+      animation: 'blogFadeIn .35s ease both', background: '#15110d',
     }}>
       <style>{GFONTS}</style>
       <style>{`
@@ -114,22 +111,16 @@ export default function BlogBoardScreen({ user, onOpenPost, onWrite, onBack }) {
         @keyframes blogFadeIn { from { opacity:0; } to { opacity:1; } }
       `}</style>
 
-      {/* subtle cork speckle + inner shadow frame */}
+      {/* moody cabin-porch photo backdrop */}
+      <img src="/blog/zoominporch.png" alt="" draggable={false} style={{
+        position: 'absolute', inset: 0, width: '100%', height: '100%',
+        objectFit: 'cover', objectPosition: 'center', userSelect: 'none', pointerEvents: 'none',
+      }} />
+      {/* legibility scrim — darker at the edges, gentle wash over the middle */}
       <div style={{
         position: 'absolute', inset: 0, pointerEvents: 'none',
         background:
-          'radial-gradient(circle at 18% 24%, rgba(0,0,0,0.05) 0 1.5px, transparent 2px),' +
-          'radial-gradient(circle at 62% 58%, rgba(0,0,0,0.045) 0 1.5px, transparent 2px),' +
-          'radial-gradient(circle at 84% 18%, rgba(255,255,255,0.04) 0 1.5px, transparent 2px),' +
-          'radial-gradient(circle at 38% 82%, rgba(0,0,0,0.045) 0 1.5px, transparent 2px)',
-        backgroundSize: '120px 120px, 150px 150px, 100px 100px, 140px 140px',
-        boxShadow: 'inset 0 0 90px rgba(60,38,16,0.55)',
-      }} />
-      {/* wooden frame edge */}
-      <div style={{
-        position: 'absolute', inset: 8, pointerEvents: 'none', borderRadius: 6,
-        border: '10px solid', borderImage: 'linear-gradient(145deg,#7c5326,#5a3c1b,#7c5326) 1',
-        boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.3)',
+          'linear-gradient(to bottom, rgba(8,6,4,0.62) 0%, rgba(8,6,4,0.18) 22%, rgba(8,6,4,0.18) 70%, rgba(8,6,4,0.7) 100%)',
       }} />
 
       {/* Header */}
