@@ -177,6 +177,8 @@ export default function CabinScreen({
                 absolute zIndex={1}
               />
             )}
+            {/* Soft warm glow on the lampshade (left) — anchored to the lamp in the image */}
+            <CandleGlow left={`${imgPt(0.08,0.41).left}px`} top={`${imgPt(0.08,0.41).top}px`} color="rgba(255,206,138,0.8)" size={180} keyframe="cottage-flicker-b" duration={9} absolute zIndex={2} />
             {/* Flickering candle flame glow — anchored to the flame in the image */}
             <CandleGlow left={`${imgPt(0.58,0.665).left}px`} top={`${imgPt(0.58,0.665).top}px`} color="rgba(255,200,120,0.95)" size={78} keyframe="cottage-flicker-a" duration={5.5} absolute zIndex={2} />
             {/* Steam rising from the coffee mug — anchored to the mug rim in the image */}
