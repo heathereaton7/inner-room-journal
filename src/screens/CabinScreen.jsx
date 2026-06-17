@@ -182,7 +182,7 @@ export default function CabinScreen({
               {/* Right pane — open glass, falls down to just above the candle/mug */}
               <WindowWeather
                 mode={roomThemeData.weather}
-                window={{ left:`${imgBox.ox+0.54*imgBox.rw}px`, top:`${imgBox.oy+0.0*imgBox.rh}px`, width:`${0.46*imgBox.rw}px`, height:`${0.58*imgBox.rh}px`, radius:"0px" }}
+                window={{ left:`${imgBox.ox+0.54*imgBox.rw}px`, top:`${imgBox.oy+0.0*imgBox.rh}px`, width:`${0.46*imgBox.rw}px`, height:`${0.61*imgBox.rh}px`, radius:"0px" }}
                 absolute zIndex={1}
               />
             </>)}
