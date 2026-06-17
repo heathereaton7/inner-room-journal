@@ -69,6 +69,23 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // ── Porch Blog ──
+    // Anyone (even signed-out visitors) may READ published posts.
+    // Only the site OWNER may create / edit / delete.
+    // TO SET UP: replace OWNER_UID below with your Firebase Auth user UID
+    // (Authentication → Users → your account → User UID), then redeploy:
+    //   firebase deploy --only firestore:rules
+    function isBlogOwner() {
+      return request.auth != null
+             && request.auth.uid == 'REPLACE_WITH_YOUR_FIREBASE_UID';
+    }
+    match /blogPosts/{postId} {
+      allow read: if resource.data.status == 'published' || isBlogOwner();
+      allow create: if isBlogOwner()
+                     && request.resource.data.authorUid == request.auth.uid;
+      allow update, delete: if isBlogOwner();
+    }
+
     // Notifications — recipient can read + mark as read, authenticated can create
     match /notifications/{notificationId} {
       allow read: if request.auth != null

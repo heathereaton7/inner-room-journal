@@ -10,7 +10,7 @@ import BookSparkles from '../components/BookSparkles.jsx';
 import { moveItem, removeFromRoom, placeItem } from '../roomDecor.js';
 
 export default function CabinScreen({
-  spaceTransit, transitDir, transitionToMap, transitionToKitchen, transitionToRooftop, transitionToJournal, transitionToCozyCreations,
+  spaceTransit, transitDir, transitionToMap, transitionToKitchen, transitionToRooftop, transitionToJournal, transitionToCozyCreations, transitionToPorch,
   cabinMode, cabin3DReady, debugHotspots, debugTripleTap,
   bookOpen, setBookOpen, deskBook, shelfAnim, bookPage, flipDir, bookText, setBookText,
   bookSaveMsg, setBookSaveMsg, journalSection, setJournalSection, journalZoom,
@@ -213,6 +213,14 @@ export default function CabinScreen({
             <div style={{position:"absolute",left:"14%",top:"6%",width:"72%",height:"88%",borderRadius:"45%",background:"radial-gradient(ellipse at 50% 50%,rgba(255,215,130,0.28) 0%,rgba(255,190,90,0.10) 45%,transparent 72%)",pointerEvents:"none",animation:"hotspotPulse 2.8s ease-in-out infinite"}}/>
             <div style={{position:"absolute",left:"28%",top:"18%",width:"44%",height:"64%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,245,180,0.18) 0%,transparent 55%)",pointerEvents:"none",animation:"hotspotPulse 3.3s ease-in-out infinite",animationDelay:"0.8s"}}/>
           </button>
+
+          {/* PORCH DOOR — the French door on the right of the nook → the porch blog board */}
+          {transitionToPorch && (
+            <button onClick={()=>transitionToPorch()} aria-label="Step out to the porch" style={{position:"absolute",left:"63%",top:"10%",width:"34%",height:"60%",zIndex:11,background:"transparent",border:"none",padding:0,cursor:"pointer",borderRadius:"10px",outline:"none",WebkitTapHighlightColor:"transparent"}}>
+              <div style={{position:"absolute",left:"18%",top:"24%",width:"64%",height:"50%",borderRadius:"45%",background:"radial-gradient(ellipse at 50% 50%,rgba(190,210,200,0.22) 0%,rgba(160,185,170,0.08) 45%,transparent 72%)",pointerEvents:"none",animation:"hotspotPulse 3.4s ease-in-out infinite"}}/>
+              <div style={{position:"absolute",left:"50%",bottom:"6%",transform:"translateX(-50%)",whiteSpace:"nowrap",fontFamily:SANS,fontSize:"0.62rem",letterSpacing:"0.08em",color:"rgba(255,248,232,0.85)",background:"rgba(26,22,18,0.5)",backdropFilter:"blur(6px)",WebkitBackdropFilter:"blur(6px)",padding:"4px 12px",borderRadius:999,pointerEvents:"none",animation:"fadeUp 1s 0.6s ease both"}}>To the porch →</div>
+            </button>
+          )}
         </div>
       )}
 

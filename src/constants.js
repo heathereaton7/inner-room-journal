@@ -27,6 +27,23 @@ export const DISPLAY = "'Playfair Display','Georgia',serif";
 export const AVATAR_NAV = false;
 
 /* ═══════════════════════════════════════════════════
+   PORCH BLOG — OWNER ACCOUNT
+   Only this Firebase Auth UID can write/edit/delete blog
+   posts (the porch board is public to read).
+
+   TO SET: sign in to the app once with your Google account,
+   open the Supabase/Firebase console → Authentication → Users,
+   copy your User UID, and paste it below. Then redeploy
+   firestore.rules with the same UID so the server enforces it.
+
+   While left as the placeholder, the writing screen is hidden
+   from everyone (no one can post).
+═══════════════════════════════════════════════════ */
+export const BLOG_OWNER_UID = "REPLACE_WITH_YOUR_FIREBASE_UID";
+export const isBlogOwner = (user) =>
+  !!user && !!user.uid && user.uid === BLOG_OWNER_UID;
+
+/* ═══════════════════════════════════════════════════
    ROOM THEMES
 ═══════════════════════════════════════════════════ */
 export const RT = {

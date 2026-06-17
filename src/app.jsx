@@ -39,6 +39,9 @@ import GatheringFeed from './screens/GatheringFeed.jsx';
 import GatheringPost from './screens/GatheringPost.jsx';
 import CreateGatheringPost from './screens/CreateGatheringPost.jsx';
 import UpperRoomSearch from './screens/UpperRoomSearch.jsx';
+import PorchBlogScreen from './screens/PorchBlogScreen.jsx';
+import BlogPostScreen from './screens/BlogPostScreen.jsx';
+import WriteBlogScreen from './screens/WriteBlogScreen.jsx';
 import { generateAnonName, makeSearchTokens, GATHERING_SPACES } from './gatherings.js';
 import { ambientPlay, ambientStop, ambientMute, ambientUnmute, ambientIsPlaying, SOUND_LIBRARY, AMBIENT_TRACKS } from './systems/ambientSound.js';
 import { ROOM_THEMES, DEFAULT_ROOM_THEME, ROOM_THEME_KEY, ROOM_THEME_EVENT, getRoomTheme, useRoomTheme, COZY_CREATIONS_FALLBACK } from './systems/roomThemes.js';
@@ -1583,6 +1586,8 @@ function AppInner(){
   const [scenePrev,     setScenePrev]     = useState(-1);
   const [bookOpen,      setBookOpen]      = useState(false);
   const [prevScreen,    setPrevScreen]    = useState("cabin");
+  const [selectedBlogPost, setSelectedBlogPost] = useState(null); // porch blog: post being read
+  const [editingBlogPost,  setEditingBlogPost]  = useState(null); // porch blog: post being edited (null = new)
   const [spaceTransit,  setSpaceTransit]  = useState(false);
   const [transitDir,    setTransitDir]    = useState(null);
   const [onboardStep,   setOnboardStep]   = useState(0);
@@ -3499,6 +3504,10 @@ function AppInner(){
     setSpaceTransit(true); setTransitDir("toRoom");
     setTimeout(()=>{setScreen("cozy-creations");setSpaceTransit(false);setTransitDir(null);},700);
   }
+  function transitionToPorch(){
+    setSpaceTransit(true); setTransitDir("toRoom");
+    setTimeout(()=>{setScreen("porch");setSpaceTransit(false);setTransitDir(null);},700);
+  }
   function transitionToRooftop(){
     setSpaceTransit(true); setTransitDir("toRooftop");
     prevScreenRef.current=screen;
@@ -4634,6 +4643,35 @@ function AppInner(){
       onRoomChange={(next)=>{setPlayerRoom(next);dbSave("irj-room",next);if(user&&db){try{setDoc(doc(db,"userProfiles",user.uid),{room:next},{merge:true});}catch(e){}}}}
       inventory={inventory} addToInventory={addToInventory} removeFromInventory={removeFromInventory}
       playerAppearance={playerAppearance}
+      transitionToPorch={transitionToPorch}
+    />
+  </>);
+
+
+  /* ══ PORCH BLOG (through the cabin landing door, out to the porch board) ══ */
+  if(screen==="porch") return(<>
+    <PorchBlogScreen
+      user={user}
+      onBack={()=>transitionToCabin()}
+      onOpenPost={(p)=>{setSelectedBlogPost(p);setScreen("blog-post");}}
+      onWrite={()=>{setEditingBlogPost(null);setScreen("write-blog");}}
+    />
+  </>);
+  if(screen==="blog-post") return(<>
+    <BlogPostScreen
+      post={selectedBlogPost}
+      user={user}
+      onBack={()=>setScreen("porch")}
+      onEdit={(p)=>{setEditingBlogPost(p);setScreen("write-blog");}}
+      onDeleted={()=>{setSelectedBlogPost(null);setScreen("porch");}}
+    />
+  </>);
+  if(screen==="write-blog") return(<>
+    <WriteBlogScreen
+      user={user}
+      editingPost={editingBlogPost}
+      onBack={()=>setScreen("porch")}
+      onDone={()=>{setEditingBlogPost(null);setScreen("porch");}}
     />
   </>);
 
@@ -7715,7 +7753,7 @@ function AppInner(){
        Skip screens that already render their own BottomMenuDrawer (avoid
        duplicates) and the initial setup/welcome screens. ── */
   const __menuHasOwn = new Set(["cabin","journal","jesus","cards","hall","community","insights","map2","visit-farm","garden","shop","history","kitchen","stove","kitchen-window","market","upper-room","cozy-creations"]);
-  const __menuHidden = new Set(["loading","welcome","onboard","profile-onboard"]);
+  const __menuHidden = new Set(["loading","welcome","onboard","profile-onboard","porch","blog-post","write-blog"]);
   return(<>
     {__screenJSX}
     {!__menuHasOwn.has(screen) && !__menuHidden.has(screen) && <BottomMenuDrawer/>}
