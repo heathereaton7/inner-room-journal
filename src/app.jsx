@@ -2057,18 +2057,25 @@ function AppInner(){
       ens.forEach(e=>{map[e.date]=true;});
       while(map[isoDate(d)]){s++;d.setDate(d.getDate()-1);} setStreak(s);
       setIsOnboarded(!!ob);
-      setScreen("welcome");
+      // Shareable landing: innerroomjournal.com/?page=blog opens the porch board
+      // directly (e.g. when shared from outside). Anyone can read; signed-out
+      // visitors see a "create a free account" invite on the board.
+      let landing="welcome";
+      try{ if(new URLSearchParams(window.location.search).get("page")==="blog") landing="blog-board"; }catch(e){}
+      setScreen(landing);
       setCardQ(shuffle(ALL_CARD_QS)[0]);
       // preload spatial world backgrounds
       ["cabin-interior.webp","upper-room-hall.webp","harvest-market.webp"].forEach(src=>{const img=new Image();img.src="/"+src;});
     })();
   },[]);
 
-  // ── SIGNUP SOURCE (e.g. blog link: innerroomjournal.com/?ref=blog) ──
+  // ── SIGNUP SOURCE (e.g. blog link: innerroomjournal.com/?ref=blog or ?page=blog) ──
   useEffect(()=>{
     try{
-      const ref=new URLSearchParams(window.location.search).get("ref");
+      const p=new URLSearchParams(window.location.search);
+      const ref=p.get("ref");
       if(ref) signupSourceRef.current=ref.toLowerCase().slice(0,40);
+      else if(p.get("page")==="blog") signupSourceRef.current="blog";
     }catch(e){}
   },[]);
 
@@ -4833,9 +4840,10 @@ function AppInner(){
   if(screen==="blog-board") return(<>
     <BlogBoardScreen
       user={user}
-      onBack={()=>setScreen("porch")}
+      onBack={()=>setScreen(user?"porch":"welcome")}
       onOpenPost={(p)=>{setSelectedBlogPost(p);setScreen("blog-post");}}
       onWrite={()=>{setEditingBlogPost(null);setScreen("write-blog");}}
+      onJoin={(mode)=>{signupSourceRef.current="blog";setAuthError("");setAuthMode(mode==="login"?"email":"choose");setEmailSignupMode(mode!=="login");setOnboardStep(0);setScreen("profile-onboard");}}
     />
   </>);
   if(screen==="blog-post") return(<>

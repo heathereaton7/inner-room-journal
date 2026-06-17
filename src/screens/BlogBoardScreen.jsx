@@ -28,7 +28,7 @@ const VISIBLE = 5; // newest posts shown before the "Older posts" reveal
 const BG_W = 1082, BG_H = 1453;
 const RAIN_BOX = { left: 0.69, top: 0.11, width: 0.31, height: 0.52 };
 
-export default function BlogBoardScreen({ user, onOpenPost, onWrite, onBack }) {
+export default function BlogBoardScreen({ user, onOpenPost, onWrite, onBack, onJoin }) {
   const [posts, setPosts] = useState([]);
   const [drafts, setDrafts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -205,7 +205,7 @@ export default function BlogBoardScreen({ user, onOpenPost, onWrite, onBack }) {
           background: 'rgba(250,248,244,0.18)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
           border: '1px solid rgba(250,248,244,0.3)', borderRadius: 999, padding: '7px 14px',
           cursor: 'pointer', color: BLOG.cream, fontFamily: BLOG_SANS, fontSize: '0.72rem',
-        }}>← Back to the porch</button>
+        }}>{user ? '← Back to the porch' : '← Step inside'}</button>
         {owner && (
           <button onClick={onWrite} style={{
             background: BLOG.sage, border: 'none', borderRadius: 999, padding: '8px 15px',
@@ -233,6 +233,59 @@ export default function BlogBoardScreen({ user, onOpenPost, onWrite, onBack }) {
         padding: '14px 26px 96px', boxSizing: 'border-box',
       }}>
         <div style={{ maxWidth: 520, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 26 }}>
+          {/* Signup invitation — only for signed-out visitors landing here */}
+          {!user && onJoin && (
+            <div style={{
+              background: BLOG.paper, borderRadius: 10, padding: '24px 22px 22px',
+              transform: 'rotate(-0.6deg)', boxShadow: '0 12px 28px rgba(20,14,8,0.5)',
+              position: 'relative',
+            }}>
+              {/* pushpin */}
+              <div style={{
+                position: 'absolute', top: -9, left: '50%', transform: 'translateX(-50%)',
+                width: 16, height: 16, borderRadius: '50%', background: PINS[3],
+                boxShadow: '0 2px 4px rgba(0,0,0,0.4)',
+              }} />
+              <div style={{
+                fontFamily: BLOG_SERIF, fontSize: '1.5rem', fontWeight: 700,
+                color: BLOG.charcoal, textAlign: 'center', lineHeight: 1.25,
+              }}>Pull up a chair</div>
+              <p style={{
+                fontFamily: BLOG_SERIF, fontSize: '1rem', color: BLOG.charcoal,
+                lineHeight: 1.55, textAlign: 'center', margin: '10px 0 16px', fontStyle: 'italic',
+              }}>
+                Make a free account and the whole cabin is yours.
+              </p>
+              <ul style={{
+                listStyle: 'none', padding: 0, margin: '0 0 18px',
+                fontFamily: BLOG_SANS, fontSize: '0.82rem', color: BLOG.charcoal, lineHeight: 1.9,
+              }}>
+                {[
+                  'Your journal, saved to your account',
+                  'Cozy games & coloring',
+                  'Gentle sounds to sleep to',
+                  'Customize your own cabin',
+                  'A profile others can visit',
+                ].map((t) => (
+                  <li key={t} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                    <span style={{ color: BLOG.sage, fontWeight: 700 }}>✦</span>
+                    <span>{t}</span>
+                  </li>
+                ))}
+              </ul>
+              <button onClick={() => onJoin()} style={{
+                display: 'block', width: '100%', background: BLOG.sage, border: 'none',
+                borderRadius: 999, padding: '13px 18px', cursor: 'pointer',
+                color: BLOG.cream, fontFamily: BLOG_SANS, fontSize: '0.92rem', fontWeight: 600,
+                boxShadow: '0 5px 16px rgba(0,0,0,0.32)',
+              }}>Create your free account</button>
+              <button onClick={() => onJoin('login')} style={{
+                display: 'block', width: '100%', background: 'transparent', border: 'none',
+                marginTop: 12, cursor: 'pointer', color: BLOG.roseDk,
+                fontFamily: BLOG_SANS, fontSize: '0.78rem',
+              }}>Already have an account? Log in</button>
+            </div>
+          )}
           {loading ? (
             <p style={{ textAlign: 'center', fontFamily: BLOG_SERIF, fontStyle: 'italic', fontSize: '1.05rem', color: BLOG.cream, marginTop: 40 }}>
               Bringing in the notes…
