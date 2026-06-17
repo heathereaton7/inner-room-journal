@@ -173,7 +173,7 @@ export default function CabinScreen({
             {roomThemeData.weather && roomThemeData.weather !== 'none' && (
               <WindowWeather
                 mode={roomThemeData.weather}
-                window={{ left:`${imgBox.ox+0.32*imgBox.rw}px`, top:`${imgBox.oy+0.0*imgBox.rh}px`, width:`${0.68*imgBox.rw}px`, height:`${0.60*imgBox.rh}px`, radius:"0px" }}
+                window={{ left:`${imgBox.ox+0.37*imgBox.rw}px`, top:`${imgBox.oy+0.0*imgBox.rh}px`, width:`${0.63*imgBox.rw}px`, height:`${0.60*imgBox.rh}px`, radius:"0px" }}
                 absolute zIndex={1}
               />
             )}
