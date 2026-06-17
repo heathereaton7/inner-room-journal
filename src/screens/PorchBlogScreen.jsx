@@ -143,10 +143,6 @@ export default function PorchBlogScreen({ onOpenBoard, onEnter }) {
       <style>{GFONTS}</style>
       <style>{`
         @keyframes blogFadeIn { from { opacity:0; } to { opacity:1; } }
-        @keyframes porchHotspotPulse {
-          0%,100% { box-shadow: 0 0 38px 16px rgba(255,196,110,0.13); }
-          50%     { box-shadow: 0 0 60px 30px rgba(255,196,110,0.28); }
-        }
         @keyframes porchPillFloat { 0%,100% { transform: translate(-50%,0); } 50% { transform: translate(-50%,-3px); } }
       `}</style>
 
@@ -189,9 +185,8 @@ export default function PorchBlogScreen({ onOpenBoard, onEnter }) {
           style={{
             position: 'absolute',
             left: doorBox.left, top: doorBox.top, width: doorBox.width, height: doorBox.height,
-            zIndex: 12, cursor: 'pointer', background: 'transparent', borderRadius: '50%',
+            zIndex: 12, cursor: 'pointer', background: 'transparent',
             border: 'none', outline: 'none',
-            animation: 'porchHotspotPulse 3.4s ease-in-out infinite',
             padding: 0,
           }}
         >
@@ -214,9 +209,8 @@ export default function PorchBlogScreen({ onOpenBoard, onEnter }) {
           style={{
             position: 'absolute',
             left: bookBox.left, top: bookBox.top, width: bookBox.width, height: bookBox.height,
-            zIndex: 12, cursor: 'pointer', background: 'transparent', borderRadius: '50%',
+            zIndex: 12, cursor: 'pointer', background: 'transparent',
             border: 'none', outline: 'none',
-            animation: 'porchHotspotPulse 3.0s ease-in-out infinite',
             padding: 0,
           }}
         >
