@@ -181,7 +181,7 @@ export default function PorchBlogScreen({ onOpenBoard, onBack }) {
           background: 'rgba(250,248,244,0.16)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
           border: '1px solid rgba(250,248,244,0.25)', borderRadius: 999, padding: '7px 16px',
           cursor: 'pointer', color: BLOG.cream, fontFamily: BLOG_SANS, fontSize: '0.74rem',
-        }}>← Back inside</button>
+        }}>← Step inside</button>
       </div>
 
       {/* The bulletin board itself — ONE tap target into the readable close-up */}
