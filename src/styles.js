@@ -84,6 +84,7 @@ export const CSS = `
     .magic-hotspot:active{transform:scale(0.97)!important;box-shadow:0 0 15px rgba(255,210,120,0.2)!important}
     @keyframes cottage-flicker-a{0%,100%{opacity:0.85;transform:translate(-50%,-50%) scale(1)}22%{opacity:0.74;transform:translate(-50%,-50%) scale(0.98)}42%{opacity:0.92;transform:translate(-50%,-50%) scale(1.03)}63%{opacity:0.78;transform:translate(-50%,-50%) scale(0.99)}84%{opacity:0.88;transform:translate(-50%,-50%) scale(1.02)}}
     @keyframes cottage-flicker-b{0%,100%{opacity:0.78;transform:translate(-50%,-50%) scale(1)}19%{opacity:0.92;transform:translate(-50%,-50%) scale(1.04)}38%{opacity:0.68;transform:translate(-50%,-50%) scale(0.97)}57%{opacity:0.86;transform:translate(-50%,-50%) scale(1.02)}78%{opacity:0.72;transform:translate(-50%,-50%) scale(0.99)}}
+    @keyframes nookSteamRise{0%{opacity:0;transform:translateY(0) translateX(0) scale(0.7)}18%{opacity:0.5}55%{opacity:0.3;transform:translateY(-26px) translateX(4px) scale(1.25)}100%{opacity:0;transform:translateY(-52px) translateX(-3px) scale(1.7)}}
     @keyframes kitchenFireGlow{0%,100%{opacity:0.7;transform:scale(1)}50%{opacity:1;transform:scale(1.04)}}
     @keyframes stoveFireGlow{0%,100%{opacity:0.7;transform:scale(1)}35%{opacity:1;transform:scale(1.06)}65%{opacity:0.85;transform:scale(1.02)}100%{opacity:0.7;transform:scale(1)}}
     @keyframes kitchenSteam{0%,100%{opacity:0.3;transform:translateY(0) scale(1)}50%{opacity:0.7;transform:translateY(-6px) scale(1.08)}}

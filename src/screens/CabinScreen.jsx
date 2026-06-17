@@ -57,6 +57,29 @@ export default function CabinScreen({
   const openBookChooser = useCallback(() => { setChooserIdx(0); setBookChooser(true); }, []);
   const containerRef = useRef(null);
 
+  // ── Landing nook: anchor the candle/steam/rain to the IMAGE content ──
+  // The nook image uses objectFit:cover (objectPosition center 72%), so it is
+  // cropped differently on every screen size. To keep the candle glow exactly
+  // on the flame (and steam on the mug) regardless of device, we compute the
+  // image's rendered rect and place overlays in image-fraction coordinates.
+  const landingImgRef = useRef(null);
+  const [imgBox, setImgBox] = useState(null); // {ox, oy, rw, rh} in viewport px
+  const recalcImgBox = useCallback(() => {
+    const img = landingImgRef.current;
+    if (!img || !img.naturalWidth) return;
+    const cw = window.innerWidth, ch = window.innerHeight;
+    const scale = Math.max(cw / img.naturalWidth, ch / img.naturalHeight);
+    const rw = img.naturalWidth * scale, rh = img.naturalHeight * scale;
+    setImgBox({ ox: (cw - rw) / 2, oy: (ch - rh) * 0.72, rw, rh });
+  }, []);
+  useEffect(() => {
+    recalcImgBox();
+    window.addEventListener('resize', recalcImgBox);
+    return () => window.removeEventListener('resize', recalcImgBox);
+  }, [recalcImgBox]);
+  // Map an image-fraction point (fx,fy ∈ 0..1) to viewport px on the rendered nook.
+  const imgPt = (fx, fy) => imgBox ? { left: imgBox.ox + fx * imgBox.rw, top: imgBox.oy + fy * imgBox.rh } : null;
+
   const handleDecorTap = useCallback((itemId, e) => {
     e.stopPropagation();
     setSelectedDecor(prev => prev === itemId ? null : itemId);
@@ -144,17 +167,33 @@ export default function CabinScreen({
            The only interactive spot is "The Inner Room" book on the desk,
            which opens your books (Journals / Meditations / Leaky Bucket). */
         <div style={{position:"absolute",inset:0,zIndex:0,background:"#0A0806",animation:"spaceFadeIn .6s ease"}}>
-          <img src={landingBgImage} alt="The Inner Room" draggable={false} style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",objectPosition:"center 72%",userSelect:"none",WebkitUserDrag:"none",pointerEvents:"none"}}/>
-          {/* Seasonal weather (rain by default) falling on the window glass */}
-          {roomThemeData.weather && roomThemeData.weather !== 'none' && (
-            <WindowWeather
-              mode={roomThemeData.weather}
-              window={{ left:"34%", top:"0%", width:"66%", height:"56%", radius:"0px" }}
-              absolute zIndex={1}
-            />
-          )}
-          {/* Flickering candle flame glow on the desk candle */}
-          <CandleGlow left="62%" top="66%" color="rgba(255,200,120,0.95)" size={110} keyframe="cottage-flicker-a" duration={5.5} absolute zIndex={2} />
+          <img ref={landingImgRef} onLoad={recalcImgBox} src={landingBgImage} alt="The Inner Room" draggable={false} style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",objectPosition:"center 72%",userSelect:"none",WebkitUserDrag:"none",pointerEvents:"none"}}/>
+          {imgBox && (<>
+            {/* Seasonal weather (rain by default) falling on the window glass */}
+            {roomThemeData.weather && roomThemeData.weather !== 'none' && (
+              <WindowWeather
+                mode={roomThemeData.weather}
+                window={{ left:`${imgBox.ox+0.32*imgBox.rw}px`, top:`${imgBox.oy+0.0*imgBox.rh}px`, width:`${0.68*imgBox.rw}px`, height:`${0.60*imgBox.rh}px`, radius:"0px" }}
+                absolute zIndex={1}
+              />
+            )}
+            {/* Flickering candle flame glow — anchored to the flame in the image */}
+            <CandleGlow left={`${imgPt(0.58,0.665).left}px`} top={`${imgPt(0.58,0.665).top}px`} color="rgba(255,200,120,0.95)" size={78} keyframe="cottage-flicker-a" duration={5.5} absolute zIndex={2} />
+            {/* Steam rising from the coffee mug — anchored to the mug rim in the image */}
+            {(()=>{const m=imgPt(0.82,0.63);return (
+              <div style={{position:"absolute",left:`${m.left}px`,top:`${m.top-50}px`,transform:"translateX(-50%)",width:"34px",height:"56px",pointerEvents:"none",zIndex:2}}>
+                {[0,1,2].map(i=>(
+                  <span key={i} style={{
+                    position:"absolute", bottom:0, left:`${4+i*9}px`,
+                    width:"11px", height:"30px", borderRadius:"50%",
+                    background:"radial-gradient(circle, rgba(255,250,245,0.55) 0%, rgba(255,250,245,0.18) 45%, transparent 72%)",
+                    filter:"blur(3px)",
+                    animation:`nookSteamRise ${3.4+i*0.7}s ease-in-out ${i*0.9}s infinite`,
+                  }}/>
+                ))}
+              </div>
+            );})()}
+          </>)}
           {/* Soft cinematic vignette */}
           <div style={{position:"absolute",inset:0,pointerEvents:"none",zIndex:3,background:"radial-gradient(ellipse at 60% 80%, transparent 40%, rgba(8,6,4,0.42) 100%)"}}/>
 
