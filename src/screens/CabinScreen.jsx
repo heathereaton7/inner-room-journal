@@ -218,7 +218,7 @@ export default function CabinScreen({
           {transitionToPorch && (
             <button onClick={()=>transitionToPorch()} aria-label="Step out to the porch" style={{position:"absolute",left:"63%",top:"10%",width:"34%",height:"60%",zIndex:11,background:"transparent",border:"none",padding:0,cursor:"pointer",borderRadius:"10px",outline:"none",WebkitTapHighlightColor:"transparent"}}>
               <div style={{position:"absolute",left:"18%",top:"24%",width:"64%",height:"50%",borderRadius:"45%",background:"radial-gradient(ellipse at 50% 50%,rgba(190,210,200,0.22) 0%,rgba(160,185,170,0.08) 45%,transparent 72%)",pointerEvents:"none",animation:"hotspotPulse 3.4s ease-in-out infinite"}}/>
-              <div style={{position:"absolute",left:"50%",bottom:"6%",transform:"translateX(-50%)",whiteSpace:"nowrap",fontFamily:SANS,fontSize:"0.62rem",letterSpacing:"0.08em",color:"rgba(255,248,232,0.85)",background:"rgba(26,22,18,0.5)",backdropFilter:"blur(6px)",WebkitBackdropFilter:"blur(6px)",padding:"4px 12px",borderRadius:999,pointerEvents:"none",animation:"fadeUp 1s 0.6s ease both"}}>To the porch →</div>
+              <div style={{position:"absolute",left:"9%",top:"46%",transform:"translateX(-50%)",whiteSpace:"nowrap",fontFamily:SANS,fontSize:"0.62rem",letterSpacing:"0.08em",color:"rgba(255,248,232,0.85)",background:"rgba(26,22,18,0.5)",backdropFilter:"blur(6px)",WebkitBackdropFilter:"blur(6px)",padding:"4px 12px",borderRadius:999,pointerEvents:"none",animation:"fadeUp 1s 0.6s ease both"}}>To the porch →</div>
             </button>
           )}
         </div>
