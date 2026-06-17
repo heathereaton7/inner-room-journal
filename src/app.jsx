@@ -2059,11 +2059,14 @@ function AppInner(){
       ens.forEach(e=>{map[e.date]=true;});
       while(map[isoDate(d)]){s++;d.setDate(d.getDate()-1);} setStreak(s);
       setIsOnboarded(!!ob);
-      // Shareable landing: innerroomjournal.com/?page=blog opens the porch board
-      // directly (e.g. when shared from outside). Anyone can read; signed-out
-      // visitors see a "create a free account" invite on the board.
+      // Shareable landing: innerroomjournal.com/blog (or /?page=blog) opens the
+      // porch board directly (e.g. when shared from outside). Anyone can read;
+      // signed-out visitors see a "create a free account" invite on the board.
       let landing="welcome";
-      try{ if(new URLSearchParams(window.location.search).get("page")==="blog") landing="blog-board"; }catch(e){}
+      try{
+        const path=window.location.pathname.replace(/\/+$/,"");
+        if(new URLSearchParams(window.location.search).get("page")==="blog"||path==="/blog") landing="blog-board";
+      }catch(e){}
       setScreen(landing);
       setCardQ(shuffle(ALL_CARD_QS)[0]);
       // preload spatial world backgrounds
@@ -2071,13 +2074,14 @@ function AppInner(){
     })();
   },[]);
 
-  // ── SIGNUP SOURCE (e.g. blog link: innerroomjournal.com/?ref=blog or ?page=blog) ──
+  // ── SIGNUP SOURCE (e.g. blog link: innerroomjournal.com/blog, /?ref=blog or /?page=blog) ──
   useEffect(()=>{
     try{
       const p=new URLSearchParams(window.location.search);
+      const path=window.location.pathname.replace(/\/+$/,"");
       const ref=p.get("ref");
       if(ref) signupSourceRef.current=ref.toLowerCase().slice(0,40);
-      else if(p.get("page")==="blog") signupSourceRef.current="blog";
+      else if(p.get("page")==="blog"||path==="/blog") signupSourceRef.current="blog";
     }catch(e){}
   },[]);
 
