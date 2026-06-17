@@ -1774,7 +1774,9 @@ function AppInner(){
   const [authMode,           setAuthMode]           = useState("choose"); // "choose"|"email"
   const [emailSignupMode,    setEmailSignupMode]    = useState(true);     // true=create account, false=log in
   const [authEmail,          setAuthEmail]          = useState("");
+  const [authEmail2,         setAuthEmail2]         = useState(""); // confirm email (signup)
   const [authPassword,       setAuthPassword]       = useState("");
+  const [authPassword2,      setAuthPassword2]      = useState(""); // confirm password (signup)
   const [authName,           setAuthName]           = useState("");
   const [authError,          setAuthError]          = useState("");
   const [authBusy,           setAuthBusy]           = useState(false);
@@ -4661,20 +4663,31 @@ function AppInner(){
                     <input value={authName} onChange={e=>setAuthName(e.target.value.slice(0,40))} placeholder="Your name" autoCapitalize="words" style={{boxSizing:"border-box",background:"transparent",border:"none",borderBottom:"1px solid rgba(201,169,110,0.35)",padding:"10px 4px",marginBottom:"14px",color:"#FFF8E8",fontFamily:SERIF,fontStyle:"italic",fontSize:"1rem",outline:"none",textAlign:"center"}}/>
                   )}
                   <input type="email" value={authEmail} onChange={e=>setAuthEmail(e.target.value.trim())} placeholder="Email" autoCapitalize="none" autoCorrect="off" spellCheck={false} style={{boxSizing:"border-box",background:"transparent",border:"none",borderBottom:"1px solid rgba(201,169,110,0.35)",padding:"10px 4px",marginBottom:"14px",color:"#FFF8E8",fontFamily:SERIF,fontStyle:"italic",fontSize:"1rem",outline:"none",textAlign:"center"}}/>
-                  <input type="password" value={authPassword} onChange={e=>setAuthPassword(e.target.value)} placeholder="Password" style={{boxSizing:"border-box",background:"transparent",border:"none",borderBottom:"1px solid rgba(201,169,110,0.35)",padding:"10px 4px",marginBottom:"6px",color:"#FFF8E8",fontFamily:SERIF,fontStyle:"italic",fontSize:"1rem",outline:"none",textAlign:"center"}}/>
+                  {emailSignupMode&&(
+                    <input type="email" value={authEmail2} onChange={e=>setAuthEmail2(e.target.value.trim())} placeholder="Confirm email" autoCapitalize="none" autoCorrect="off" spellCheck={false} onPaste={e=>e.preventDefault()} style={{boxSizing:"border-box",background:"transparent",border:"none",borderBottom:"1px solid rgba(201,169,110,0.35)",padding:"10px 4px",marginBottom:"14px",color:"#FFF8E8",fontFamily:SERIF,fontStyle:"italic",fontSize:"1rem",outline:"none",textAlign:"center"}}/>
+                  )}
+                  <input type="password" value={authPassword} onChange={e=>setAuthPassword(e.target.value)} placeholder="Password" style={{boxSizing:"border-box",background:"transparent",border:"none",borderBottom:"1px solid rgba(201,169,110,0.35)",padding:"10px 4px",marginBottom:emailSignupMode?"14px":"6px",color:"#FFF8E8",fontFamily:SERIF,fontStyle:"italic",fontSize:"1rem",outline:"none",textAlign:"center"}}/>
+                  {emailSignupMode&&(
+                    <input type="password" value={authPassword2} onChange={e=>setAuthPassword2(e.target.value)} placeholder="Confirm password" onPaste={e=>e.preventDefault()} style={{boxSizing:"border-box",background:"transparent",border:"none",borderBottom:"1px solid rgba(201,169,110,0.35)",padding:"10px 4px",marginBottom:"6px",color:"#FFF8E8",fontFamily:SERIF,fontStyle:"italic",fontSize:"1rem",outline:"none",textAlign:"center"}}/>
+                  )}
                   {authError&&<p style={{fontFamily:SANS,fontSize:"0.7rem",color:"rgba(220,120,120,0.8)",margin:"6px 0 0",textAlign:"center"}}>{authError}</p>}
-                  <button disabled={authBusy||!authEmail||!authPassword} onClick={async()=>{
+                  {(()=>{const canSubmit=!authBusy&&authEmail&&authPassword&&(!emailSignupMode||(authEmail2&&authPassword2));return(
+                  <button disabled={!canSubmit} onClick={async()=>{
+                    if(emailSignupMode){
+                      if(authEmail!==authEmail2){setAuthError("Emails don't match. Please check and try again.");return;}
+                      if(authPassword!==authPassword2){setAuthError("Passwords don't match. Please check and try again.");return;}
+                    }
                     const ok=emailSignupMode?await handleEmailSignUp(authEmail,authPassword,authName):await handleEmailSignIn(authEmail,authPassword);
                     if(ok){ if(emailSignupMode&&authName.trim())setSetupUsername(prev=>prev||authName.trim().replace(/[^a-zA-Z0-9_]/g,"").slice(0,20)); setOnboardStep(1); }
-                  }} className={(!authBusy&&authEmail&&authPassword)?"door-btn":""} style={{marginTop:"18px",background:(!authBusy&&authEmail&&authPassword)?"linear-gradient(135deg,rgba(201,169,110,0.22),rgba(201,169,110,0.06))":"transparent",border:`1px solid ${(!authBusy&&authEmail&&authPassword)?"rgba(201,169,110,0.45)":"rgba(255,248,232,0.1)"}`,color:(!authBusy&&authEmail&&authPassword)?"#FFF8E8":"rgba(255,248,232,0.25)",padding:"14px 0",borderRadius:"16px",cursor:(!authBusy&&authEmail&&authPassword)?"pointer":"default",fontSize:"0.9rem",fontFamily:SERIF,fontWeight:600,fontStyle:"italic",letterSpacing:"0.06em",transition:"all 0.3s"}}>
+                  }} className={canSubmit?"door-btn":""} style={{marginTop:"18px",background:canSubmit?"linear-gradient(135deg,rgba(201,169,110,0.22),rgba(201,169,110,0.06))":"transparent",border:`1px solid ${canSubmit?"rgba(201,169,110,0.45)":"rgba(255,248,232,0.1)"}`,color:canSubmit?"#FFF8E8":"rgba(255,248,232,0.25)",padding:"14px 0",borderRadius:"16px",cursor:canSubmit?"pointer":"default",fontSize:"0.9rem",fontFamily:SERIF,fontWeight:600,fontStyle:"italic",letterSpacing:"0.06em",transition:"all 0.3s"}}>
                     {authBusy?"One moment...":(emailSignupMode?"Create my account":"Log in")}
-                  </button>
-                  <button onClick={()=>{setEmailSignupMode(m=>!m);setAuthError("");}} style={{marginTop:"14px",background:"transparent",border:"none",cursor:"pointer",color:"rgba(255,248,232,0.5)",fontFamily:SERIF,fontStyle:"italic",fontSize:"0.78rem",letterSpacing:"0.04em"}}>
+                  </button>);})()}
+                  <button onClick={()=>{setEmailSignupMode(m=>!m);setAuthError("");setAuthEmail2("");setAuthPassword2("");}} style={{marginTop:"14px",background:"transparent",border:"none",cursor:"pointer",color:"rgba(255,248,232,0.5)",fontFamily:SERIF,fontStyle:"italic",fontSize:"0.78rem",letterSpacing:"0.04em"}}>
                     {emailSignupMode?"Already have an account? Log in":"New here? Create an account"}
                   </button>
                   {!emailSignupMode&&(
-                    <button onClick={()=>handlePasswordReset(authEmail)} style={{marginTop:"8px",background:"transparent",border:"none",cursor:"pointer",color:"rgba(255,248,232,0.35)",fontFamily:SANS,fontSize:"0.7rem",letterSpacing:"0.03em"}}>
-                      Forgot password?
+                    <button onClick={()=>handlePasswordReset(authEmail)} style={{marginTop:"8px",background:"transparent",border:"none",cursor:"pointer",color:"rgba(201,169,110,0.75)",fontFamily:SANS,fontSize:"0.74rem",letterSpacing:"0.03em",textDecoration:"underline",textUnderlineOffset:"3px"}}>
+                      Forgot password? Email me a reset link
                     </button>
                   )}
                   <button onClick={()=>{setAuthMode("choose");setAuthError("");}} style={{marginTop:"12px",background:"transparent",border:"none",cursor:"pointer",color:"rgba(255,248,232,0.3)",fontFamily:SERIF,fontStyle:"italic",fontSize:"0.76rem",letterSpacing:"0.05em"}}>
