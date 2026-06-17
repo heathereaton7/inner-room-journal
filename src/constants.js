@@ -28,20 +28,19 @@ export const AVATAR_NAV = false;
 
 /* ═══════════════════════════════════════════════════
    PORCH BLOG — OWNER ACCOUNT
-   Only this Firebase Auth UID can write/edit/delete blog
-   posts (the porch board is public to read).
+   Only this Google account can write/edit/delete blog posts
+   (the porch board is public to read). Gated by the owner's
+   verified email so no UID lookup is needed.
 
-   TO SET: sign in to the app once with your Google account,
-   open the Supabase/Firebase console → Authentication → Users,
-   copy your User UID, and paste it below. Then redeploy
-   firestore.rules with the same UID so the server enforces it.
-
-   While left as the placeholder, the writing screen is hidden
-   from everyone (no one can post).
+   The same email is enforced server-side in firestore.rules
+   (request.auth.token.email). Keep the two in sync.
 ═══════════════════════════════════════════════════ */
-export const BLOG_OWNER_UID = "REPLACE_WITH_YOUR_FIREBASE_UID";
+export const BLOG_OWNER_EMAIL = "heathereaton7@gmail.com";
 export const isBlogOwner = (user) =>
-  !!user && !!user.uid && user.uid === BLOG_OWNER_UID;
+  !!user &&
+  user.emailVerified === true &&
+  typeof user.email === "string" &&
+  user.email.toLowerCase() === BLOG_OWNER_EMAIL.toLowerCase();
 
 /* ═══════════════════════════════════════════════════
    ROOM THEMES

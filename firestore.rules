@@ -72,12 +72,13 @@ service cloud.firestore {
     // ── Porch Blog ──
     // Anyone (even signed-out visitors) may READ published posts.
     // Only the site OWNER may create / edit / delete.
-    // TO SET UP: replace OWNER_UID below with your Firebase Auth user UID
-    // (Authentication → Users → your account → User UID), then redeploy:
+    // Gated by the owner's verified Google email (keep in sync with
+    // BLOG_OWNER_EMAIL in src/constants.js). After editing, redeploy:
     //   firebase deploy --only firestore:rules
     function isBlogOwner() {
       return request.auth != null
-             && request.auth.uid == 'REPLACE_WITH_YOUR_FIREBASE_UID';
+             && request.auth.token.email_verified == true
+             && request.auth.token.email.lower() == 'heathereaton7@gmail.com';
     }
     match /blogPosts/{postId} {
       allow read: if resource.data.status == 'published' || isBlogOwner();
