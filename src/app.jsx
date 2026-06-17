@@ -7763,7 +7763,7 @@ function AppInner(){
        Skip screens that already render their own BottomMenuDrawer (avoid
        duplicates) and the initial setup/welcome screens. ── */
   const __menuHasOwn = new Set(["cabin","journal","jesus","cards","hall","community","insights","map2","visit-farm","garden","shop","history","kitchen","stove","kitchen-window","market","upper-room","cozy-creations"]);
-  const __menuHidden = new Set(["loading","welcome","onboard","profile-onboard","blog-board","blog-post","write-blog"]);
+  const __menuHidden = new Set(["loading","welcome","onboard","profile-onboard","blog-post","write-blog"]);
   return(<>
     {__screenJSX}
     {!__menuHasOwn.has(screen) && !__menuHidden.has(screen) && <BottomMenuDrawer/>}

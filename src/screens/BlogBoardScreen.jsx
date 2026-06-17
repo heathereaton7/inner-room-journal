@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { GFONTS } from '../constants.js';
 import { isBlogOwner } from '../constants.js';
 import {
@@ -29,6 +29,53 @@ export default function BlogBoardScreen({ user, onOpenPost, onWrite, onBack }) {
   const [showOlder, setShowOlder] = useState(false);
   const [showDrafts, setShowDrafts] = useState(false);
   const owner = isBlogOwner(user);
+  const rainCanvasRef = useRef(null);
+  const rainRef = useRef([]);
+
+  // Soft rain drifting over the whole porch scene, matching the porch entry.
+  useEffect(() => {
+    const canvas = rainCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const resize = () => {
+      canvas.width = Math.round(window.innerWidth * dpr);
+      canvas.height = Math.round(window.innerHeight * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    };
+    resize();
+    window.addEventListener('resize', resize);
+
+    if (!rainRef.current.length) {
+      rainRef.current = Array.from({ length: 90 }, () => ({
+        x: Math.random(), y: Math.random(),
+        len: 0.03 + Math.random() * 0.05,
+        sp: 0.010 + Math.random() * 0.016,
+        w: Math.random() < 0.5 ? 1 : 1.4,
+      }));
+    }
+
+    const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let raf;
+    const draw = () => {
+      const W = window.innerWidth, H = window.innerHeight;
+      ctx.clearRect(0, 0, W, H);
+      ctx.strokeStyle = 'rgba(190,205,225,0.26)';
+      ctx.lineCap = 'round';
+      for (const d of rainRef.current) {
+        if (!reduce) { d.y += d.sp; if (d.y > 1) { d.y = -d.len; d.x = Math.random(); } }
+        const px = d.x * W, py = d.y * H, ll = d.len * H;
+        ctx.lineWidth = d.w;
+        ctx.beginPath();
+        ctx.moveTo(px, py);
+        ctx.lineTo(px - ll * 0.16, py + ll);
+        ctx.stroke();
+      }
+      raf = requestAnimationFrame(draw);
+    };
+    raf = requestAnimationFrame(draw);
+    return () => { cancelAnimationFrame(raf); window.removeEventListener('resize', resize); };
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -121,6 +168,11 @@ export default function BlogBoardScreen({ user, onOpenPost, onWrite, onBack }) {
         position: 'absolute', inset: 0, pointerEvents: 'none',
         background:
           'linear-gradient(to bottom, rgba(8,6,4,0.62) 0%, rgba(8,6,4,0.18) 22%, rgba(8,6,4,0.18) 70%, rgba(8,6,4,0.7) 100%)',
+      }} />
+      {/* live rain over the scene */}
+      <canvas ref={rainCanvasRef} style={{
+        position: 'absolute', inset: 0, width: '100%', height: '100%',
+        zIndex: 5, pointerEvents: 'none',
       }} />
 
       {/* Header */}
