@@ -1,29 +1,21 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { GFONTS } from '../constants.js';
-import { isBlogOwner } from '../constants.js';
-import {
-  fetchPublishedPosts, fetchAllPosts, formatPostDate,
-  BLOG, BLOG_SERIF, BLOG_SANS,
-} from '../systems/blog.js';
+import { BLOG, BLOG_SERIF, BLOG_SANS } from '../systems/blog.js';
 
 /**
- * PORCH BLOG BOARD — the public landing for the blog.
+ * PORCH — the atmospheric entry to the blog (screen A of 3).
  *
- * The whole porch photo (frontporch.png) is shown un-cropped; published posts
- * are pinned as little paper notes onto the lamp-lit wooden frame that is part
- * of the photo (upper-left wall). Tapping a note opens the full post. The owner
- * sees a "Pin a new note" button + any drafts.
+ * The whole porch photo (frontporch.png) is shown un-cropped with live rain in
+ * the open-air view and flickering candle/lantern glow. The lit wooden frame on
+ * the left wall is a SINGLE tap target (a subtle pulsing glow marks it) that
+ * opens the readable bulletin-board close-up (screen B). Individual posts are
+ * NOT tapped here — they're too small on the photo.
  *
- * Reading is public (works signed-out); writing is owner-only.
+ *   porch (A) → board close-up (B) → post (C)
  */
 
-// Gentle, deterministic tilt per pin so the board feels hand-pinned (no jitter
-// on re-render). Index-based so it's stable.
-const TILTS = [-2.5, 1.8, -1.2, 2.4, -2.0, 1.4];
-const PINS = ['#C0413B', '#5E7560', '#A99779', '#C8A39B', '#7E6B97', '#C9A96E'];
-
 // The wooden frame inside frontporch.png, as fractions of the displayed image.
-// Notes are pinned within this rectangle so they sit on the real board.
+// The tap target sits exactly over the real board.
 const FRAME = { left: 0.115, top: 0.165, width: 0.275, height: 0.355 };
 
 // Where rain falls in the photo — only the open-air view beyond the porch
@@ -39,13 +31,7 @@ const CANDLES = [
   { x: 0.235, y: 0.155, r: 0.075, base: 0.50, amp: 0.12 }, // wall lamp over the board
 ];
 
-export default function PorchBlogScreen({ user, onOpenPost, onWrite, onBack }) {
-  const [posts, setPosts] = useState([]);
-  const [drafts, setDrafts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [showDrafts, setShowDrafts] = useState(false);
-  const owner = isBlogOwner(user);
-
+export default function PorchBlogScreen({ onOpenBoard, onBack }) {
   const wrapRef = useRef(null);
   const imgRef = useRef(null);
   const canvasRef = useRef(null);
@@ -146,74 +132,16 @@ export default function PorchBlogScreen({ user, onOpenPost, onWrite, onBack }) {
     return () => cancelAnimationFrame(raf);
   }, [imgRect]);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    if (owner) {
-      const all = await fetchAllPosts();
-      setPosts(all.filter((p) => p.status === 'published'));
-      setDrafts(all.filter((p) => p.status === 'draft'));
-    } else {
-      const pub = await fetchPublishedPosts();
-      setPosts(pub);
-      setDrafts([]);
-    }
-    setLoading(false);
-  }, [owner]);
-
-  useEffect(() => { load(); }, [load]);
-
-  // A single pinned note card (compact, to sit on the photo's frame).
-  const Note = ({ post, idx, newest }) => (
-    <button
-      onClick={() => onOpenPost(post)}
-      style={{
-        position: 'relative',
-        width: '100%',
-        textAlign: 'left',
-        background: BLOG.paper,
-        border: 'none',
-        borderRadius: 5,
-        padding: '13px 9px 9px',
-        cursor: 'pointer',
-        transform: `rotate(${TILTS[idx % TILTS.length]}deg)`,
-        boxShadow: '0 5px 12px rgba(20,14,8,0.5), 0 1px 0 rgba(255,255,255,0.4) inset',
-        fontFamily: BLOG_SERIF,
-        animation: `blogNoteIn .4s ${idx * 0.06}s ease both`,
-      }}
-    >
-      {/* push-pin dot */}
-      <span style={{
-        position: 'absolute', top: -7, left: '50%', transform: 'translateX(-50%)',
-        width: 14, height: 14, borderRadius: '50%',
-        background: `radial-gradient(circle at 35% 30%, #fff 0%, ${PINS[idx % PINS.length]} 55%, rgba(0,0,0,0.4) 100%)`,
-        boxShadow: '0 2px 5px rgba(0,0,0,0.5)',
-      }} />
-      {newest && (
-        <span style={{
-          position: 'absolute', top: 6, right: 6,
-          fontFamily: BLOG_SANS, fontSize: '0.46rem', fontWeight: 700,
-          letterSpacing: '0.06em', textTransform: 'uppercase',
-          color: BLOG.cream, background: BLOG.sage,
-          padding: '2px 5px', borderRadius: 999,
-        }}>New</span>
-      )}
-      <div style={{
-        fontSize: '0.82rem', fontWeight: 700, lineHeight: 1.12,
-        color: BLOG.sage,
-      }}>{post.title || 'Untitled'}</div>
-      <div style={{
-        fontFamily: BLOG_SANS, fontSize: '0.5rem', letterSpacing: '0.05em',
-        textTransform: 'uppercase', color: BLOG.taupe, marginTop: 4,
-      }}>{formatPostDate(post.createdAt || post.createdAtMs)}</div>
-    </button>
-  );
-
   return (
     <div ref={wrapRef} style={{ position: 'fixed', inset: 0, overflow: 'hidden', fontFamily: BLOG_SANS, background: '#15110d' }}>
       <style>{GFONTS}</style>
       <style>{`
-        @keyframes blogNoteIn { from { opacity:0; transform: translateY(8px) rotate(0deg); } }
         @keyframes blogFadeIn { from { opacity:0; } to { opacity:1; } }
+        @keyframes porchBoardPulse {
+          0%,100% { box-shadow: 0 0 0 1px rgba(255,221,150,0.35), 0 0 22px 4px rgba(255,196,110,0.20); }
+          50%     { box-shadow: 0 0 0 1px rgba(255,221,150,0.6), 0 0 34px 10px rgba(255,196,110,0.42); }
+        }
+        @keyframes porchPillFloat { 0%,100% { transform: translate(-50%,0); } 50% { transform: translate(-50%,-3px); } }
       `}</style>
 
       {/* Blurred fill so any letterbox bars read as part of the scene */}
@@ -254,63 +182,31 @@ export default function PorchBlogScreen({ user, onOpenPost, onWrite, onBack }) {
           border: '1px solid rgba(250,248,244,0.25)', borderRadius: 999, padding: '7px 16px',
           cursor: 'pointer', color: BLOG.cream, fontFamily: BLOG_SANS, fontSize: '0.74rem',
         }}>← Back inside</button>
-        {owner && (
-          <button onClick={onWrite} style={{
-            background: BLOG.sage, border: 'none', borderRadius: 999, padding: '8px 16px',
-            cursor: 'pointer', color: BLOG.cream, fontFamily: BLOG_SANS, fontSize: '0.74rem', fontWeight: 600,
-            boxShadow: '0 4px 14px rgba(0,0,0,0.4)',
-          }}>+ Pin a new note</button>
-        )}
       </div>
 
-      {/* Pinned notes — overlaid onto the photo's wooden frame */}
+      {/* The bulletin board itself — ONE tap target into the readable close-up */}
       {frameBox && (
-        <div style={{
-          position: 'absolute',
-          left: frameBox.left, top: frameBox.top, width: frameBox.width, height: frameBox.height,
-          zIndex: 12, overflowY: 'auto', WebkitOverflowScrolling: 'touch',
-          padding: '12px 6px 8px', boxSizing: 'border-box',
-          display: 'flex', flexDirection: 'column', gap: 16,
-        }}>
-          {loading ? (
-            <p style={{ textAlign: 'center', fontFamily: BLOG_SERIF, fontStyle: 'italic', fontSize: '0.78rem', color: BLOG.cream, margin: 'auto 0' }}>
-              Bringing in the notes…
-            </p>
-          ) : posts.length === 0 ? (
-            <p style={{ textAlign: 'center', fontFamily: BLOG_SERIF, fontStyle: 'italic', fontSize: '0.78rem', color: 'rgba(250,248,244,0.92)', margin: 'auto 0', lineHeight: 1.4 }}>
-              The board is quiet.<br />{owner ? 'Pin your first note.' : 'Check back soon.'}
-            </p>
-          ) : (
-            posts.map((p, i) => <Note key={p.id} post={p} idx={i} newest={i === 0} />)
-          )}
-        </div>
-      )}
-
-      {/* Owner-only drafts — tucked into the bottom of the scene */}
-      {owner && drafts.length > 0 && (
-        <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, zIndex: 20, padding: '0 16px 64px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
-          <button onClick={() => setShowDrafts((v) => !v)} style={{
-            background: 'rgba(20,16,12,0.6)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
-            border: '1px solid rgba(250,248,244,0.3)', borderRadius: 999, padding: '7px 16px',
-            cursor: 'pointer', color: BLOG.cream, fontFamily: BLOG_SANS, fontSize: '0.72rem',
-          }}>
-            {showDrafts ? 'Hide drafts' : `Your drafts (${drafts.length})`}
-          </button>
-          {showDrafts && (
-            <div style={{ width: '100%', maxWidth: 460, background: 'rgba(250,248,244,0.95)', borderRadius: 10, overflow: 'hidden', boxShadow: '0 8px 22px rgba(0,0,0,0.5)' }}>
-              {drafts.map((p) => (
-                <button key={p.id} onClick={() => onOpenPost(p)} style={{
-                  display: 'flex', width: '100%', alignItems: 'baseline', justifyContent: 'space-between',
-                  gap: 12, padding: '13px 16px', background: 'transparent', border: 'none',
-                  borderBottom: '1px solid rgba(60,60,60,0.1)', cursor: 'pointer', textAlign: 'left',
-                }}>
-                  <span style={{ fontFamily: BLOG_SERIF, fontSize: '1rem', color: BLOG.charcoal, fontWeight: 600 }}>{p.title || 'Untitled draft'}</span>
-                  <span style={{ fontFamily: BLOG_SANS, fontSize: '0.6rem', letterSpacing: '0.05em', textTransform: 'uppercase', color: BLOG.roseDk }}>Draft</span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+        <button
+          onClick={onOpenBoard}
+          aria-label="Open the porch bulletin board"
+          style={{
+            position: 'absolute',
+            left: frameBox.left, top: frameBox.top, width: frameBox.width, height: frameBox.height,
+            zIndex: 12, cursor: 'pointer', background: 'transparent', borderRadius: 6,
+            border: '1px solid rgba(255,221,150,0.0)',
+            animation: 'porchBoardPulse 3.2s ease-in-out infinite',
+            padding: 0,
+          }}
+        >
+          <span style={{
+            position: 'absolute', left: '50%', bottom: -14, transform: 'translateX(-50%)',
+            whiteSpace: 'nowrap', animation: 'porchPillFloat 3.2s ease-in-out infinite',
+            background: 'rgba(20,16,12,0.62)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
+            border: '1px solid rgba(250,248,244,0.28)', borderRadius: 999,
+            padding: '5px 12px', color: BLOG.cream, fontFamily: BLOG_SANS,
+            fontSize: '0.64rem', letterSpacing: '0.04em', boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+          }}>Read the board →</span>
+        </button>
       )}
     </div>
   );

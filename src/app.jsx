@@ -40,6 +40,7 @@ import GatheringPost from './screens/GatheringPost.jsx';
 import CreateGatheringPost from './screens/CreateGatheringPost.jsx';
 import UpperRoomSearch from './screens/UpperRoomSearch.jsx';
 import PorchBlogScreen from './screens/PorchBlogScreen.jsx';
+import BlogBoardScreen from './screens/BlogBoardScreen.jsx';
 import BlogPostScreen from './screens/BlogPostScreen.jsx';
 import WriteBlogScreen from './screens/WriteBlogScreen.jsx';
 import { generateAnonName, makeSearchTokens, GATHERING_SPACES } from './gatherings.js';
@@ -4654,8 +4655,14 @@ function AppInner(){
   /* ══ PORCH BLOG (through the cabin landing door, out to the porch board) ══ */
   if(screen==="porch") return(<>
     <PorchBlogScreen
-      user={user}
       onBack={()=>transitionToCabin()}
+      onOpenBoard={()=>setScreen("blog-board")}
+    />
+  </>);
+  if(screen==="blog-board") return(<>
+    <BlogBoardScreen
+      user={user}
+      onBack={()=>setScreen("porch")}
       onOpenPost={(p)=>{setSelectedBlogPost(p);setScreen("blog-post");}}
       onWrite={()=>{setEditingBlogPost(null);setScreen("write-blog");}}
     />
@@ -4664,17 +4671,17 @@ function AppInner(){
     <BlogPostScreen
       post={selectedBlogPost}
       user={user}
-      onBack={()=>setScreen("porch")}
+      onBack={()=>setScreen("blog-board")}
       onEdit={(p)=>{setEditingBlogPost(p);setScreen("write-blog");}}
-      onDeleted={()=>{setSelectedBlogPost(null);setScreen("porch");}}
+      onDeleted={()=>{setSelectedBlogPost(null);setScreen("blog-board");}}
     />
   </>);
   if(screen==="write-blog") return(<>
     <WriteBlogScreen
       user={user}
       editingPost={editingBlogPost}
-      onBack={()=>setScreen("porch")}
-      onDone={()=>{setEditingBlogPost(null);setScreen("porch");}}
+      onBack={()=>setScreen("blog-board")}
+      onDone={()=>{setEditingBlogPost(null);setScreen("blog-board");}}
     />
   </>);
 
@@ -7756,7 +7763,7 @@ function AppInner(){
        Skip screens that already render their own BottomMenuDrawer (avoid
        duplicates) and the initial setup/welcome screens. ── */
   const __menuHasOwn = new Set(["cabin","journal","jesus","cards","hall","community","insights","map2","visit-farm","garden","shop","history","kitchen","stove","kitchen-window","market","upper-room","cozy-creations"]);
-  const __menuHidden = new Set(["loading","welcome","onboard","profile-onboard","blog-post","write-blog"]);
+  const __menuHidden = new Set(["loading","welcome","onboard","profile-onboard","blog-board","blog-post","write-blog"]);
   return(<>
     {__screenJSX}
     {!__menuHasOwn.has(screen) && !__menuHidden.has(screen) && <BottomMenuDrawer/>}

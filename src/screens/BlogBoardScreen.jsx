@@ -1,0 +1,235 @@
+import { useState, useEffect, useCallback } from 'react';
+import { GFONTS } from '../constants.js';
+import { isBlogOwner } from '../constants.js';
+import {
+  fetchPublishedPosts, fetchAllPosts, formatPostDate,
+  BLOG, BLOG_SERIF, BLOG_SANS,
+} from '../systems/blog.js';
+
+/**
+ * THE PORCH BOARD — the readable bulletin-board close-up (screen B of 3).
+ *
+ *   porch (A) → board close-up (B) → post (C)
+ *
+ * Published posts are rendered as paper notes pinned to a cork board, newest
+ * first. The newest carries a "Newest" tag. The first few show; the rest tuck
+ * into an "Older posts" reveal. Tapping a note opens the full post. Reading is
+ * public; the owner also sees "+ Pin a new note" and any drafts.
+ */
+
+// Deterministic, gentle tilt per pin so the board feels hand-pinned.
+const TILTS = [-2.4, 1.8, -1.4, 2.2, -2.0, 1.3, -1.7, 2.0];
+const PINS = ['#C0413B', '#5E7560', '#A99779', '#C8A39B', '#7E6B97', '#C9A96E'];
+const VISIBLE = 5; // newest posts shown before the "Older posts" reveal
+
+export default function BlogBoardScreen({ user, onOpenPost, onWrite, onBack }) {
+  const [posts, setPosts] = useState([]);
+  const [drafts, setDrafts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showOlder, setShowOlder] = useState(false);
+  const [showDrafts, setShowDrafts] = useState(false);
+  const owner = isBlogOwner(user);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    if (owner) {
+      const all = await fetchAllPosts();
+      setPosts(all.filter((p) => p.status === 'published'));
+      setDrafts(all.filter((p) => p.status === 'draft'));
+    } else {
+      setPosts(await fetchPublishedPosts());
+      setDrafts([]);
+    }
+    setLoading(false);
+  }, [owner]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const recent = posts.slice(0, VISIBLE);
+  const older = posts.slice(VISIBLE);
+
+  // A single pinned paper note (full, readable).
+  const Note = ({ post, idx, newest }) => (
+    <button
+      onClick={() => onOpenPost(post)}
+      style={{
+        position: 'relative',
+        width: '100%',
+        textAlign: 'left',
+        background: BLOG.paper,
+        border: 'none',
+        borderRadius: 6,
+        padding: '22px 18px 18px',
+        cursor: 'pointer',
+        transform: `rotate(${TILTS[idx % TILTS.length]}deg)`,
+        boxShadow: '0 9px 20px rgba(20,14,8,0.42), 0 1px 0 rgba(255,255,255,0.5) inset',
+        fontFamily: BLOG_SERIF,
+        animation: `blogNoteIn .45s ${idx * 0.07}s ease both`,
+      }}
+    >
+      {/* push-pin dot */}
+      <span style={{
+        position: 'absolute', top: -8, left: '50%', transform: 'translateX(-50%)',
+        width: 16, height: 16, borderRadius: '50%',
+        background: `radial-gradient(circle at 35% 30%, #fff 0%, ${PINS[idx % PINS.length]} 55%, rgba(0,0,0,0.4) 100%)`,
+        boxShadow: '0 2px 6px rgba(0,0,0,0.5)',
+      }} />
+      {newest && (
+        <span style={{
+          position: 'absolute', top: 8, right: 8,
+          fontFamily: BLOG_SANS, fontSize: '0.5rem', fontWeight: 700,
+          letterSpacing: '0.07em', textTransform: 'uppercase',
+          color: BLOG.cream, background: BLOG.sage,
+          padding: '3px 7px', borderRadius: 999,
+        }}>Newest</span>
+      )}
+      <div style={{
+        fontSize: '1.3rem', fontWeight: 700, lineHeight: 1.15, color: BLOG.sage,
+        paddingRight: newest ? 54 : 0,
+      }}>{post.title || 'Untitled'}</div>
+      <div style={{
+        fontFamily: BLOG_SANS, fontSize: '0.56rem', letterSpacing: '0.06em',
+        textTransform: 'uppercase', color: BLOG.taupe, marginTop: 6,
+      }}>{formatPostDate(post.createdAt || post.createdAtMs)}</div>
+      {post.teaser && (
+        <div style={{
+          fontStyle: 'italic', fontSize: '1rem', lineHeight: 1.4,
+          color: BLOG.charcoal, marginTop: 10,
+        }}>{post.teaser}</div>
+      )}
+    </button>
+  );
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, overflow: 'hidden', fontFamily: BLOG_SANS,
+      animation: 'blogFadeIn .35s ease both',
+      // warm cork board surface with a little depth + speckle
+      background:
+        'radial-gradient(ellipse at 50% -10%, #C0905C 0%, #AE7D4D 42%, #8E6233 100%)',
+    }}>
+      <style>{GFONTS}</style>
+      <style>{`
+        @keyframes blogNoteIn { from { opacity:0; transform: translateY(10px) rotate(0deg); } }
+        @keyframes blogFadeIn { from { opacity:0; } to { opacity:1; } }
+      `}</style>
+
+      {/* subtle cork speckle + inner shadow frame */}
+      <div style={{
+        position: 'absolute', inset: 0, pointerEvents: 'none',
+        background:
+          'radial-gradient(circle at 18% 24%, rgba(0,0,0,0.05) 0 1.5px, transparent 2px),' +
+          'radial-gradient(circle at 62% 58%, rgba(0,0,0,0.045) 0 1.5px, transparent 2px),' +
+          'radial-gradient(circle at 84% 18%, rgba(255,255,255,0.04) 0 1.5px, transparent 2px),' +
+          'radial-gradient(circle at 38% 82%, rgba(0,0,0,0.045) 0 1.5px, transparent 2px)',
+        backgroundSize: '120px 120px, 150px 150px, 100px 100px, 140px 140px',
+        boxShadow: 'inset 0 0 90px rgba(60,38,16,0.55)',
+      }} />
+      {/* wooden frame edge */}
+      <div style={{
+        position: 'absolute', inset: 8, pointerEvents: 'none', borderRadius: 6,
+        border: '10px solid', borderImage: 'linear-gradient(145deg,#7c5326,#5a3c1b,#7c5326) 1',
+        boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.3)',
+      }} />
+
+      {/* Header */}
+      <div style={{
+        position: 'absolute', top: 0, left: 0, right: 0, zIndex: 20,
+        padding: '16px 16px 10px',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+        background: 'linear-gradient(to bottom, rgba(40,26,12,0.55), rgba(40,26,12,0))',
+      }}>
+        <button onClick={onBack} style={{
+          background: 'rgba(250,248,244,0.18)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
+          border: '1px solid rgba(250,248,244,0.3)', borderRadius: 999, padding: '7px 14px',
+          cursor: 'pointer', color: BLOG.cream, fontFamily: BLOG_SANS, fontSize: '0.72rem',
+        }}>← Back to the porch</button>
+        {owner && (
+          <button onClick={onWrite} style={{
+            background: BLOG.sage, border: 'none', borderRadius: 999, padding: '8px 15px',
+            cursor: 'pointer', color: BLOG.cream, fontFamily: BLOG_SANS, fontSize: '0.72rem', fontWeight: 600,
+            boxShadow: '0 4px 14px rgba(0,0,0,0.4)',
+          }}>+ Pin a new note</button>
+        )}
+      </div>
+
+      {/* Title plaque */}
+      <div style={{
+        position: 'absolute', top: 58, left: 0, right: 0, zIndex: 15,
+        textAlign: 'center', pointerEvents: 'none',
+      }}>
+        <div style={{
+          fontFamily: BLOG_SERIF, fontSize: '1.7rem', fontWeight: 700,
+          color: BLOG.cream, textShadow: '0 2px 6px rgba(0,0,0,0.5)', letterSpacing: '0.01em',
+        }}>The Porch Board</div>
+      </div>
+
+      {/* Notes (scrollable) */}
+      <div style={{
+        position: 'absolute', inset: 0, top: 104, zIndex: 10,
+        overflowY: 'auto', WebkitOverflowScrolling: 'touch',
+        padding: '14px 26px 96px', boxSizing: 'border-box',
+      }}>
+        <div style={{ maxWidth: 520, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 26 }}>
+          {loading ? (
+            <p style={{ textAlign: 'center', fontFamily: BLOG_SERIF, fontStyle: 'italic', fontSize: '1.05rem', color: BLOG.cream, marginTop: 40 }}>
+              Bringing in the notes…
+            </p>
+          ) : posts.length === 0 ? (
+            <div style={{
+              background: BLOG.paper, borderRadius: 8, padding: '28px 22px', textAlign: 'center',
+              transform: 'rotate(-1.2deg)', boxShadow: '0 9px 20px rgba(20,14,8,0.42)',
+              fontFamily: BLOG_SERIF, color: BLOG.charcoal, fontStyle: 'italic', fontSize: '1.05rem', lineHeight: 1.5,
+            }}>
+              The board is quiet.<br />{owner ? 'Pin your first note.' : 'Check back soon.'}
+            </div>
+          ) : (
+            <>
+              {recent.map((p, i) => <Note key={p.id} post={p} idx={i} newest={i === 0} />)}
+
+              {older.length > 0 && (
+                <>
+                  <button onClick={() => setShowOlder((v) => !v)} style={{
+                    alignSelf: 'center', background: 'rgba(20,16,12,0.5)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
+                    border: '1px solid rgba(250,248,244,0.3)', borderRadius: 999, padding: '8px 18px',
+                    cursor: 'pointer', color: BLOG.cream, fontFamily: BLOG_SANS, fontSize: '0.72rem',
+                  }}>
+                    {showOlder ? 'Hide older posts' : `Older posts (${older.length})`}
+                  </button>
+                  {showOlder && older.map((p, i) => <Note key={p.id} post={p} idx={VISIBLE + i} newest={false} />)}
+                </>
+              )}
+            </>
+          )}
+
+          {/* Owner-only drafts */}
+          {owner && drafts.length > 0 && (
+            <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+              <button onClick={() => setShowDrafts((v) => !v)} style={{
+                background: 'rgba(20,16,12,0.55)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
+                border: '1px solid rgba(250,248,244,0.3)', borderRadius: 999, padding: '8px 18px',
+                cursor: 'pointer', color: BLOG.cream, fontFamily: BLOG_SANS, fontSize: '0.72rem',
+              }}>
+                {showDrafts ? 'Hide drafts' : `Your drafts (${drafts.length})`}
+              </button>
+              {showDrafts && (
+                <div style={{ width: '100%', background: 'rgba(250,248,244,0.96)', borderRadius: 10, overflow: 'hidden', boxShadow: '0 8px 22px rgba(0,0,0,0.5)' }}>
+                  {drafts.map((p) => (
+                    <button key={p.id} onClick={() => onOpenPost(p)} style={{
+                      display: 'flex', width: '100%', alignItems: 'baseline', justifyContent: 'space-between',
+                      gap: 12, padding: '14px 16px', background: 'transparent', border: 'none',
+                      borderBottom: '1px solid rgba(60,60,60,0.1)', cursor: 'pointer', textAlign: 'left',
+                    }}>
+                      <span style={{ fontFamily: BLOG_SERIF, fontSize: '1.05rem', color: BLOG.charcoal, fontWeight: 600 }}>{p.title || 'Untitled draft'}</span>
+                      <span style={{ fontFamily: BLOG_SANS, fontSize: '0.6rem', letterSpacing: '0.05em', textTransform: 'uppercase', color: BLOG.roseDk }}>Draft</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
