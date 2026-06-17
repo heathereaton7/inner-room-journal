@@ -2060,12 +2060,12 @@ function AppInner(){
       while(map[isoDate(d)]){s++;d.setDate(d.getDate()-1);} setStreak(s);
       setIsOnboarded(!!ob);
       // Shareable landing: innerroomjournal.com/blog (or /?page=blog) opens the
-      // porch board directly (e.g. when shared from outside). Anyone can read;
-      // signed-out visitors see a "create a free account" invite on the board.
+      // atmospheric PORCH scene first (porchforreal.png) — the door steps inside
+      // (sign-in gate / cabin) and the "My Blog" book opens the readable board.
       let landing="welcome";
       try{
         const path=window.location.pathname.replace(/\/+$/,"");
-        if(new URLSearchParams(window.location.search).get("page")==="blog"||path==="/blog") landing="blog-board";
+        if(new URLSearchParams(window.location.search).get("page")==="blog"||path==="/blog") landing="porch";
       }catch(e){}
       setScreen(landing);
       setCardQ(shuffle(ALL_CARD_QS)[0]);
@@ -4854,17 +4854,17 @@ function AppInner(){
   </>);
 
 
-  /* ══ PORCH BLOG (through the cabin landing door, out to the porch board) ══ */
+  /* ══ PORCH BLOG (atmospheric landing: door=step inside, book=read blog) ══ */
   if(screen==="porch") return(<>
     <PorchBlogScreen
-      onBack={()=>transitionToCabin()}
+      onEnter={()=>{ if(user){ transitionToCabin(); } else { signupSourceRef.current="blog"; setAuthError(""); setAuthMode("choose"); setEmailSignupMode(true); setOnboardStep(0); setScreen("profile-onboard"); } }}
       onOpenBoard={()=>setScreen("blog-board")}
     />
   </>);
   if(screen==="blog-board") return(<>
     <BlogBoardScreen
       user={user}
-      onBack={()=>setScreen(user?"porch":"welcome")}
+      onBack={()=>setScreen("porch")}
       onOpenPost={(p)=>{setSelectedBlogPost(p);setScreen("blog-post");}}
       onWrite={()=>{setEditingBlogPost(null);setScreen("write-blog");}}
       onJoin={(mode)=>{signupSourceRef.current="blog";setAuthError("");setAuthMode(mode==="login"?"email":"choose");setEmailSignupMode(mode!=="login");setOnboardStep(0);setScreen("profile-onboard");}}

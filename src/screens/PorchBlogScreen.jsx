@@ -1,48 +1,47 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { GFONTS } from '../constants.js';
 import { BLOG, BLOG_SERIF, BLOG_SANS } from '../systems/blog.js';
-import { useRoomTheme } from '../systems/roomThemes.js';
 
 /**
- * PORCH — the atmospheric entry to the blog (screen A of 3).
+ * PORCH — the atmospheric blog landing (screen A of 3).
  *
- * The whole porch photo (frontporch.png) is shown un-cropped with live rain in
- * the open-air view and flickering candle/lantern glow. The lit wooden frame on
- * the left wall is a SINGLE tap target (a subtle pulsing glow marks it) that
- * opens the readable bulletin-board close-up (screen B). Individual posts are
- * NOT tapped here — they're too small on the photo.
+ * The whole porch photo (porchforreal.png) is shown un-cropped with live rain in
+ * the open-air window view and flickering candle/lantern glow. There are TWO tap
+ * targets, each marked by a soft pulsing glow + floating label:
+ *   • the cabin DOOR on the left  → "step inside" (sign-in gate / cabin)
+ *   • the "My Blog" BOOK on the table → opens the readable bulletin board (B)
  *
  *   porch (A) → board close-up (B) → post (C)
+ *
+ * Fixed image so the door/book hotspots stay aligned (no seasonal swap here).
  */
 
-// The wooden frame inside frontporch.png, as fractions of the displayed image.
-// The tap target sits exactly over the real board.
-const FRAME = { left: 0.115, top: 0.165, width: 0.275, height: 0.355 };
+const PORCH_IMG = '/porchforreal.png';
 
-// Where rain falls in the photo — only the open-air view beyond the porch
-// (the covered left side stays dry). Fractions of the displayed image.
-const RAIN_BOX = { left: 0.45, top: 0.04, width: 0.55, height: 0.47 };
+// Hotspot boxes as fractions of the displayed (contained) photo.
+const DOOR = { left: 0.045, top: 0.125, width: 0.275, height: 0.470 };
+const BOOK = { left: 0.520, top: 0.700, width: 0.300, height: 0.140 };
 
-// Flame sources in the photo (hanging lantern, table candle, floor lantern, and
-// the steadier wall lamp over the board). Fractions of the displayed image.
+// Rain falls only in the open-air window view on the right. Fractions of photo.
+const RAIN_BOX = { left: 0.55, top: 0.115, width: 0.45, height: 0.42 };
+
+// Flame sources in porchforreal.png. Fractions of the displayed image.
 const CANDLES = [
-  { x: 0.585, y: 0.330, r: 0.070, base: 0.62, amp: 0.34 }, // hanging lantern (center)
-  { x: 0.905, y: 0.675, r: 0.055, base: 0.60, amp: 0.34 }, // candle on the side table
-  { x: 0.095, y: 0.860, r: 0.060, base: 0.55, amp: 0.32 }, // lantern on the floor
-  { x: 0.235, y: 0.155, r: 0.075, base: 0.50, amp: 0.12 }, // wall lamp over the board
+  { x: 0.600, y: 0.345, r: 0.060, base: 0.60, amp: 0.34 }, // hanging lantern (center)
+  { x: 0.275, y: 0.135, r: 0.055, base: 0.50, amp: 0.14 }, // wall lamp over the door
+  { x: 0.135, y: 0.420, r: 0.045, base: 0.55, amp: 0.30 }, // candle in the door window
+  { x: 0.775, y: 0.715, r: 0.045, base: 0.60, amp: 0.32 }, // candle on the coffee table
+  { x: 0.075, y: 0.875, r: 0.050, base: 0.55, amp: 0.30 }, // lantern on the floor
 ];
 
-export default function PorchBlogScreen({ onOpenBoard, onBack }) {
-  const theme = useRoomTheme();
-  const porchSrc = theme.porch || '/frontporch.png';
-  const weather = theme.weather === 'snow' ? 'snow' : 'rain'; // porch open-air: snow for Christmas, rain otherwise
+export default function PorchBlogScreen({ onOpenBoard, onEnter }) {
+  const weather = 'rain'; // rainy-night porch scene
   const wrapRef = useRef(null);
   const imgRef = useRef(null);
   const canvasRef = useRef(null);
   const rainRef = useRef([]);
   const candleRef = useRef([]);
-  const [frameBox, setFrameBox] = useState(null); // {left,top,width,height} px
-  const [imgRect, setImgRect] = useState(null);    // displayed photo rect, px
+  const [imgRect, setImgRect] = useState(null); // displayed photo rect, px
 
   // Map fractions onto the on-screen rectangle of the contained image.
   const recompute = useCallback(() => {
@@ -50,19 +49,13 @@ export default function PorchBlogScreen({ onOpenBoard, onBack }) {
     const img = imgRef.current;
     if (!wrap) return;
     const cw = wrap.clientWidth, ch = wrap.clientHeight;
-    const natW = img?.naturalWidth || 450;
-    const natH = img?.naturalHeight || 600;
+    const natW = img?.naturalWidth || 1083;
+    const natH = img?.naturalHeight || 1445;
     const ratio = natW / natH;
     let dispW, dispH, offX, offY;
     if (cw / ch > ratio) { dispH = ch; dispW = ch * ratio; offX = (cw - dispW) / 2; offY = 0; }
     else { dispW = cw; dispH = cw / ratio; offX = 0; offY = (ch - dispH) / 2; }
     setImgRect({ left: offX, top: offY, width: dispW, height: dispH });
-    setFrameBox({
-      left: offX + FRAME.left * dispW,
-      top: offY + FRAME.top * dispH,
-      width: FRAME.width * dispW,
-      height: FRAME.height * dispH,
-    });
   }, []);
 
   useEffect(() => {
@@ -83,24 +76,13 @@ export default function PorchBlogScreen({ onOpenBoard, onBack }) {
     canvas.height = Math.round(H * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    // Rebuild particles when the weather type changes (snow drifts, rain streaks).
-    if (!rainRef.current.length || rainRef.current.type !== weather) {
-      const arr = weather === 'snow'
-        ? Array.from({ length: 80 }, () => ({
-            x: Math.random(), y: Math.random(),
-            r: 0.004 + Math.random() * 0.006,            // dot radius (fraction of box)
-            sp: 0.0025 + Math.random() * 0.004,          // gentle fall
-            sway: 0.4 + Math.random() * 0.8,             // horizontal drift speed
-            phase: Math.random() * Math.PI * 2,
-          }))
-        : Array.from({ length: 95 }, () => ({
-            x: Math.random(), y: Math.random(),
-            len: 0.03 + Math.random() * 0.05,
-            sp: 0.010 + Math.random() * 0.016,
-            w: Math.random() < 0.5 ? 1 : 1.4,
-          }));
-      arr.type = weather;
-      rainRef.current = arr;
+    if (!rainRef.current.length) {
+      rainRef.current = Array.from({ length: 95 }, () => ({
+        x: Math.random(), y: Math.random(),
+        len: 0.03 + Math.random() * 0.05,
+        sp: 0.010 + Math.random() * 0.016,
+        w: Math.random() < 0.5 ? 1 : 1.4,
+      }));
     }
     if (!candleRef.current.length) {
       candleRef.current = CANDLES.map(() => ({ phase: Math.random() * Math.PI * 2, speed: 4 + Math.random() * 3 }));
@@ -110,34 +92,20 @@ export default function PorchBlogScreen({ onOpenBoard, onBack }) {
     let raf;
     const draw = (t) => {
       ctx.clearRect(0, 0, W, H);
-      // weather (only within the open-air box)
+      // rain (only within the open-air box)
       const rb = { x: RAIN_BOX.left * W, y: RAIN_BOX.top * H, w: RAIN_BOX.width * W, h: RAIN_BOX.height * H };
-      const tw = t / 1000;
-      if (weather === 'snow') {
-        ctx.fillStyle = 'rgba(244,248,255,0.85)';
-        for (const d of rainRef.current) {
-          if (!reduce) { d.y += d.sp; if (d.y > 1) { d.y = -0.02; d.x = Math.random(); } }
-          const drift = Math.sin(tw * d.sway + d.phase) * 0.02;
-          const px = rb.x + (d.x + drift) * rb.w;
-          const py = rb.y + d.y * rb.h;
-          ctx.beginPath();
-          ctx.arc(px, py, d.r * Math.min(rb.w, rb.h), 0, Math.PI * 2);
-          ctx.fill();
-        }
-      } else {
-        ctx.strokeStyle = 'rgba(190,205,225,0.32)';
-        ctx.lineCap = 'round';
-        for (const d of rainRef.current) {
-          if (!reduce) { d.y += d.sp; if (d.y > 1) { d.y = -d.len; d.x = Math.random(); } }
-          const px = rb.x + d.x * rb.w;
-          const py = rb.y + d.y * rb.h;
-          const ll = d.len * rb.h;
-          ctx.lineWidth = d.w;
-          ctx.beginPath();
-          ctx.moveTo(px, py);
-          ctx.lineTo(px - ll * 0.16, py + ll);
-          ctx.stroke();
-        }
+      ctx.strokeStyle = 'rgba(190,205,225,0.32)';
+      ctx.lineCap = 'round';
+      for (const d of rainRef.current) {
+        if (!reduce) { d.y += d.sp; if (d.y > 1) { d.y = -d.len; d.x = Math.random(); } }
+        const px = rb.x + d.x * rb.w;
+        const py = rb.y + d.y * rb.h;
+        const ll = d.len * rb.h;
+        ctx.lineWidth = d.w;
+        ctx.beginPath();
+        ctx.moveTo(px, py);
+        ctx.lineTo(px - ll * 0.16, py + ll);
+        ctx.stroke();
       }
       // flames (additive warm glow)
       ctx.globalCompositeOperation = 'lighter';
@@ -161,32 +129,41 @@ export default function PorchBlogScreen({ onOpenBoard, onBack }) {
     return () => cancelAnimationFrame(raf);
   }, [imgRect, weather]);
 
+  const box = (f) => imgRect && ({
+    left: imgRect.left + f.left * imgRect.width,
+    top: imgRect.top + f.top * imgRect.height,
+    width: f.width * imgRect.width,
+    height: f.height * imgRect.height,
+  });
+  const doorBox = box(DOOR);
+  const bookBox = box(BOOK);
+
   return (
     <div ref={wrapRef} style={{ position: 'fixed', inset: 0, overflow: 'hidden', fontFamily: BLOG_SANS, background: '#15110d' }}>
       <style>{GFONTS}</style>
       <style>{`
         @keyframes blogFadeIn { from { opacity:0; } to { opacity:1; } }
-        @keyframes porchBoardPulse {
-          0%,100% { box-shadow: 0 0 0 1px rgba(255,221,150,0.35), 0 0 22px 4px rgba(255,196,110,0.20); }
-          50%     { box-shadow: 0 0 0 1px rgba(255,221,150,0.6), 0 0 34px 10px rgba(255,196,110,0.42); }
+        @keyframes porchHotspotPulse {
+          0%,100% { box-shadow: 0 0 0 1px rgba(255,221,150,0.30), 0 0 22px 4px rgba(255,196,110,0.16); }
+          50%     { box-shadow: 0 0 0 1px rgba(255,221,150,0.55), 0 0 34px 10px rgba(255,196,110,0.36); }
         }
         @keyframes porchPillFloat { 0%,100% { transform: translate(-50%,0); } 50% { transform: translate(-50%,-3px); } }
       `}</style>
 
       {/* Blurred fill so any letterbox bars read as part of the scene */}
-      <img src={porchSrc} alt="" draggable={false} style={{
+      <img src={PORCH_IMG} alt="" draggable={false} style={{
         position: 'absolute', inset: 0, width: '100%', height: '100%',
         objectFit: 'cover', filter: 'blur(22px) brightness(0.45)',
         transform: 'scale(1.1)', userSelect: 'none', pointerEvents: 'none',
       }} />
 
       {/* The whole porch photo, un-cropped */}
-      <img ref={imgRef} key={porchSrc} src={porchSrc} alt="A cozy cabin porch with a bulletin board" draggable={false}
+      <img ref={imgRef} src={PORCH_IMG} alt="A cozy cabin porch on a rainy night, with a door on the left and a journal on the table" draggable={false}
         onLoad={recompute}
         style={{
           position: 'absolute', inset: 0, width: '100%', height: '100%',
           objectFit: 'contain', objectPosition: 'center', userSelect: 'none', pointerEvents: 'none',
-          filter: 'brightness(1.2) contrast(1.02)',
+          filter: 'brightness(1.18) contrast(1.02)',
         }} />
 
       {/* Light vignette only at top + bottom for control legibility */}
@@ -204,37 +181,53 @@ export default function PorchBlogScreen({ onOpenBoard, onBack }) {
         }} />
       )}
 
-      {/* Header controls */}
-      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 20, padding: '16px 16px 8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <button onClick={onBack} style={{
-          background: 'rgba(250,248,244,0.16)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
-          border: '1px solid rgba(250,248,244,0.25)', borderRadius: 999, padding: '7px 16px',
-          cursor: 'pointer', color: BLOG.cream, fontFamily: BLOG_SANS, fontSize: '0.74rem',
-        }}>← Step inside</button>
-      </div>
-
-      {/* The bulletin board itself — ONE tap target into the readable close-up */}
-      {frameBox && (
+      {/* DOOR → step inside (sign-in gate / cabin) */}
+      {doorBox && (
         <button
-          onClick={onOpenBoard}
-          aria-label="Open the porch bulletin board"
+          onClick={onEnter}
+          aria-label="Step inside the cabin"
           style={{
             position: 'absolute',
-            left: frameBox.left, top: frameBox.top, width: frameBox.width, height: frameBox.height,
-            zIndex: 12, cursor: 'pointer', background: 'transparent', borderRadius: 6,
+            left: doorBox.left, top: doorBox.top, width: doorBox.width, height: doorBox.height,
+            zIndex: 12, cursor: 'pointer', background: 'transparent', borderRadius: 10,
             border: '1px solid rgba(255,221,150,0.0)',
-            animation: 'porchBoardPulse 3.2s ease-in-out infinite',
+            animation: 'porchHotspotPulse 3.4s ease-in-out infinite',
             padding: 0,
           }}
         >
           <span style={{
             position: 'absolute', left: '50%', bottom: -14, transform: 'translateX(-50%)',
-            whiteSpace: 'nowrap', animation: 'porchPillFloat 3.2s ease-in-out infinite',
+            whiteSpace: 'nowrap', animation: 'porchPillFloat 3.4s ease-in-out infinite',
             background: 'rgba(20,16,12,0.62)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
             border: '1px solid rgba(250,248,244,0.28)', borderRadius: 999,
             padding: '5px 12px', color: BLOG.cream, fontFamily: BLOG_SANS,
             fontSize: '0.64rem', letterSpacing: '0.04em', boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
-          }}>Read the board →</span>
+          }}>Step inside →</span>
+        </button>
+      )}
+
+      {/* BOOK → open the readable blog board */}
+      {bookBox && (
+        <button
+          onClick={onOpenBoard}
+          aria-label="Read my blog"
+          style={{
+            position: 'absolute',
+            left: bookBox.left, top: bookBox.top, width: bookBox.width, height: bookBox.height,
+            zIndex: 12, cursor: 'pointer', background: 'transparent', borderRadius: 8,
+            border: '1px solid rgba(255,221,150,0.0)',
+            animation: 'porchHotspotPulse 3.0s ease-in-out infinite',
+            padding: 0,
+          }}
+        >
+          <span style={{
+            position: 'absolute', left: '50%', top: -16, transform: 'translateX(-50%)',
+            whiteSpace: 'nowrap', animation: 'porchPillFloat 3.0s ease-in-out infinite',
+            background: 'rgba(20,16,12,0.62)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
+            border: '1px solid rgba(250,248,244,0.28)', borderRadius: 999,
+            padding: '5px 12px', color: BLOG.cream, fontFamily: BLOG_SANS,
+            fontSize: '0.64rem', letterSpacing: '0.04em', boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+          }}>Read my blog →</span>
         </button>
       )}
     </div>
