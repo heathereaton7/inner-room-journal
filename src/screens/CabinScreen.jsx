@@ -169,14 +169,23 @@ export default function CabinScreen({
         <div style={{position:"absolute",inset:0,zIndex:0,background:"#0A0806",animation:"spaceFadeIn .6s ease"}}>
           <img ref={landingImgRef} onLoad={recalcImgBox} src={landingBgImage} alt="The Inner Room" draggable={false} style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",objectPosition:"center 72%",userSelect:"none",WebkitUserDrag:"none",pointerEvents:"none"}}/>
           {imgBox && (<>
-            {/* Seasonal weather (rain by default) falling on the window glass */}
-            {roomThemeData.weather && roomThemeData.weather !== 'none' && (
+            {/* Seasonal weather (rain by default) falling on the window glass.
+               Two panes so the open right-side glass gets full rain while the
+               left pane stays above the windowsill plant. */}
+            {roomThemeData.weather && roomThemeData.weather !== 'none' && (<>
+              {/* Left pane — stops just above the dried-flower plant */}
               <WindowWeather
                 mode={roomThemeData.weather}
-                window={{ left:`${imgBox.ox+0.37*imgBox.rw}px`, top:`${imgBox.oy+0.0*imgBox.rh}px`, width:`${0.63*imgBox.rw}px`, height:`${0.45*imgBox.rh}px`, radius:"0px" }}
+                window={{ left:`${imgBox.ox+0.37*imgBox.rw}px`, top:`${imgBox.oy+0.0*imgBox.rh}px`, width:`${0.17*imgBox.rw}px`, height:`${0.45*imgBox.rh}px`, radius:"0px" }}
                 absolute zIndex={1}
               />
-            )}
+              {/* Right pane — open glass, falls down to just above the candle/mug */}
+              <WindowWeather
+                mode={roomThemeData.weather}
+                window={{ left:`${imgBox.ox+0.54*imgBox.rw}px`, top:`${imgBox.oy+0.0*imgBox.rh}px`, width:`${0.46*imgBox.rw}px`, height:`${0.58*imgBox.rh}px`, radius:"0px" }}
+                absolute zIndex={1}
+              />
+            </>)}
             {/* Soft warm glow on the lampshade (left) — anchored to the lamp in the image */}
             <CandleGlow left={`${imgPt(0.08,0.41).left}px`} top={`${imgPt(0.08,0.41).top}px`} color="rgba(255,206,138,0.8)" size={180} keyframe="cottage-flicker-b" duration={9} absolute zIndex={2} />
             {/* Flickering candle flame glow — anchored to the flame in the image */}
