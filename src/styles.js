@@ -149,6 +149,7 @@ export const CSS = `
     .map-hotspot:active{transform:translate(-50%,-50%) scale(0.94)!important}
     @keyframes verseReveal{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
     @keyframes actionBarSlideUp{from{opacity:0;transform:translateY(40px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes actionBarSlideRight{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:translateX(0)}}
     @keyframes overlayFadeIn{from{opacity:0}to{opacity:1}}
     @keyframes mapBtnGlow{0%,100%{box-shadow:0 0 8px rgba(255,210,120,0.15),0 2px 12px rgba(0,0,0,0.3)}50%{box-shadow:0 0 18px rgba(255,210,120,0.35),0 2px 12px rgba(0,0,0,0.3)}}
     @keyframes soundBar{0%{height:20%}100%{height:100%}}
