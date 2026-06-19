@@ -56,6 +56,9 @@ if (firebaseConfig.apiKey) {
   auth = getAuth(app);
   db = getFirestore(app);
   googleProvider = new GoogleAuthProvider();
+  // Always show Google's account chooser so users can pick which account to use
+  // instead of being signed in silently with the one already active in Chrome.
+  googleProvider.setCustomParameters({ prompt: "select_account" });
   try { functions = getFunctions(app); } catch(e) { console.warn("Firebase Functions not available:", e.message); }
 }
 

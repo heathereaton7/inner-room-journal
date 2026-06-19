@@ -2973,18 +2973,30 @@ function AppInner(){
     try{
       const profileRef=doc(db,"userProfiles",uid);
       const snap=await getDoc(profileRef);
+      // Send the user to the right onboarding step ONLY from a pre-app screen
+      // (initial sign-in). Never yank someone already inside the app.
+      const resumeOnboarding=(step)=>setScreen(s=>{
+        if(s==="loading"||s==="welcome"||s==="onboard"||s==="profile-onboard"){
+          setOnboardStep(step);
+          return "profile-onboard";
+        }
+        return s;
+      });
       if(!snap.exists()){
-        // New user — pre-fill display name, let onboarding handle navigation
+        // Brand-new user — collect a username next.
         setSetupUsername(prev=>prev||displayName||"");
+        resumeOnboarding(1);
         return;
       }
       const data=snap.data();
       if(!data.gender||!data.usernameLower){
-        // Incomplete profile — pre-fill from existing data
+        // Incomplete profile — pre-fill what we have and resume at the first
+        // missing step (username, then Son/Daughter of God).
         setSetupUsername(prev=>prev||data.username||displayName||"");
         setSetupGender(prev=>prev||data.gender||null);
         setSetupBio(prev=>prev||data.bio||"");
         setUserProfile({id:uid,...data});
+        resumeOnboarding(!data.usernameLower?1:2);
         return;
       }
       // Returning user with complete profile
@@ -4669,7 +4681,7 @@ function AppInner(){
               </p>
 
               {authMode==="choose"&&(<>
-                <button className="fu3 door-btn" onClick={async()=>{const ok=await handleGoogleSignIn();if(ok)setOnboardStep(1);}} style={{width:"100%",maxWidth:"320px",background:"linear-gradient(135deg,rgba(201,169,110,0.22),rgba(201,169,110,0.06))",backdropFilter:"blur(10px)",WebkitBackdropFilter:"blur(10px)",border:"1px solid rgba(201,169,110,0.45)",color:"#FFF8E8",padding:"15px 0",borderRadius:"16px",cursor:"pointer",fontSize:"0.9rem",fontFamily:SERIF,fontWeight:600,letterSpacing:"0.06em",fontStyle:"italic",marginBottom:"12px",transition:"all 0.3s",boxShadow:"0 4px 24px rgba(0,0,0,0.3)"}}>
+                <button className="fu3 door-btn" onClick={()=>{handleGoogleSignIn();/* navigation handled by ensureUserProfile: returning users → cabin, new users → onboarding */}} style={{width:"100%",maxWidth:"320px",background:"linear-gradient(135deg,rgba(201,169,110,0.22),rgba(201,169,110,0.06))",backdropFilter:"blur(10px)",WebkitBackdropFilter:"blur(10px)",border:"1px solid rgba(201,169,110,0.45)",color:"#FFF8E8",padding:"15px 0",borderRadius:"16px",cursor:"pointer",fontSize:"0.9rem",fontFamily:SERIF,fontWeight:600,letterSpacing:"0.06em",fontStyle:"italic",marginBottom:"12px",transition:"all 0.3s",boxShadow:"0 4px 24px rgba(0,0,0,0.3)"}}>
                   Continue with Google
                 </button>
                 <button className="fu4" onClick={()=>{setAuthMode("email");setAuthError("");}} style={{width:"100%",maxWidth:"320px",background:"transparent",border:"1px solid rgba(255,248,232,0.12)",borderRadius:"16px",padding:"13px 0",cursor:"pointer",color:"rgba(255,248,232,0.55)",fontFamily:SERIF,fontStyle:"italic",fontSize:"0.85rem",letterSpacing:"0.05em",marginBottom:"14px",transition:"all 0.3s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor="rgba(255,248,232,0.25)";e.currentTarget.style.color="rgba(255,248,232,0.75)";}} onMouseLeave={e=>{e.currentTarget.style.borderColor="rgba(255,248,232,0.12)";e.currentTarget.style.color="rgba(255,248,232,0.55)";}}>
@@ -4701,7 +4713,10 @@ function AppInner(){
                       if(authPassword!==authPassword2){setAuthError("Passwords don't match. Please check and try again.");return;}
                     }
                     const ok=emailSignupMode?await handleEmailSignUp(authEmail,authPassword,authName):await handleEmailSignIn(authEmail,authPassword);
-                    if(ok){ if(emailSignupMode&&authName.trim())setSetupUsername(prev=>prev||authName.trim().replace(/[^a-zA-Z0-9_]/g,"").slice(0,20)); setOnboardStep(1); }
+                    // Navigation is handled by ensureUserProfile: returning users with a
+                    // complete profile go straight to the cabin; new/incomplete users
+                    // resume onboarding at the first missing step.
+                    if(ok&&emailSignupMode&&authName.trim())setSetupUsername(prev=>prev||authName.trim().replace(/[^a-zA-Z0-9_]/g,"").slice(0,20));
                   }} className={canSubmit?"door-btn":""} style={{marginTop:"18px",background:canSubmit?"linear-gradient(135deg,rgba(201,169,110,0.22),rgba(201,169,110,0.06))":"transparent",border:`1px solid ${canSubmit?"rgba(201,169,110,0.45)":"rgba(255,248,232,0.1)"}`,color:canSubmit?"#FFF8E8":"rgba(255,248,232,0.25)",padding:"14px 0",borderRadius:"16px",cursor:canSubmit?"pointer":"default",fontSize:"0.9rem",fontFamily:SERIF,fontWeight:600,fontStyle:"italic",letterSpacing:"0.06em",transition:"all 0.3s"}}>
                     {authBusy?"One moment...":(emailSignupMode?"Create my account":"Log in")}
                   </button>);})()}
