@@ -1689,6 +1689,8 @@ function AppInner(){
 
   // ── Bible reader (Upper Room) ──
   const [bibleView,     setBibleView]     = useState(null);   // null|"books"|"chapters"|"reading"
+  const bibleFromCabinRef = useRef(false); // opened from the cabin book chooser → back returns there
+  const [reopenBookChooser, setReopenBookChooser] = useState(0); // bumped to reopen the cabin's book chooser
   const [bibleBook,     setBibleBook]     = useState(0);
   const [bibleChapter,  setBibleChapter]  = useState(0);
   const [bibleFontSize, setBibleFontSize] = useState(()=>{try{return parseInt(localStorage.getItem("irj-bible-fontsize"))||18;}catch{return 18;}});
@@ -1916,6 +1918,7 @@ function AppInner(){
     if(!data) return;
     const book=data[parsed.bookIdx];
     const chapIdx=book&&parsed.chapIdx<book.chapters.length?parsed.chapIdx:0;
+    bibleFromCabinRef.current=false;
     setBibleBook(parsed.bookIdx);
     setBibleChapter(chapIdx);
     setBibleView("reading");
@@ -1928,6 +1931,7 @@ function AppInner(){
   const openScripture = useCallback(async()=>{
     const data=await loadBible();
     if(!data) return;
+    bibleFromCabinRef.current=true; // back from the book list returns to the cabin chooser
     setBibleView("books");
     setUpperRoomView("scriptures");
     setPrevScreen(screen);
@@ -4829,6 +4833,7 @@ function AppInner(){
       transitionToMap={transitionToMap} transitionToKitchen={transitionToKitchen}
       transitionToRooftop={transitionToRooftop} transitionToJournal={transitionToJournal}
       transitionToCozyCreations={transitionToCozyCreations} openScripture={openScripture}
+      reopenBookChooser={reopenBookChooser}
       cabinMode={cabinMode} cabin3DReady={cabin3DReady}
       debugHotspots={debugHotspots} debugTripleTap={debugTripleTap}
       bookOpen={bookOpen} setBookOpen={setBookOpen} deskBook={deskBook}
@@ -7420,7 +7425,17 @@ function AppInner(){
     const bibleBack=()=>{
       if(bibleView==="reading"){setBibleView("chapters");}
       else if(bibleView==="chapters"){setBibleView("books");setBibleSearch("");}
-      else{setBibleView(null);setBibleSearch("");setUpperRoomView(null);}
+      else{
+        // Leaving the book list: if the reader was opened from the cabin's book
+        // chooser, return there (reopen the chooser); otherwise fall back to the
+        // Upper Room hub it was opened from.
+        setBibleView(null);setBibleSearch("");setUpperRoomView(null);
+        if(bibleFromCabinRef.current){
+          bibleFromCabinRef.current=false;
+          setScreen("cabin");
+          setReopenBookChooser(n=>n+1);
+        }
+      }
     };
     const openBible=async()=>{
       const data=await loadBible();
@@ -7659,7 +7674,7 @@ function AppInner(){
             <WindowWeather mode={bibleWeather} absolute zIndex={-1} window={{left:"54%",top:"6%",width:"44%",height:"52%",radius:"38% 38% 4% 4% / 14% 14% 2% 2%"}}/>
             {/* Header */}
             <header style={{background:"#0E0B14",padding:"0 16px",height:54,display:"flex",alignItems:"center",gap:10,boxShadow:"0 2px 16px rgba(0,0,0,0.3)",flexShrink:0,zIndex:200}}>
-              <button onClick={bibleBack} style={{background:"transparent",border:"none",cursor:"pointer",color:"rgba(200,190,230,0.55)",fontSize:"0.8rem",fontFamily:SANS,padding:"4px 0",transition:"color 0.15s",whiteSpace:"nowrap"}}>{bibleView==="books"?"< Upper Room":"< Back"}</button>
+              <button onClick={bibleBack} style={{background:"transparent",border:"none",cursor:"pointer",color:"rgba(200,190,230,0.55)",fontSize:"0.8rem",fontFamily:SANS,padding:"4px 0",transition:"color 0.15s",whiteSpace:"nowrap"}}>{bibleView==="books"?(bibleFromCabinRef.current?"< Back":"< Upper Room"):"< Back"}</button>
               <div style={{height:14,width:1,background:"rgba(180,160,210,0.2)"}}/>
               <span style={{fontFamily:SERIF,fontStyle:"italic",color:"#D8C8F0",fontSize:"0.92rem",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
                 {bibleView==="reading"?`${bibleData[bibleBook].name} ${bibleChapter+1}`:bibleView==="chapters"?bibleData[bibleBook].name:"Scripture"}
