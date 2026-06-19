@@ -30,7 +30,7 @@ export default function CabinScreen({
   BottomMenuDrawer, goToHistory,
   playerRoom, onRoomChange, inventory, addToInventory, removeFromInventory,
   playerAppearance,
-  bibleNotes=[], deleteBibleNote, openScriptureToRef,
+  bibleNotes=[], deleteBibleNote, openScriptureToRef, setPrevScreen,
 }){
   const roomThemeData = useRoomTheme();
   const cabinBgImage = roomThemeData.cabin || CABIN_FALLBACK_IMAGE;
@@ -722,6 +722,18 @@ export default function CabinScreen({
               <div style={{textAlign:"center",animation:"fadeUp .6s .1s ease both"}}>
                 <div style={{fontFamily:DISPLAY,fontSize:"0.92rem",fontWeight:700,color:B.goldL,letterSpacing:"0.03em"}}>The Leaky Bucket</div>
                 <div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.64rem",color:"rgba(255,248,232,0.45)",marginTop:3,lineHeight:1.35}}>Episode One · what truly holds</div>
+              </div>
+            </div>
+            {/* ── Book 5: WORD SEARCHES ── */}
+            <div style={{width:"clamp(96px,27vw,172px)",display:"flex",flexDirection:"column",alignItems:"center",gap:12}}>
+              <button onClick={()=>{setBookChooser(false);setPrevScreen&&setPrevScreen("cabin");setScreen("word-search");}} style={{width:"100%",aspectRatio:"2 / 3",borderRadius:"4px 11px 11px 4px",border:"none",padding:0,cursor:"pointer",position:"relative",overflow:"hidden",background:"linear-gradient(160deg,#2E2418 0%,#241B11 48%,#181109 100%)",boxShadow:"0 16px 44px rgba(0,0,0,0.6), 0 0 0 1px rgba(201,169,110,0.22)",animation:"fadeUp .5s ease both"}}>
+                <img src="/wordsearchbook.png" alt="Word Search" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover"}} draggable={false}/>
+                <div style={{position:"absolute",left:0,top:0,bottom:0,width:14,background:"linear-gradient(90deg,rgba(20,12,4,0.55),rgba(20,12,4,0.12),transparent)",pointerEvents:"none",zIndex:2}}/>
+                <div style={{position:"absolute",inset:0,boxShadow:"inset 0 0 50px rgba(0,0,0,0.35)",borderRadius:"inherit",pointerEvents:"none"}}/>
+              </button>
+              <div style={{textAlign:"center",animation:"fadeUp .6s .1s ease both"}}>
+                <div style={{fontFamily:DISPLAY,fontSize:"0.92rem",fontWeight:700,color:B.goldL,letterSpacing:"0.03em"}}>Word Searches</div>
+                <div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.64rem",color:"rgba(255,248,232,0.45)",marginTop:3,lineHeight:1.35}}>Find every word of a verse</div>
               </div>
             </div>
           </div>

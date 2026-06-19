@@ -4955,6 +4955,7 @@ function AppInner(){
       inventory={inventory} addToInventory={addToInventory} removeFromInventory={removeFromInventory}
       playerAppearance={playerAppearance}
       bibleNotes={bibleNotes} deleteBibleNote={deleteBibleNote} openScriptureToRef={openScriptureToRef}
+      setPrevScreen={setPrevScreen}
       transitionToPorch={transitionToPorch}
     />
   </>);
