@@ -262,6 +262,78 @@ export const WORD_SEARCH_PUZZLES = [
     verseText: 'It is of the Lord\u2019s mercies that we are not consumed, because his compassions fail not. They are new every morning: great is thy faithfulness.',
     gridSize: 16,
   },
+
+  // ── Identity in Christ — who you are because of Jesus ──
+  {
+    id: 'ws_id_sons_of_god',
+    title: 'Power to Become',
+    reference: 'John 1:12',
+    verseText: 'But as many as received him, to them gave he power to become the sons of God, even to them that believe on his name.',
+    gridSize: 16,
+  },
+  {
+    id: 'ws_id_crucified_with_christ',
+    title: 'Christ Liveth in Me',
+    reference: 'Galatians 2:20',
+    verseText: 'I am crucified with Christ: nevertheless I live; yet not I, but Christ liveth in me.',
+    gridSize: 15,
+  },
+  {
+    id: 'ws_id_chosen_generation',
+    title: 'A Chosen Generation',
+    reference: '1 Peter 2:9',
+    verseText: 'But ye are a chosen generation, a royal priesthood, an holy nation, a peculiar people.',
+    gridSize: 15,
+  },
+  {
+    id: 'ws_id_workmanship',
+    title: 'We Are His Workmanship',
+    reference: 'Ephesians 2:10',
+    verseText: 'For we are his workmanship, created in Christ Jesus unto good works.',
+    gridSize: 14,
+  },
+  {
+    id: 'ws_id_called_sons',
+    title: 'Called the Sons of God',
+    reference: '1 John 3:1',
+    verseText: 'Behold, what manner of love the Father hath bestowed upon us, that we should be called the sons of God.',
+    gridSize: 16,
+  },
+  {
+    id: 'ws_id_children_by_faith',
+    title: 'Children of God by Faith',
+    reference: 'Galatians 3:26',
+    verseText: 'For ye are all the children of God by faith in Christ Jesus.',
+    gridSize: 13,
+  },
+  {
+    id: 'ws_id_vine_branches',
+    title: 'The Vine and the Branches',
+    reference: 'John 15:5',
+    verseText: 'I am the vine, ye are the branches: he that abideth in me, and I in him, the same bringeth forth much fruit.',
+    gridSize: 16,
+  },
+  {
+    id: 'ws_id_hid_with_christ',
+    title: 'Hid With Christ in God',
+    reference: 'Colossians 3:3',
+    verseText: 'For ye are dead, and your life is hid with Christ in God.',
+    gridSize: 12,
+  },
+  {
+    id: 'ws_id_spirit_witness',
+    title: 'The Spirit Beareth Witness',
+    reference: 'Romans 8:16',
+    verseText: 'The Spirit itself beareth witness with our spirit, that we are the children of God.',
+    gridSize: 14,
+  },
+  {
+    id: 'ws_id_righteousness_of_god',
+    title: 'The Righteousness of God',
+    reference: '2 Corinthians 5:21',
+    verseText: 'For he hath made him to be sin for us, who knew no sin; that we might be made the righteousness of God in him.',
+    gridSize: 16,
+  },
 ];
 
 export function getPuzzle(id) {
