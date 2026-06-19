@@ -10,7 +10,7 @@ import BookSparkles from '../components/BookSparkles.jsx';
 import { moveItem, removeFromRoom, placeItem } from '../roomDecor.js';
 
 export default function CabinScreen({
-  spaceTransit, transitDir, transitionToMap, transitionToKitchen, transitionToRooftop, transitionToJournal, transitionToCozyCreations, transitionToPorch,
+  spaceTransit, transitDir, transitionToMap, transitionToKitchen, transitionToRooftop, transitionToJournal, transitionToCozyCreations, transitionToPorch, openScripture,
   cabinMode, cabin3DReady, debugHotspots, debugTripleTap,
   bookOpen, setBookOpen, deskBook, shelfAnim, bookPage, flipDir, bookText, setBookText,
   bookSaveMsg, setBookSaveMsg, journalSection, setJournalSection, journalZoom,
@@ -54,6 +54,7 @@ export default function CabinScreen({
   const [medOpen, setMedOpen] = useState(false);   // Meditations cover + verse view
   const [medImgOk, setMedImgOk] = useState(false); // true once /meditations-cover.png loads
   const [lbImgOk, setLbImgOk] = useState(false);   // true once /leakybucket.png loads
+  const [bibleImgOk, setBibleImgOk] = useState(false); // true once /Biblecover.png loads
   const openBookChooser = useCallback(() => { setChooserIdx(0); setBookChooser(true); }, []);
   const containerRef = useRef(null);
 
@@ -636,7 +637,27 @@ export default function CabinScreen({
           </div>
           {/* Books — side by side */}
           <div style={{display:"flex",flexWrap:"wrap",alignItems:"flex-start",justifyContent:"center",gap:"clamp(12px,3.5vw,30px)",width:"100%",maxWidth:560}}>
-            {/* ── Book 1: JOURNALS ── */}
+            {/* ── Book 1: THE HOLY BIBLE (Scripture reader) ── */}
+            <div style={{width:"clamp(96px,27vw,172px)",display:"flex",flexDirection:"column",alignItems:"center",gap:12}}>
+              <button onClick={()=>{setBookChooser(false);openScripture&&openScripture();}} style={{width:"100%",aspectRatio:"2 / 3",borderRadius:"4px 11px 11px 4px",border:"none",padding:0,cursor:"pointer",position:"relative",overflow:"hidden",background:"linear-gradient(160deg,#5A2E18 0%,#43200F 48%,#2E160A 100%)",boxShadow:"0 16px 44px rgba(0,0,0,0.6), 0 0 0 1px rgba(201,169,110,0.22)",animation:"fadeUp .5s ease both"}}>
+                {/* Themed placeholder cover (shown until /Biblecover.png loads) */}
+                <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center",padding:"16% 13%"}}>
+                  <div style={{position:"absolute",inset:"7%",border:"1px solid rgba(201,169,110,0.42)",borderRadius:6,boxShadow:"inset 0 0 26px rgba(201,169,110,0.14)",pointerEvents:"none"}}/>
+                  <div style={{position:"absolute",inset:"9.5%",border:"1px solid rgba(201,169,110,0.2)",borderRadius:4,pointerEvents:"none"}}/>
+                  <div style={{fontFamily:DISPLAY,fontSize:"clamp(1.1rem,4.8vw,1.4rem)",fontWeight:700,color:"#E8C98A",letterSpacing:"0.05em",lineHeight:1.15}}>Holy<br/>Bible</div>
+                  <div style={{width:34,height:1,background:"linear-gradient(90deg,transparent,#C9A96E,transparent)",margin:"11px 0"}}/>
+                  <div style={{fontFamily:SANS,fontSize:"0.56rem",letterSpacing:"0.12em",color:"rgba(201,169,110,0.6)"}}>KJV</div>
+                </div>
+                {/* Photographic cover — covers the placeholder once the file loads */}
+                <img src="/Biblecover.png" alt="Holy Bible" onLoad={()=>setBibleImgOk(true)} onError={()=>{}} style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",display:bibleImgOk?"block":"none"}} draggable={false}/>
+                <div style={{position:"absolute",left:0,top:0,bottom:0,width:14,background:"linear-gradient(90deg,rgba(20,12,4,0.55),rgba(20,12,4,0.12),transparent)",pointerEvents:"none",zIndex:2}}/>
+              </button>
+              <div style={{textAlign:"center",animation:"fadeUp .6s .1s ease both"}}>
+                <div style={{fontFamily:DISPLAY,fontSize:"0.92rem",fontWeight:700,color:B.goldL,letterSpacing:"0.03em"}}>Holy Bible</div>
+                <div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.64rem",color:"rgba(255,248,232,0.45)",marginTop:3,lineHeight:1.35}}>Read the Scriptures · KJV</div>
+              </div>
+            </div>
+            {/* ── Book 2: JOURNALS ── */}
             <div style={{width:"clamp(96px,27vw,172px)",display:"flex",flexDirection:"column",alignItems:"center",gap:12}}>
               <button onClick={()=>{setBookChooser(false);transitionToJournal();}} style={{width:"100%",aspectRatio:"2 / 3",borderRadius:"4px 11px 11px 4px",border:"none",padding:0,cursor:"pointer",position:"relative",overflow:"hidden",boxShadow:"0 16px 44px rgba(0,0,0,0.6), 0 0 0 1px rgba(201,169,110,0.22)",animation:"fadeUp .5s ease both"}}>
                 <img src="/journalondesk.png" alt="The Inner Room journal" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",objectPosition:"center 46%"}} draggable={false}/>

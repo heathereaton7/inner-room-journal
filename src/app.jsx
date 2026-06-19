@@ -1923,6 +1923,16 @@ function AppInner(){
     setScreen("upper-room");
   },[loadBible,screen]);
 
+  // ── Open the Scripture Bible reader at its book list (from the cabin book chooser) ──
+  const openScripture = useCallback(async()=>{
+    const data=await loadBible();
+    if(!data) return;
+    setBibleView("books");
+    setUpperRoomView("scriptures");
+    setPrevScreen(screen);
+    setScreen("upper-room");
+  },[loadBible,screen]);
+
   // ── Bible font size persistence ──
   useEffect(()=>{localStorage.setItem("irj-bible-fontsize",String(bibleFontSize));},[bibleFontSize]);
 
@@ -4817,7 +4827,7 @@ function AppInner(){
       spaceTransit={spaceTransit} transitDir={transitDir}
       transitionToMap={transitionToMap} transitionToKitchen={transitionToKitchen}
       transitionToRooftop={transitionToRooftop} transitionToJournal={transitionToJournal}
-      transitionToCozyCreations={transitionToCozyCreations}
+      transitionToCozyCreations={transitionToCozyCreations} openScripture={openScripture}
       cabinMode={cabinMode} cabin3DReady={cabin3DReady}
       debugHotspots={debugHotspots} debugTripleTap={debugTripleTap}
       bookOpen={bookOpen} setBookOpen={setBookOpen} deskBook={deskBook}
