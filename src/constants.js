@@ -275,6 +275,7 @@ export function getBookPageCount(bookType, section){
     if(section==="rooms") return REFLECTION_ROOMS.length+6; // cover + TOC + entries + 7 rooms + jesus + locked + daily
     if(section==="dreams") return 3+(BOOK_CONTENT.dreams?.pages.length||4); // cover + TOC + history + prompts
     if(section==="prayers") return 4; // cover + TOC + history + write
+    if(section==="bible-notes") return 3; // cover + TOC + notes list
   }
   const bc=BOOK_CONTENT[bookType];
   return bc? bc.pages.length+1 : 12;

@@ -61,7 +61,7 @@ async function dbSave(k,v){
     localStorage.setItem(k,JSON.stringify(v));
     // Dual-write to Firestore when signed in
     if(auth?.currentUser){
-      const fieldMap={"irj-entries":"entries","irj-prayer":"prayerPosts","irj-saved-cards":"savedCards","irj-onboarded":"isOnboarded","irj-candles":"candles","irj-prayed":"prayedFor","irj-owned-items":"ownedItems","irj-garden":"gardenPlots","irj-inventory":"inventory","irj-saved-verses":"savedVerses","irj-bank":"bank","irj-sell-basket":"sellBasket","irj-farm-plots":"farmPlots","irj-animals":"animals","irj-missions":"missions","irj-premium":"isPremium","irj-becoming-her":"becomingHer","irj-trackers":"trackers","irj-pregnancy":"pregnancy","irj-garden-grid":"gardenGrid","irj-unlocks":"unlocks","irj-diamond-art":"diamondArt","irj-art-gallery":"artGallery","irj-imported-templates":"importedTemplates","irj-word-search":"wordSearch","irj-hidden-object":"hiddenObject","irj-pregnancy-meditations":"pregnancyMeditations","irj-father-meditations":"fatherMeditations","irj-conceive-meditations":"conceiveMeditations","irj-fertility":"fertility","irj-room-theme":"roomTheme","irj-coloring":"coloring","irj-leaky-bucket":"leakyBucket"};
+      const fieldMap={"irj-entries":"entries","irj-prayer":"prayerPosts","irj-saved-cards":"savedCards","irj-onboarded":"isOnboarded","irj-candles":"candles","irj-prayed":"prayedFor","irj-owned-items":"ownedItems","irj-garden":"gardenPlots","irj-inventory":"inventory","irj-saved-verses":"savedVerses","irj-bible-notes":"bibleNotes","irj-bank":"bank","irj-sell-basket":"sellBasket","irj-farm-plots":"farmPlots","irj-animals":"animals","irj-missions":"missions","irj-premium":"isPremium","irj-becoming-her":"becomingHer","irj-trackers":"trackers","irj-pregnancy":"pregnancy","irj-garden-grid":"gardenGrid","irj-unlocks":"unlocks","irj-diamond-art":"diamondArt","irj-art-gallery":"artGallery","irj-imported-templates":"importedTemplates","irj-word-search":"wordSearch","irj-hidden-object":"hiddenObject","irj-pregnancy-meditations":"pregnancyMeditations","irj-father-meditations":"fatherMeditations","irj-conceive-meditations":"conceiveMeditations","irj-fertility":"fertility","irj-room-theme":"roomTheme","irj-coloring":"coloring","irj-leaky-bucket":"leakyBucket"};
       const field=fieldMap[k];
       if(field){
         const userRef=doc(db,"users",auth.currentUser.uid);
@@ -1819,6 +1819,10 @@ function AppInner(){
   const [savedVerses,       setSavedVerses]       = useState([]);
   const [verseActionBar,    setVerseActionBar]    = useState(false);
   const [savedVersesView,   setSavedVersesView]   = useState(false);
+  const [bibleNotes,        setBibleNotes]        = useState([]);
+  const [noteDrawer,        setNoteDrawer]        = useState(false); // bottom note sheet open
+  const [noteTarget,        setNoteTarget]        = useState(null);  // {ref,text,bookIdx,chapIdx,verseStart,verseEnd}
+  const [noteDraft,         setNoteDraft]         = useState("");
   const [verseShareOverlay, setVerseShareOverlay] = useState(null);
   const [verseTheme,        setVerseTheme]        = useState(VERSE_THEMES[0]);
   const [verseRatio,        setVerseRatio]        = useState(CARD_RATIOS[0]);
@@ -1958,6 +1962,21 @@ function AppInner(){
     setScreen("upper-room");
   },[loadBible,screen]);
 
+  // ── Open the Scripture reader straight to a book/chapter (from a saved Bible note) ──
+  const openScriptureToRef = useCallback(async(bookIdx,chapIdx)=>{
+    const data=await loadBible();
+    if(!data) return;
+    const book=data[bookIdx];
+    const ci=book&&chapIdx<book.chapters.length?chapIdx:0;
+    bibleFromCabinRef.current=true;
+    setBibleBook(bookIdx);
+    setBibleChapter(ci||0);
+    setBibleView("reading");
+    setUpperRoomView("scriptures");
+    setPrevScreen(screen);
+    setScreen("upper-room");
+  },[loadBible,screen]);
+
   // ── Bible font size persistence ──
   useEffect(()=>{localStorage.setItem("irj-bible-fontsize",String(bibleFontSize));},[bibleFontSize]);
 
@@ -2015,6 +2034,7 @@ function AppInner(){
       const gp   = await dbLoad("irj-garden") || Array.from({length:12},(_,i)=>({id:i+1,prayerId:null,plantType:null,stage:"empty",plantedAt:null,prayerCount:0}));
       const inv  = await dbLoad("irj-inventory") || {};
       const sv   = await dbLoad("irj-saved-verses") || [];
+      const bn   = await dbLoad("irj-bible-notes") || [];
       const bnk  = await dbLoad("irj-bank") || {coins:0, diamonds:0};
       const sb   = await dbLoad("irj-sell-basket") || [];
       const fp   = await dbLoad("irj-farm-plots") || Array.from({length:12},(_,i)=>({id:i+1,plantType:null,stage:"empty",plantedAt:null}));
@@ -2055,7 +2075,7 @@ function AppInner(){
       const migratedRoom=rm?migrateRoom(rm,(id,qty)=>{inv[id]=(inv[id]||0)+qty;}):DEFAULT_ROOM;
       if(rm?.bag?.length>0) dbSave("irj-inventory",inv);
       setEntries(ens); setPrayerPosts(mpp); setSavedCards(sc);
-      setCandles(cn); setPrayedFor(pf); setGardenPlots(gp); setInventory(inv); setSavedVerses(sv);
+      setCandles(cn); setPrayedFor(pf); setGardenPlots(gp); setInventory(inv); setSavedVerses(sv); setBibleNotes(bn);
       setBank(bnk); setSellBasket(sb); setFarmPlots(fp); setAnimals(an); setMissions(ms); setIsPremium(!!pm);
       if(pa) setPlayerAppearance(pa);
       if(bh) setBecomingHer(bh);
@@ -2238,6 +2258,7 @@ function AppInner(){
       const localGarden=await dbLoad("irj-garden")||[];
       const localInv=await dbLoad("irj-inventory")||{};
       const localVerses=await dbLoad("irj-saved-verses")||[];
+      const localBibleNotes=await dbLoad("irj-bible-notes")||[];
       const localBank=await dbLoad("irj-bank")||{coins:0,diamonds:0};
       const localSellBasket=await dbLoad("irj-sell-basket")||[];
       const localFarmPlots=await dbLoad("irj-farm-plots")||[];
@@ -2269,6 +2290,7 @@ function AppInner(){
       const mergedInv={...cloudInv};
       Object.keys(localInv).forEach(k=>{mergedInv[k]=Math.max(localInv[k]||0,mergedInv[k]||0);});
       const mergedVerses=mergeById(localVerses,cloud.savedVerses||[]);
+      const mergedBibleNotes=mergeById(localBibleNotes,cloud.bibleNotes||[]);
       // Bank: max per currency
       const cloudBank=cloud.bank||{coins:0,diamonds:0};
       const mergedBank={coins:Math.max(localBank.coins||0,cloudBank.coins||0),diamonds:Math.max(localBank.diamonds||0,cloudBank.diamonds||0)};
@@ -2332,6 +2354,7 @@ function AppInner(){
       localStorage.setItem("irj-garden",JSON.stringify(mergedGarden));
       localStorage.setItem("irj-inventory",JSON.stringify(mergedInv));
       localStorage.setItem("irj-saved-verses",JSON.stringify(mergedVerses));
+      localStorage.setItem("irj-bible-notes",JSON.stringify(mergedBibleNotes));
       localStorage.setItem("irj-bank",JSON.stringify(mergedBank));
       localStorage.setItem("irj-sell-basket",JSON.stringify(mergedSellBasket));
       localStorage.setItem("irj-farm-plots",JSON.stringify(mergedFarmPlots));
@@ -2351,6 +2374,7 @@ function AppInner(){
         gardenPlots:mergedGarden,
         inventory:mergedInv,
         savedVerses:mergedVerses,
+        bibleNotes:mergedBibleNotes,
         bank:mergedBank,
         sellBasket:mergedSellBasket,
         farmPlots:mergedFarmPlots,
@@ -2373,6 +2397,7 @@ function AppInner(){
       setGardenPlots(mergedGarden);
       setInventory(mergedInv);
       setSavedVerses(mergedVerses);
+      setBibleNotes(mergedBibleNotes);
       setBank(mergedBank);
       setSellBasket(mergedSellBasket);
       setFarmPlots(mergedFarmPlots);
@@ -2582,6 +2607,35 @@ function AppInner(){
   }
   function deleteSavedVerse(id){
     persistSavedVerses(savedVerses.filter(v=>v.id!==id));
+  }
+  // ── BIBLE NOTES (verse + written note, kept while reading) ──
+  async function persistBibleNotes(list){
+    setBibleNotes(list); await dbSave("irj-bible-notes",list);
+  }
+  function openNoteDrawer(){
+    const {text,ref}=getSelectedVerseText();
+    const indices=[...selectedVerses].sort((a,b)=>a-b);
+    setNoteTarget({
+      ref: ref||"", text: text||"",
+      bookIdx:bibleBook, chapIdx:bibleChapter,
+      verseStart:indices.length?indices[0]:null,
+      verseEnd:indices.length?indices[indices.length-1]:null,
+    });
+    setNoteDraft("");
+    setNoteDrawer(true);
+  }
+  function saveBibleNote(){
+    if(!noteTarget) return;
+    const note=noteDraft.trim();
+    if(!note) return;
+    const bn={id:Date.now().toString(),ref:noteTarget.ref,text:noteTarget.text,note,date:todayStr(),
+      bookIdx:noteTarget.bookIdx,chapIdx:noteTarget.chapIdx,verseStart:noteTarget.verseStart,verseEnd:noteTarget.verseEnd};
+    persistBibleNotes([bn,...bibleNotes]);
+    setNoteDrawer(false); setNoteTarget(null); setNoteDraft("");
+    setSelectedVerses(new Set()); setVerseActionBar(false);
+  }
+  function deleteBibleNote(id){
+    persistBibleNotes(bibleNotes.filter(n=>n.id!==id));
   }
   function insertVerseIntoJournal(verse){
     const quote=`"${verse.text}"\n-- ${verse.ref}\n\n`;
@@ -4900,6 +4954,7 @@ function AppInner(){
       onRoomChange={(next)=>{setPlayerRoom(next);dbSave("irj-room",next);if(user&&db){try{setDoc(doc(db,"userProfiles",user.uid),{room:next},{merge:true});}catch(e){}}}}
       inventory={inventory} addToInventory={addToInventory} removeFromInventory={removeFromInventory}
       playerAppearance={playerAppearance}
+      bibleNotes={bibleNotes} deleteBibleNote={deleteBibleNote} openScriptureToRef={openScriptureToRef}
       transitionToPorch={transitionToPorch}
     />
   </>);
@@ -7853,11 +7908,12 @@ function AppInner(){
                     ):<div/>}
                   </div>
                   {/* ── FLOATING ACTION BAR ── */}
-                  {verseActionBar&&(
+                  {verseActionBar&&!noteDrawer&&(
                     <div style={{position:"fixed",bottom:24,left:"50%",transform:"translateX(-50%)",zIndex:300,background:"rgba(14,11,20,0.85)",backdropFilter:"blur(16px)",WebkitBackdropFilter:"blur(16px)",border:"1px solid rgba(212,168,64,0.25)",borderRadius:18,padding:"10px 18px",display:"flex",alignItems:"center",gap:14,animation:"actionBarSlideUp .3s ease both",boxShadow:"0 8px 32px rgba(0,0,0,0.5)"}}>
                       <span style={{fontFamily:SANS,fontSize:"0.72rem",color:"rgba(212,168,64,0.7)",whiteSpace:"nowrap"}}>{selectedVerses.size} verse{selectedVerses.size>1?"s":""}</span>
                       <div style={{width:1,height:20,background:"rgba(212,168,64,0.2)"}}/>
                       <button onClick={saveSelectedVerses} style={{background:"rgba(212,168,64,0.15)",border:"1px solid rgba(212,168,64,0.30)",borderRadius:10,padding:"7px 16px",cursor:"pointer",color:"#D4A840",fontFamily:SANS,fontSize:"0.76rem",fontWeight:600,transition:"all 0.2s",whiteSpace:"nowrap"}}>Save</button>
+                      <button onClick={openNoteDrawer} style={{background:"rgba(180,160,210,0.12)",border:"1px solid rgba(180,160,210,0.20)",borderRadius:10,padding:"7px 16px",cursor:"pointer",color:"#D8C8F0",fontFamily:SANS,fontSize:"0.76rem",transition:"all 0.2s",whiteSpace:"nowrap"}}>Note</button>
                       <button onClick={()=>{const v=getSelectedVerseText();setVerseShareOverlay(v);}} style={{background:"rgba(180,160,210,0.12)",border:"1px solid rgba(180,160,210,0.20)",borderRadius:10,padding:"7px 16px",cursor:"pointer",color:"#D8C8F0",fontFamily:SANS,fontSize:"0.76rem",transition:"all 0.2s",whiteSpace:"nowrap"}}>Share</button>
                       <button onClick={()=>{setSelectedVerses(new Set());setVerseActionBar(false);}} style={{background:"transparent",border:"none",cursor:"pointer",color:"rgba(200,190,230,0.4)",fontFamily:SANS,fontSize:"0.76rem",padding:"7px 8px",transition:"color 0.2s"}}>Clear</button>
                     </div>
@@ -7909,6 +7965,24 @@ function AppInner(){
                   </div>
                 ))}
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── BIBLE NOTE DRAWER (non-blocking bottom sheet — keep reading) ── */}
+        {noteDrawer&&noteTarget&&(
+          <div style={{position:"fixed",left:0,right:0,bottom:0,zIndex:560,background:"rgba(16,13,24,0.97)",backdropFilter:"blur(18px)",WebkitBackdropFilter:"blur(18px)",borderTop:"1px solid rgba(212,168,64,0.22)",borderRadius:"20px 20px 0 0",boxShadow:"0 -10px 40px rgba(0,0,0,0.5)",padding:"14px 18px calc(18px + env(safe-area-inset-bottom))",animation:"actionBarSlideUp .28s ease both",maxHeight:"52vh",display:"flex",flexDirection:"column"}}>
+            <div style={{width:38,height:4,borderRadius:3,background:"rgba(200,190,230,0.25)",margin:"0 auto 12px"}}/>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+              <span style={{fontFamily:SERIF,fontStyle:"italic",color:"#D4A840",fontSize:"0.86rem"}}>{noteTarget.ref||"New note"}</span>
+              <button onClick={()=>{setNoteDrawer(false);setNoteTarget(null);}} style={{background:"transparent",border:"none",cursor:"pointer",color:"rgba(200,190,230,0.45)",fontSize:"1.2rem",lineHeight:1,padding:"2px 4px"}}>x</button>
+            </div>
+            {noteTarget.text&&(
+              <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.82rem",color:"rgba(230,220,248,0.55)",lineHeight:1.6,margin:"0 0 10px",maxHeight:64,overflowY:"auto"}}>"{noteTarget.text.length>200?noteTarget.text.slice(0,200)+"...":noteTarget.text}"</p>
+            )}
+            <textarea value={noteDraft} onChange={e=>setNoteDraft(e.target.value)} autoFocus placeholder="Write your reflection..." style={{flex:1,minHeight:72,resize:"none",background:"rgba(180,160,210,0.06)",border:"1px solid rgba(180,160,210,0.15)",borderRadius:12,padding:"12px 14px",color:"#E6DCF8",fontFamily:SANS,fontSize:"0.9rem",lineHeight:1.6,outline:"none"}}/>
+            <div style={{display:"flex",gap:10,marginTop:12}}>
+              <button onClick={saveBibleNote} disabled={!noteDraft.trim()} style={{flex:1,background:noteDraft.trim()?"linear-gradient(135deg,rgba(212,168,64,0.22),rgba(212,168,64,0.08))":"rgba(180,160,210,0.06)",border:noteDraft.trim()?"1px solid rgba(212,168,64,0.35)":"1px solid rgba(180,160,210,0.12)",borderRadius:12,padding:"12px 0",cursor:noteDraft.trim()?"pointer":"default",color:noteDraft.trim()?"#D4A840":"rgba(200,190,230,0.3)",fontFamily:SANS,fontSize:"0.84rem",fontWeight:600,transition:"all 0.2s"}}>Save Note</button>
             </div>
           </div>
         )}

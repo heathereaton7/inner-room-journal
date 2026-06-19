@@ -30,6 +30,7 @@ export default function CabinScreen({
   BottomMenuDrawer, goToHistory,
   playerRoom, onRoomChange, inventory, addToInventory, removeFromInventory,
   playerAppearance,
+  bibleNotes=[], deleteBibleNote, openScriptureToRef,
 }){
   const roomThemeData = useRoomTheme();
   const cabinBgImage = roomThemeData.cabin || CABIN_FALLBACK_IMAGE;
@@ -808,6 +809,7 @@ export default function CabinScreen({
                         {id:"dreams",label:"Dream Journal",desc:"Record your dreams"},
                         {id:"prayers",label:"Prayer Journal",desc:"Prayers that water your garden"},
                         {id:"bible",label:"Scripture",desc:"Sit with the questions Jesus asked"},
+                        {id:"bible-notes",label:"Bible Notes",desc:"Verses & reflections you saved while reading"},
                         {id:"gratitude",label:"Gratitude",desc:"Name the small graces"},
                         {id:"prophecy",label:"Prophecy & Words",desc:"Record words spoken over you"},
                         {id:"becoming-her",label:"Becoming Her",desc:"90-day identity & habit journey"},
@@ -859,6 +861,45 @@ export default function CabinScreen({
                       <span style={{fontSize:"0.7rem",color:"rgba(107,85,58,0.5)",fontFamily:SANS}}>{bookSaveMsg||`${wc(bookText)} words`}</span>
                       <button onClick={()=>{const e={id:Date.now().toString(),date:todayStr(),time:nowTime(),roomId:"blank",roomLabel:"Blank Journal",roomEmoji:"📝",day:0,prompt:"Free write",text:bookText.trim(),words:wc(bookText)};persistEntries([e,...entries]);addCandles(3,"Reflection saved +3");setBookSaveMsg("Saved!");setTimeout(()=>setBookSaveMsg(""),2500);}} style={{background:"linear-gradient(135deg,#5C4A2E,#3D2B18)",border:"none",color:"#F5E6C8",padding:"6px 18px",borderRadius:6,cursor:"pointer",fontSize:"0.76rem",fontFamily:SANS,fontWeight:600}}>Save</button>
                     </div>}
+                  </div>
+                </>}
+
+                {/* ── SECTION: BIBLE NOTES (verses + reflections saved while reading) ── */}
+                {journalSection==="bible-notes"&&bookPage===2&&<>
+                  <div style={{flex:1,display:"flex",flexDirection:"column",animation:"pageContentReveal .5s .1s ease both"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+                      <button onClick={()=>{setJournalSection(null);setBookPage(1);setFlipDir("bwd");}} style={{background:"transparent",border:"none",cursor:"pointer",fontFamily:SERIF,fontSize:"0.74rem",color:"rgba(107,85,58,0.5)",padding:0}}>&#8249; Contents</button>
+                    </div>
+                    <h2 style={{fontFamily:DISPLAY,fontSize:"clamp(1.05rem,4vw,1.2rem)",fontWeight:700,color:"#3D2B18",margin:"0 0 10px",textAlign:"center"}}>Bible Notes</h2>
+                    <div style={{width:40,height:1,background:"linear-gradient(90deg,transparent,rgba(139,109,69,0.3),transparent)",margin:"0 auto 14px"}}/>
+                    <div style={{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch",paddingRight:2}}>
+                      {bibleNotes.length===0&&(
+                        <div style={{textAlign:"center",marginTop:40}}>
+                          <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.9rem",color:"rgba(107,85,58,0.45)",margin:0}}>No notes yet</p>
+                          <p style={{fontFamily:SANS,fontSize:"0.72rem",color:"rgba(107,85,58,0.35)",marginTop:8,lineHeight:1.5}}>While reading Scripture, select a verse and tap "Note" to save a reflection here.</p>
+                        </div>
+                      )}
+                      {bibleNotes.map(n=>(
+                        <div key={n.id} style={{background:"rgba(139,109,69,0.05)",border:"1px solid rgba(139,109,69,0.13)",borderRadius:12,padding:"14px 14px",marginBottom:12}}>
+                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:8,marginBottom:6}}>
+                            <span style={{fontFamily:DISPLAY,fontSize:"0.84rem",fontWeight:700,color:"#5C4A2E"}}>{n.ref||"Note"}</span>
+                            <span style={{fontFamily:SANS,fontSize:"0.6rem",color:"rgba(107,85,58,0.35)",whiteSpace:"nowrap"}}>{n.date}</span>
+                          </div>
+                          {n.text&&(
+                            <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.8rem",color:"rgba(74,56,38,0.65)",lineHeight:1.6,margin:"0 0 8px"}}>"{n.text.length>180?n.text.slice(0,180)+"...":n.text}"</p>
+                          )}
+                          <p style={{fontFamily:SANS,fontSize:"0.85rem",color:"#4A3826",lineHeight:1.65,margin:"0 0 10px",whiteSpace:"pre-wrap"}}>{n.note}</p>
+                          <div style={{display:"flex",gap:8}}>
+                            {openScriptureToRef&&n.bookIdx!=null&&(
+                              <button onClick={()=>{setBookOpen(false);openScriptureToRef(n.bookIdx,n.chapIdx);}} style={{background:"rgba(139,109,69,0.10)",border:"1px solid rgba(139,109,69,0.18)",borderRadius:8,padding:"6px 14px",cursor:"pointer",color:"rgba(107,85,58,0.7)",fontFamily:SANS,fontSize:"0.7rem"}}>Read</button>
+                            )}
+                            {deleteBibleNote&&(
+                              <button onClick={()=>deleteBibleNote(n.id)} style={{background:"rgba(150,70,70,0.07)",border:"1px solid rgba(150,70,70,0.16)",borderRadius:8,padding:"6px 14px",cursor:"pointer",color:"rgba(150,70,70,0.6)",fontFamily:SANS,fontSize:"0.7rem"}}>Remove</button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </>}
 
