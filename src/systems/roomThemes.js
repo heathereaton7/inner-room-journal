@@ -81,6 +81,7 @@ export const ROOM_THEMES = [
       { left: '9%', top: '18%', color: '#FFB36A', size: 150, duration: 6.5 },
       { left: '75%', top: '67%', color: '#FFC07A', size: 160, duration: 8.0 },
     ],
+    bibleBg: '/biblespring.png',
   },
   {
     id: 'rainy-spring',
