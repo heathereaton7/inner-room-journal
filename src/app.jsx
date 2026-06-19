@@ -7671,7 +7671,7 @@ function AppInner(){
           return (
           <div style={{position:"absolute",inset:0,zIndex:20,background:readerBg,display:"flex",flexDirection:"column"}}>
             {/* Weather over the window glass (behind the scrim/verses) */}
-            <WindowWeather mode={bibleWeather} absolute zIndex={-1} window={{left:"54%",top:"6%",width:"44%",height:"52%",radius:"38% 38% 4% 4% / 14% 14% 2% 2%"}}/>
+            <WindowWeather mode={bibleWeather} absolute zIndex={-1} window={{left:"58%",top:"8%",width:"39%",height:"36%",radius:"34% 34% 3% 3% / 18% 18% 2% 2%"}}/>
             {/* Header */}
             <header style={{background:"#0E0B14",padding:"0 16px",height:54,display:"flex",alignItems:"center",gap:10,boxShadow:"0 2px 16px rgba(0,0,0,0.3)",flexShrink:0,zIndex:200}}>
               <button onClick={bibleBack} style={{background:"transparent",border:"none",cursor:"pointer",color:"rgba(200,190,230,0.55)",fontSize:"0.8rem",fontFamily:SANS,padding:"4px 0",transition:"color 0.15s",whiteSpace:"nowrap"}}>{bibleView==="books"?(bibleFromCabinRef.current?"< Back":"< Upper Room"):"< Back"}</button>
