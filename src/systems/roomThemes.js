@@ -24,6 +24,7 @@ import { useState, useEffect } from 'react';
  *   kitchen    — full-screen kitchen background image
  *   cabin      — full-screen cabin interior background image
  *   artRoom    — full-screen "Cozy Creations Room" background image
+ *   bibleBg    — full-screen cozy room behind the Scripture Bible reader
  *   porch      — the porch blog entry photo (screen A)
  *   porchBoard — the readable bulletin-board close-up photo (screen B)
  *   sounds     — SOUND_LIBRARY ids highlighted as this season's music
@@ -62,6 +63,7 @@ export const ROOM_THEMES = [
     kitchenWindow: { left: '52%', top: '5%', width: '46%', height: '53%' },
     cabin: '/christmascabinmap.png',
     artRoom: '/artroomchristmas.png',
+    bibleBg: '/biblechristmas.png',
     porch: '/porchchristmas.png',
     porchBoard: '/christmasboardzoomed.png',
     sounds: ['xmas-mistletoe', 'xmas-peppermint', 'xmas-seasonal'],
@@ -111,6 +113,7 @@ export const ROOM_THEMES = [
     ],
     cabin: '/fallcabinmap.png',
     artRoom: '/artroomfall.png',
+    bibleBg: '/biblefall.png',
     porch: '/porchfall.png',
     porchBoard: '/fallporchzoom.png',
   },

@@ -7641,8 +7641,16 @@ function AppInner(){
         )}
 
         {/* ── BIBLE READER ── */}
-        {bibleView&&bibleData&&(
-          <div style={{position:"absolute",inset:0,zIndex:20,background:"rgba(12,10,20,0.96)",display:"flex",flexDirection:"column"}}>
+        {bibleView&&bibleData&&(()=>{
+          // Seasonal cozy-cabin room behind the whole Bible reader (Christmas, Fall, …).
+          // A dark scrim keeps the verses readable over the photo. Seasons without
+          // their own art keep the original deep-violet background.
+          const bibleBg=getRoomTheme(roomTheme).bibleBg;
+          const readerBg=bibleBg
+            ? `linear-gradient(rgba(12,10,20,0.74),rgba(12,10,20,0.82)), url("${bibleBg}") center/cover no-repeat, #0E0B14`
+            : "rgba(12,10,20,0.96)";
+          return (
+          <div style={{position:"absolute",inset:0,zIndex:20,background:readerBg,display:"flex",flexDirection:"column"}}>
             {/* Header */}
             <header style={{background:"#0E0B14",padding:"0 16px",height:54,display:"flex",alignItems:"center",gap:10,boxShadow:"0 2px 16px rgba(0,0,0,0.3)",flexShrink:0,zIndex:200}}>
               <button onClick={bibleBack} style={{background:"transparent",border:"none",cursor:"pointer",color:"rgba(200,190,230,0.55)",fontSize:"0.8rem",fontFamily:SANS,padding:"4px 0",transition:"color 0.15s",whiteSpace:"nowrap"}}>{bibleView==="books"?"< Upper Room":"< Back"}</button>
@@ -7771,7 +7779,8 @@ function AppInner(){
               )}
             </div>
           </div>
-        )}
+          );
+        })()}
 
         {/* ── ORIGINAL-LANGUAGE TRANSLATION MODAL ── */}
         {translateVerse && bibleDataRef.current && (
