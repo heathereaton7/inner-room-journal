@@ -26,7 +26,9 @@ import HiddenObjectScreen from './screens/HiddenObjectScreen.jsx';
 import PregnancyMeditationScreen from './screens/PregnancyMeditationScreen.jsx';
 import { parseReference } from './data/bibleBooks.js';
 import FertilityTrackerScreen from './screens/FertilityTrackerScreen.jsx';
-import VerseTranslationModal from './components/VerseTranslationModal.jsx';
+import StrongsStudyPanel from './components/StrongsStudyPanel.jsx';
+import VerseWords from './components/VerseWords.jsx';
+import { loadBookTokens, getVerseTokens } from './systems/strongsData.js';
 import TrackersScreen, { createEmptyTrackers } from './screens/TrackersScreen.jsx';
 import PregnancyScreen, { createEmptyPregnancy } from './screens/PregnancyScreen.jsx';
 import { computeWeek } from './data/pregnancyWeeks.js';
@@ -1696,7 +1698,9 @@ function AppInner(){
   const [bibleFontSize, setBibleFontSize] = useState(()=>{try{return parseInt(localStorage.getItem("irj-bible-fontsize"))||18;}catch{return 18;}});
   const [bibleLoading,  setBibleLoading]  = useState(false);
   const [bibleSearch,   setBibleSearch]   = useState("");
-  const [translateVerse, setTranslateVerse] = useState(null); // null | { bookIdx, chapter, verseIdx }
+  // Original-language word study (tap a word in the reading view)
+  const [studyWord, setStudyWord] = useState(null); // null | { text, strongs:[], reference }
+  const [strongsReady, setStrongsReady] = useState(0); // bumped when a book's tokens finish loading
   const bibleDataRef = useRef(null);
   const editEntryRef = useRef(null);
   // Bible reader background is object-fit:cover, so it crops differently on every
@@ -1988,6 +1992,18 @@ function AppInner(){
     setSelectedVerses(new Set());
     setVerseActionBar(false);
   },[bibleChapter,bibleBook]);
+
+  // ── Load this book's original-language word tagging (lazy, cached) ──
+  // Words become individually tappable once the tokens arrive; until then the
+  // verse renders as plain text (graceful fallback).
+  useEffect(()=>{
+    if(screen!=="upper-room") return;
+    let cancelled=false;
+    loadBookTokens(bibleBook)
+      .then(()=>{ if(!cancelled) setStrongsReady(n=>n+1); })
+      .catch(()=>{}); // offline / missing file -> stay on plain text
+    return ()=>{ cancelled=true; };
+  },[bibleBook,screen]);
 
   // ── HOTSPOT DEBUG MODE ──
   // Toggle: ?debug=1 in URL  |  Ctrl+Shift+. on desktop  |  triple-tap "🕯️ 0" candle badge on mobile
@@ -7880,24 +7896,13 @@ function AppInner(){
                 <div style={{maxWidth:680,margin:"0 auto",padding:"24px 20px 100px"}}>
                   {bibleData[bibleBook].chapters[bibleChapter].map((verse,i)=>{
                     const sel=selectedVerses.has(i);
+                    // strongsReady is read so the verse re-renders once tokens load
+                    const tokens=strongsReady>=0?getVerseTokens(bibleBook,bibleChapter,i):null;
+                    const ref=`${bibleData[bibleBook].name} ${bibleChapter+1}:${i+1}`;
                     return(
                     <p key={i} className="verse-tap" onClick={()=>toggleVerseSelection(i)} style={{fontFamily:SERIF,fontSize:bibleFontSize,color:sel?"#FFF8E8":"#E8E0F0",lineHeight:1.85,margin:"0 0 4px",padding:"4px 10px 4px 14px",borderRadius:8,cursor:"pointer",background:sel?"rgba(212,168,64,0.12)":"transparent",borderLeft:sel?"3px solid rgba(212,168,64,0.55)":"3px solid transparent",transition:"all 0.2s ease",animation:`verseReveal .35s ${Math.min(i*0.015,1.2)}s ease both`,opacity:0,WebkitTapHighlightColor:"transparent",position:"relative"}}>
                       <span style={{fontFamily:SANS,fontSize:"0.68em",color:sel?"rgba(212,168,64,0.75)":"rgba(180,160,210,0.38)",marginRight:8,userSelect:"none",fontWeight:600,transition:"color 0.2s"}}>{i+1}</span>
-                      {verse}
-                      <button
-                        onClick={(e)=>{e.stopPropagation();setTranslateVerse({bookIdx:bibleBook,chapter:bibleChapter,verseIdx:i});}}
-                        title="Translate to original Hebrew/Greek"
-                        style={{
-                          marginLeft:8,verticalAlign:"baseline",
-                          background:"transparent",border:"1px solid rgba(180,160,210,0.22)",
-                          color:"rgba(216,200,240,0.65)",fontFamily:SANS,fontSize:"0.62em",
-                          borderRadius:10,padding:"2px 9px",cursor:"pointer",
-                          letterSpacing:"0.08em",textTransform:"uppercase",fontWeight:600,
-                          opacity:0.75,transition:"all 0.15s",WebkitTapHighlightColor:"transparent",
-                        }}
-                        onMouseEnter={e=>{e.currentTarget.style.opacity="1";e.currentTarget.style.borderColor="rgba(216,200,240,0.5)";}}
-                        onMouseLeave={e=>{e.currentTarget.style.opacity="0.75";e.currentTarget.style.borderColor="rgba(180,160,210,0.22)";}}
-                      >א/Α</button>
+                      <VerseWords tokens={tokens} plain={verse} onWordTap={(w)=>setStudyWord({...w,reference:ref})}/>
                     </p>);
                   })}
                   {/* Chapter navigation */}
@@ -7932,14 +7937,12 @@ function AppInner(){
           );
         })()}
 
-        {/* ── ORIGINAL-LANGUAGE TRANSLATION MODAL ── */}
-        {translateVerse && bibleDataRef.current && (
-          <VerseTranslationModal
-            bookIdx0={translateVerse.bookIdx}
-            chapter0={translateVerse.chapter}
-            verseIdx0={translateVerse.verseIdx}
-            bookName={bibleDataRef.current[translateVerse.bookIdx]?.name || ''}
-            onClose={()=>setTranslateVerse(null)}
+        {/* ── ORIGINAL-LANGUAGE WORD STUDY ── */}
+        {studyWord && (
+          <StrongsStudyPanel
+            word={studyWord}
+            reference={studyWord.reference}
+            onClose={()=>setStudyWord(null)}
           />
         )}
 

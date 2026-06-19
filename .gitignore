@@ -28,3 +28,6 @@ dist-ssr
 
 # Blender backup files
 *.blend1
+
+# Strong's word-study: large raw source downloads (re-fetch with download.sh)
+scripts/strongs-prep/raw/
