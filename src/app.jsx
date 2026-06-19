@@ -46,6 +46,7 @@ import WriteBlogScreen from './screens/WriteBlogScreen.jsx';
 import { generateAnonName, makeSearchTokens, GATHERING_SPACES } from './gatherings.js';
 import { ambientPlay, ambientStop, ambientMute, ambientUnmute, ambientIsPlaying, SOUND_LIBRARY, AMBIENT_TRACKS } from './systems/ambientSound.js';
 import { ROOM_THEMES, DEFAULT_ROOM_THEME, ROOM_THEME_KEY, ROOM_THEME_EVENT, getRoomTheme, useRoomTheme, COZY_CREATIONS_FALLBACK, BIBLE_BG_FALLBACK } from './systems/roomThemes.js';
+import { WindowWeather } from './components/CottageBackground.jsx';
 
 
 async function dbLoad(k){
@@ -7647,8 +7648,15 @@ function AppInner(){
           // clearly visible. Seasons with no art of their own use the rainy default.
           const bibleBg=getRoomTheme(roomTheme).bibleBg||BIBLE_BG_FALLBACK;
           const readerBg=`linear-gradient(rgba(10,8,16,0.5),rgba(10,8,16,0.68)), url("${bibleBg}") center/cover no-repeat, #0E0B14`;
+          // Live weather falling outside the arched window glass (upper-right of the
+          // cozy living-room art). Snow for Christmas to match its snowy scene; rain
+          // for the rainy mountain-lake seasons. Clipped to the glass region only and
+          // painted behind the verses (zIndex -1) so it never obscures the text.
+          const bibleWeather=getRoomTheme(roomTheme).weather==='snow'?'snow':'rain';
           return (
           <div style={{position:"absolute",inset:0,zIndex:20,background:readerBg,display:"flex",flexDirection:"column"}}>
+            {/* Weather over the window glass (behind the scrim/verses) */}
+            <WindowWeather mode={bibleWeather} absolute zIndex={-1} window={{left:"54%",top:"6%",width:"44%",height:"52%",radius:"38% 38% 4% 4% / 14% 14% 2% 2%"}}/>
             {/* Header */}
             <header style={{background:"#0E0B14",padding:"0 16px",height:54,display:"flex",alignItems:"center",gap:10,boxShadow:"0 2px 16px rgba(0,0,0,0.3)",flexShrink:0,zIndex:200}}>
               <button onClick={bibleBack} style={{background:"transparent",border:"none",cursor:"pointer",color:"rgba(200,190,230,0.55)",fontSize:"0.8rem",fontFamily:SANS,padding:"4px 0",transition:"color 0.15s",whiteSpace:"nowrap"}}>{bibleView==="books"?"< Upper Room":"< Back"}</button>
