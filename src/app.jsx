@@ -46,7 +46,7 @@ import WriteBlogScreen from './screens/WriteBlogScreen.jsx';
 import { generateAnonName, makeSearchTokens, GATHERING_SPACES } from './gatherings.js';
 import { ambientPlay, ambientStop, ambientMute, ambientUnmute, ambientIsPlaying, SOUND_LIBRARY, AMBIENT_TRACKS } from './systems/ambientSound.js';
 import { ROOM_THEMES, DEFAULT_ROOM_THEME, ROOM_THEME_KEY, ROOM_THEME_EVENT, getRoomTheme, useRoomTheme, COZY_CREATIONS_FALLBACK, BIBLE_BG_FALLBACK } from './systems/roomThemes.js';
-import { WindowWeather } from './components/CottageBackground.jsx';
+import { WindowWeather, CandleGlow } from './components/CottageBackground.jsx';
 
 
 async function dbLoad(k){
@@ -1699,6 +1699,26 @@ function AppInner(){
   const [translateVerse, setTranslateVerse] = useState(null); // null | { bookIdx, chapter, verseIdx }
   const bibleDataRef = useRef(null);
   const editEntryRef = useRef(null);
+  // Bible reader background is object-fit:cover, so it crops differently on every
+  // screen size. We measure the rendered image rect (imgBox) so the flickering
+  // fireplace + candle glows stay exactly on the painted flames regardless of device.
+  const bibleImgRef = useRef(null);
+  const [bibleImgBox, setBibleImgBox] = useState(null); // {ox, oy, rw, rh} in viewport px
+  const recalcBibleImgBox = useCallback(() => {
+    const img = bibleImgRef.current;
+    if (!img || !img.naturalWidth) return;
+    const cw = window.innerWidth, ch = window.innerHeight;
+    const scale = Math.max(cw / img.naturalWidth, ch / img.naturalHeight);
+    const rw = img.naturalWidth * scale, rh = img.naturalHeight * scale;
+    setBibleImgBox({ ox: (cw - rw) / 2, oy: (ch - rh) / 2, rw, rh }); // center/cover
+  }, []);
+  useEffect(() => {
+    if (!bibleView) return;
+    recalcBibleImgBox();
+    window.addEventListener('resize', recalcBibleImgBox);
+    return () => window.removeEventListener('resize', recalcBibleImgBox);
+  }, [bibleView, recalcBibleImgBox]);
+  const bibleImgPt = (fx, fy) => bibleImgBox ? { left: bibleImgBox.ox + fx * bibleImgBox.rw, top: bibleImgBox.oy + fy * bibleImgBox.rh } : null;
   // ── Market stalls ──
   const [marketStall, setMarketStall] = useState(null); // null|"harvest"
   // ── Economy state ──
@@ -7677,18 +7697,49 @@ function AppInner(){
           // Spring, …). A soft scrim keeps the verses readable while the room stays
           // clearly visible. Seasons with no art of their own use the rainy default.
           const bibleBg=getRoomTheme(roomTheme).bibleBg||BIBLE_BG_FALLBACK;
-          const readerBg=`linear-gradient(rgba(10,8,16,0.5),rgba(10,8,16,0.68)), url("${bibleBg}") center/cover no-repeat, #0E0B14`;
           // Live weather falling outside the arched window glass (upper-right of the
           // cozy living-room art). Snow for Christmas to match its snowy scene; rain
-          // for the rainy mountain-lake seasons. Clipped to the glass region only and
-          // painted behind the verses (zIndex -1) so it never obscures the text.
+          // for the rainy mountain-lake seasons. Clipped to the glass region only.
           const bibleWeather=getRoomTheme(roomTheme).weather==='snow'?'snow':'rain';
+          // Painted light sources in the room art, as fractions of the image
+          // (tuned to the default biblespring.png; christmas/fall share the layout).
+          const ip=bibleImgPt;
           return (
-          <div style={{position:"absolute",inset:0,zIndex:20,background:readerBg,display:"flex",flexDirection:"column"}}>
-            {/* Weather over the window glass (behind the scrim/verses) */}
-            <WindowWeather mode={bibleWeather} absolute zIndex={-1} window={{left:"58%",top:"8%",width:"39%",height:"36%",radius:"34% 34% 3% 3% / 18% 18% 2% 2%"}}/>
+          <div style={{position:"absolute",inset:0,zIndex:20,background:"#0E0B14",display:"flex",flexDirection:"column",overflow:"hidden"}}>
+            {/* Cozy living-room art — an <img> (not a CSS bg) so we can measure its
+               rendered rect and anchor the flickering flames exactly on the paint. */}
+            <img ref={bibleImgRef} onLoad={recalcBibleImgBox} src={bibleBg} alt="" draggable={false}
+              style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",objectPosition:"center",userSelect:"none",WebkitUserDrag:"none",pointerEvents:"none",zIndex:0}}/>
+            {bibleImgBox&&(<>
+              {/* Weather over the window glass (behind the readability scrim) */}
+              <WindowWeather mode={bibleWeather} absolute zIndex={1}
+                window={{left:`${bibleImgBox.ox+0.58*bibleImgBox.rw}px`,top:`${bibleImgBox.oy+0.08*bibleImgBox.rh}px`,width:`${0.39*bibleImgBox.rw}px`,height:`${0.36*bibleImgBox.rh}px`,radius:"34% 34% 3% 3% / 18% 18% 2% 2%"}}/>
+            </>)}
+            {/* Readability scrim over the room art, beneath the flames + verses */}
+            <div style={{position:"absolute",inset:0,zIndex:2,background:"linear-gradient(rgba(10,8,16,0.5),rgba(10,8,16,0.68))",pointerEvents:"none"}}/>
+            {/* Flickering fireplace fire + candle/lamp glows, anchored exactly on the
+               painted flames (screen blend so they glow vividly over the scrim). */}
+            {bibleImgBox&&(()=>{const fire=ip(0.45,0.485),tbl=ip(0.43,0.655),lant=ip(0.08,0.55),lamp=ip(0.91,0.55);
+              // chandelier candle flames + bookshelf lanterns (fx,fy,duration)
+              const chandelier=[[0.60,0.06,4.6],[0.54,0.10,5.4],[0.58,0.13,6.0],[0.69,0.11,5.0]];
+              const shelf=[[0.14,0.19,5.6],[0.09,0.25,6.4]];
+              return(<>
+              {/* Fireplace fire — the largest, warmest, liveliest flicker (two layers) */}
+              <CandleGlow left={`${fire.left}px`} top={`${fire.top}px`} color="rgba(255,176,82,0.95)" size={200} keyframe="cottage-flicker-a" duration={3.4} absolute zIndex={3}/>
+              <CandleGlow left={`${fire.left}px`} top={`${fire.top+6}px`} color="rgba(255,140,48,0.7)" size={120} keyframe="cottage-flicker-b" duration={2.6} absolute zIndex={3}/>
+              {/* Glass candle on the coffee table */}
+              <CandleGlow left={`${tbl.left}px`} top={`${tbl.top}px`} color="rgba(255,200,120,0.95)" size={66} keyframe="cottage-flicker-b" duration={4.8} absolute zIndex={3}/>
+              {/* Chandelier candle flames (top center) */}
+              {chandelier.map(([fx,fy,d],i)=>{const p=ip(fx,fy);return <CandleGlow key={"ch"+i} left={`${p.left}px`} top={`${p.top}px`} color="rgba(255,198,120,0.9)" size={46} keyframe={i%2?"cottage-flicker-a":"cottage-flicker-b"} duration={d} absolute zIndex={3}/>;})}
+              {/* Bookshelf lanterns (upper left) */}
+              {shelf.map(([fx,fy,d],i)=>{const p=ip(fx,fy);return <CandleGlow key={"bs"+i} left={`${p.left}px`} top={`${p.top}px`} color="rgba(255,196,116,0.88)" size={58} keyframe={i%2?"cottage-flicker-b":"cottage-flicker-a"} duration={d} absolute zIndex={3}/>;})}
+              {/* Lower-left lantern */}
+              <CandleGlow left={`${lant.left}px`} top={`${lant.top}px`} color="rgba(255,196,116,0.9)" size={60} keyframe="cottage-flicker-a" duration={4.2} absolute zIndex={3}/>
+              {/* Right table lamp — soft, slow, warm */}
+              <CandleGlow left={`${lamp.left}px`} top={`${lamp.top}px`} color="rgba(255,206,138,0.7)" size={110} keyframe="cottage-flicker-b" duration={9} absolute zIndex={3}/>
+            </>);})()}
             {/* Header */}
-            <header style={{background:"#0E0B14",padding:"0 16px",height:54,display:"flex",alignItems:"center",gap:10,boxShadow:"0 2px 16px rgba(0,0,0,0.3)",flexShrink:0,zIndex:200}}>
+            <header style={{background:"#0E0B14",padding:"0 16px",height:54,display:"flex",alignItems:"center",gap:10,boxShadow:"0 2px 16px rgba(0,0,0,0.3)",flexShrink:0,position:"relative",zIndex:200}}>
               <button onClick={bibleBack} style={{background:"transparent",border:"none",cursor:"pointer",color:"rgba(200,190,230,0.55)",fontSize:"0.8rem",fontFamily:SANS,padding:"4px 0",transition:"color 0.15s",whiteSpace:"nowrap"}}>{bibleView==="books"?(bibleFromCabinRef.current?"< Back":"< Upper Room"):"< Back"}</button>
               <div style={{height:14,width:1,background:"rgba(180,160,210,0.2)"}}/>
               <span style={{fontFamily:SERIF,fontStyle:"italic",color:"#D8C8F0",fontSize:"0.92rem",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
@@ -7704,7 +7755,7 @@ function AppInner(){
             </header>
 
             {/* Scrollable content */}
-            <div data-bible-scroll="" style={{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch"}}>
+            <div data-bible-scroll="" style={{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch",position:"relative",zIndex:5}}>
 
               {/* ── BOOK LIST ── */}
               {bibleView==="books"&&(
