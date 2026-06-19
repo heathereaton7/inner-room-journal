@@ -124,6 +124,11 @@ export const ROOM_THEMES = [
 // artRoom override (cottage-rain, spring).
 export const COZY_CREATIONS_FALLBACK = '/cozyart.png';
 
+// Default cozy-room background behind the Scripture Bible reader when the
+// active season has no bibleBg yet (the rainy seasons). The spring living
+// room has rain on the glass, so it suits the default Rainy Cottage too.
+export const BIBLE_BG_FALLBACK = '/biblespring.png';
+
 // Default cabin LANDING image (the cozy "Inner Room" reading nook) when the
 // active season has no `landing` override. Seasons each point at their own
 // painted nook; this rainy-spring nook is the all-weather default.

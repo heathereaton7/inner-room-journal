@@ -45,7 +45,7 @@ import BlogPostScreen from './screens/BlogPostScreen.jsx';
 import WriteBlogScreen from './screens/WriteBlogScreen.jsx';
 import { generateAnonName, makeSearchTokens, GATHERING_SPACES } from './gatherings.js';
 import { ambientPlay, ambientStop, ambientMute, ambientUnmute, ambientIsPlaying, SOUND_LIBRARY, AMBIENT_TRACKS } from './systems/ambientSound.js';
-import { ROOM_THEMES, DEFAULT_ROOM_THEME, ROOM_THEME_KEY, ROOM_THEME_EVENT, getRoomTheme, useRoomTheme, COZY_CREATIONS_FALLBACK } from './systems/roomThemes.js';
+import { ROOM_THEMES, DEFAULT_ROOM_THEME, ROOM_THEME_KEY, ROOM_THEME_EVENT, getRoomTheme, useRoomTheme, COZY_CREATIONS_FALLBACK, BIBLE_BG_FALLBACK } from './systems/roomThemes.js';
 
 
 async function dbLoad(k){
@@ -7642,13 +7642,11 @@ function AppInner(){
 
         {/* ── BIBLE READER ── */}
         {bibleView&&bibleData&&(()=>{
-          // Seasonal cozy-cabin room behind the whole Bible reader (Christmas, Fall, …).
-          // A dark scrim keeps the verses readable over the photo. Seasons without
-          // their own art keep the original deep-violet background.
-          const bibleBg=getRoomTheme(roomTheme).bibleBg;
-          const readerBg=bibleBg
-            ? `linear-gradient(rgba(12,10,20,0.74),rgba(12,10,20,0.82)), url("${bibleBg}") center/cover no-repeat, #0E0B14`
-            : "rgba(12,10,20,0.96)";
+          // Seasonal cozy-cabin room behind the whole Bible reader (Christmas, Fall,
+          // Spring, …). A soft scrim keeps the verses readable while the room stays
+          // clearly visible. Seasons with no art of their own use the rainy default.
+          const bibleBg=getRoomTheme(roomTheme).bibleBg||BIBLE_BG_FALLBACK;
+          const readerBg=`linear-gradient(rgba(10,8,16,0.5),rgba(10,8,16,0.68)), url("${bibleBg}") center/cover no-repeat, #0E0B14`;
           return (
           <div style={{position:"absolute",inset:0,zIndex:20,background:readerBg,display:"flex",flexDirection:"column"}}>
             {/* Header */}
