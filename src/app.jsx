@@ -1823,6 +1823,7 @@ function AppInner(){
   const [noteDrawer,        setNoteDrawer]        = useState(false); // bottom note sheet open
   const [noteTarget,        setNoteTarget]        = useState(null);  // {ref,text,bookIdx,chapIdx,verseStart,verseEnd}
   const [noteDraft,         setNoteDraft]         = useState("");
+  const [bibleNotesView,    setBibleNotesView]    = useState(false); // "all notes" overlay (in-Bible)
   const [verseShareOverlay, setVerseShareOverlay] = useState(null);
   const [verseTheme,        setVerseTheme]        = useState(VERSE_THEMES[0]);
   const [verseRatio,        setVerseRatio]        = useState(CARD_RATIOS[0]);
@@ -7801,6 +7802,10 @@ function AppInner(){
               <span style={{fontFamily:SERIF,fontStyle:"italic",color:"#D8C8F0",fontSize:"0.92rem",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
                 {bibleView==="reading"?`${bibleData[bibleBook].name} ${bibleChapter+1}`:bibleView==="chapters"?bibleData[bibleBook].name:"Scripture"}
               </span>
+              {/* All notes — view every reflection saved while reading */}
+              <button onClick={()=>setBibleNotesView(true)} title="View all your Bible notes" style={{background:"rgba(212,168,64,0.10)",border:"1px solid rgba(212,168,64,0.22)",borderRadius:8,padding:"6px 12px",cursor:"pointer",color:"#D4A840",fontFamily:SANS,fontSize:"0.72rem",fontWeight:600,whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:5,flexShrink:0}}>
+                Notes{bibleNotes.length>0?` (${bibleNotes.length})`:""}
+              </button>
               {/* Font size controls */}
               {bibleView==="reading"&&(
                 <div style={{display:"flex",alignItems:"center",gap:6}}>
@@ -7964,6 +7969,41 @@ function AppInner(){
                       <button onClick={()=>deleteSavedVerse(v.id)} style={{background:"rgba(180,80,80,0.08)",border:"1px solid rgba(180,80,80,0.15)",borderRadius:8,padding:"6px 14px",cursor:"pointer",color:"rgba(220,120,120,0.55)",fontFamily:SANS,fontSize:"0.72rem",transition:"all 0.2s"}}>Remove</button>
                     </div>
                     <p style={{fontFamily:SANS,fontSize:"0.62rem",color:"rgba(200,190,230,0.2)",marginTop:8}}>{v.date}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── ALL BIBLE NOTES VIEW (every reflection saved while reading) ── */}
+        {bibleNotesView&&(
+          <div style={{position:"fixed",inset:0,zIndex:520,background:"rgba(10,8,16,0.97)",display:"flex",flexDirection:"column",animation:"overlayFadeIn .25s ease both"}}>
+            <header style={{background:"#0E0B14",padding:"0 16px",height:54,display:"flex",alignItems:"center",gap:10,boxShadow:"0 2px 16px rgba(0,0,0,0.3)",flexShrink:0}}>
+              <button onClick={()=>setBibleNotesView(false)} style={{background:"transparent",border:"none",cursor:"pointer",color:"rgba(200,190,230,0.55)",fontSize:"0.8rem",fontFamily:SANS,padding:"4px 0"}}>{"< Back"}</button>
+              <div style={{height:14,width:1,background:"rgba(180,160,210,0.2)"}}/>
+              <span style={{fontFamily:SERIF,fontStyle:"italic",color:"#D8C8F0",fontSize:"0.92rem"}}>Bible Notes</span>
+            </header>
+            <div style={{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch",padding:"20px 16px 80px"}}>
+              <div style={{maxWidth:680,margin:"0 auto"}}>
+                {bibleNotes.length===0&&(
+                  <div style={{textAlign:"center",marginTop:80}}>
+                    <p style={{fontFamily:SERIF,fontStyle:"italic",color:"rgba(200,190,230,0.3)",fontSize:"1rem"}}>No notes yet</p>
+                    <p style={{fontFamily:SANS,fontSize:"0.78rem",color:"rgba(200,190,230,0.2)",marginTop:8}}>Select verses while reading, then tap Note to write a reflection</p>
+                  </div>
+                )}
+                {bibleNotes.map(n=>(
+                  <div key={n.id} style={{background:"rgba(180,160,210,0.06)",border:"1px solid rgba(180,160,210,0.10)",borderRadius:14,padding:"18px 16px",marginBottom:12}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:10,marginBottom:8}}>
+                      <span style={{fontFamily:SANS,fontSize:"0.78rem",fontWeight:600,color:"rgba(212,168,64,0.8)"}}>{n.ref||"Note"}</span>
+                      <span style={{fontFamily:SANS,fontSize:"0.62rem",color:"rgba(200,190,230,0.25)",whiteSpace:"nowrap"}}>{n.date}</span>
+                    </div>
+                    {n.text&&(<p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.88rem",color:"rgba(230,220,248,0.55)",lineHeight:1.65,margin:"0 0 10px"}}>"{n.text.length>180?n.text.slice(0,180)+"...":n.text}"</p>)}
+                    <p style={{fontFamily:SANS,fontSize:"0.84rem",color:"#E6DCF8",lineHeight:1.6,margin:"0 0 12px",whiteSpace:"pre-wrap"}}>{n.note}</p>
+                    <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                      {n.bookIdx!=null&&(<button onClick={()=>{setBibleBook(n.bookIdx);setBibleChapter(n.chapIdx||0);setBibleNotesView(false);setBibleView("reading");}} style={{background:"rgba(180,160,210,0.10)",border:"1px solid rgba(180,160,210,0.15)",borderRadius:8,padding:"6px 14px",cursor:"pointer",color:"rgba(230,220,248,0.55)",fontFamily:SANS,fontSize:"0.72rem",transition:"all 0.2s"}}>Read</button>)}
+                      <button onClick={()=>deleteBibleNote(n.id)} style={{background:"rgba(180,80,80,0.08)",border:"1px solid rgba(180,80,80,0.15)",borderRadius:8,padding:"6px 14px",cursor:"pointer",color:"rgba(220,120,120,0.55)",fontFamily:SANS,fontSize:"0.72rem",transition:"all 0.2s"}}>Remove</button>
+                    </div>
                   </div>
                 ))}
               </div>
