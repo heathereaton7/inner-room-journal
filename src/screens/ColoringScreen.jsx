@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { COLORING_CATEGORIES, getColoringPage, getPagesByCategory } from '../data/coloringPages.js';
+import { COLORING_PAGES, getColoringPage } from '../data/coloringPages.js';
 import ColoringCanvas from '../components/ColoringCanvas.jsx';
 import CottageBackground from '../components/CottageBackground.jsx';
 import SoundButton from '../components/SoundButton.jsx';
@@ -30,14 +30,12 @@ const P = {
  *   setColoring   — setter that persists (localStorage + Firestore)
  */
 export default function ColoringScreen({ onBack, coloring, setColoring }) {
-  const [category, setCategory] = useState(null); // 'kids' | 'adults' | null
   const [activeId, setActiveId] = useState(null);
   const [color, setColor] = useState('#ff4d9d');
 
   const page = activeId ? getColoringPage(activeId) : null;
   const saved = activeId ? coloring?.[activeId]?.imageData || null : null;
-  const catMeta = category ? COLORING_CATEGORIES.find(c => c.id === category) : null;
-  const pages = category ? getPagesByCategory(category) : [];
+  const pages = COLORING_PAGES;
 
   const persistPage = (pageId, dataUrl) => {
     setColoring({ ...(coloring || {}), [pageId]: { imageData: dataUrl, updatedAt: Date.now() } });
@@ -48,62 +46,15 @@ export default function ColoringScreen({ onBack, coloring, setColoring }) {
       <CottageBackground />
       <SoundButton />
       <Header
-        title={page ? page.title : catMeta ? catMeta.label : 'Coloring'}
+        title={page ? page.title : 'Coloring'}
         onBack={() => {
           if (page) setActiveId(null);
-          else if (category) setCategory(null);
           else onBack();
         }}
       />
 
-      {/* Step 1 — choose a collection */}
-      {!page && !category && (
-        <main style={{ maxWidth: 620, margin: '0 auto', padding: '18px 16px 110px', position: 'relative' }}>
-          <p style={{
-            fontFamily: SERIF, fontStyle: 'italic', color: P.goldL,
-            fontSize: '1.1rem', textAlign: 'center', lineHeight: 1.5, margin: '4px 0 6px',
-          }}>
-            Who is coloring today?
-          </p>
-          <p style={{
-            fontFamily: SANS, fontSize: '0.74rem', color: P.sub,
-            textAlign: 'center', letterSpacing: '0.05em', margin: '0 0 22px',
-          }}>
-            Choose a collection
-          </p>
-          <div style={{
-            display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, maxWidth: 440, margin: '0 auto',
-          }}>
-            {COLORING_CATEGORIES.map(cat => {
-              const count = getPagesByCategory(cat.id).length;
-              return (
-                <button
-                  key={cat.id}
-                  onClick={() => setCategory(cat.id)}
-                  style={{
-                    background: P.panel, border: `1px solid ${P.border}`,
-                    borderRadius: 16, padding: '26px 16px', cursor: 'pointer',
-                    color: P.ink, textAlign: 'center',
-                  }}
-                >
-                  <div style={{ fontFamily: SERIF, fontStyle: 'italic', color: P.goldL, fontSize: '1.4rem', marginBottom: 6 }}>
-                    {cat.label}
-                  </div>
-                  <div style={{ fontFamily: SANS, fontSize: '0.68rem', color: P.sub, lineHeight: 1.45, marginBottom: 10 }}>
-                    {cat.blurb}
-                  </div>
-                  <div style={{ fontFamily: SANS, fontSize: '0.62rem', color: P.sub, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
-                    {count} {count === 1 ? 'page' : 'pages'}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </main>
-      )}
-
-      {/* Step 2 — choose a page within the collection */}
-      {!page && category && (
+      {/* Choose a page */}
+      {!page && (
         <main style={{ maxWidth: 620, margin: '0 auto', padding: '18px 16px 110px', position: 'relative' }}>
           <p style={{
             fontFamily: SERIF, fontStyle: 'italic', color: P.goldL,
