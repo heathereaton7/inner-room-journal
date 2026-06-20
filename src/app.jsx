@@ -7581,7 +7581,7 @@ function AppInner(){
     };
 
     // Filtered book list
-    const filteredBooks=bibleData?(bibleSearch?bibleData.map((b,i)=>({...b,idx:i})).filter(b=>b.name.toLowerCase().includes(bibleSearch.toLowerCase())):bibleData.map((b,i)=>({...b,idx:i}))):[];
+    const filteredBooks=bibleData?(bibleSearch?bibleData.map((b,i)=>({...b,idx:i})).filter(b=>b.name.toLowerCase().startsWith(bibleSearch.trim().toLowerCase())):bibleData.map((b,i)=>({...b,idx:i}))):[];
     const otBooks=filteredBooks.filter(b=>b.idx<39);
     const ntBooks=filteredBooks.filter(b=>b.idx>=39);
 
