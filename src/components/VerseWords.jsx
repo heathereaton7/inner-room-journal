@@ -12,8 +12,10 @@
  *   tokens   array of [word, punc?, italic?, strongs?]  or null
  *   plain    plain verse string fallback
  *   onWordTap({ text, strongs })   called when a tagged word is tapped
+ *   enabled  when false, words render as plain text (study taps off) so the
+ *            whole verse can be tapped to highlight without accidental opens
  */
-export default function VerseWords({ tokens, plain, onWordTap }) {
+export default function VerseWords({ tokens, plain, onWordTap, enabled = true }) {
   if (!tokens || !tokens.length) return plain;
 
   return tokens.map((t, i) => {
@@ -21,7 +23,7 @@ export default function VerseWords({ tokens, plain, onWordTap }) {
     const punc = t[1] || '';
     const italic = t[2] === 1;
     const strongs = t[3];
-    const tappable = Array.isArray(strongs) && strongs.length > 0;
+    const tappable = enabled && Array.isArray(strongs) && strongs.length > 0;
 
     const wordSpan = tappable ? (
       <span
@@ -30,7 +32,10 @@ export default function VerseWords({ tokens, plain, onWordTap }) {
         className="strongs-word"
         style={{
           cursor: 'pointer',
-          borderBottom: '1px dotted rgba(212,168,72,0.30)',
+          color: '#F0DBA0',
+          borderBottom: '1px solid rgba(212,168,72,0.55)',
+          padding: '0 1px',
+          borderRadius: 2,
           WebkitTapHighlightColor: 'transparent',
         }}
       >{word}</span>

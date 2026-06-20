@@ -1701,6 +1701,7 @@ function AppInner(){
   // Original-language word study (tap a word in the reading view)
   const [studyWord, setStudyWord] = useState(null); // null | { text, strongs:[], reference }
   const [strongsReady, setStrongsReady] = useState(0); // bumped when a book's tokens finish loading
+  const [wordStudyOn, setWordStudyOn] = useState(()=>{try{const v=localStorage.getItem("irj-word-study");return v===null?true:v==="1";}catch{return true;}}); // tap-a-word study on/off
   const bibleDataRef = useRef(null);
   const editEntryRef = useRef(null);
   // Bible reader background is object-fit:cover, so it crops differently on every
@@ -1984,6 +1985,9 @@ function AppInner(){
 
   // ── Bible font size persistence ──
   useEffect(()=>{localStorage.setItem("irj-bible-fontsize",String(bibleFontSize));},[bibleFontSize]);
+  useEffect(()=>{try{localStorage.setItem("irj-word-study",wordStudyOn?"1":"0");}catch{}},[wordStudyOn]);
+  // Closing the study panel also clears any partial verse selection that the tap began
+  useEffect(()=>{if(!wordStudyOn)setStudyWord(null);},[wordStudyOn]);
 
   // ── Bible scroll-to-top on chapter/book change ──
   useEffect(()=>{
@@ -7822,9 +7826,12 @@ function AppInner(){
               <button onClick={()=>setBibleNotesView(true)} title="View all your Bible notes" style={{background:"rgba(212,168,64,0.10)",border:"1px solid rgba(212,168,64,0.22)",borderRadius:8,padding:"6px 12px",cursor:"pointer",color:"#D4A840",fontFamily:SANS,fontSize:"0.72rem",fontWeight:600,whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:5,flexShrink:0}}>
                 Notes{bibleNotes.length>0?` (${bibleNotes.length})`:""}
               </button>
-              {/* Font size controls */}
+              {/* Font size controls + word-study toggle */}
               {bibleView==="reading"&&(
                 <div style={{display:"flex",alignItems:"center",gap:6}}>
+                  {/* Word study on/off — when off, the whole verse taps to highlight
+                      without accidentally opening a word's original-language study */}
+                  <button onClick={()=>setWordStudyOn(v=>!v)} title={wordStudyOn?"Word study on — tap a glowing word for its Hebrew/Greek. Tap to turn off for clean highlighting.":"Word study off — tap a verse to highlight. Tap to turn study back on."} aria-pressed={wordStudyOn} style={{background:wordStudyOn?"rgba(212,168,64,0.16)":"rgba(180,160,210,0.10)",border:`1px solid ${wordStudyOn?"rgba(212,168,64,0.45)":"rgba(180,160,210,0.2)"}`,borderRadius:8,height:30,padding:"0 10px",cursor:"pointer",color:wordStudyOn?"#D4A840":"rgba(200,190,230,0.5)",fontFamily:SERIF,fontSize:"0.92rem",fontWeight:600,display:"flex",alignItems:"center",justifyContent:"center",whiteSpace:"nowrap",transition:"all 0.2s"}}>א/Α</button>
                   <button onClick={()=>setBibleFontSize(s=>Math.max(14,s-2))} style={{background:"rgba(180,160,210,0.12)",border:"1px solid rgba(180,160,210,0.2)",borderRadius:6,width:30,height:30,cursor:"pointer",color:"#D8C8F0",fontFamily:SANS,fontSize:"0.75rem",display:"flex",alignItems:"center",justifyContent:"center"}}>A-</button>
                   <button onClick={()=>setBibleFontSize(s=>Math.min(28,s+2))} style={{background:"rgba(180,160,210,0.12)",border:"1px solid rgba(180,160,210,0.2)",borderRadius:6,width:30,height:30,cursor:"pointer",color:"#D8C8F0",fontFamily:SANS,fontSize:"0.75rem",display:"flex",alignItems:"center",justifyContent:"center"}}>A+</button>
                 </div>
@@ -7902,7 +7909,7 @@ function AppInner(){
                     return(
                     <p key={i} className="verse-tap" onClick={()=>toggleVerseSelection(i)} style={{fontFamily:SERIF,fontSize:bibleFontSize,color:sel?"#FFF8E8":"#E8E0F0",lineHeight:1.85,margin:"0 0 4px",padding:"4px 10px 4px 14px",borderRadius:8,cursor:"pointer",background:sel?"rgba(212,168,64,0.12)":"transparent",borderLeft:sel?"3px solid rgba(212,168,64,0.55)":"3px solid transparent",transition:"all 0.2s ease",animation:`verseReveal .35s ${Math.min(i*0.015,1.2)}s ease both`,opacity:0,WebkitTapHighlightColor:"transparent",position:"relative"}}>
                       <span style={{fontFamily:SANS,fontSize:"0.68em",color:sel?"rgba(212,168,64,0.75)":"rgba(180,160,210,0.38)",marginRight:8,userSelect:"none",fontWeight:600,transition:"color 0.2s"}}>{i+1}</span>
-                      <VerseWords tokens={tokens} plain={verse} onWordTap={(w)=>setStudyWord({...w,reference:ref})}/>
+                      <VerseWords tokens={tokens} plain={verse} enabled={wordStudyOn} onWordTap={(w)=>setStudyWord({...w,reference:ref})}/>
                     </p>);
                   })}
                   {/* Chapter navigation */}
