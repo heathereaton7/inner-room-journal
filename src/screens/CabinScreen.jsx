@@ -13,7 +13,7 @@ export default function CabinScreen({
   spaceTransit, transitDir, transitionToMap, transitionToKitchen, transitionToRooftop, transitionToJournal, transitionToCozyCreations, transitionToPorch, openScripture,
   reopenBookChooser,
   cabinMode, cabin3DReady, debugHotspots, debugTripleTap,
-  bookOpen, setBookOpen, deskBook, shelfAnim, bookPage, flipDir, bookText, setBookText,
+  bookOpen, setBookOpen, deskBook, setDeskBook, shelfAnim, bookPage, flipDir, bookText, setBookText,
   bookSaveMsg, setBookSaveMsg, journalSection, setJournalSection, journalZoom,
   selectShelfBook, flipPage, bookTouchStart, bookTouchEnd, TOTAL_BOOK_PAGES,
   windowPanel, setWindowPanel, showInsights, setShowInsights,
@@ -56,6 +56,42 @@ export default function CabinScreen({
   useEffect(()=>{ if(reopenBookChooser){ setBookChooser(true); } },[reopenBookChooser]);
   const [chooserIdx, setChooserIdx] = useState(0); // 0 = Journals, 1 = Meditations
   const [medOpen, setMedOpen] = useState(false);   // Meditations cover + verse view
+  // Journals shelf: tapping the "Journals" book opens a "Your Books"-style grid of
+  // the journal's own tabs (Blank, Reflection Rooms, Dreams, Prayers, …). Each tab
+  // is a cover; tapping one opens that section directly.
+  const [journalBooks, setJournalBooks] = useState(false);
+  const [tabImgOk, setTabImgOk] = useState({}); // {id:true} once /journal-covers/<id>.png loads
+  // The journal's internal tabs (mirrors the in-book "Choose Your Path" menu).
+  // grad = placeholder cover gradient (shown until you drop /journal-covers/<id>.png).
+  const JOURNAL_TABS = [
+    {id:"blank",            label:"Blank Journal",        desc:"Free write your thoughts",        emoji:"\u270D",  grad:"linear-gradient(160deg,#5A4326 0%,#3E2D18 48%,#2A1E10 100%)"},
+    {id:"rooms",            label:"Reflection Rooms",     desc:"Guided daily reflections",        emoji:"\uD83D\uDD6F", grad:"linear-gradient(160deg,#3B2E4A 0%,#2A2036 48%,#1B1525 100%)"},
+    {id:"dreams",           label:"Dream Journal",        desc:"Record your dreams",              emoji:"\uD83C\uDF19", grad:"linear-gradient(160deg,#1E2A44 0%,#16203A 48%,#0F1628 100%)"},
+    {id:"prayers",          label:"Prayer Journal",       desc:"Prayers that water your garden",  emoji:"\uD83D\uDE4F", grad:"linear-gradient(160deg,#264133 0%,#1B3127 48%,#13241B 100%)"},
+    {id:"bible",            label:"Scripture",            desc:"Sit with the questions Jesus asked", emoji:"\u271D", grad:"linear-gradient(160deg,#5A2E18 0%,#43200F 48%,#2E160A 100%)"},
+    {id:"bible-notes",      label:"Bible Notes",          desc:"Verses & reflections you saved",  emoji:"\uD83D\uDD16", grad:"linear-gradient(160deg,#3A3320 0%,#2A2517 48%,#1B1810 100%)"},
+    {id:"gratitude",        label:"Gratitude",            desc:"Name the small graces",           emoji:"\uD83C\uDF3E", grad:"linear-gradient(160deg,#5A4A1E 0%,#403415 48%,#2A220D 100%)"},
+    {id:"prophecy",         label:"Prophecy & Words",     desc:"Record words spoken over you",    emoji:"\uD83D\uDCDC", grad:"linear-gradient(160deg,#4A2E3A 0%,#36202A 48%,#24151C 100%)"},
+    {id:"becoming-her",     label:"Becoming Her",         desc:"90-day identity & habit journey", emoji:"\uD83C\uDF38", grad:"linear-gradient(160deg,#4E2A3E 0%,#3A1F2E 48%,#26141E 100%)"},
+    {id:"check-in",         label:"Body & Mind Check-In", desc:"Notice what you're carrying",     emoji:"\uD83D\uDC97", grad:"linear-gradient(160deg,#2E4148 0%,#213136 48%,#152428 100%)"},
+    {id:"trackers",         label:"Trackers",             desc:"Bills, savings, and spending",    emoji:"\uD83D\uDCCA", grad:"linear-gradient(160deg,#27414C 0%,#1C313A 48%,#13242B 100%)"},
+    {id:"fertility-tracker",label:"Conception Tracker",   desc:"Cycle, ovulation & fertile window", emoji:"\uD83C\uDF37", grad:"linear-gradient(160deg,#4E2A38 0%,#3A1F2A 48%,#26141C 100%)"},
+  ];
+  // Open a journal tab — mirrors the in-book "Choose Your Path" actions.
+  const openJournalTab = (id) => {
+    setJournalBooks(false);
+    if(id==="check-in"){ setBookOpen(false); setScreen("check-in"); return; }
+    if(id==="trackers"){ setBookOpen(false); setScreen("trackers"); return; }
+    if(id==="fertility-tracker"){ setBookOpen(false); setScreen("fertility-tracker"); return; }
+    if(id==="bible"||id==="gratitude"||id==="prophecy"||id==="becoming-her"){ setBookOpen(false); selectShelfBook(id); return; }
+    // Section tabs (blank/rooms/dreams/prayers/bible-notes): open the journal book
+    // directly at that section's history page.
+    setDeskBook&&setDeskBook("journal");
+    setJournalSection(id);
+    setBookText(""); setBookSaveMsg(""); setHistoryMode&&setHistoryMode("list");
+    setBookPage(2); setFlipDir("fwd");
+    setBookOpen(true);
+  };
   const [medImgOk, setMedImgOk] = useState(false); // true once /meditations-cover.png loads
   const [lbImgOk, setLbImgOk] = useState(false);   // true once /leakybucket.png loads
   const [bibleImgOk, setBibleImgOk] = useState(false); // true once /Biblecover.png loads
@@ -663,7 +699,7 @@ export default function CabinScreen({
             </div>
             {/* ── Book 2: JOURNALS ── */}
             <div style={{width:"clamp(96px,27vw,172px)",display:"flex",flexDirection:"column",alignItems:"center",gap:12}}>
-              <button onClick={()=>{setBookChooser(false);transitionToJournal();}} style={{width:"100%",aspectRatio:"2 / 3",borderRadius:"4px 11px 11px 4px",border:"none",padding:0,cursor:"pointer",position:"relative",overflow:"hidden",boxShadow:"0 16px 44px rgba(0,0,0,0.6), 0 0 0 1px rgba(201,169,110,0.22)",animation:"fadeUp .5s ease both"}}>
+              <button onClick={()=>{setBookChooser(false);setJournalBooks(true);}} style={{width:"100%",aspectRatio:"2 / 3",borderRadius:"4px 11px 11px 4px",border:"none",padding:0,cursor:"pointer",position:"relative",overflow:"hidden",boxShadow:"0 16px 44px rgba(0,0,0,0.6), 0 0 0 1px rgba(201,169,110,0.22)",animation:"fadeUp .5s ease both"}}>
                 <img src="/journalondesk.png" alt="The Inner Room journal" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",objectPosition:"center 46%"}} draggable={false}/>
                 {/* Spine + edge sheen for a book feel */}
                 <div style={{position:"absolute",left:0,top:0,bottom:0,width:14,background:"linear-gradient(90deg,rgba(20,12,4,0.55),rgba(20,12,4,0.12),transparent)",pointerEvents:"none"}}/>
@@ -752,6 +788,46 @@ export default function CabinScreen({
         </div>
         {/* Close */}
         <button onClick={()=>setBookChooser(false)} aria-label="Close" style={{position:"absolute",top:"6%",right:"5%",zIndex:5,width:34,height:34,borderRadius:"50%",background:"rgba(26,22,18,0.6)",border:"1px solid rgba(201,169,110,0.18)",color:"rgba(255,248,232,0.6)",fontSize:"0.85rem",cursor:"pointer",backdropFilter:"blur(6px)",WebkitBackdropFilter:"blur(6px)"}}>&#10005;</button>
+      </div>}
+
+      {/* ═══ JOURNAL TABS — "Your Books"-styled grid of the journal's sections ═══ */}
+      {journalBooks&&<div style={{position:"fixed",inset:0,zIndex:121}}>
+        {/* Backdrop */}
+        <div onClick={()=>setJournalBooks(false)} style={{position:"absolute",inset:0,background:"rgba(10,8,6,0.82)",backdropFilter:"blur(4px)",WebkitBackdropFilter:"blur(4px)",animation:"spaceFadeIn .3s ease"}}/>
+        <BookSparkles/>
+        <div style={{position:"absolute",inset:0,zIndex:2,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-start",gap:"clamp(16px,4vh,30px)",padding:"7% 14px 9%",overflowY:"auto",WebkitOverflowScrolling:"touch"}}>
+          {/* Heading */}
+          <div style={{textAlign:"center",flexShrink:0,animation:"fadeUp .6s ease both",pointerEvents:"none"}}>
+            <h2 style={{fontFamily:DISPLAY,fontSize:"clamp(1.35rem,5.5vw,1.75rem)",fontWeight:700,color:B.goldL,margin:0,letterSpacing:"0.04em"}}>The Inner Room Journal</h2>
+            <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.8rem",color:"rgba(255,248,232,0.5)",margin:"6px 0 0"}}>Tap a journal to open</p>
+          </div>
+          {/* Tab covers — grid */}
+          <div style={{display:"flex",flexWrap:"wrap",alignItems:"flex-start",justifyContent:"center",gap:"clamp(12px,3.5vw,26px)",width:"100%",maxWidth:600}}>
+            {JOURNAL_TABS.map((opt,i)=>(
+              <div key={opt.id} style={{width:"clamp(96px,27vw,160px)",display:"flex",flexDirection:"column",alignItems:"center",gap:11}}>
+                <button onClick={()=>openJournalTab(opt.id)} style={{width:"100%",aspectRatio:"2 / 3",borderRadius:"4px 11px 11px 4px",border:"none",padding:0,cursor:"pointer",position:"relative",overflow:"hidden",background:opt.grad,boxShadow:"0 16px 44px rgba(0,0,0,0.6), 0 0 0 1px rgba(201,169,110,0.22)",animation:`fadeUp .5s ${0.04*i}s ease both`}}>
+                  {/* Themed placeholder cover (shown until /journal-covers/<id>.png loads) */}
+                  <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center",padding:"16% 12%"}}>
+                    <div style={{position:"absolute",inset:"7%",border:"1px solid rgba(201,169,110,0.4)",borderRadius:6,boxShadow:"inset 0 0 26px rgba(201,169,110,0.12)",pointerEvents:"none"}}/>
+                    <div style={{position:"absolute",inset:"9.5%",border:"1px solid rgba(201,169,110,0.18)",borderRadius:4,pointerEvents:"none"}}/>
+                    <span style={{fontSize:"1.35rem",marginBottom:9}}>{opt.emoji}</span>
+                    <div style={{fontFamily:DISPLAY,fontSize:"clamp(0.92rem,3.9vw,1.12rem)",fontWeight:700,color:"#E8C98A",letterSpacing:"0.03em",lineHeight:1.18}}>{opt.label}</div>
+                    <div style={{width:30,height:1,background:"linear-gradient(90deg,transparent,#C9A96E,transparent)",margin:"9px 0"}}/>
+                  </div>
+                  {/* Swappable cover — covers the placeholder once the file is added */}
+                  <img src={`/journal-covers/${opt.id}.png`} alt={opt.label} onLoad={()=>setTabImgOk(p=>({...p,[opt.id]:true}))} onError={()=>{}} style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",display:tabImgOk[opt.id]?"block":"none"}} draggable={false}/>
+                  <div style={{position:"absolute",left:0,top:0,bottom:0,width:14,background:"linear-gradient(90deg,rgba(20,12,4,0.55),rgba(20,12,4,0.12),transparent)",pointerEvents:"none",zIndex:2}}/>
+                </button>
+                <div style={{textAlign:"center",animation:"fadeUp .6s .1s ease both"}}>
+                  <div style={{fontFamily:DISPLAY,fontSize:"0.88rem",fontWeight:700,color:B.goldL,letterSpacing:"0.03em",lineHeight:1.2}}>{opt.label}</div>
+                  <div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.62rem",color:"rgba(255,248,232,0.45)",marginTop:3,lineHeight:1.35}}>{opt.desc}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        {/* Close */}
+        <button onClick={()=>setJournalBooks(false)} aria-label="Close" style={{position:"absolute",top:"6%",right:"5%",zIndex:5,width:34,height:34,borderRadius:"50%",background:"rgba(26,22,18,0.6)",border:"1px solid rgba(201,169,110,0.18)",color:"rgba(255,248,232,0.6)",fontSize:"0.85rem",cursor:"pointer",backdropFilter:"blur(6px)",WebkitBackdropFilter:"blur(6px)"}}>&#10005;</button>
       </div>}
 
       {/* ═══ MEDITATIONS — verse + list of all meditations in the app ═══ */}

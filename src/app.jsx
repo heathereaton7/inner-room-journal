@@ -5001,7 +5001,7 @@ function AppInner(){
       reopenBookChooser={reopenBookChooser}
       cabinMode={cabinMode} cabin3DReady={cabin3DReady}
       debugHotspots={debugHotspots} debugTripleTap={debugTripleTap}
-      bookOpen={bookOpen} setBookOpen={setBookOpen} deskBook={deskBook}
+      bookOpen={bookOpen} setBookOpen={setBookOpen} deskBook={deskBook} setDeskBook={setDeskBook}
       shelfAnim={shelfAnim} bookPage={bookPage} flipDir={flipDir}
       bookText={bookText} setBookText={setBookText}
       bookSaveMsg={bookSaveMsg} setBookSaveMsg={setBookSaveMsg}
