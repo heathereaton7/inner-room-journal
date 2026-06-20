@@ -8136,15 +8136,15 @@ function AppInner(){
              stays fully readable; textarea sits up top, clear of the keyboard) ── */}
         {noteDrawer&&noteTarget&&(
           <div style={{position:"fixed",top:54,right:0,bottom:0,width:"min(48%,360px)",zIndex:560,background:"rgba(16,13,24,0.97)",backdropFilter:"blur(18px)",WebkitBackdropFilter:"blur(18px)",borderLeft:"1px solid rgba(212,168,64,0.22)",boxShadow:"-10px 0 40px rgba(0,0,0,0.5)",padding:"14px 14px calc(14px + env(safe-area-inset-bottom))",animation:"actionBarSlideRight .28s ease both",display:"flex",flexDirection:"column"}}>
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8,flexShrink:0}}>
-              <span style={{fontFamily:SERIF,fontStyle:"italic",color:"#D4A840",fontSize:"0.84rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{noteTarget.ref||"New note"}</span>
+            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8,flexShrink:0}}>
+              <span style={{flex:1,fontFamily:SERIF,fontStyle:"italic",color:"#D4A840",fontSize:"0.84rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{noteTarget.ref||"New note"}</span>
+              <button onClick={saveBibleNote} disabled={!noteDraft.trim()} style={{flexShrink:0,background:noteDraft.trim()?"linear-gradient(135deg,rgba(212,168,64,0.22),rgba(212,168,64,0.08))":"rgba(180,160,210,0.06)",border:noteDraft.trim()?"1px solid rgba(212,168,64,0.35)":"1px solid rgba(180,160,210,0.12)",borderRadius:10,padding:"7px 16px",cursor:noteDraft.trim()?"pointer":"default",color:noteDraft.trim()?"#D4A840":"rgba(200,190,230,0.3)",fontFamily:SANS,fontSize:"0.78rem",fontWeight:600,transition:"all 0.2s"}}>Save Note</button>
               <button onClick={()=>{setNoteDrawer(false);setNoteTarget(null);}} style={{background:"transparent",border:"none",cursor:"pointer",color:"rgba(200,190,230,0.45)",fontSize:"1.2rem",lineHeight:1,padding:"2px 4px",flexShrink:0}}>x</button>
             </div>
             {noteTarget.text&&(
               <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.78rem",color:"rgba(230,220,248,0.5)",lineHeight:1.55,margin:"0 0 10px",maxHeight:90,overflowY:"auto",flexShrink:0}}>"{noteTarget.text.length>240?noteTarget.text.slice(0,240)+"...":noteTarget.text}"</p>
             )}
             <textarea value={noteDraft} onChange={e=>setNoteDraft(e.target.value)} autoFocus placeholder="Write your reflection..." style={{flex:1,minHeight:90,resize:"none",background:"rgba(180,160,210,0.06)",border:"1px solid rgba(180,160,210,0.15)",borderRadius:12,padding:"12px 14px",color:"#E6DCF8",fontFamily:SANS,fontSize:"0.9rem",lineHeight:1.6,outline:"none",boxSizing:"border-box"}}/>
-            <button onClick={saveBibleNote} disabled={!noteDraft.trim()} style={{marginTop:12,flexShrink:0,background:noteDraft.trim()?"linear-gradient(135deg,rgba(212,168,64,0.22),rgba(212,168,64,0.08))":"rgba(180,160,210,0.06)",border:noteDraft.trim()?"1px solid rgba(212,168,64,0.35)":"1px solid rgba(180,160,210,0.12)",borderRadius:12,padding:"12px 0",cursor:noteDraft.trim()?"pointer":"default",color:noteDraft.trim()?"#D4A840":"rgba(200,190,230,0.3)",fontFamily:SANS,fontSize:"0.84rem",fontWeight:600,transition:"all 0.2s"}}>Save Note</button>
           </div>
         )}
 
