@@ -141,14 +141,6 @@ export const COLORING_PAGES = [
     src: encodeURI('/coloring pages/Bathroom Sink Stillness.png'),
   },
   {
-    id: 'lakeside-cabin',
-    title: 'Lakeside Cabin',
-    verse: 'He makes me lie down in green pastures, he leads me beside quiet waters.',
-    reference: 'Psalm 23:2',
-    category: 'adults',
-    src: encodeURI('/coloring pages/Lakeside Cabin Retreat.png'),
-  },
-  {
     id: 'loved-jesus-says-so',
     title: "I'm Loved",
     verse: 'See what great love the Father has lavished on us, that we should be called children of God!',
