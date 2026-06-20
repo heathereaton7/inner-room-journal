@@ -1698,6 +1698,11 @@ function AppInner(){
   const [bibleFontSize, setBibleFontSize] = useState(()=>{try{return parseInt(localStorage.getItem("irj-bible-fontsize"))||18;}catch{return 18;}});
   const [bibleLoading,  setBibleLoading]  = useState(false);
   const [bibleSearch,   setBibleSearch]   = useState("");
+  // Word search across the whole Bible (separate from the quick book-jump search)
+  const [bibleWordQuery,   setBibleWordQuery]   = useState("");
+  const [bibleWordResults, setBibleWordResults] = useState(null); // null = not searched yet; array = matches
+  const bibleReadFromSearchRef = useRef(false); // reading view opened from a search result → back returns to results
+  const pendingVerseScrollRef  = useRef(null);  // verse index to scroll to / flash after a jump
   // Original-language word study (tap a word in the reading view)
   const [studyWord, setStudyWord] = useState(null); // null | { text, strongs:[], reference }
   const [strongsReady, setStrongsReady] = useState(0); // bumped when a book's tokens finish loading
@@ -1991,11 +1996,27 @@ function AppInner(){
 
   // ── Bible scroll-to-top on chapter/book change ──
   useEffect(()=>{
+    if(pendingVerseScrollRef.current!=null) return; // a word-search jump handles its own scroll + highlight
     const el=document.querySelector("[data-bible-scroll]");
     if(el) el.scrollTop=0;
     setSelectedVerses(new Set());
     setVerseActionBar(false);
   },[bibleChapter,bibleBook]);
+
+  // ── Word-search jump: highlight the matched verse and scroll it into view ──
+  useEffect(()=>{
+    if(bibleView!=="reading") return;
+    const vi=pendingVerseScrollRef.current;
+    if(vi==null) return;
+    setSelectedVerses(new Set([vi]));
+    setVerseActionBar(false);
+    const t=setTimeout(()=>{
+      const el=document.querySelector(`[data-verse-idx="${vi}"]`);
+      if(el) el.scrollIntoView({behavior:"smooth",block:"center"});
+      pendingVerseScrollRef.current=null;
+    },240);
+    return ()=>clearTimeout(t);
+  },[bibleView,bibleChapter,bibleBook]);
 
   // ── Load this book's original-language word tagging (lazy, cached) ──
   // Words become individually tappable once the tokens arrive; until then the
@@ -7535,7 +7556,12 @@ function AppInner(){
     const dailyVerse=bibleData?getDailyVerse(bibleData):null;
 
     const bibleBack=()=>{
-      if(bibleView==="reading"){setBibleView("chapters");}
+      if(bibleView==="reading"){
+        // If we arrived here from a word-search result, go back to the results list.
+        if(bibleReadFromSearchRef.current){ bibleReadFromSearchRef.current=false; setBibleView("search"); }
+        else setBibleView("chapters");
+      }
+      else if(bibleView==="search"){setBibleView("books");}
       else if(bibleView==="chapters"){setBibleView("books");setBibleSearch("");}
       else{
         // Leaving the book list: if the reader was opened from the cabin's book
@@ -7558,6 +7584,51 @@ function AppInner(){
     const filteredBooks=bibleData?(bibleSearch?bibleData.map((b,i)=>({...b,idx:i})).filter(b=>b.name.toLowerCase().includes(bibleSearch.toLowerCase())):bibleData.map((b,i)=>({...b,idx:i}))):[];
     const otBooks=filteredBooks.filter(b=>b.idx<39);
     const ntBooks=filteredBooks.filter(b=>b.idx>=39);
+
+    // Word search across every verse in the bundled KJV (free, offline). Capped so
+    // very common words (e.g. "and") can't build an enormous list.
+    const WORD_SEARCH_MAX=400;
+    const runWordSearch=()=>{
+      const q=bibleWordQuery.trim().toLowerCase();
+      if(!q||!bibleData) return;
+      const res=[];
+      for(let bi=0; bi<bibleData.length && res.length<WORD_SEARCH_MAX; bi++){
+        const chs=bibleData[bi].chapters;
+        for(let ci=0; ci<chs.length && res.length<WORD_SEARCH_MAX; ci++){
+          const vs=chs[ci];
+          for(let vi=0; vi<vs.length; vi++){
+            if(vs[vi].toLowerCase().includes(q)){
+              res.push({bookIdx:bi,chapIdx:ci,verseIdx:vi,name:bibleData[bi].name,text:vs[vi]});
+              if(res.length>=WORD_SEARCH_MAX) break;
+            }
+          }
+        }
+      }
+      setBibleWordResults(res);
+      setBibleView("search");
+    };
+    // Open a search result in the reading view, highlighting + scrolling to it.
+    const openSearchResult=(r)=>{
+      pendingVerseScrollRef.current=r.verseIdx;
+      bibleReadFromSearchRef.current=true;
+      setBibleBook(r.bookIdx);
+      setBibleChapter(r.chapIdx);
+      setBibleView("reading");
+    };
+    // Render a verse snippet with the searched term emphasized in gold.
+    const highlightQuery=(text,q)=>{
+      if(!q) return text;
+      const lower=text.toLowerCase(), ql=q.toLowerCase();
+      const out=[]; let i=0,k=0;
+      while(true){
+        const idx=lower.indexOf(ql,i);
+        if(idx<0){ out.push(text.slice(i)); break; }
+        if(idx>i) out.push(text.slice(i,idx));
+        out.push(<span key={k++} style={{color:"#D4A840",fontWeight:700}}>{text.slice(idx,idx+q.length)}</span>);
+        i=idx+q.length;
+      }
+      return out;
+    };
 
     return(
       <div style={{position:"fixed",inset:0,overflow:"hidden",fontFamily:SANS}}>
@@ -7845,11 +7916,20 @@ function AppInner(){
               {/* ── BOOK LIST ── */}
               {bibleView==="books"&&(
                 <div style={{maxWidth:680,margin:"0 auto",padding:"16px 16px 80px"}}>
-                  {/* Search */}
-                  <div style={{position:"relative",marginBottom:16}}>
-                    <input value={bibleSearch} onChange={e=>setBibleSearch(e.target.value)} placeholder="Search books..." style={{width:"100%",boxSizing:"border-box",background:"rgba(180,160,210,0.08)",border:"1px solid rgba(180,160,210,0.15)",borderRadius:12,padding:"10px 16px 10px 38px",color:"#E8E0F0",fontFamily:SANS,fontSize:"0.85rem",outline:"none"}}/>
+                  {/* Quick book jump — kept instant for following along in a service */}
+                  <div style={{position:"relative",marginBottom:10}}>
+                    <input value={bibleSearch} onChange={e=>setBibleSearch(e.target.value)} placeholder="Jump to a book..." style={{width:"100%",boxSizing:"border-box",background:"rgba(180,160,210,0.08)",border:"1px solid rgba(180,160,210,0.15)",borderRadius:12,padding:"10px 16px 10px 38px",color:"#E8E0F0",fontFamily:SANS,fontSize:"0.85rem",outline:"none"}}/>
                     <svg style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",opacity:0.3}} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D8C8F0" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                   </div>
+                  {/* Separate word search — only runs when you press Search/Enter, so it
+                      never interrupts a quick book jump. Searches the whole Bible. */}
+                  <form onSubmit={e=>{e.preventDefault();runWordSearch();}} style={{display:"flex",gap:8,marginBottom:18}}>
+                    <div style={{position:"relative",flex:1}}>
+                      <input value={bibleWordQuery} onChange={e=>setBibleWordQuery(e.target.value)} placeholder="Search a word in the Bible..." style={{width:"100%",boxSizing:"border-box",background:"rgba(212,168,64,0.06)",border:"1px solid rgba(212,168,64,0.20)",borderRadius:12,padding:"10px 16px 10px 38px",color:"#E8E0F0",fontFamily:SANS,fontSize:"0.85rem",outline:"none"}}/>
+                      <svg style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",opacity:0.45}} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D4A840" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    </div>
+                    <button type="submit" style={{flexShrink:0,background:"rgba(212,168,64,0.16)",border:"1px solid rgba(212,168,64,0.40)",borderRadius:12,padding:"0 18px",cursor:"pointer",color:"#D4A840",fontFamily:SANS,fontSize:"0.8rem",fontWeight:600}}>Search</button>
+                  </form>
                   {/* Old Testament */}
                   {otBooks.length>0&&(
                     <>
@@ -7884,13 +7964,44 @@ function AppInner(){
                 </div>
               )}
 
+              {/* ── WORD SEARCH RESULTS ── */}
+              {bibleView==="search"&&(
+                <div style={{maxWidth:680,margin:"0 auto",padding:"16px 16px 80px"}}>
+                  <div style={{display:"flex",alignItems:"baseline",justifyContent:"space-between",gap:10,marginBottom:14}}>
+                    <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"1.02rem",color:"#D8C8F0",margin:0}}>
+                      "{bibleWordQuery.trim()}"
+                    </p>
+                    {bibleWordResults&&(
+                      <span style={{fontFamily:SANS,fontSize:"0.72rem",color:"rgba(200,190,230,0.45)",whiteSpace:"nowrap"}}>
+                        {bibleWordResults.length>=WORD_SEARCH_MAX?`${WORD_SEARCH_MAX}+ verses`:`${bibleWordResults.length} verse${bibleWordResults.length===1?"":"s"}`}
+                      </span>
+                    )}
+                  </div>
+                  {bibleWordResults&&bibleWordResults.length>0?(
+                    <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                      {bibleWordResults.map((r,ri)=>(
+                        <button key={ri} onClick={()=>openSearchResult(r)} style={{background:"rgba(180,160,210,0.05)",border:"1px solid rgba(180,160,210,0.10)",borderRadius:10,padding:"10px 14px",textAlign:"left",cursor:"pointer",width:"100%"}}>
+                          <span style={{display:"block",fontFamily:SANS,fontSize:"0.7rem",fontWeight:600,letterSpacing:"0.03em",color:"rgba(212,168,64,0.85)",marginBottom:4}}>{r.name} {r.chapIdx+1}:{r.verseIdx+1}</span>
+                          <span style={{display:"block",fontFamily:SERIF,fontSize:"0.9rem",lineHeight:1.55,color:"#E8E0F0"}}>{highlightQuery(r.text,bibleWordQuery.trim())}</span>
+                        </button>
+                      ))}
+                      {bibleWordResults.length>=WORD_SEARCH_MAX&&(
+                        <p style={{textAlign:"center",fontFamily:SANS,fontSize:"0.72rem",color:"rgba(200,190,230,0.35)",marginTop:12}}>Showing the first {WORD_SEARCH_MAX}. Try a more specific word or phrase to narrow it down.</p>
+                      )}
+                    </div>
+                  ):(
+                    <p style={{textAlign:"center",fontFamily:SERIF,fontStyle:"italic",color:"rgba(200,190,230,0.3)",marginTop:40}}>No verses contain that word</p>
+                  )}
+                </div>
+              )}
+
               {/* ── CHAPTER GRID ── */}
               {bibleView==="chapters"&&(
                 <div style={{maxWidth:680,margin:"0 auto",padding:"24px 16px 80px"}}>
                   <p style={{fontFamily:SANS,fontSize:"0.72rem",color:"rgba(200,190,230,0.35)",marginBottom:16,textAlign:"center"}}>Select a chapter</p>
                   <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(52px,1fr))",gap:8}}>
                     {bibleData[bibleBook].chapters.map((_,ci)=>(
-                      <button key={ci} className="bible-chap" onClick={()=>{setBibleChapter(ci);setBibleView("reading");}} style={{background:"rgba(180,160,210,0.08)",border:"1px solid rgba(180,160,210,0.12)",borderRadius:10,padding:"12px 0",textAlign:"center",color:"#D8C8F0",fontFamily:SANS,fontSize:"0.9rem",fontWeight:500}}>
+                      <button key={ci} className="bible-chap" onClick={()=>{bibleReadFromSearchRef.current=false;setBibleChapter(ci);setBibleView("reading");}} style={{background:"rgba(180,160,210,0.08)",border:"1px solid rgba(180,160,210,0.12)",borderRadius:10,padding:"12px 0",textAlign:"center",color:"#D8C8F0",fontFamily:SANS,fontSize:"0.9rem",fontWeight:500}}>
                         {ci+1}
                       </button>
                     ))}
@@ -7907,7 +8018,7 @@ function AppInner(){
                     const tokens=strongsReady>=0?getVerseTokens(bibleBook,bibleChapter,i):null;
                     const ref=`${bibleData[bibleBook].name} ${bibleChapter+1}:${i+1}`;
                     return(
-                    <p key={i} className="verse-tap" onClick={()=>toggleVerseSelection(i)} style={{fontFamily:SERIF,fontSize:bibleFontSize,color:sel?"#FFF8E8":"#E8E0F0",lineHeight:1.85,margin:"0 0 4px",padding:"4px 10px 4px 14px",borderRadius:8,cursor:"pointer",background:sel?"rgba(212,168,64,0.12)":"transparent",borderLeft:sel?"3px solid rgba(212,168,64,0.55)":"3px solid transparent",transition:"all 0.2s ease",animation:`verseReveal .35s ${Math.min(i*0.015,1.2)}s ease both`,opacity:0,WebkitTapHighlightColor:"transparent",position:"relative"}}>
+                    <p key={i} data-verse-idx={i} className="verse-tap" onClick={()=>toggleVerseSelection(i)} style={{fontFamily:SERIF,fontSize:bibleFontSize,color:sel?"#FFF8E8":"#E8E0F0",lineHeight:1.85,margin:"0 0 4px",padding:"4px 10px 4px 14px",borderRadius:8,cursor:"pointer",background:sel?"rgba(212,168,64,0.12)":"transparent",borderLeft:sel?"3px solid rgba(212,168,64,0.55)":"3px solid transparent",transition:"all 0.2s ease",animation:`verseReveal .35s ${Math.min(i*0.015,1.2)}s ease both`,opacity:0,WebkitTapHighlightColor:"transparent",position:"relative"}}>
                       <span style={{fontFamily:SANS,fontSize:"0.68em",color:sel?"rgba(212,168,64,0.75)":"rgba(180,160,210,0.38)",marginRight:8,userSelect:"none",fontWeight:600,transition:"color 0.2s"}}>{i+1}</span>
                       <VerseWords tokens={tokens} plain={verse} enabled={wordStudyOn} onWordTap={(w)=>setStudyWord({...w,reference:ref})}/>
                     </p>);
