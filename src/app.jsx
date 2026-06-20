@@ -1584,6 +1584,10 @@ function AppInner(){
   // ── STATE ──
   const [screen,        setScreen]        = useState("loading");
   const prevScreenRef = useRef(null);
+  // Browser back-button history: each screen is stored in a history entry so the
+  // device/browser back (and forward) arrow steps through the app instead of exiting.
+  const historyInitRef = useRef(false);   // first real screen uses replaceState, the rest pushState
+  const popInProgressRef = useRef(false); // a screen change caused by back/forward → don't push a new entry
   const [obStep,        setObStep]        = useState(0);
   const [sceneIdx,      setSceneIdx]      = useState(0);
   const [sceneTransit,  setSceneTransit]  = useState(false);
@@ -1993,6 +1997,36 @@ function AppInner(){
   useEffect(()=>{try{localStorage.setItem("irj-word-study",wordStudyOn?"1":"0");}catch{}},[wordStudyOn]);
   // Closing the study panel also clears any partial verse selection that the tap began
   useEffect(()=>{if(!wordStudyOn)setStudyWord(null);},[wordStudyOn]);
+
+  // ── Browser/device back button → go to the previous screen, not exit ──
+  // Every screen change records the screen in a history entry. When the back (or
+  // forward) arrow fires popstate we read the screen from that entry and restore
+  // it, so navigation stays inside the app. Only from the first screen does back
+  // leave the app, which is the normal expectation.
+  useEffect(()=>{
+    if(screen==="loading") return;            // don't track the splash
+    if(popInProgressRef.current){              // this change came from back/forward — already in sync
+      popInProgressRef.current=false;
+      return;
+    }
+    try{
+      if(!historyInitRef.current){
+        historyInitRef.current=true;
+        window.history.replaceState({irjScreen:screen},"");
+      }else{
+        window.history.pushState({irjScreen:screen},"");
+      }
+    }catch{}
+  },[screen]);
+  useEffect(()=>{
+    const onPop=(e)=>{
+      const s=e.state&&e.state.irjScreen;
+      if(s){ popInProgressRef.current=true; setScreen(s); }
+      // No app screen on this entry (we're past the root) → let the browser exit.
+    };
+    window.addEventListener("popstate",onPop);
+    return ()=>window.removeEventListener("popstate",onPop);
+  },[]);
 
   // ── Bible scroll-to-top on chapter/book change ──
   useEffect(()=>{
