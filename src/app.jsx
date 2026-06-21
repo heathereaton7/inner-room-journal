@@ -7920,6 +7920,12 @@ function AppInner(){
               {/* Right table lamp — soft, slow, warm */}
               <CandleGlow left={`${lamp.left}px`} top={`${lamp.top}px`} color="rgba(255,206,138,0.7)" size={110} keyframe="cottage-flicker-b" duration={9} absolute zIndex={3}/>
             </>);})()}
+            {/* Reading dim — while reading, drop a darker scrim ABOVE the glowing
+               flames (but beneath the verse text) so the bright lights don't wash
+               out the scripture. Books/chapters views keep the full warm glow. */}
+            {bibleView==="reading"&&(
+              <div style={{position:"absolute",inset:0,zIndex:4,background:"rgba(8,6,14,0.62)",pointerEvents:"none"}}/>
+            )}
             {/* Header */}
             <header style={{background:"#0E0B14",padding:"0 16px",height:54,display:"flex",alignItems:"center",gap:10,boxShadow:"0 2px 16px rgba(0,0,0,0.3)",flexShrink:0,position:"relative",zIndex:200}}>
               <button onClick={bibleBack} style={{background:"transparent",border:"none",cursor:"pointer",color:"rgba(200,190,230,0.55)",fontSize:"0.8rem",fontFamily:SANS,padding:"4px 0",transition:"color 0.15s",whiteSpace:"nowrap"}}>{bibleView==="books"?(bibleFromCabinRef.current?"< Back":"< Upper Room"):"< Back"}</button>
@@ -8053,7 +8059,7 @@ function AppInner(){
                     const ref=`${bibleData[bibleBook].name} ${bibleChapter+1}:${i+1}`;
                     return(
                     <p key={i} data-verse-idx={i} className="verse-tap" onClick={()=>toggleVerseSelection(i)} style={{fontFamily:SERIF,fontSize:bibleFontSize,color:sel?"#FFF8E8":"#E8E0F0",lineHeight:1.85,margin:"0 0 4px",padding:"4px 10px 4px 14px",borderRadius:8,cursor:"pointer",background:sel?"rgba(212,168,64,0.12)":"transparent",borderLeft:sel?"3px solid rgba(212,168,64,0.55)":"3px solid transparent",transition:"all 0.2s ease",animation:`verseReveal .35s ${Math.min(i*0.015,1.2)}s ease both`,opacity:0,WebkitTapHighlightColor:"transparent",position:"relative"}}>
-                      <span style={{fontFamily:SANS,fontSize:"0.68em",color:sel?"rgba(212,168,64,0.75)":"rgba(180,160,210,0.38)",marginRight:8,userSelect:"none",fontWeight:600,transition:"color 0.2s"}}>{i+1}</span>
+                      <span style={{fontFamily:SANS,fontSize:"0.7em",color:sel?"#F0C24A":"#D4A840",marginRight:8,userSelect:"none",fontWeight:700,verticalAlign:"super",lineHeight:0,letterSpacing:"0.02em",textShadow:"0 1px 3px rgba(0,0,0,0.6)",transition:"color 0.2s"}}>{i+1}</span>
                       <VerseWords tokens={tokens} plain={verse} enabled={wordStudyOn} onWordTap={(w)=>setStudyWord({...w,reference:ref})}/>
                     </p>);
                   })}
