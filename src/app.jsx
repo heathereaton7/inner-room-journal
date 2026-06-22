@@ -63,7 +63,7 @@ async function dbSave(k,v){
     localStorage.setItem(k,JSON.stringify(v));
     // Dual-write to Firestore when signed in
     if(auth?.currentUser){
-      const fieldMap={"irj-entries":"entries","irj-prayer":"prayerPosts","irj-saved-cards":"savedCards","irj-onboarded":"isOnboarded","irj-candles":"candles","irj-prayed":"prayedFor","irj-owned-items":"ownedItems","irj-garden":"gardenPlots","irj-inventory":"inventory","irj-saved-verses":"savedVerses","irj-bible-notes":"bibleNotes","irj-bank":"bank","irj-sell-basket":"sellBasket","irj-farm-plots":"farmPlots","irj-animals":"animals","irj-missions":"missions","irj-premium":"isPremium","irj-becoming-her":"becomingHer","irj-trackers":"trackers","irj-pregnancy":"pregnancy","irj-garden-grid":"gardenGrid","irj-unlocks":"unlocks","irj-diamond-art":"diamondArt","irj-art-gallery":"artGallery","irj-imported-templates":"importedTemplates","irj-word-search":"wordSearch","irj-hidden-object":"hiddenObject","irj-pregnancy-meditations":"pregnancyMeditations","irj-father-meditations":"fatherMeditations","irj-conceive-meditations":"conceiveMeditations","irj-fertility":"fertility","irj-room-theme":"roomTheme","irj-coloring":"coloring","irj-leaky-bucket":"leakyBucket"};
+      const fieldMap={"irj-entries":"entries","irj-prayer":"prayerPosts","irj-saved-cards":"savedCards","irj-onboarded":"isOnboarded","irj-candles":"candles","irj-prayed":"prayedFor","irj-owned-items":"ownedItems","irj-garden":"gardenPlots","irj-inventory":"inventory","irj-saved-verses":"savedVerses","irj-verse-highlights":"verseHighlights","irj-bible-notes":"bibleNotes","irj-bank":"bank","irj-sell-basket":"sellBasket","irj-farm-plots":"farmPlots","irj-animals":"animals","irj-missions":"missions","irj-premium":"isPremium","irj-becoming-her":"becomingHer","irj-trackers":"trackers","irj-pregnancy":"pregnancy","irj-garden-grid":"gardenGrid","irj-unlocks":"unlocks","irj-diamond-art":"diamondArt","irj-art-gallery":"artGallery","irj-imported-templates":"importedTemplates","irj-word-search":"wordSearch","irj-hidden-object":"hiddenObject","irj-pregnancy-meditations":"pregnancyMeditations","irj-father-meditations":"fatherMeditations","irj-conceive-meditations":"conceiveMeditations","irj-fertility":"fertility","irj-room-theme":"roomTheme","irj-coloring":"coloring","irj-leaky-bucket":"leakyBucket"};
       const field=fieldMap[k];
       if(field){
         const userRef=doc(db,"users",auth.currentUser.uid);
@@ -1830,6 +1830,9 @@ function AppInner(){
   const [listingForm,       setListingForm]       = useState(null); // {itemType,quantity,pricePerUnit}
   // ── Verse selection, saving, sharing ──
   const [selectedVerses,    setSelectedVerses]    = useState(new Set());
+  // Persistent verse highlights — survive saving, navigation, and reloads.
+  // Shape: { "<bookIdx>:<chapIdx>": number[] } (verse indices, sorted).
+  const [verseHighlights,   setVerseHighlights]   = useState({});
   const [savedVerses,       setSavedVerses]       = useState([]);
   const [verseActionBar,    setVerseActionBar]    = useState(false);
   const [savedVersesView,   setSavedVersesView]   = useState(false);
@@ -2110,6 +2113,7 @@ function AppInner(){
       const gp   = await dbLoad("irj-garden") || Array.from({length:12},(_,i)=>({id:i+1,prayerId:null,plantType:null,stage:"empty",plantedAt:null,prayerCount:0}));
       const inv  = await dbLoad("irj-inventory") || {};
       const sv   = await dbLoad("irj-saved-verses") || [];
+      const vhl  = await dbLoad("irj-verse-highlights") || {};
       const bn   = await dbLoad("irj-bible-notes") || [];
       const bnk  = await dbLoad("irj-bank") || {coins:0, diamonds:0};
       const sb   = await dbLoad("irj-sell-basket") || [];
@@ -2151,7 +2155,7 @@ function AppInner(){
       const migratedRoom=rm?migrateRoom(rm,(id,qty)=>{inv[id]=(inv[id]||0)+qty;}):DEFAULT_ROOM;
       if(rm?.bag?.length>0) dbSave("irj-inventory",inv);
       setEntries(ens); setPrayerPosts(mpp); setSavedCards(sc);
-      setCandles(cn); setPrayedFor(pf); setGardenPlots(gp); setInventory(inv); setSavedVerses(sv); setBibleNotes(bn);
+      setCandles(cn); setPrayedFor(pf); setGardenPlots(gp); setInventory(inv); setSavedVerses(sv); setVerseHighlights(vhl); setBibleNotes(bn);
       setBank(bnk); setSellBasket(sb); setFarmPlots(fp); setAnimals(an); setMissions(ms); setIsPremium(!!pm);
       if(pa) setPlayerAppearance(pa);
       if(bh) setBecomingHer(bh);
@@ -2640,10 +2644,35 @@ function AppInner(){
   async function persistSavedVerses(list){
     setSavedVerses(list); await dbSave("irj-saved-verses",list);
   }
+  // ── Persistent highlights (violet) — keyed per book:chapter ──
+  function hlKey(b,c){ return `${b}:${c}`; }
+  async function persistVerseHighlights(map){ setVerseHighlights(map); await dbSave("irj-verse-highlights",map); }
+  function isVerseHighlighted(i){ return (verseHighlights[hlKey(bibleBook,bibleChapter)]||[]).includes(i); }
+  function writeHighlights(indices){
+    const k=hlKey(bibleBook,bibleChapter);
+    const next={...verseHighlights};
+    if(indices.length) next[k]=[...indices].sort((a,b)=>a-b); else delete next[k];
+    persistVerseHighlights(next);
+  }
+  function setVerseHighlight(idx,on){
+    const cur=new Set(verseHighlights[hlKey(bibleBook,bibleChapter)]||[]);
+    if(on) cur.add(idx); else cur.delete(idx);
+    writeHighlights([...cur]);
+  }
+  function removeHighlights(indices){
+    const cur=new Set(verseHighlights[hlKey(bibleBook,bibleChapter)]||[]);
+    indices.forEach(i=>cur.delete(i));
+    writeHighlights([...cur]);
+  }
   function toggleVerseSelection(idx){
+    // The highlight is persistent; tapping toggles it (and the action-bar
+    // selection together). The violet stays after saving — to remove it the
+    // user taps the verse again.
+    const on=!isVerseHighlighted(idx);
+    setVerseHighlight(idx,on);
     setSelectedVerses(prev=>{
       const next=new Set(prev);
-      if(next.has(idx)) next.delete(idx); else next.add(idx);
+      if(on) next.add(idx); else next.delete(idx);
       setVerseActionBar(next.size>0);
       return next;
     });
@@ -8029,7 +8058,7 @@ function AppInner(){
               {bibleView==="reading"&&(
                 <div style={{maxWidth:680,margin:"0 auto",padding:"24px 20px 100px"}}>
                   {bibleData[bibleBook].chapters[bibleChapter].map((verse,i)=>{
-                    const sel=selectedVerses.has(i);
+                    const sel=selectedVerses.has(i)||(verseHighlights[`${bibleBook}:${bibleChapter}`]||[]).includes(i);
                     // strongsReady is read so the verse re-renders once tokens load
                     const tokens=strongsReady>=0?getVerseTokens(bibleBook,bibleChapter,i):null;
                     const ref=`${bibleData[bibleBook].name} ${bibleChapter+1}:${i+1}`;
@@ -8061,7 +8090,7 @@ function AppInner(){
                       <button onClick={saveSelectedVerses} style={{background:"rgba(212,168,64,0.15)",border:"1px solid rgba(212,168,64,0.30)",borderRadius:10,padding:"7px 16px",cursor:"pointer",color:"#D4A840",fontFamily:SANS,fontSize:"0.76rem",fontWeight:600,transition:"all 0.2s",whiteSpace:"nowrap"}}>Save</button>
                       <button onClick={openNoteDrawer} style={{background:"rgba(180,160,210,0.12)",border:"1px solid rgba(180,160,210,0.20)",borderRadius:10,padding:"7px 16px",cursor:"pointer",color:"#D8C8F0",fontFamily:SANS,fontSize:"0.76rem",transition:"all 0.2s",whiteSpace:"nowrap"}}>Note</button>
                       <button onClick={()=>{const v=getSelectedVerseText();setVerseShareOverlay(v);}} style={{background:"rgba(180,160,210,0.12)",border:"1px solid rgba(180,160,210,0.20)",borderRadius:10,padding:"7px 16px",cursor:"pointer",color:"#D8C8F0",fontFamily:SANS,fontSize:"0.76rem",transition:"all 0.2s",whiteSpace:"nowrap"}}>Share</button>
-                      <button onClick={()=>{setSelectedVerses(new Set());setVerseActionBar(false);}} style={{background:"transparent",border:"none",cursor:"pointer",color:"rgba(200,190,230,0.4)",fontFamily:SANS,fontSize:"0.76rem",padding:"7px 8px",transition:"color 0.2s"}}>Clear</button>
+                      <button onClick={()=>{removeHighlights([...selectedVerses]);setSelectedVerses(new Set());setVerseActionBar(false);}} style={{background:"transparent",border:"none",cursor:"pointer",color:"rgba(200,190,230,0.4)",fontFamily:SANS,fontSize:"0.76rem",padding:"7px 8px",transition:"color 0.2s"}}>Unhighlight</button>
                     </div>
                   )}
                 </div>
