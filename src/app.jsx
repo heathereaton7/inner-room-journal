@@ -48,7 +48,7 @@ import WriteBlogScreen from './screens/WriteBlogScreen.jsx';
 import { generateAnonName, makeSearchTokens, GATHERING_SPACES } from './gatherings.js';
 import { ambientPlay, ambientStop, ambientMute, ambientUnmute, ambientIsPlaying, SOUND_LIBRARY, AMBIENT_TRACKS } from './systems/ambientSound.js';
 import { ROOM_THEMES, DEFAULT_ROOM_THEME, ROOM_THEME_KEY, ROOM_THEME_EVENT, getRoomTheme, useRoomTheme, COZY_CREATIONS_FALLBACK, BIBLE_BG_FALLBACK } from './systems/roomThemes.js';
-import { WindowWeather, CandleGlow } from './components/CottageBackground.jsx';
+import { WindowWeather } from './components/CottageBackground.jsx';
 
 
 async function dbLoad(k){
@@ -7883,9 +7883,6 @@ function AppInner(){
           // cozy living-room art). Snow for Christmas to match its snowy scene; rain
           // for the rainy mountain-lake seasons. Clipped to the glass region only.
           const bibleWeather=getRoomTheme(roomTheme).weather==='snow'?'snow':'rain';
-          // Painted light sources in the room art, as fractions of the image
-          // (tuned to the default biblespring.png; christmas/fall share the layout).
-          const ip=bibleImgPt;
           return (
           <div style={{position:"absolute",inset:0,zIndex:20,background:"#0E0B14",display:"flex",flexDirection:"column",overflow:"hidden"}}>
             {/* Cozy living-room art — an <img> (not a CSS bg) so we can measure its
@@ -7897,32 +7894,11 @@ function AppInner(){
               <WindowWeather mode={bibleWeather} absolute zIndex={1}
                 window={{left:`${bibleImgBox.ox+0.58*bibleImgBox.rw}px`,top:`${bibleImgBox.oy+0.08*bibleImgBox.rh}px`,width:`${0.39*bibleImgBox.rw}px`,height:`${0.36*bibleImgBox.rh}px`,radius:"34% 34% 3% 3% / 18% 18% 2% 2%"}}/>
             </>)}
-            {/* Readability scrim over the room art, beneath the flames + verses */}
+            {/* Readability scrim over the room art, beneath the verses */}
             <div style={{position:"absolute",inset:0,zIndex:2,background:"linear-gradient(rgba(10,8,16,0.5),rgba(10,8,16,0.68))",pointerEvents:"none"}}/>
-            {/* Flickering fireplace fire + candle/lamp glows, anchored exactly on the
-               painted flames (screen blend so they glow vividly over the scrim). */}
-            {bibleImgBox&&(()=>{const fire=ip(0.45,0.485),tbl=ip(0.43,0.655),lant=ip(0.08,0.55),lamp=ip(0.91,0.55);
-              // chandelier candle flames + bookshelf lanterns (fx,fy,duration)
-              const chandelier=[[0.60,0.06,4.6],[0.54,0.10,5.4],[0.58,0.13,6.0],[0.69,0.11,5.0]];
-              const shelf=[[0.14,0.19,5.6],[0.09,0.25,6.4]];
-              return(<>
-              {/* Fireplace fire — the largest, warmest, liveliest flicker (two layers) */}
-              <CandleGlow left={`${fire.left}px`} top={`${fire.top}px`} color="rgba(255,176,82,0.95)" size={200} keyframe="cottage-flicker-a" duration={3.4} absolute zIndex={3}/>
-              <CandleGlow left={`${fire.left}px`} top={`${fire.top+6}px`} color="rgba(255,140,48,0.7)" size={120} keyframe="cottage-flicker-b" duration={2.6} absolute zIndex={3}/>
-              {/* Glass candle on the coffee table */}
-              <CandleGlow left={`${tbl.left}px`} top={`${tbl.top}px`} color="rgba(255,200,120,0.95)" size={66} keyframe="cottage-flicker-b" duration={4.8} absolute zIndex={3}/>
-              {/* Chandelier candle flames (top center) */}
-              {chandelier.map(([fx,fy,d],i)=>{const p=ip(fx,fy);return <CandleGlow key={"ch"+i} left={`${p.left}px`} top={`${p.top}px`} color="rgba(255,198,120,0.9)" size={46} keyframe={i%2?"cottage-flicker-a":"cottage-flicker-b"} duration={d} absolute zIndex={3}/>;})}
-              {/* Bookshelf lanterns (upper left) */}
-              {shelf.map(([fx,fy,d],i)=>{const p=ip(fx,fy);return <CandleGlow key={"bs"+i} left={`${p.left}px`} top={`${p.top}px`} color="rgba(255,196,116,0.88)" size={58} keyframe={i%2?"cottage-flicker-b":"cottage-flicker-a"} duration={d} absolute zIndex={3}/>;})}
-              {/* Lower-left lantern */}
-              <CandleGlow left={`${lant.left}px`} top={`${lant.top}px`} color="rgba(255,196,116,0.9)" size={60} keyframe="cottage-flicker-a" duration={4.2} absolute zIndex={3}/>
-              {/* Right table lamp — soft, slow, warm */}
-              <CandleGlow left={`${lamp.left}px`} top={`${lamp.top}px`} color="rgba(255,206,138,0.7)" size={110} keyframe="cottage-flicker-b" duration={9} absolute zIndex={3}/>
-            </>);})()}
-            {/* Reading dim — while reading, drop a darker scrim ABOVE the glowing
-               flames (but beneath the verse text) so the bright lights don't wash
-               out the scripture. Books/chapters views keep the full warm glow. */}
+            {/* Reading dim — while reading, drop a darker scrim over the room art
+               (beneath the verse text) so the background never washes out the
+               scripture. Books/chapters views keep the lighter scrim. */}
             {bibleView==="reading"&&(
               <div style={{position:"absolute",inset:0,zIndex:4,background:"rgba(8,6,14,0.62)",pointerEvents:"none"}}/>
             )}
@@ -8058,7 +8034,7 @@ function AppInner(){
                     const tokens=strongsReady>=0?getVerseTokens(bibleBook,bibleChapter,i):null;
                     const ref=`${bibleData[bibleBook].name} ${bibleChapter+1}:${i+1}`;
                     return(
-                    <p key={i} data-verse-idx={i} className="verse-tap" onClick={()=>toggleVerseSelection(i)} style={{fontFamily:SERIF,fontSize:bibleFontSize,color:sel?"#FFF8E8":"#E8E0F0",lineHeight:1.85,margin:"0 0 4px",padding:"4px 10px 4px 14px",borderRadius:8,cursor:"pointer",background:sel?"rgba(212,168,64,0.12)":"transparent",borderLeft:sel?"3px solid rgba(212,168,64,0.55)":"3px solid transparent",transition:"all 0.2s ease",animation:`verseReveal .35s ${Math.min(i*0.015,1.2)}s ease both`,opacity:0,WebkitTapHighlightColor:"transparent",position:"relative"}}>
+                    <p key={i} data-verse-idx={i} className="verse-tap" onClick={()=>toggleVerseSelection(i)} style={{fontFamily:SERIF,fontSize:bibleFontSize,color:"#E8E0F0",lineHeight:1.85,margin:"0 0 4px",padding:"4px 10px 4px 14px",borderRadius:8,cursor:"pointer",background:sel?"rgba(0,0,0,0.78)":"transparent",borderLeft:sel?"3px solid rgba(0,0,0,0.9)":"3px solid transparent",transition:"all 0.2s ease",animation:`verseReveal .35s ${Math.min(i*0.015,1.2)}s ease both`,opacity:0,WebkitTapHighlightColor:"transparent",position:"relative"}}>
                       <span style={{fontFamily:SANS,fontSize:"0.7em",color:sel?"#F0C24A":"#D4A840",marginRight:8,userSelect:"none",fontWeight:700,verticalAlign:"super",lineHeight:0,letterSpacing:"0.02em",textShadow:"0 1px 3px rgba(0,0,0,0.6)",transition:"color 0.2s"}}>{i+1}</span>
                       <VerseWords tokens={tokens} plain={verse} enabled={wordStudyOn} onWordTap={(w)=>setStudyWord({...w,reference:ref})}/>
                     </p>);
