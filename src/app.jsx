@@ -1588,6 +1588,12 @@ function AppInner(){
   // device/browser back (and forward) arrow steps through the app instead of exiting.
   const historyInitRef = useRef(false);   // first real screen uses replaceState, the rest pushState
   const popInProgressRef = useRef(false); // a screen change caused by back/forward → don't push a new entry
+  // Capture the screen the user was on before a page reload BEFORE any effect runs
+  // (the save effect below fires on the initial "loading" screen and would clear it).
+  const restoreScreenRef = useRef(undefined);
+  if(restoreScreenRef.current===undefined){
+    try{ restoreScreenRef.current=sessionStorage.getItem("irj-current-screen")||""; }catch{ restoreScreenRef.current=""; }
+  }
   const [obStep,        setObStep]        = useState(0);
   const [sceneIdx,      setSceneIdx]      = useState(0);
   const [sceneTransit,  setSceneTransit]  = useState(false);
@@ -2031,6 +2037,18 @@ function AppInner(){
     return ()=>window.removeEventListener("popstate",onPop);
   },[]);
 
+  // ── Refresh-restore: remember the current screen so a page reload returns the
+  // user to where they were instead of dropping them at the welcome screen.
+  // Per-tab (sessionStorage) so a brand-new visit still starts at welcome.
+  // Pre-app and state-dependent screens are not restorable.
+  useEffect(()=>{
+    const noRestore=new Set(["loading","welcome","onboard","profile-onboard","blog-post","write-blog","gathering-post","create-gathering-post"]);
+    try{
+      if(noRestore.has(screen)) sessionStorage.removeItem("irj-current-screen");
+      else sessionStorage.setItem("irj-current-screen",screen);
+    }catch{}
+  },[screen]);
+
   // ── Bible scroll-to-top on chapter/book change ──
   useEffect(()=>{
     if(pendingVerseScrollRef.current!=null) return; // a word-search jump handles its own scroll + highlight
@@ -2201,6 +2219,10 @@ function AppInner(){
       try{
         const path=window.location.pathname.replace(/\/+$/,"");
         if(new URLSearchParams(window.location.search).get("page")==="blog"||path==="/blog") landing="porch";
+        // Refresh-restore: return to the screen we were on before reload (captured
+        // during render, before the save effect could clear it). Already filtered
+        // to restorable screens when it was saved.
+        if(restoreScreenRef.current) landing=restoreScreenRef.current;
       }catch(e){}
       setScreen(landing);
       setCardQ(shuffle(ALL_CARD_QS)[0]);
