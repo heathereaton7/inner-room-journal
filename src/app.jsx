@@ -4266,11 +4266,12 @@ function AppInner(){
             <div style={{width:36,height:4,borderRadius:2,background:"rgba(201,169,110,0.3)"}}/>
           </div>
 
-          {/* ── MAP BUTTON — prominent at top ── */}
+          {/* ── MAP BUTTON — TEMP: World Map hidden — re-add later ──
           <button onClick={()=>{setMenuOpen(false);setScreen("map");setMarketStall(null);setShopStall(null);}} style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,width:"100%",background:"rgba(201,169,110,0.08)",border:"1px solid rgba(201,169,110,0.2)",borderRadius:10,padding:"13px 14px",cursor:"pointer",marginBottom:14,transition:"all 0.2s"}}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,240,200,0.6)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
             <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.82rem",color:B.goldL}}>World Map</span>
           </button>
+          */}
 
           {/* ── OWNER: export mailing list ── */}
           {isBlogOwner(user)&&(

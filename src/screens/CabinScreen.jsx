@@ -384,12 +384,12 @@ export default function CabinScreen({
         <div style={{position:"absolute",left:"30%",top:"38%",width:"40%",height:"28%",borderRadius:"50%",background:"radial-gradient(ellipse at 50% 50%,rgba(255,240,170,0.15) 0%,transparent 55%)",pointerEvents:"none",animation:"hotspotPulse 3.5s ease-in-out infinite",animationDelay:"0.7s"}}/>
       </button>
 
-      {/* 3. NOTEBOOK ON DESK — left side of desk near lantern → world map */}
+      {/* 3. NOTEBOOK ON DESK — TEMP: World Map hidden — re-add later
       <button onClick={()=>transitionToMap()} style={{position:"absolute",left:"8%",top:"76%",width:"20%",height:"12%",zIndex:11,background:"transparent",border:"none",padding:0,cursor:"pointer",borderRadius:"8px",outline:"none",WebkitTapHighlightColor:"transparent"}}>
-        {/* Pulse glow on notebook */}
         <div style={{position:"absolute",left:"15%",top:"5%",width:"70%",height:"90%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,220,120,0.28) 0%,rgba(255,190,80,0.10) 40%,transparent 72%)",pointerEvents:"none",animation:"hotspotPulse 2.6s ease-in-out infinite"}}/>
         <div style={{position:"absolute",left:"25%",top:"15%",width:"50%",height:"70%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,245,180,0.18) 0%,transparent 55%)",pointerEvents:"none",animation:"hotspotPulse 3s ease-in-out infinite",animationDelay:"0.5s"}}/>
       </button>
+      */}
 
       {/* 4. FIREPLACE — stone fireplace on left → ambient sounds */}
       <button onClick={()=>{if(typeof window!=="undefined")window.dispatchEvent(new Event("toggle-fireplace"));}} style={{position:"absolute",left:"0%",top:"22%",width:"18%",height:"32%",zIndex:10,background:"transparent",border:"none",padding:0,cursor:"pointer",borderRadius:"8px",outline:"none",WebkitTapHighlightColor:"transparent"}}>
