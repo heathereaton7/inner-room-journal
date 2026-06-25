@@ -334,6 +334,92 @@ export const WORD_SEARCH_PUZZLES = [
     verseText: 'For he hath made him to be sin for us, who knew no sin; that we might be made the righteousness of God in him.',
     gridSize: 16,
   },
+
+  // ── Heather's Story — Part 1: "I Sold Everything and Ran" ──
+  // Leaving it all behind, healing, a new identity, and finding Jesus.
+  {
+    id: 'ws_story1_new_creature',
+    group: "Heather's Story — Part 1",
+    title: 'All Things New',
+    reference: '2 Corinthians 5:17',
+    verseText: 'Therefore if any man be in Christ, he is a new creature: old things are passed away; behold, all things are become new.',
+    gridSize: 16,
+  },
+  {
+    id: 'ws_story1_new_thing',
+    group: "Heather's Story — Part 1",
+    title: 'A Way in the Wilderness',
+    reference: 'Isaiah 43:19',
+    verseText: 'Behold, I will do a new thing; now it shall spring forth; shall ye not know it? I will even make a way in the wilderness, and rivers in the desert.',
+    gridSize: 16,
+  },
+  {
+    id: 'ws_story1_wonderfully_made',
+    group: "Heather's Story — Part 1",
+    title: 'Fearfully and Wonderfully Made',
+    reference: 'Psalm 139:14',
+    verseText: 'I will praise thee; for I am fearfully and wonderfully made: marvellous are thy works; and that my soul knoweth right well.',
+    gridSize: 16,
+  },
+  {
+    id: 'ws_story1_expected_end',
+    group: "Heather's Story — Part 1",
+    title: 'An Expected End',
+    reference: 'Jeremiah 29:11',
+    verseText: 'For I know the thoughts that I think toward you, saith the Lord, thoughts of peace, and not of evil, to give you an expected end.',
+    gridSize: 16,
+  },
+  {
+    id: 'ws_story1_direct_paths',
+    group: "Heather's Story — Part 1",
+    title: 'He Shall Direct Thy Paths',
+    reference: 'Proverbs 3:6',
+    verseText: 'In all thy ways acknowledge him, and he shall direct thy paths.',
+    gridSize: 13,
+  },
+
+  // ── Heather's Story — Part 2: "Then Everything Fell Apart" ──
+  // When it all broke down, God showed up every time.
+  {
+    id: 'ws_story2_work_together',
+    group: "Heather's Story — Part 2",
+    title: 'All Things Work Together',
+    reference: 'Romans 8:28',
+    verseText: 'And we know that all things work together for good to them that love God, to them who are the called according to his purpose.',
+    gridSize: 16,
+  },
+  {
+    id: 'ws_story2_broken_heart',
+    group: "Heather's Story — Part 2",
+    title: 'Nigh to the Broken Heart',
+    reference: 'Psalm 34:18',
+    verseText: 'The Lord is nigh unto them that are of a broken heart; and saveth such as be of a contrite spirit.',
+    gridSize: 15,
+  },
+  {
+    id: 'ws_story2_healeth_broken',
+    group: "Heather's Story — Part 2",
+    title: 'He Healeth the Broken',
+    reference: 'Psalm 147:3',
+    verseText: 'He healeth the broken in heart, and bindeth up their wounds.',
+    gridSize: 13,
+  },
+  {
+    id: 'ws_story2_miry_clay',
+    group: "Heather's Story — Part 2",
+    title: 'Out of the Miry Clay',
+    reference: 'Psalm 40:2',
+    verseText: 'He brought me up also out of an horrible pit, out of the miry clay, and set my feet upon a rock, and established my goings.',
+    gridSize: 16,
+  },
+  {
+    id: 'ws_story2_grace_sufficient',
+    group: "Heather's Story — Part 2",
+    title: 'My Grace Is Sufficient',
+    reference: '2 Corinthians 12:9',
+    verseText: 'And he said unto me, My grace is sufficient for thee: for my strength is made perfect in weakness.',
+    gridSize: 15,
+  },
 ];
 
 export function getPuzzle(id) {

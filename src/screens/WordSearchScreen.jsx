@@ -134,51 +134,73 @@ function Header({ title, onBack }) {
 
 // ── Hub view ──────────────────────────────────────────────────────────────
 function HubView({ puzzles, progress, onPick }) {
+  // Group puzzles by their optional `group` field. Ungrouped verses fall under
+  // the general "Scripture Library", which always sorts to the bottom so the
+  // themed collections (e.g. the testimony series) sit up top.
+  const order = [];
+  const byGroup = {};
+  for (const pz of puzzles) {
+    const g = pz.group || 'Scripture Library';
+    if (!byGroup[g]) { byGroup[g] = []; order.push(g); }
+    byGroup[g].push(pz);
+  }
+  order.sort((a, b) => (a === 'Scripture Library' ? 1 : 0) - (b === 'Scripture Library' ? 1 : 0));
+
+  const renderCard = (puzzle) => {
+    const p = progress?.[puzzle.id];
+    const totalWords = extractWords(puzzle.verseText).length;
+    const foundCount = p?.foundWords?.length || 0;
+    const completed = !!p?.completedAt;
+    return (
+      <button key={puzzle.id} onClick={() => onPick(puzzle.id)} style={{
+        background: completed ? 'rgba(40,30,20,0.78)' : 'rgba(20,16,12,0.72)',
+        backdropFilter: 'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)',
+        border: `1px solid ${completed ? 'rgba(201,169,110,0.4)' : P.border}`,
+        color: P.ink, padding: '16px 18px', borderRadius: 12,
+        cursor: 'pointer', textAlign: 'left', fontFamily: SANS,
+        boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
+        transition: 'all 0.2s',
+      }}>
+        <div style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: '1rem', color: P.goldL, marginBottom: 2 }}>
+          {puzzle.title}
+        </div>
+        <div style={{ fontSize: '0.7rem', color: P.sub, marginBottom: 8, letterSpacing: '0.06em' }}>
+          {puzzle.reference} · {puzzle.gridSize}×{puzzle.gridSize}
+        </div>
+        <div style={{
+          height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 2, overflow: 'hidden',
+        }}>
+          <div style={{
+            width: `${Math.round((foundCount / totalWords) * 100)}%`,
+            height: '100%',
+            background: completed ? P.gold : 'rgba(201,169,110,0.6)',
+            transition: 'width 0.2s',
+          }} />
+        </div>
+        <div style={{ marginTop: 6, fontSize: '0.7rem', color: completed ? P.gold : P.sub }}>
+          {completed ? 'Verse revealed' : `${foundCount} / ${totalWords} words`}
+        </div>
+      </button>
+    );
+  };
+
   return (
     <main style={{ maxWidth: 720, margin: '0 auto', padding: '32px 22px 80px', position: 'relative', zIndex: 1 }}>
       <p style={{ textAlign: 'center', fontFamily: SERIF, fontStyle: 'italic', color: P.sub, fontSize: '0.95rem', lineHeight: 1.7, margin: '0 0 28px' }}>
         Hide and seek with the Word. Find every word of the verse to reveal the whole.
       </p>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
-        {puzzles.map(puzzle => {
-          const p = progress?.[puzzle.id];
-          const totalWords = extractWords(puzzle.verseText).length;
-          const foundCount = p?.foundWords?.length || 0;
-          const completed = !!p?.completedAt;
-          return (
-            <button key={puzzle.id} onClick={() => onPick(puzzle.id)} style={{
-              background: completed ? 'rgba(40,30,20,0.78)' : 'rgba(20,16,12,0.72)',
-              backdropFilter: 'blur(8px)',
-              WebkitBackdropFilter: 'blur(8px)',
-              border: `1px solid ${completed ? 'rgba(201,169,110,0.4)' : P.border}`,
-              color: P.ink, padding: '16px 18px', borderRadius: 12,
-              cursor: 'pointer', textAlign: 'left', fontFamily: SANS,
-              boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
-              transition: 'all 0.2s',
-            }}>
-              <div style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: '1rem', color: P.goldL, marginBottom: 2 }}>
-                {puzzle.title}
-              </div>
-              <div style={{ fontSize: '0.7rem', color: P.sub, marginBottom: 8, letterSpacing: '0.06em' }}>
-                {puzzle.reference} · {puzzle.gridSize}×{puzzle.gridSize}
-              </div>
-              <div style={{
-                height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 2, overflow: 'hidden',
-              }}>
-                <div style={{
-                  width: `${Math.round((foundCount / totalWords) * 100)}%`,
-                  height: '100%',
-                  background: completed ? P.gold : 'rgba(201,169,110,0.6)',
-                  transition: 'width 0.2s',
-                }} />
-              </div>
-              <div style={{ marginTop: 6, fontSize: '0.7rem', color: completed ? P.gold : P.sub }}>
-                {completed ? 'Verse revealed' : `${foundCount} / ${totalWords} words`}
-              </div>
-            </button>
-          );
-        })}
-      </div>
+      {order.map(g => (
+        <section key={g} style={{ marginBottom: 30 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '0 0 14px' }}>
+            <h2 style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: '1.05rem', color: P.goldL, margin: 0, whiteSpace: 'nowrap' }}>{g}</h2>
+            <span style={{ flex: 1, height: 1, background: 'rgba(201,169,110,0.18)' }} />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
+            {byGroup[g].map(renderCard)}
+          </div>
+        </section>
+      ))}
     </main>
   );
 }
