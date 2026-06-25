@@ -5167,10 +5167,18 @@ function AppInner(){
   /* ══ JOURNAL ══════════════════════════════════════ */
   if(screen==="journal"&&activeRoom){
     const t=th(activeRoom.id),light=t.light;
+    // Story-companion rooms get the same cozy reading-room backdrop as the Bible
+    // (translucent panels float over the warm scene). Seasonal-aware.
+    const storyRoom=activeRoom.id==="story-part-1"||activeRoom.id==="story-part-2";
+    const storyBg=storyRoom?(getRoomTheme(roomTheme).bibleBg||BIBLE_BG_FALLBACK):null;
     return(
-      <div style={{minHeight:"100vh",background:typeof t.bg==="string"&&t.bg.includes("gradient")?t.bg:t.bg,color:light?t.text:t.text,fontFamily:SANS,position:"relative"}}>
+      <div style={{minHeight:"100vh",background:typeof t.bg==="string"&&t.bg.includes("gradient")?t.bg:t.bg,color:light?t.text:t.text,fontFamily:SANS,position:"relative",overflow:"hidden"}}>
         <style>{GFONTS}{CSS}</style>
-        <div style={{position:"absolute",inset:0,background:`radial-gradient(ellipse at 50% 30%,${t.glow} 0%,transparent 65%)`,pointerEvents:"none"}}/>
+        {storyBg&&<>
+          <img src={storyBg} alt="" draggable={false} style={{position:"fixed",inset:0,width:"100%",height:"100%",objectFit:"cover",objectPosition:"center",userSelect:"none",pointerEvents:"none",zIndex:0}}/>
+          <div style={{position:"fixed",inset:0,background:"linear-gradient(rgba(16,11,8,0.55),rgba(16,11,8,0.72))",pointerEvents:"none",zIndex:1}}/>
+        </>}
+        <div style={{position:"absolute",inset:0,background:`radial-gradient(ellipse at 50% 30%,${t.glow} 0%,transparent 65%)`,pointerEvents:"none",zIndex:storyRoom?2:undefined}}/>
         {activeRoom.id==="singleness"&&<Stars/>}
         <RoomGlow id={activeRoom.id}/>
         <header style={{position:"relative",zIndex:10,background:"rgba(0,0,0,0.22)",backdropFilter:"blur(8px)",padding:"0 22px",height:"50px",display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:`1px solid ${t.border}`}}>
