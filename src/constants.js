@@ -83,6 +83,23 @@ export const REFLECTION_ROOMS = [
    days:[{q:"Remove all 'should' — what does your heart actually want?",hint:"Desire isn't dangerous."},{q:"Are you allowing yourself to want this? Why or why not?",hint:"Many have learned to suppress desire."},{q:"Is this desire pointing toward something true?",hint:"Some desires are invitations."},{q:"How might God be involved in this desire?",hint:"Desire and calling are often neighbors."}]},
   {id:"trust",     label:"Trust",     emoji:"🌿",tag:"Reflection", question:"What is God inviting you to trust Him with?",
    days:[{q:"In what area does trust feel hardest right now?",hint:"Trust is hardest where it matters most."},{q:"What has made trust difficult here?",hint:"Understanding the wound helps."},{q:"What would full trust look like — concretely?",hint:"Not a feeling. An actual posture."},{q:"What is one act of trust you could take today?",hint:"Small acts compound into deep faith."}]},
+  /* ── Heather's Story — companion reflections for the video series ── */
+  {id:"story-part-1", label:"Heather's Story — Part 1", emoji:"🌄", tag:"Reflection", question:"What is God asking you to leave behind to follow Him?",
+   days:[
+     {q:"What is something you've been holding onto that God may be asking you to release?",hint:"Possessions, comfort, an old identity — name it plainly."},
+     {q:"Where has your sense of worth been tied to things that can be taken away?",hint:"A relationship, a role, an achievement."},
+     {q:"When have you felt God leading you somewhere unfamiliar — and how did you respond?",hint:"Following Him often feels like running before it feels like peace."},
+     {q:"What old belief about yourself is God rewriting in this season?",hint:"The lie you've believed vs. the truth He speaks over you."},
+     {q:"What would it look like to become a little more like Jesus this week?",hint:"One concrete way — not someday, but now."},
+   ]},
+  {id:"story-part-2", label:"Heather's Story — Part 2", emoji:"🕊️", tag:"Reflection", question:"When everything falls apart, where do you find God?",
+   days:[
+     {q:"What part of your life feels like it's falling apart right now?",hint:"Say it plainly — this is a safe place."},
+     {q:"Where have you seen God show up, even in the middle of the breaking?",hint:"Look for the small mercies you almost missed."},
+     {q:"What 'wrong turn' are you tempted to define yourself by?",hint:"A choice, a season, a relationship — He isn't finished with you."},
+     {q:"How do you hold onto faith when the hard thing doesn't go away?",hint:"Faith isn't the absence of pain."},
+     {q:"What would it look like to trust that God is still writing your story?",hint:"The breakdown is not the final chapter."},
+   ]},
 ];
 
 export const COMMUNITY_ROOMS = [
