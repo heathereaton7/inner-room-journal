@@ -47,7 +47,7 @@ import BlogPostScreen from './screens/BlogPostScreen.jsx';
 import WriteBlogScreen from './screens/WriteBlogScreen.jsx';
 import { generateAnonName, makeSearchTokens, GATHERING_SPACES } from './gatherings.js';
 import { ambientPlay, ambientStop, ambientMute, ambientUnmute, ambientIsPlaying, SOUND_LIBRARY, AMBIENT_TRACKS } from './systems/ambientSound.js';
-import { ROOM_THEMES, DEFAULT_ROOM_THEME, ROOM_THEME_KEY, ROOM_THEME_EVENT, getRoomTheme, useRoomTheme, COZY_CREATIONS_FALLBACK, BIBLE_BG_FALLBACK } from './systems/roomThemes.js';
+import { ROOM_THEMES, DEFAULT_ROOM_THEME, ROOM_THEME_KEY, ROOM_THEME_EVENT, getRoomTheme, useRoomTheme, COZY_CREATIONS_FALLBACK, BIBLE_BG_FALLBACK, CAMP_OUT_FALLBACK } from './systems/roomThemes.js';
 import { WindowWeather } from './components/CottageBackground.jsx';
 
 
@@ -1848,6 +1848,7 @@ function AppInner(){
   const [noteDraft,         setNoteDraft]         = useState("");
   const [bibleNotesView,    setBibleNotesView]    = useState(false); // "all notes" overlay (in-Bible)
   const [verseShareOverlay, setVerseShareOverlay] = useState(null);
+  const [campVerse,         setCampVerse]         = useState(null); // expanded verse in the Camping Out room
   const [verseTheme,        setVerseTheme]        = useState(VERSE_THEMES[0]);
   const [verseRatio,        setVerseRatio]        = useState(CARD_RATIOS[0]);
   const [verseCopied,       setVerseCopied]       = useState(false);
@@ -3886,6 +3887,10 @@ function AppInner(){
   function transitionToPorch(){
     setSpaceTransit(true); setTransitDir("toRoom");
     setTimeout(()=>{setScreen("porch");setSpaceTransit(false);setTransitDir(null);},700);
+  }
+  function transitionToCampOut(){
+    setSpaceTransit(true); setTransitDir("toRoom");
+    setTimeout(()=>{setScreen("camp-out");setSpaceTransit(false);setTransitDir(null);},700);
   }
   function transitionToRooftop(){
     setSpaceTransit(true); setTransitDir("toRooftop");
@@ -7008,6 +7013,87 @@ function AppInner(){
 
   /* ══ MARKET — Placeholder ═══════════════════════ */
   /* ══ KITCHEN — Immersive downstairs kitchen with stove ══════════════ */
+  /* ══ CAMPING OUT — cozy outdoor room of saved verses to dwell on ══ */
+  if(screen==="camp-out"){
+    const campBg=getRoomTheme(roomTheme).campOut||CAMP_OUT_FALLBACK;
+    // Deterministic jitter so each verse keeps the same scattered spot/tilt.
+    const jit=(id,salt,range)=>{
+      let h=salt;
+      const s=String(id);
+      for(let k=0;k<s.length;k++) h=(h*31+s.charCodeAt(k))>>>0;
+      return ((h%1000)/1000-0.5)*2*range; // -range..+range
+    };
+    const rows=Math.ceil(savedVerses.length/2);
+    const innerH=Math.max(rows*172+200,520);
+    return(
+      <div style={{position:"fixed",inset:0,overflow:"hidden",fontFamily:SANS,background:"#0B1014"}}>
+        <style>{GFONTS}{CSS}</style>
+        {/* Cozy outdoor base — warm dusk sky fading to a campfire glow. The
+           painted scene (when added at /campout.png) covers this gradient. */}
+        <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,#14203a 0%,#1d2742 30%,#33304a 58%,#4a3a3a 80%,#5a3a2a 100%)"}}/>
+        <img src={campBg} alt="" draggable={false}
+          onError={e=>{e.currentTarget.style.display="none";}}
+          style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",objectPosition:"center",userSelect:"none",WebkitUserDrag:"none",pointerEvents:"none"}}/>
+        {/* Warm campfire glow at the base of the scene */}
+        <div style={{position:"absolute",left:0,right:0,bottom:0,height:"42%",pointerEvents:"none",background:"radial-gradient(ellipse at 50% 120%, rgba(255,150,60,0.30) 0%, rgba(255,110,40,0.12) 38%, transparent 70%)"}}/>
+        {/* Readability scrim */}
+        <div style={{position:"absolute",inset:0,pointerEvents:"none",background:"linear-gradient(rgba(8,10,18,0.30),rgba(8,10,18,0.42))"}}/>
+        <Fireflies/>
+        {/* Back to the Upper Room */}
+        <button onClick={()=>{setUpperRoomView(null);setBibleView(null);setScreen("upper-room");}} style={{position:"absolute",top:28,left:22,zIndex:15,background:"rgba(10,12,20,0.50)",backdropFilter:"blur(14px)",WebkitBackdropFilter:"blur(14px)",border:"1px solid rgba(201,169,110,0.14)",borderRadius:999,padding:"8px 20px",cursor:"pointer",color:"rgba(255,248,232,0.65)",fontFamily:SANS,fontSize:"0.78rem",display:"inline-flex",alignItems:"center",gap:6}}>
+          <span style={{fontSize:"0.7rem"}}>&#8592;</span> Upper Room
+        </button>
+        {/* Title */}
+        <div style={{position:"absolute",top:30,left:0,right:0,textAlign:"center",zIndex:14,pointerEvents:"none"}}>
+          <div style={{fontFamily:DISPLAY,fontSize:"1.05rem",fontWeight:700,color:"rgba(255,240,210,0.78)",textShadow:"0 2px 12px rgba(0,0,0,0.7)",letterSpacing:"0.03em"}}>Camping Out</div>
+          <div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.74rem",color:"rgba(255,240,210,0.45)",marginTop:2}}>Verses to rest and dwell on</div>
+        </div>
+        {/* Scattered verse cards */}
+        <div style={{position:"absolute",inset:0,top:78,overflowY:"auto",WebkitOverflowScrolling:"touch",zIndex:12}}>
+          {savedVerses.length===0?(
+            <div style={{textAlign:"center",marginTop:120,padding:"0 30px",pointerEvents:"none"}}>
+              <p style={{fontFamily:SERIF,fontStyle:"italic",color:"rgba(255,240,220,0.55)",fontSize:"1.02rem",lineHeight:1.6}}>No verses to camp on yet</p>
+              <p style={{fontFamily:SANS,fontSize:"0.78rem",color:"rgba(255,240,220,0.35)",marginTop:10,lineHeight:1.6}}>While reading Scripture, tap verses to select them and save. Saved verses appear here to rest and dwell on.</p>
+            </div>
+          ):(
+            <div style={{position:"relative",height:innerH,maxWidth:680,margin:"0 auto"}}>
+              {savedVerses.map((v,i)=>{
+                const col=i%2;
+                const row=Math.floor(i/2);
+                const left=(col===0?5:51)+jit(v.id,7,2.5);
+                const top=14+row*168+jit(v.id,19,10);
+                const rot=jit(v.id,3,3.4);
+                return(
+                  <div key={v.id} onClick={()=>setCampVerse(v)}
+                    style={{position:"absolute",left:`${left}%`,top:`${top}px`,width:"44%",transform:`rotate(${rot}deg)`,background:"linear-gradient(180deg,rgba(40,30,22,0.82),rgba(28,22,16,0.82))",backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",border:"1px solid rgba(201,169,110,0.28)",borderRadius:12,padding:"13px 13px 11px",boxShadow:"0 10px 26px rgba(0,0,0,0.45)",cursor:"pointer"}}>
+                    <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.82rem",color:"rgba(255,244,226,0.82)",lineHeight:1.55,margin:"0 0 7px"}}>"{v.text.length>110?v.text.slice(0,110)+"…":v.text}"</p>
+                    <p style={{fontFamily:SANS,fontSize:"0.66rem",color:"rgba(212,168,64,0.78)",margin:0}}>— {v.ref}</p>
+                    <button onClick={e=>{e.stopPropagation();deleteSavedVerse(v.id);}} aria-label="Remove verse" style={{position:"absolute",top:6,right:6,width:22,height:22,borderRadius:"50%",background:"rgba(10,8,6,0.45)",border:"1px solid rgba(201,169,110,0.20)",color:"rgba(255,230,200,0.55)",fontSize:"0.78rem",lineHeight:1,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>×</button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+        {/* Expanded verse — sit with the full passage */}
+        {campVerse&&(
+          <div onClick={()=>setCampVerse(null)} style={{position:"fixed",inset:0,zIndex:9990,background:"rgba(8,8,14,0.80)",backdropFilter:"blur(10px)",WebkitBackdropFilter:"blur(10px)",display:"flex",alignItems:"center",justifyContent:"center",padding:26,animation:"overlayFadeIn .22s ease both"}}>
+            <div onClick={e=>e.stopPropagation()} style={{maxWidth:460,width:"100%",maxHeight:"80%",overflowY:"auto",WebkitOverflowScrolling:"touch",background:"linear-gradient(180deg,rgba(42,32,24,0.97),rgba(26,20,14,0.97))",border:"1px solid rgba(201,169,110,0.30)",borderRadius:18,padding:"26px 24px",boxShadow:"0 24px 60px rgba(0,0,0,0.6)"}}>
+              <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"1.06rem",color:"rgba(255,246,230,0.88)",lineHeight:1.78,margin:"0 0 16px"}}>"{campVerse.text}"</p>
+              <p style={{fontFamily:SANS,fontSize:"0.82rem",color:"rgba(212,168,64,0.82)",margin:"0 0 20px"}}>— {campVerse.ref}</p>
+              <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"center"}}>
+                <button onClick={()=>{setBibleBook(campVerse.bookIdx);setBibleChapter(campVerse.chapIdx);setBibleView("reading");setUpperRoomView("scriptures");setCampVerse(null);setScreen("upper-room");}} style={{background:"rgba(201,169,110,0.12)",border:"1px solid rgba(201,169,110,0.28)",borderRadius:10,padding:"8px 18px",cursor:"pointer",color:"#E8D4A0",fontFamily:SANS,fontSize:"0.78rem",fontWeight:600}}>Read in context</button>
+                <button onClick={()=>setCampVerse(null)} style={{marginLeft:"auto",background:"transparent",border:"none",cursor:"pointer",color:"rgba(255,240,210,0.45)",fontFamily:SANS,fontSize:"0.78rem"}}>Close</button>
+              </div>
+            </div>
+          </div>
+        )}
+        {spaceTransit&&<div style={{position:"fixed",inset:0,zIndex:9999,background:"#0B1014",animation:"spaceFadeIn .6s ease both",pointerEvents:"all"}}/>}
+        <BottomMenuDrawer/>
+      </div>
+    );
+  }
+
   /* ══ COZY CREATIONS ROOM — seasonal art studio (off the cabin hall) ══ */
   if(screen==="cozy-creations"){
     return(
@@ -7774,14 +7860,17 @@ function AppInner(){
                   </div>
                 </button>
               </div>
-              {/* Saved Verses shortcut */}
-              {savedVerses.length>0&&(
-                <div style={{textAlign:"center",marginTop:16,animation:"fadeUp .35s .15s ease both",opacity:0}}>
-                  <button onClick={()=>setSavedVersesView(true)} style={{background:"rgba(212,168,64,0.08)",border:"1px solid rgba(212,168,64,0.18)",borderRadius:20,padding:"10px 28px",cursor:"pointer",color:"rgba(212,168,64,0.7)",fontFamily:SANS,fontSize:"0.82rem",transition:"all 0.3s"}}>
-                    Saved Verses ({savedVerses.length})
+              {/* Camp Out — cozy outdoor room of saved verses to dwell on */}
+              <div style={{textAlign:"center",marginTop:16,display:"flex",gap:10,justifyContent:"center",flexWrap:"wrap",animation:"fadeUp .35s .15s ease both",opacity:0}}>
+                <button onClick={()=>transitionToCampOut()} style={{background:"rgba(201,169,110,0.10)",border:"1px solid rgba(201,169,110,0.22)",borderRadius:20,padding:"10px 28px",cursor:"pointer",color:"rgba(212,168,64,0.78)",fontFamily:SANS,fontSize:"0.82rem",transition:"all 0.3s"}}>
+                  Camp Out{savedVerses.length>0?` (${savedVerses.length})`:""}
+                </button>
+                {savedVerses.length>0&&(
+                  <button onClick={()=>setSavedVersesView(true)} style={{background:"rgba(212,168,64,0.06)",border:"1px solid rgba(212,168,64,0.14)",borderRadius:20,padding:"10px 22px",cursor:"pointer",color:"rgba(212,168,64,0.55)",fontFamily:SANS,fontSize:"0.78rem",transition:"all 0.3s"}}>
+                    List view
                   </button>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
         )}
@@ -7960,6 +8049,10 @@ function AppInner(){
               <span style={{fontFamily:SERIF,fontStyle:"italic",color:"#D8C8F0",fontSize:"0.92rem",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
                 {bibleView==="reading"?`${bibleData[bibleBook].name} ${bibleChapter+1}`:bibleView==="chapters"?bibleData[bibleBook].name:"Scripture"}
               </span>
+              {/* Camp Out — the cozy outdoor room of saved verses to dwell on */}
+              <button onClick={()=>setScreen("camp-out")} title="Camp out on your saved verses" style={{background:"rgba(201,169,110,0.10)",border:"1px solid rgba(201,169,110,0.22)",borderRadius:8,padding:"6px 12px",cursor:"pointer",color:"#C9A96E",fontFamily:SANS,fontSize:"0.72rem",fontWeight:600,whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:5,flexShrink:0}}>
+                Camp Out{savedVerses.length>0?` (${savedVerses.length})`:""}
+              </button>
               {/* All notes — view every reflection saved while reading */}
               <button onClick={()=>setBibleNotesView(true)} title="View all your Bible notes" style={{background:"rgba(212,168,64,0.10)",border:"1px solid rgba(212,168,64,0.22)",borderRadius:8,padding:"6px 12px",cursor:"pointer",color:"#D4A840",fontFamily:SANS,fontSize:"0.72rem",fontWeight:600,whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:5,flexShrink:0}}>
                 Notes{bibleNotes.length>0?` (${bibleNotes.length})`:""}
@@ -8373,7 +8466,7 @@ function AppInner(){
   /* ── Global menu bar — renders the sound menu on EVERY screen.
        Skip screens that already render their own BottomMenuDrawer (avoid
        duplicates) and the initial setup/welcome screens. ── */
-  const __menuHasOwn = new Set(["cabin","journal","jesus","cards","hall","community","insights","map2","visit-farm","garden","shop","history","kitchen","stove","kitchen-window","market","upper-room","cozy-creations"]);
+  const __menuHasOwn = new Set(["cabin","journal","jesus","cards","hall","community","insights","map2","visit-farm","garden","shop","history","kitchen","stove","kitchen-window","market","upper-room","cozy-creations","camp-out"]);
   const __menuHidden = new Set(["loading","welcome","onboard","profile-onboard","blog-post","write-blog"]);
   /* ── Global profile / sign-out panel — the menu's "Profile" button sets
        windowPanel="profile" on every screen, but only CabinScreen renders the

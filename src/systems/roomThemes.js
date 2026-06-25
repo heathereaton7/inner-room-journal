@@ -129,6 +129,11 @@ export const COZY_CREATIONS_FALLBACK = '/cozyart.png';
 // room has rain on the glass, so it suits the default Rainy Cottage too.
 export const BIBLE_BG_FALLBACK = '/biblespring.png';
 
+// Default "Camping Out" outdoor scene — a cozy place to pin saved verses and
+// "camp out" on them. Falls back to this when the active season has no
+// `campOut` override (art provided later; a warm gradient shows until then).
+export const CAMP_OUT_FALLBACK = '/campout.png';
+
 // Default cabin LANDING image (the cozy "Inner Room" reading nook) when the
 // active season has no `landing` override. Seasons each point at their own
 // painted nook; this rainy-spring nook is the all-weather default.
