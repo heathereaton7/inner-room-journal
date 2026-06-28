@@ -1588,6 +1588,10 @@ function AppInner(){
   // device/browser back (and forward) arrow steps through the app instead of exiting.
   const historyInitRef = useRef(false);   // first real screen uses replaceState, the rest pushState
   const popInProgressRef = useRef(false); // a screen change caused by back/forward → don't push a new entry
+  // Live mirrors of the current screen + cabin chooser, read inside the (once-registered)
+  // popstate listener so backing out of the cabin can be redirected to the account page.
+  const screenRef = useRef("loading");
+  const cabinChooserRef = useRef(false);
   // Capture the screen the user was on before a page reload BEFORE any effect runs
   // (the save effect below fires on the initial "loading" screen and would clear it).
   const restoreScreenRef = useRef(undefined);
@@ -2042,6 +2046,9 @@ function AppInner(){
     cabinChooser:  screen==="cabin"?cabinChooserOpen:false,
   };
   const navKey=`${navSnapshot.screen}|${navSnapshot.upperRoomView}|${navSnapshot.bibleView}|${navSnapshot.cabinChooser}`;
+  // Keep live mirrors current for the popstate listener (registered once, below).
+  useEffect(()=>{screenRef.current=screen;},[screen]);
+  useEffect(()=>{cabinChooserRef.current=cabinChooserOpen;},[cabinChooserOpen]);
   useEffect(()=>{
     if(screen==="loading") return;            // don't track the splash
     if(popInProgressRef.current){              // this change came from back/forward — already in sync
@@ -2052,7 +2059,16 @@ function AppInner(){
       const state={irjScreen:screen,nav:navSnapshot};
       if(!historyInitRef.current){
         historyInitRef.current=true;
-        window.history.replaceState(state,"");
+        if(screen==="cabin"){
+          // First screen is the cabin (returning user / refresh) → seed an account
+          // page beneath it so the back button has somewhere to land (log out /
+          // switch account) instead of exiting the app.
+          const acct={irjScreen:"account",nav:{screen:"account",upperRoomView:null,bibleView:null,cabinChooser:false}};
+          window.history.replaceState(acct,"");
+          window.history.pushState(state,"");
+        }else{
+          window.history.replaceState(state,"");
+        }
       }else{
         window.history.pushState(state,"");
       }
@@ -2061,6 +2077,14 @@ function AppInner(){
   useEffect(()=>{
     const onPop=(e)=>{
       const st=e.state||{};
+      // Backing out of the cabin (the app's home) → the account page (log out /
+      // log in another account), never the world map or wherever it was entered from.
+      if(screenRef.current==="cabin" && !cabinChooserRef.current && (!st.nav || st.nav.screen!=="cabin")){
+        popInProgressRef.current=true;
+        setCabinChooserOpen(false);
+        setScreen("account");
+        return;
+      }
       if(st.nav){
         // Restore the full in-app page (batched into one render by React 18).
         popInProgressRef.current=true;
@@ -4822,6 +4846,50 @@ function AppInner(){
         {/* Enter phase: warm golden light flooding from the opening door */}
         {doorPhase==="enter"&&<div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse at 50% 35%, rgba(255,240,200,0.98) 0%, rgba(245,228,195,0.96) 60%, rgba(240,220,180,0.94) 100%)",animation:"doorEnterFade 0.6s ease-in forwards"}}/>}
       </div>}
+    </div>
+  );
+
+  /* ══ ACCOUNT — back-from-cabin landing (log out / switch account) ══ */
+  if(screen==="account") return(
+    <div style={{position:"fixed",inset:0,overflow:"hidden",background:"#0A0806",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-end"}}>
+      <style>{GFONTS}{CSS}</style>
+      {/* Warm door backdrop, matching the sign-in gate */}
+      <img src="/door.webp" alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",objectPosition:"center center",filter:"brightness(0.78)",animation:"sceneFadeIn 0.9s ease both"}}/>
+      <div style={{position:"absolute",top:"28%",left:"30%",width:"80px",height:"80px",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,180,60,0.25) 0%,transparent 70%)",animation:"candleGlowPulse 3.5s ease-in-out infinite",pointerEvents:"none"}}/>
+      <div style={{position:"absolute",top:"28%",right:"30%",width:"80px",height:"80px",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,180,60,0.25) 0%,transparent 70%)",animation:"candleGlowPulse 3.5s 0.8s ease-in-out infinite",pointerEvents:"none"}}/>
+      <div style={{position:"absolute",inset:0,background:"linear-gradient(to bottom,transparent 0%,transparent 30%,rgba(10,8,6,0.5) 58%,rgba(10,8,6,0.92) 84%,rgba(10,8,6,0.98) 100%)"}}/>
+
+      <div className="fu" style={{position:"relative",zIndex:3,display:"flex",flexDirection:"column",alignItems:"center",padding:"0 28px 52px",maxWidth:"380px",width:"100%"}}>
+        <div style={{display:"flex",alignItems:"center",gap:"10px",marginBottom:"14px"}}>
+          <div style={{width:"32px",height:"1px",background:"linear-gradient(90deg,transparent,rgba(201,169,110,0.4))"}}/>
+          <div style={{width:"4px",height:"4px",borderRadius:"50%",background:"rgba(201,169,110,0.35)"}}/>
+          <div style={{width:"32px",height:"1px",background:"linear-gradient(90deg,rgba(201,169,110,0.4),transparent)"}}/>
+        </div>
+        <h1 style={{fontFamily:DISPLAY,fontSize:"clamp(1.5rem,6vw,2.1rem)",fontWeight:700,color:"#FFF8E8",margin:"0 0 6px",textAlign:"center",textShadow:"0 2px 24px rgba(0,0,0,0.8)",letterSpacing:"0.03em"}}>
+          Your Account
+        </h1>
+        {user?(
+          <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.82rem,2.8vw,0.95rem)",color:"rgba(255,248,232,0.55)",margin:"0 0 26px",textAlign:"center",lineHeight:1.6}}>
+            Signed in as {user.displayName||"friend"}{user.email?<><br/><span style={{fontFamily:SANS,fontStyle:"normal",fontSize:"0.74rem",color:"rgba(255,248,232,0.4)"}}>{user.email}</span></>:null}
+          </p>
+        ):(
+          <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.82rem,2.8vw,0.95rem)",color:"rgba(255,248,232,0.5)",margin:"0 0 26px",textAlign:"center",lineHeight:1.6}}>
+            You're signed out.
+          </p>
+        )}
+
+        <button onClick={()=>setScreen("cabin")} className="door-btn" style={{width:"100%",maxWidth:"320px",background:"linear-gradient(135deg,rgba(201,169,110,0.22),rgba(201,169,110,0.06))",backdropFilter:"blur(10px)",WebkitBackdropFilter:"blur(10px)",border:"1px solid rgba(201,169,110,0.45)",color:"#FFF8E8",padding:"15px 0",borderRadius:"16px",cursor:"pointer",fontSize:"0.9rem",fontFamily:SERIF,fontWeight:600,letterSpacing:"0.06em",fontStyle:"italic",marginBottom:"12px",boxShadow:"0 4px 24px rgba(0,0,0,0.3)"}}>
+          Return to the cabin
+        </button>
+
+        <button onClick={async()=>{ if(auth){try{await signOut(auth);}catch{}} setUser(null); setSyncStatus(null); fadeOutAmbient(); setAuthMode("choose"); setAuthError(""); setOnboardStep(0); setScreen("profile-onboard"); }} style={{width:"100%",maxWidth:"320px",background:"transparent",border:"1px solid rgba(255,248,232,0.18)",borderRadius:"16px",padding:"14px 0",cursor:"pointer",color:"rgba(255,248,232,0.7)",fontFamily:SERIF,fontStyle:"italic",fontSize:"0.86rem",letterSpacing:"0.05em",marginBottom:"12px"}}>
+          Log in another account
+        </button>
+
+        <button onClick={()=>handleSignOut()} style={{width:"100%",maxWidth:"320px",background:"transparent",border:"1px solid rgba(220,120,120,0.3)",borderRadius:"16px",padding:"14px 0",cursor:"pointer",color:"rgba(220,150,150,0.85)",fontFamily:SERIF,fontStyle:"italic",fontSize:"0.86rem",letterSpacing:"0.05em"}}>
+          Log out
+        </button>
+      </div>
     </div>
   );
 
@@ -8557,7 +8625,7 @@ function AppInner(){
        Skip screens that already render their own BottomMenuDrawer (avoid
        duplicates) and the initial setup/welcome screens. ── */
   const __menuHasOwn = new Set(["cabin","journal","jesus","cards","hall","community","insights","map2","visit-farm","garden","shop","history","kitchen","stove","kitchen-window","market","upper-room","cozy-creations","camp-out"]);
-  const __menuHidden = new Set(["loading","welcome","onboard","profile-onboard","blog-post","write-blog"]);
+  const __menuHidden = new Set(["loading","welcome","onboard","profile-onboard","account","blog-post","write-blog"]);
   /* ── Global profile / sign-out panel — the menu's "Profile" button sets
        windowPanel="profile" on every screen, but only CabinScreen renders the
        panel. Render it globally (except on the cabin, which has its own) so the
