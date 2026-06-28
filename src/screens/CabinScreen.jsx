@@ -11,7 +11,7 @@ import { moveItem, removeFromRoom, placeItem } from '../roomDecor.js';
 
 export default function CabinScreen({
   spaceTransit, transitDir, transitionToMap, transitionToKitchen, transitionToRooftop, transitionToJournal, transitionToCozyCreations, transitionToPorch, openScripture,
-  reopenBookChooser,
+  bookChooser, setBookChooser,
   cabinMode, cabin3DReady, debugHotspots, debugTripleTap,
   bookOpen, setBookOpen, deskBook, setDeskBook, shelfAnim, bookPage, flipDir, bookText, setBookText,
   bookSaveMsg, setBookSaveMsg, journalSection, setJournalSection, journalZoom,
@@ -51,9 +51,8 @@ export default function CabinScreen({
   // Desk-book chooser: tapping the book on the desk opens a swipeable picker of
   // books. Slide 0 = Journals (the Inner Room journal); slide 1 = Meditations
   // (a cover you'll design in Canva → /meditations-cover.png, with Psalm 1:2).
-  const [bookChooser, setBookChooser] = useState(false);
-  // Reopen the chooser when returning from the Bible reader (parent bumps the signal).
-  useEffect(()=>{ if(reopenBookChooser){ setBookChooser(true); } },[reopenBookChooser]);
+  // bookChooser ("Your Books") state now lives in the parent (AppInner) so the
+  // device back button can step out of it. It arrives via props.
   const [chooserIdx, setChooserIdx] = useState(0); // 0 = Journals, 1 = Meditations
   const [medOpen, setMedOpen] = useState(false);   // Meditations cover + verse view
   // Journals shelf: tapping the "Journals" book opens a "Your Books"-style grid of

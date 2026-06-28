@@ -1699,12 +1699,18 @@ function AppInner(){
   const [menuRoomOpen,   setMenuRoomOpen]   = useState(false); // room-style section expanded in drawer
   const [roomTheme,      setRoomTheme]      = useState(()=>{ try{return JSON.parse(localStorage.getItem(ROOM_THEME_KEY))||DEFAULT_ROOM_THEME;}catch{return DEFAULT_ROOM_THEME;} }); // selected activity-room backdrop
 
+  // ── Cabin "Your Books" chooser — lifted here (was local to CabinScreen) so the
+  // device back button can step out of it instead of leaving the cabin entirely. ──
+  const [cabinChooserOpen, setCabinChooserOpen] = useState(false);
   // ── Bible reader (Upper Room) ──
   const [bibleView,     setBibleView]     = useState(null);   // null|"books"|"chapters"|"reading"
   const bibleFromCabinRef = useRef(false); // opened from the cabin book chooser → back returns there
-  const [reopenBookChooser, setReopenBookChooser] = useState(0); // bumped to reopen the cabin's book chooser
   const [bibleBook,     setBibleBook]     = useState(0);
   const [bibleChapter,  setBibleChapter]  = useState(0);
+  // ── Bible tabs — keep several passages open at once (preachers bounce around).
+  // Each tab is {book,chapter}; the active tab mirrors bibleBook/bibleChapter. ──
+  const [bibleTabs,      setBibleTabs]      = useState(()=>{try{const v=JSON.parse(localStorage.getItem("irj-bible-tabs"));return Array.isArray(v)?v:[];}catch{return [];}});
+  const [bibleActiveTab, setBibleActiveTab] = useState(()=>{try{return parseInt(localStorage.getItem("irj-bible-activetab"))||0;}catch{return 0;}});
   const [bibleFontSize, setBibleFontSize] = useState(()=>{try{return parseInt(localStorage.getItem("irj-bible-fontsize"))||18;}catch{return 18;}});
   const [bibleLoading,  setBibleLoading]  = useState(false);
   const [bibleSearch,   setBibleSearch]   = useState("");
@@ -2002,17 +2008,40 @@ function AppInner(){
     setScreen("upper-room");
   },[loadBible,screen]);
 
+  // ── Bible tabs persistence ──
+  useEffect(()=>{try{localStorage.setItem("irj-bible-tabs",JSON.stringify(bibleTabs));}catch{}},[bibleTabs]);
+  useEffect(()=>{try{localStorage.setItem("irj-bible-activetab",String(bibleActiveTab));}catch{}},[bibleActiveTab]);
+  // Keep the active tab's passage in sync with what's being read. Opening a chapter
+  // (from the grid, search, daily verse, prev/next, …) folds it into the active tab,
+  // like a browser tab navigating to a new page. New passages get a tab via "+".
+  useEffect(()=>{
+    if(bibleView!=="reading") return;
+    setBibleTabs(tabs=>{
+      if(tabs.length===0) return [{book:bibleBook,chapter:bibleChapter}];
+      const i=Math.min(bibleActiveTab,tabs.length-1);
+      const cur=tabs[i];
+      if(cur&&cur.book===bibleBook&&cur.chapter===bibleChapter) return tabs;
+      const next=tabs.slice(); next[i]={book:bibleBook,chapter:bibleChapter}; return next;
+    });
+  },[bibleView,bibleBook,bibleChapter]); // eslint-disable-line react-hooks/exhaustive-deps
   // ── Bible font size persistence ──
   useEffect(()=>{localStorage.setItem("irj-bible-fontsize",String(bibleFontSize));},[bibleFontSize]);
   useEffect(()=>{try{localStorage.setItem("irj-word-study",wordStudyOn?"1":"0");}catch{}},[wordStudyOn]);
   // Closing the study panel also clears any partial verse selection that the tap began
   useEffect(()=>{if(!wordStudyOn)setStudyWord(null);},[wordStudyOn]);
 
-  // ── Browser/device back button → go to the previous screen, not exit ──
-  // Every screen change records the screen in a history entry. When the back (or
-  // forward) arrow fires popstate we read the screen from that entry and restore
-  // it, so navigation stays inside the app. Only from the first screen does back
-  // leave the app, which is the normal expectation.
+  // ── Browser/device back button → step back one in-app page, not exit ──
+  // We record a composite "navigation snapshot" (screen + the Bible reader's
+  // sub-view + the cabin "Your Books" chooser) in each history entry. The device
+  // back/forward arrow then walks these pages one at a time — reading → chapters
+  // → books → Your Books → cabin — instead of leaving the whole reader at once.
+  const navSnapshot={
+    screen,
+    upperRoomView: screen==="upper-room"?upperRoomView:null,
+    bibleView:     screen==="upper-room"?bibleView:null,
+    cabinChooser:  screen==="cabin"?cabinChooserOpen:false,
+  };
+  const navKey=`${navSnapshot.screen}|${navSnapshot.upperRoomView}|${navSnapshot.bibleView}|${navSnapshot.cabinChooser}`;
   useEffect(()=>{
     if(screen==="loading") return;            // don't track the splash
     if(popInProgressRef.current){              // this change came from back/forward — already in sync
@@ -2020,19 +2049,30 @@ function AppInner(){
       return;
     }
     try{
+      const state={irjScreen:screen,nav:navSnapshot};
       if(!historyInitRef.current){
         historyInitRef.current=true;
-        window.history.replaceState({irjScreen:screen},"");
+        window.history.replaceState(state,"");
       }else{
-        window.history.pushState({irjScreen:screen},"");
+        window.history.pushState(state,"");
       }
     }catch{}
-  },[screen]);
+  },[navKey]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(()=>{
     const onPop=(e)=>{
-      const s=e.state&&e.state.irjScreen;
-      if(s){ popInProgressRef.current=true; setScreen(s); }
-      // No app screen on this entry (we're past the root) → let the browser exit.
+      const st=e.state||{};
+      if(st.nav){
+        // Restore the full in-app page (batched into one render by React 18).
+        popInProgressRef.current=true;
+        setScreen(st.nav.screen);
+        setUpperRoomView(st.nav.upperRoomView??null);
+        setBibleView(st.nav.bibleView??null);
+        setCabinChooserOpen(!!st.nav.cabinChooser);
+      }else if(st.irjScreen){
+        popInProgressRef.current=true;
+        setScreen(st.irjScreen);
+      }
+      // No app page on this entry (we're past the root) → let the browser exit.
     };
     window.addEventListener("popstate",onPop);
     return ()=>window.removeEventListener("popstate",onPop);
@@ -5055,7 +5095,7 @@ function AppInner(){
       transitionToMap={transitionToMap} transitionToKitchen={transitionToKitchen}
       transitionToRooftop={transitionToRooftop} transitionToJournal={transitionToJournal}
       transitionToCozyCreations={transitionToCozyCreations} openScripture={openScripture}
-      reopenBookChooser={reopenBookChooser}
+      bookChooser={cabinChooserOpen} setBookChooser={setCabinChooserOpen}
       cabinMode={cabinMode} cabin3DReady={cabin3DReady}
       debugHotspots={debugHotspots} debugTripleTap={debugTripleTap}
       bookOpen={bookOpen} setBookOpen={setBookOpen} deskBook={deskBook} setDeskBook={setDeskBook}
@@ -7751,13 +7791,37 @@ function AppInner(){
         if(bibleFromCabinRef.current){
           bibleFromCabinRef.current=false;
           setScreen("cabin");
-          setReopenBookChooser(n=>n+1);
+          setCabinChooserOpen(true);
         }
       }
     };
     const openBible=async()=>{
       const data=await loadBible();
       if(data) setBibleView("books");
+    };
+
+    // ── Bible tabs: keep several passages open at once ──
+    const switchTab=(i)=>{
+      const t=bibleTabs[i]; if(!t) return;
+      setBibleActiveTab(i);
+      setBibleBook(t.book); setBibleChapter(t.chapter);
+      setBibleView("reading");
+    };
+    const newTab=()=>{
+      // Open a fresh tab (seeded with the current passage) and go pick a passage.
+      setBibleActiveTab(bibleTabs.length);
+      setBibleTabs(tabs=>[...tabs,{book:bibleBook,chapter:bibleChapter}]);
+      setBibleSearch("");
+      setBibleView("books");
+    };
+    const closeTab=(i)=>{
+      const nt=bibleTabs.filter((_,k)=>k!==i);
+      if(nt.length===0){ setBibleTabs([]); setBibleActiveTab(0); setBibleView("books"); return; }
+      let na=bibleActiveTab;
+      if(i<bibleActiveTab) na=bibleActiveTab-1;
+      else if(i===bibleActiveTab) na=Math.min(bibleActiveTab,nt.length-1);
+      setBibleTabs(nt); setBibleActiveTab(na);
+      if(i===bibleActiveTab){ const t=nt[na]; setBibleBook(t.book); setBibleChapter(t.chapter); setBibleView("reading"); }
     };
 
     // Filtered book list
@@ -8077,6 +8141,23 @@ function AppInner(){
                 </div>
               )}
             </header>
+
+            {/* ── PASSAGE TABS — keep several open at once and jump between them.
+               Built for following a preacher who bounces around the Bible. ── */}
+            {bibleView==="reading"&&(
+              <div style={{flexShrink:0,position:"relative",zIndex:200,background:"rgba(14,11,20,0.92)",borderBottom:"1px solid rgba(180,160,210,0.10)",display:"flex",alignItems:"center",gap:6,padding:"6px 8px",overflowX:"auto",WebkitOverflowScrolling:"touch"}}>
+                {bibleTabs.map((t,i)=>{
+                  const active=i===bibleActiveTab;
+                  return(
+                    <div key={i} onClick={()=>switchTab(i)} title={`${bibleData[t.book].name} ${t.chapter+1}`} style={{flexShrink:0,display:"flex",alignItems:"center",gap:6,cursor:"pointer",background:active?"rgba(212,168,64,0.16)":"rgba(180,160,210,0.08)",border:`1px solid ${active?"rgba(212,168,64,0.42)":"rgba(180,160,210,0.15)"}`,borderRadius:9,padding:"5px 8px 5px 11px",maxWidth:160}}>
+                      <span style={{fontFamily:SANS,fontSize:"0.74rem",fontWeight:active?700:500,color:active?"#D4A840":"rgba(216,200,240,0.7)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{bibleData[t.book].name} {t.chapter+1}</span>
+                      <button onClick={(e)=>{e.stopPropagation();closeTab(i);}} aria-label="Close tab" style={{flexShrink:0,background:"transparent",border:"none",cursor:"pointer",color:active?"rgba(212,168,64,0.7)":"rgba(200,190,230,0.4)",fontSize:"0.85rem",lineHeight:1,padding:"0 2px"}}>&#10005;</button>
+                    </div>
+                  );
+                })}
+                <button onClick={newTab} aria-label="Open a new passage tab" title="Open another passage" style={{flexShrink:0,background:"rgba(180,160,210,0.10)",border:"1px solid rgba(180,160,210,0.18)",borderRadius:9,width:30,height:30,cursor:"pointer",color:"#D8C8F0",fontSize:"1.05rem",lineHeight:1,display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
+              </div>
+            )}
 
             {/* Scrollable content — shifts left to make room for the note panel
                (Scripture stays fully visible while you write). */}
