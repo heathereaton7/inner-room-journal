@@ -5275,19 +5275,19 @@ function AppInner(){
 
   /* ══ JOURNAL ══════════════════════════════════════ */
   if(screen==="journal"&&activeRoom){
-    const t=th(activeRoom.id),light=t.light;
-    // Story-companion rooms get the same cozy reading-room backdrop as the Bible
-    // (translucent panels float over the warm scene). Seasonal-aware.
-    const storyRoom=activeRoom.id==="story-part-1"||activeRoom.id==="story-part-2";
-    const storyBg=storyRoom?(getRoomTheme(roomTheme).bibleBg||BIBLE_BG_FALLBACK):null;
+    const base=th(activeRoom.id),light=base.light;
+    // EVERY journal now reads like the Bible: the cozy seasonal room shows through
+    // behind translucent panels (no more flat tan/cream "template" pages). The
+    // light/tan room palettes are remapped to warm-cream text so they stay legible
+    // over the dark readability scrim. Seasonal-aware via bibleBg.
+    const t=light?{...base,text:"#F4ECDE",sub:"rgba(244,236,222,0.62)",border:"rgba(222,200,168,0.28)",glow:"rgba(232,210,170,0.10)"}:base;
+    const journalBg=getRoomTheme(roomTheme).bibleBg||BIBLE_BG_FALLBACK;
     return(
-      <div style={{minHeight:"100vh",background:typeof t.bg==="string"&&t.bg.includes("gradient")?t.bg:t.bg,color:light?t.text:t.text,fontFamily:SANS,position:"relative",overflow:"hidden"}}>
+      <div style={{minHeight:"100vh",background:"#100B08",color:t.text,fontFamily:SANS,position:"relative",overflow:"hidden"}}>
         <style>{GFONTS}{CSS}</style>
-        {storyBg&&<>
-          <img src={storyBg} alt="" draggable={false} style={{position:"fixed",inset:0,width:"100%",height:"100%",objectFit:"cover",objectPosition:"center",userSelect:"none",pointerEvents:"none",zIndex:0}}/>
-          <div style={{position:"fixed",inset:0,background:"linear-gradient(rgba(16,11,8,0.55),rgba(16,11,8,0.72))",pointerEvents:"none",zIndex:1}}/>
-        </>}
-        <div style={{position:"absolute",inset:0,background:`radial-gradient(ellipse at 50% 30%,${t.glow} 0%,transparent 65%)`,pointerEvents:"none",zIndex:storyRoom?2:undefined}}/>
+        <img src={journalBg} alt="" draggable={false} style={{position:"fixed",inset:0,width:"100%",height:"100%",objectFit:"cover",objectPosition:"center",userSelect:"none",pointerEvents:"none",zIndex:0}}/>
+        <div style={{position:"fixed",inset:0,background:"linear-gradient(rgba(16,11,8,0.55),rgba(16,11,8,0.72))",pointerEvents:"none",zIndex:1}}/>
+        <div style={{position:"absolute",inset:0,background:`radial-gradient(ellipse at 50% 30%,${t.glow} 0%,transparent 65%)`,pointerEvents:"none",zIndex:2}}/>
         {activeRoom.id==="singleness"&&<Stars/>}
         <RoomGlow id={activeRoom.id}/>
         <header style={{position:"relative",zIndex:10,background:"rgba(0,0,0,0.22)",backdropFilter:"blur(8px)",padding:"0 22px",height:"50px",display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:`1px solid ${t.border}`}}>
