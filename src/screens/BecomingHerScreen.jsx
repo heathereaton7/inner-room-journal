@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { B, SERIF, SANS, DISPLAY, GFONTS } from '../constants.js';
+import CottageBackground from '../components/CottageBackground.jsx';
 
 /* ═══════════════════════════════════════════════════════════════
    BECOMING HER — 90-Day Identity + Habit Journal Sanctuary
@@ -267,7 +268,7 @@ export default function BecomingHerScreen({ onBack, progress, onProgressChange, 
   ═══════════════════════════════════════════ */
   if(view === 'setup'){
     return(
-      <div style={{position:'fixed',inset:0,background:P.bg,fontFamily:SANS,overflow:'auto',WebkitOverflowScrolling:'touch'}}>
+      <div style={{position:'fixed',inset:0,background:'transparent',fontFamily:SANS,overflow:'auto',WebkitOverflowScrolling:'touch'}}><CottageBackground/>
         <style>{GFONTS}</style>
         <div style={{maxWidth:440,margin:'0 auto',padding:'60px 28px 80px',textAlign:'center'}}>
 
@@ -325,7 +326,7 @@ export default function BecomingHerScreen({ onBack, progress, onProgressChange, 
     // Sabbath rest page
     if(dayType === 'sabbath'){
       return(
-        <div style={{position:'fixed',inset:0,background:P.bg,fontFamily:SANS,overflow:'auto',WebkitOverflowScrolling:'touch'}}>
+        <div style={{position:'fixed',inset:0,background:'transparent',fontFamily:SANS,overflow:'auto',WebkitOverflowScrolling:'touch'}}><CottageBackground/>
           <style>{GFONTS}</style>
           <div style={{maxWidth:440,margin:'0 auto',padding:'60px 28px 80px',textAlign:'center'}}>
             <button onClick={()=>setView(null)} style={backBtnStyle}>Back to sanctuary</button>
@@ -346,7 +347,7 @@ export default function BecomingHerScreen({ onBack, progress, onProgressChange, 
 
     // Standard daily page
     return(
-      <div style={{position:'fixed',inset:0,background:P.bg,fontFamily:SANS,overflow:'auto',WebkitOverflowScrolling:'touch'}}>
+      <div style={{position:'fixed',inset:0,background:'transparent',fontFamily:SANS,overflow:'auto',WebkitOverflowScrolling:'touch'}}><CottageBackground/>
         <style>{GFONTS}</style>
         <div style={{maxWidth:440,margin:'0 auto',padding:'40px 24px 80px'}}>
           <button onClick={()=>setView(null)} style={backBtnStyle}>Back to sanctuary</button>
@@ -418,7 +419,7 @@ export default function BecomingHerScreen({ onBack, progress, onProgressChange, 
   if(view === 'vision'){
     const id = prog.identity || {};
     return(
-      <div style={{position:'fixed',inset:0,background:P.bg,fontFamily:SANS,overflow:'auto',WebkitOverflowScrolling:'touch'}}>
+      <div style={{position:'fixed',inset:0,background:'transparent',fontFamily:SANS,overflow:'auto',WebkitOverflowScrolling:'touch'}}><CottageBackground/>
         <style>{GFONTS}</style>
         <div style={{maxWidth:440,margin:'0 auto',padding:'40px 24px 80px'}}>
           <button onClick={()=>setView(null)} style={backBtnStyle}>Back to sanctuary</button>
@@ -476,7 +477,7 @@ export default function BecomingHerScreen({ onBack, progress, onProgressChange, 
   if(view === 'prayer'){
     const unlockedCards = DECLARATION_CARDS.filter(c => prog.unlockedCards.includes(c.id));
     return(
-      <div style={{position:'fixed',inset:0,background:P.bg,fontFamily:SANS,overflow:'auto',WebkitOverflowScrolling:'touch'}}>
+      <div style={{position:'fixed',inset:0,background:'transparent',fontFamily:SANS,overflow:'auto',WebkitOverflowScrolling:'touch'}}><CottageBackground/>
         <style>{GFONTS}</style>
         <div style={{maxWidth:440,margin:'0 auto',padding:'40px 24px 80px'}}>
           <button onClick={()=>setView(null)} style={backBtnStyle}>Back to sanctuary</button>
@@ -522,7 +523,7 @@ export default function BecomingHerScreen({ onBack, progress, onProgressChange, 
   if(view === 'shelf'){
     const unlocked = prog.unlockedItems || [];
     return(
-      <div style={{position:'fixed',inset:0,background:P.bg,fontFamily:SANS,overflow:'auto',WebkitOverflowScrolling:'touch'}}>
+      <div style={{position:'fixed',inset:0,background:'transparent',fontFamily:SANS,overflow:'auto',WebkitOverflowScrolling:'touch'}}><CottageBackground/>
         <style>{GFONTS}</style>
         <div style={{maxWidth:440,margin:'0 auto',padding:'40px 24px 80px'}}>
           <button onClick={()=>setView(null)} style={backBtnStyle}>Back to sanctuary</button>
@@ -579,7 +580,7 @@ export default function BecomingHerScreen({ onBack, progress, onProgressChange, 
   ═══════════════════════════════════════════ */
   if(view === 'grace'){
     return(
-      <div style={{position:'fixed',inset:0,background:P.bg,fontFamily:SANS,overflow:'auto',WebkitOverflowScrolling:'touch'}}>
+      <div style={{position:'fixed',inset:0,background:'transparent',fontFamily:SANS,overflow:'auto',WebkitOverflowScrolling:'touch'}}><CottageBackground/>
         <style>{GFONTS}</style>
         <div style={{maxWidth:440,margin:'0 auto',padding:'60px 28px 80px',textAlign:'center'}}>
           <button onClick={()=>setView(null)} style={backBtnStyle}>Back to sanctuary</button>
@@ -610,7 +611,7 @@ export default function BecomingHerScreen({ onBack, progress, onProgressChange, 
      RENDER — SANCTUARY HUB (main room)
   ═══════════════════════════════════════════ */
   return(
-    <div style={{position:'fixed',inset:0,background:P.bg,fontFamily:SANS,overflow:'hidden'}}>
+    <div style={{position:'fixed',inset:0,background:'transparent',fontFamily:SANS,overflow:'hidden'}}><CottageBackground/>
       <style>{GFONTS}{`
         @keyframes candleFlicker {
           0%,100% { opacity:1; transform:scaleY(1); }
