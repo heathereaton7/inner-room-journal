@@ -2310,7 +2310,7 @@ function AppInner(){
   // ── AUTH LISTENER ──
   useEffect(()=>{
     if(!auth) { setAuthLoading(false); return; }
-    getRedirectResult(auth).catch(()=>{});
+    getRedirectResult(auth).catch((e)=>{ console.error("Google redirect result error:",e?.code,e?.message); });
     const unsub=onAuthStateChanged(auth,async(u)=>{
       setUser(u);
       setAuthLoading(false);
@@ -2590,10 +2590,22 @@ function AppInner(){
 
   async function handleGoogleSignIn(){
     if(!auth){console.error("Auth not initialized");return false;}
+    // iOS/iPadOS (all browsers use WebKit) and Android block the cross-window
+    // storage handoff that signInWithPopup relies on, so the Google popup closes
+    // without ever returning a credential. Use a full-page redirect on mobile.
+    // NOTE: modern iPadOS reports its UA as "Macintosh", so also detect a touch
+    // Mac via maxTouchPoints.
+    const ua=navigator.userAgent||"";
+    const isMobile=/iPhone|iPad|iPod|Android/i.test(ua)
+      || (navigator.platform==="MacIntel" && (navigator.maxTouchPoints||0)>1);
+    if(isMobile){
+      try{ await signInWithRedirect(auth,googleProvider); return true; }
+      catch(e){ console.error("Google redirect sign-in error:",e.code,e.message); return false; }
+    }
     try{ await signInWithPopup(auth,googleProvider); return true; }
     catch(err){
       console.error("Google Sign-In error:",err.code,err.message);
-      if(err.code==="auth/popup-blocked"||err.code==="auth/popup-closed-by-user"){
+      if(err.code==="auth/popup-blocked"||err.code==="auth/popup-closed-by-user"||err.code==="auth/cancelled-popup-request"){
         try{ await signInWithRedirect(auth,googleProvider); }
         catch(e2){ console.error("Redirect fallback error:",e2.code,e2.message); }
       }
