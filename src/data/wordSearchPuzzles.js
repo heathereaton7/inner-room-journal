@@ -430,21 +430,30 @@ export function getPuzzle(id) {
  * Extract the searchable words from a verse text:
  *   - Strip punctuation
  *   - Uppercase
- *   - Skip very short words (1 letter) since they're trivial to find
- *     and would clutter the grid (but we still display them in the verse reveal)
+ *   - Skip short words (1-2 letters) since they're trivial to find, clutter the
+ *     grid, and are easily traced inside longer words (but we still display them
+ *     in the verse reveal)
  *   - Deduplicate so the same word doesn't have to be hidden twice
+ *   - Drop any word that can be traced (forwards OR backwards) inside a longer
+ *     target word, e.g. BE/HE inside BEHOLD or CARE inside CARETH. The grid
+ *     matches in all 8 directions including reverse, so without this the player
+ *     could "find" a word within another word.
  */
 export function extractWords(verseText) {
   const raw = verseText.toUpperCase().replace(/[^A-Z\s]/g, ' ').split(/\s+/).filter(Boolean);
   const seen = new Set();
   const out = [];
   for (const w of raw) {
-    if (w.length < 2) continue;
+    if (w.length < 3) continue;
     if (seen.has(w)) continue;
     seen.add(w);
     out.push(w);
   }
-  return out;
+  return out.filter(w => !out.some(other => {
+    if (other === w || other.length <= w.length) return false;
+    const rev = other.split('').reverse().join('');
+    return other.includes(w) || rev.includes(w);
+  }));
 }
 
 /**

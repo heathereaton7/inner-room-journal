@@ -41,8 +41,16 @@ function meditationWords(med) {
     seen.add(w);
     out.push(w);
   }
-  out.sort((a, b) => b.length - a.length);
-  return out.slice(0, 14);
+  // Drop any word that can be traced (forwards OR backwards) inside a longer
+  // target word — the grid matches in all 8 directions including reverse, so
+  // without this the player could "find" a word within another word.
+  const filtered = out.filter(w => !out.some(other => {
+    if (other === w || other.length <= w.length) return false;
+    const rev = other.split('').reverse().join('');
+    return other.includes(w) || rev.includes(w);
+  }));
+  filtered.sort((a, b) => b.length - a.length);
+  return filtered.slice(0, 14);
 }
 
 /**
