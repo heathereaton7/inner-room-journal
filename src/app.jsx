@@ -2289,7 +2289,13 @@ function AppInner(){
         // to restorable screens when it was saved.
         if(restoreScreenRef.current) landing=restoreScreenRef.current;
       }catch(e){}
-      setScreen(landing);
+      // Only set the landing screen if auth hasn't already navigated away from
+      // the splash. After a Google redirect sign-in the page reloads and the
+      // auth listener (ensureUserProfile) routes a returning user straight to
+      // the cabin (or resumes onboarding). Without this guard this effect could
+      // win the race and clobber that, dumping a freshly-signed-in user back on
+      // the welcome screen.
+      setScreen(s=>s==="loading"?landing:s);
       setCardQ(shuffle(ALL_CARD_QS)[0]);
       // preload spatial world backgrounds
       ["cabin-interior.webp","upper-room-hall.webp","harvest-market.webp"].forEach(src=>{const img=new Image();img.src="/"+src;});
