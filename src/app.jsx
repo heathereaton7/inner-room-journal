@@ -7200,9 +7200,10 @@ function AppInner(){
         {/* Readability scrim */}
         <div style={{position:"absolute",inset:0,pointerEvents:"none",background:"linear-gradient(rgba(8,10,18,0.30),rgba(8,10,18,0.42))"}}/>
         <Fireflies/>
-        {/* Back to the Upper Room */}
-        <button onClick={()=>{setUpperRoomView(null);setBibleView(null);setScreen("upper-room");}} style={{position:"absolute",top:28,left:22,zIndex:15,background:"rgba(10,12,20,0.50)",backdropFilter:"blur(14px)",WebkitBackdropFilter:"blur(14px)",border:"1px solid rgba(201,169,110,0.14)",borderRadius:999,padding:"8px 20px",cursor:"pointer",color:"rgba(255,248,232,0.65)",fontFamily:SANS,fontSize:"0.78rem",display:"inline-flex",alignItems:"center",gap:6}}>
-          <span style={{fontSize:"0.7rem"}}>&#8592;</span> Upper Room
+        {/* Back — return to wherever we came from (the Scripture reader keeps
+            its place, or the Upper Room landing). Don't reset the views. */}
+        <button onClick={()=>setScreen("upper-room")} style={{position:"absolute",top:28,left:22,zIndex:15,background:"rgba(10,12,20,0.50)",backdropFilter:"blur(14px)",WebkitBackdropFilter:"blur(14px)",border:"1px solid rgba(201,169,110,0.14)",borderRadius:999,padding:"8px 20px",cursor:"pointer",color:"rgba(255,248,232,0.65)",fontFamily:SANS,fontSize:"0.78rem",display:"inline-flex",alignItems:"center",gap:6}}>
+          <span style={{fontSize:"0.7rem"}}>&#8592;</span> Back
         </button>
         {/* Title */}
         <div style={{position:"absolute",top:30,left:0,right:0,textAlign:"center",zIndex:14,pointerEvents:"none"}}>
