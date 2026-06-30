@@ -36,9 +36,17 @@ import {
   httpsCallable,
 } from "firebase/functions";
 
+// In production, auth must run on the SAME ORIGIN as the app. iOS/iPadOS (all
+// WebKit) and other browsers that block third-party storage will silently fail
+// the signInWithRedirect / signInWithPopup handoff when authDomain is a
+// different origin (the default *.firebaseapp.com). A Vercel rewrite proxies
+// /__/auth/* on this domain through to the Firebase backend (see vercel.json),
+// so the credential round-trips first-party and the sign-in completes.
+// Dev (vite, localhost) keeps the default authDomain.
+const PROD_AUTH_DOMAIN = "innerroomjournal.com";
 const firebaseConfig = {
   apiKey:            import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain:        import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  authDomain:        import.meta.env.PROD ? PROD_AUTH_DOMAIN : import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
   projectId:         import.meta.env.VITE_FIREBASE_PROJECT_ID,
   storageBucket:     import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
