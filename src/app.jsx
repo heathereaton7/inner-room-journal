@@ -4765,11 +4765,17 @@ function AppInner(){
        below can render on EVERY screen (the sound menu, like in the cabin). ── */
   const __screenJSX = (() => {
 
-  /* ══ LOADING ══════════════════════════════════════ */
+  /* ══ LOADING ══════════════════════════════════════
+       Shows the cabin door (same image as the door cinematic) while auth
+       resolves — no separate "Preparing your space…" page — so the hand-off
+       into the door-opening cinematic / cabin is seamless. */
   if(screen==="loading") return(
-    <div style={{minHeight:"100vh",background:B.night,display:"flex",alignItems:"center",justifyContent:"center"}}>
-      <style>{GFONTS}</style>
-      <span style={{fontFamily:SERIF,fontStyle:"italic",color:"rgba(201,169,110,0.4)",fontSize:"1.1rem"}}>Preparing your space…</span>
+    <div style={{minHeight:"100vh",width:"100%",position:"relative",overflow:"hidden",background:"#0A0806"}}>
+      <style>{GFONTS}{CSS}</style>
+      <img src="/door.webp" alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover"}}/>
+      {/* Flickering lantern glow flanking the door */}
+      <div style={{position:"absolute",left:"4%",top:"12%",width:"20%",height:"16%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,200,70,0.55) 0%,rgba(255,160,40,0.18) 50%,transparent 75%)",mixBlendMode:"screen",animation:"lanternFlicker 2s ease-in-out infinite"}}/>
+      <div style={{position:"absolute",left:"76%",top:"12%",width:"20%",height:"16%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,200,70,0.55) 0%,rgba(255,160,40,0.18) 50%,transparent 75%)",mixBlendMode:"screen",animation:"lanternFlicker 2.3s ease-in-out infinite",animationDelay:"0.5s"}}/>
     </div>
   );
 
