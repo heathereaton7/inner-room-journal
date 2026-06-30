@@ -3309,7 +3309,9 @@ function AppInner(){
       // sign-in, play the door-opening cinematic into the cabin instead of a
       // hard cut / loading flash.
       if(screenRef.current==="loading"||screenRef.current==="welcome"||screenRef.current==="onboard"||screenRef.current==="profile-onboard"){
-        playDoorToCabin();
+        // Loading screen already showed the door — open it straight into the
+        // cabin (skip the re-walk so the door is only shown once).
+        playDoorToCabin(true);
       }
     }catch(e){console.warn("ensureUserProfile error:",e);}
   }
@@ -3995,16 +3997,25 @@ function AppInner(){
     setSpaceTransit(true); setTransitDir("toCabin");
     setTimeout(()=>{setScreen("cabin");setSpaceTransit(false);setTransitDir(null);},700);
   }
-  // Plays the welcome-screen door-opening cinematic (walk → door close-up →
-  // golden enter) and then lands in the cabin. Used by the "Return to the
-  // cabin" button AND auto-played after sign-in so returning users get the
-  // animation instead of a hard cut / loading flash.
-  function playDoorToCabin(){
+  // Plays the door-opening cinematic and then lands in the cabin.
+  //  - skipWalk=false (welcome "Return to the cabin" button): full walk → door
+  //    close-up → golden enter.
+  //  - skipWalk=true (auto after sign-in): the loading screen already showed
+  //    the door, so continue straight from the door close-up → golden enter
+  //    (the door is only shown once, no re-walk through the cabin scene).
+  function playDoorToCabin(skipWalk){
     setScreen("welcome");
-    setDoorOpening(true);setDoorPhase("walk");
-    setTimeout(()=>setDoorPhase("door"),1300);
-    setTimeout(()=>setDoorPhase("enter"),3300);
-    setTimeout(()=>{setDoorOpening(false);setDoorPhase(null);setScreen("cabin");},4000);
+    setDoorOpening(true);
+    if(skipWalk){
+      setDoorPhase("door");
+      setTimeout(()=>setDoorPhase("enter"),1500);
+      setTimeout(()=>{setDoorOpening(false);setDoorPhase(null);setScreen("cabin");},2200);
+    }else{
+      setDoorPhase("walk");
+      setTimeout(()=>setDoorPhase("door"),1300);
+      setTimeout(()=>setDoorPhase("enter"),3300);
+      setTimeout(()=>{setDoorOpening(false);setDoorPhase(null);setScreen("cabin");},4000);
+    }
   }
   function transitionToGarden(){
     setSpaceTransit(true); setTransitDir("toGarden");
