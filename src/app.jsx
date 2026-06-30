@@ -3303,10 +3303,14 @@ function AppInner(){
         setPlayerRoom(mr);dbSave("irj-room",mr);
       }
       setIsOnboarded(true);dbSave("irj-onboarded",true);
-      // Only land on the cabin from a pre-app screen (initial sign-in). Auth
+      // Only enter the cabin from a pre-app screen (initial sign-in). Auth
       // re-fires (token refresh, refocus) must NOT yank the user out of
-      // whatever screen they're already on (e.g. the porch).
-      setScreen(s=>(s==="loading"||s==="welcome"||s==="onboard"||s==="profile-onboard")?"cabin":s);
+      // whatever screen they're already on (e.g. the porch). On initial
+      // sign-in, play the door-opening cinematic into the cabin instead of a
+      // hard cut / loading flash.
+      if(screenRef.current==="loading"||screenRef.current==="welcome"||screenRef.current==="onboard"||screenRef.current==="profile-onboard"){
+        playDoorToCabin();
+      }
     }catch(e){console.warn("ensureUserProfile error:",e);}
   }
 
@@ -3990,6 +3994,17 @@ function AppInner(){
   function transitionToCabin(){
     setSpaceTransit(true); setTransitDir("toCabin");
     setTimeout(()=>{setScreen("cabin");setSpaceTransit(false);setTransitDir(null);},700);
+  }
+  // Plays the welcome-screen door-opening cinematic (walk → door close-up →
+  // golden enter) and then lands in the cabin. Used by the "Return to the
+  // cabin" button AND auto-played after sign-in so returning users get the
+  // animation instead of a hard cut / loading flash.
+  function playDoorToCabin(){
+    setScreen("welcome");
+    setDoorOpening(true);setDoorPhase("walk");
+    setTimeout(()=>setDoorPhase("door"),1300);
+    setTimeout(()=>setDoorPhase("enter"),3300);
+    setTimeout(()=>{setDoorOpening(false);setDoorPhase(null);setScreen("cabin");},4000);
   }
   function transitionToGarden(){
     setSpaceTransit(true); setTransitDir("toGarden");
@@ -4838,10 +4853,7 @@ function AppInner(){
         <button className="fu4 door-btn" onClick={()=>{
           if(isOnboarded&&user){
             // Signed in + onboarded → door animation → cabin
-            setDoorOpening(true);setDoorPhase("walk");
-            setTimeout(()=>setDoorPhase("door"),1300);
-            setTimeout(()=>setDoorPhase("enter"),3300);
-            setTimeout(()=>{setDoorOpening(false);setDoorPhase(null);setScreen("cabin");},4000);
+            playDoorToCabin();
           }else if(isOnboarded&&!user){
             // Onboarded but not signed in → show door sign-in page
             setOnboardStep(0);setScreen("profile-onboard");
