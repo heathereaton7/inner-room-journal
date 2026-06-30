@@ -1176,7 +1176,14 @@ export default function CabinScreen({
               {/* ══ OTHER BOOK TYPES (Bible, Prayers, Gratitude, Dreams, Prophecy) ══ */}
               {deskBook!=="journal"&&BOOK_CONTENT[deskBook]&&<>
                 {/* PAGE 0: Cover */}
-                {bookPage===0&&<>
+                {bookPage===0&&(deskBook==="gratitude"?(
+                  /* Gratitude — pure pressed-flower cover image (title baked in) */
+                  <div style={{flex:1,position:"relative",animation:"pageContentReveal .5s .15s ease both",margin:"-28px -22px -16px -30px",overflow:"hidden",borderRadius:"3px 10px 10px 3px"}}>
+                    <img src="/journalcover.png" alt="I'm So Blessed — Focus on what is lovely" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",objectPosition:"center",borderRadius:"inherit"}} draggable={false}/>
+                    {/* Page-turn arrow on the book's right edge */}
+                    <button onClick={()=>flipPage("fwd")} style={{position:"absolute",right:"16%",top:"48%",transform:"translateY(-50%)",width:36,height:36,borderRadius:"50%",background:"rgba(30,23,16,0.7)",border:"1px solid rgba(201,169,110,0.3)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.1rem",color:"#E8DCC8",zIndex:5,boxShadow:"0 2px 10px rgba(0,0,0,0.3)",animation:"pageContentReveal 1s 1s ease both",backdropFilter:"blur(4px)",WebkitBackdropFilter:"blur(4px)"}}>&#8250;</button>
+                  </div>
+                ):(<>
                   <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center",animation:"pageContentReveal .5s .15s ease both"}}>
                     <div style={{fontSize:"2.2rem",marginBottom:14,filter:"drop-shadow(0 2px 4px rgba(201,169,110,0.2))"}}>
                       {SHELF_BOOKS.find(b=>b.id===deskBook)?.emoji||"📖"}
@@ -1187,7 +1194,7 @@ export default function CabinScreen({
                     <p style={{fontFamily:SERIF,fontSize:"0.78rem",color:"rgba(230,210,165,0.4)",marginTop:28,letterSpacing:"0.02em"}}>Turn the page to begin →</p>
                   </div>
                   <div style={{textAlign:"center",fontFamily:SANS,fontSize:"0.6rem",color:"rgba(230,210,165,0.3)",letterSpacing:"0.1em",textTransform:"uppercase"}}>— 1 of {TOTAL_BOOK_PAGES} —</div>
-                </>}
+                </>))}
 
                 {/* CONTENT PAGES */}
                 {bookPage>=1&&bookPage<=BOOK_CONTENT[deskBook].pages.length&&(()=>{
