@@ -3309,9 +3309,9 @@ function AppInner(){
       // sign-in, play the door-opening cinematic into the cabin instead of a
       // hard cut / loading flash.
       if(screenRef.current==="loading"||screenRef.current==="welcome"||screenRef.current==="onboard"||screenRef.current==="profile-onboard"){
-        // Loading screen already showed the door — open it straight into the
-        // cabin (skip the re-walk so the door is only shown once).
-        playDoorToCabin(true);
+        // Initial sign-in from a pre-app screen → play the door cinematic into
+        // the cabin (the only place the door appears).
+        playDoorToCabin();
       }
     }catch(e){console.warn("ensureUserProfile error:",e);}
   }
@@ -3997,25 +3997,16 @@ function AppInner(){
     setSpaceTransit(true); setTransitDir("toCabin");
     setTimeout(()=>{setScreen("cabin");setSpaceTransit(false);setTransitDir(null);},700);
   }
-  // Plays the door-opening cinematic and then lands in the cabin.
-  //  - skipWalk=false (welcome "Return to the cabin" button): full walk → door
-  //    close-up → golden enter.
-  //  - skipWalk=true (auto after sign-in): the loading screen already showed
-  //    the door, so continue straight from the door close-up → golden enter
-  //    (the door is only shown once, no re-walk through the cabin scene).
-  function playDoorToCabin(skipWalk){
+  // Plays the door-opening cinematic (walk up to the cabin → door close-up →
+  // golden enter) and then lands in the cabin. Used by the welcome "Return to
+  // the cabin" button AND auto-played after sign-in. The door is only shown
+  // here (the home/loading screens show the cabin exterior, never the door).
+  function playDoorToCabin(){
     setScreen("welcome");
-    setDoorOpening(true);
-    if(skipWalk){
-      setDoorPhase("door");
-      setTimeout(()=>setDoorPhase("enter"),1500);
-      setTimeout(()=>{setDoorOpening(false);setDoorPhase(null);setScreen("cabin");},2200);
-    }else{
-      setDoorPhase("walk");
-      setTimeout(()=>setDoorPhase("door"),1300);
-      setTimeout(()=>setDoorPhase("enter"),3300);
-      setTimeout(()=>{setDoorOpening(false);setDoorPhase(null);setScreen("cabin");},4000);
-    }
+    setDoorOpening(true);setDoorPhase("walk");
+    setTimeout(()=>setDoorPhase("door"),1300);
+    setTimeout(()=>setDoorPhase("enter"),3300);
+    setTimeout(()=>{setDoorOpening(false);setDoorPhase(null);setScreen("cabin");},4000);
   }
   function transitionToGarden(){
     setSpaceTransit(true); setTransitDir("toGarden");
@@ -4777,16 +4768,14 @@ function AppInner(){
   const __screenJSX = (() => {
 
   /* ══ LOADING ══════════════════════════════════════
-       Shows the cabin door (same image as the door cinematic) while auth
-       resolves — no separate "Preparing your space…" page — so the hand-off
-       into the door-opening cinematic / cabin is seamless. */
+       Shows the cozy cabin exterior (same image as the welcome/home page)
+       while auth resolves — no "Preparing your space…" text and no door flash
+       before the home page. The door only appears in the entry cinematic. */
   if(screen==="loading") return(
     <div style={{minHeight:"100vh",width:"100%",position:"relative",overflow:"hidden",background:"#0A0806"}}>
       <style>{GFONTS}{CSS}</style>
-      <img src="/door.webp" alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover"}}/>
-      {/* Flickering lantern glow flanking the door */}
-      <div style={{position:"absolute",left:"4%",top:"12%",width:"20%",height:"16%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,200,70,0.55) 0%,rgba(255,160,40,0.18) 50%,transparent 75%)",mixBlendMode:"screen",animation:"lanternFlicker 2s ease-in-out infinite"}}/>
-      <div style={{position:"absolute",left:"76%",top:"12%",width:"20%",height:"16%",borderRadius:"50%",background:"radial-gradient(circle,rgba(255,200,70,0.55) 0%,rgba(255,160,40,0.18) 50%,transparent 75%)",mixBlendMode:"screen",animation:"lanternFlicker 2.3s ease-in-out infinite",animationDelay:"0.5s"}}/>
+      <style>{`.welcome-cabin-bg{object-fit:cover}@media (min-aspect-ratio:1/1){.welcome-cabin-bg{object-fit:contain}}`}</style>
+      <img className="welcome-cabin-bg" src="/outdoor.webp" alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectPosition:"center 30%",filter:"brightness(1.25)"}}/>
     </div>
   );
 
