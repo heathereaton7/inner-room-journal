@@ -1200,6 +1200,40 @@ export default function CabinScreen({
                 {bookPage>=1&&bookPage<=BOOK_CONTENT[deskBook].pages.length&&(()=>{
                   const pg=BOOK_CONTENT[deskBook].pages[bookPage-1];
                   if(!pg) return null;
+                  /* Gratitude — a warmer, lovelier writing experience: a Philippians 4:8
+                     anchor tying back to the pressed-flower cover, a soft botanical
+                     divider, a glowing prompt, and real cream paper to write on. */
+                  if(deskBook==="gratitude") return(<>
+                    <style>{`.grat-paper-ta::placeholder{color:rgba(120,95,60,0.42);font-style:italic}`}</style>
+                    <div style={{flex:1,display:"flex",flexDirection:"column",animation:"pageContentReveal .5s .1s ease both"}}>
+                      <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.72rem",color:"rgba(212,168,64,0.62)",textAlign:"center",margin:"0 0 12px",lineHeight:1.55,letterSpacing:"0.01em"}}>Whatsoever things are lovely&hellip; think on these things.</p>
+                      <div style={{textAlign:"center",marginBottom:10}}>
+                        <div style={{fontFamily:SANS,fontSize:"0.56rem",color:"rgba(230,210,165,0.45)",letterSpacing:"0.12em",textTransform:"uppercase",marginBottom:8}}>Page {bookPage}</div>
+                        <h2 style={{fontFamily:DISPLAY,fontSize:"clamp(1.15rem,4.5vw,1.35rem)",fontWeight:700,color:"#F0E0C0",margin:0}}>{pg.title}</h2>
+                      </div>
+                      {/* Pressed-flower style divider */}
+                      <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,margin:"0 auto 16px"}}>
+                        <div style={{width:34,height:1,background:"linear-gradient(90deg,transparent,rgba(201,169,110,0.4))"}}/>
+                        <div style={{width:5,height:5,borderRadius:"50%",background:"rgba(201,169,110,0.6)",transform:"rotate(45deg)"}}/>
+                        <div style={{width:34,height:1,background:"linear-gradient(90deg,rgba(201,169,110,0.4),transparent)"}}/>
+                      </div>
+                      {/* Prompt — warm amber glow */}
+                      <div style={{background:"linear-gradient(135deg,rgba(212,168,64,0.13),rgba(201,169,110,0.05))",borderRadius:12,padding:"16px 18px",margin:"0 0 12px",border:"1px solid rgba(212,168,64,0.18)",boxShadow:"inset 0 0 24px rgba(212,168,64,0.07)"}}>
+                        <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.9rem,3vw,1rem)",color:"#F0E0C0",lineHeight:1.65,margin:0,textAlign:"center"}}>{pg.prompt}</p>
+                      </div>
+                      <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.74rem",color:"rgba(230,210,165,0.4)",textAlign:"center",margin:"0 0 16px",lineHeight:1.6}}>{pg.hint}</p>
+                      {/* Warm cream writing paper */}
+                      <div style={{position:"relative",flex:1,minHeight:130,borderRadius:10,overflow:"hidden",border:"1px solid rgba(201,169,110,0.28)",background:"linear-gradient(180deg,#FBF4E2,#F1E4C8)",boxShadow:"0 2px 14px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.45)"}}>
+                        <div style={{position:"absolute",inset:0,background:"repeating-linear-gradient(180deg,transparent,transparent 27px,rgba(150,120,80,0.15) 27px,rgba(150,120,80,0.15) 28px)",pointerEvents:"none"}}/>
+                        <textarea className="grat-paper-ta" value={bookText} onChange={e=>setBookText(e.target.value)} placeholder={"Let yourself notice the gifts\u2026"} style={{position:"relative",width:"100%",height:"100%",minHeight:130,background:"transparent",border:"none",padding:"13px 16px",fontFamily:SERIF,fontSize:"0.9rem",color:"#5A4427",lineHeight:1.75,boxSizing:"border-box",resize:"none",outline:"none"}}/>
+                      </div>
+                      {bookText.trim()&&<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 12px",marginTop:8,background:"rgba(212,168,64,0.10)",borderRadius:8,border:"1px solid rgba(212,168,64,0.2)"}}>
+                        <span style={{fontSize:"0.7rem",color:"rgba(230,210,165,0.55)",fontFamily:SANS}}>{bookSaveMsg||`${wc(bookText)} words`}</span>
+                        <button onClick={saveBookEntry} style={{background:"linear-gradient(135deg,#C9A96E,#A8854A)",border:"none",color:"#2E1E10",padding:"6px 18px",borderRadius:6,cursor:"pointer",fontSize:"0.76rem",fontFamily:SANS,fontWeight:700,letterSpacing:"0.02em"}}>Save &#8594;</button>
+                      </div>}
+                    </div>
+                    <div style={{textAlign:"center",fontFamily:SANS,fontSize:"0.6rem",color:"rgba(230,210,165,0.3)",letterSpacing:"0.1em",textTransform:"uppercase",marginTop:10}}>&mdash; {bookPage+1} of {TOTAL_BOOK_PAGES} &mdash;</div>
+                  </>);
                   return<>
                     <div style={{flex:1,display:"flex",flexDirection:"column",animation:"pageContentReveal .5s .1s ease both"}}>
                       <div style={{textAlign:"center",marginBottom:14}}>
