@@ -2280,7 +2280,11 @@ function AppInner(){
       // Shareable landing: innerroomjournal.com/blog (or /?page=blog) opens the
       // atmospheric PORCH scene first (porchforreal.png) — the door steps inside
       // (sign-in gate / cabin) and the "My Blog" book opens the readable board.
-      let landing="welcome";
+      // landing=null means "let the auth listener decide". We hold on the
+      // loading splash so a signed-in user (including the page reload after a
+      // Google redirect sign-in) goes STRAIGHT to the cabin with no welcome
+      // flash. Only a deep link or a refresh-restore overrides this.
+      let landing=null;
       try{
         const path=window.location.pathname.replace(/\/+$/,"");
         if(new URLSearchParams(window.location.search).get("page")==="blog"||path==="/blog") landing="porch";
@@ -2289,13 +2293,10 @@ function AppInner(){
         // to restorable screens when it was saved.
         if(restoreScreenRef.current) landing=restoreScreenRef.current;
       }catch(e){}
-      // Only set the landing screen if auth hasn't already navigated away from
-      // the splash. After a Google redirect sign-in the page reloads and the
-      // auth listener (ensureUserProfile) routes a returning user straight to
-      // the cabin (or resumes onboarding). Without this guard this effect could
-      // win the race and clobber that, dumping a freshly-signed-in user back on
-      // the welcome screen.
-      setScreen(s=>s==="loading"?landing:s);
+      // Only apply an explicit landing (deep link / restore). Otherwise stay on
+      // the splash; the auth listener routes signed-in users to the cabin and
+      // signed-out users to the welcome screen, avoiding the welcome → cabin flash.
+      if(landing) setScreen(s=>s==="loading"?landing:s);
       setCardQ(shuffle(ALL_CARD_QS)[0]);
       // preload spatial world backgrounds
       ["cabin-interior.webp","upper-room-hall.webp","harvest-market.webp"].forEach(src=>{const img=new Image();img.src="/"+src;});
@@ -2315,14 +2316,21 @@ function AppInner(){
 
   // ── AUTH LISTENER ──
   useEffect(()=>{
-    if(!auth) { setAuthLoading(false); return; }
+    if(!auth) { setAuthLoading(false); setScreen(s=>s==="loading"?"welcome":s); return; }
     getRedirectResult(auth).catch((e)=>{ console.error("Google redirect result error:",e?.code,e?.message); });
     const unsub=onAuthStateChanged(auth,async(u)=>{
       setUser(u);
       setAuthLoading(false);
       if(u){
-        await syncWithCloud(u.uid);
-        ensureUserProfile(u.uid, u.displayName);
+        // Route FIRST (one quick profile read) so a returning user lands in the
+        // cabin immediately; the heavier cloud sync then runs in the background.
+        // Previously syncWithCloud was awaited before navigating, which left the
+        // welcome screen on screen for a noticeable beat after sign-in.
+        await ensureUserProfile(u.uid, u.displayName);
+        syncWithCloud(u.uid);
+      }else{
+        // Signed out: leave the splash for the welcome / sign-in gate.
+        setScreen(s=>s==="loading"?"welcome":s);
       }
     });
     return ()=>unsub();
