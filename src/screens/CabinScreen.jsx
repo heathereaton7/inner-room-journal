@@ -8,6 +8,7 @@ import { WindowWeather, CandleGlow } from '../components/CottageBackground.jsx';
 import CharacterWalker from '../components/CharacterWalker.jsx';
 import BookSparkles from '../components/BookSparkles.jsx';
 import { moveItem, removeFromRoom, placeItem } from '../roomDecor.js';
+import { ambientPlay, ambientStop, ambientCurrentId, SOUND_LIBRARY } from '../systems/ambientSound.js';
 
 export default function CabinScreen({
   spaceTransit, transitDir, transitionToMap, transitionToKitchen, transitionToRooftop, transitionToJournal, transitionToCozyCreations, transitionToPorch, openScripture,
@@ -48,6 +49,16 @@ export default function CabinScreen({
   // via the upstairs middle door on the grand hall map. Holds the original
   // loft hotspots (book→journal, staircase→rooftop, etc.).
   const [loftView, setLoftView] = useState(false);
+  // Soothing-sound picker shown while journaling gratitude.
+  const [gratSound, setGratSound] = useState(ambientCurrentId());
+  const GRAT_SOUNDS = ["water-calm","rain-light","fire-crackle"];
+  const toggleGratSound = (id)=>{
+    if(gratSound===id){ ambientStop(1200); setGratSound(null); return; }
+    const s = SOUND_LIBRARY.find(x=>x.id===id);
+    if(!s) return;
+    ambientPlay(s.src,{volume:s.volume,id:s.id,fadeMs:1400});
+    setGratSound(id);
+  };
   // Desk-book chooser: tapping the book on the desk opens a swipeable picker of
   // books. Slide 0 = Journals (the Inner Room journal); slide 1 = Meditations
   // (a cover you'll design in Canva → /meditations-cover.png, with Psalm 1:2).
@@ -1206,6 +1217,15 @@ export default function CabinScreen({
                   if(deskBook==="gratitude") return(<>
                     <style>{`.grat-paper-ta::placeholder{color:rgba(120,95,60,0.42);font-style:italic}`}</style>
                     <div style={{flex:1,display:"flex",flexDirection:"column",animation:"pageContentReveal .5s .1s ease both"}}>
+                      {/* Soothing-sound prompt — set a calm atmosphere while you reflect */}
+                      <div style={{display:"flex",flexWrap:"wrap",alignItems:"center",justifyContent:"center",gap:6,margin:"0 0 12px"}}>
+                        <span style={{fontFamily:SANS,fontSize:"0.58rem",color:"rgba(230,210,165,0.5)",letterSpacing:"0.08em",textTransform:"uppercase",width:"100%",textAlign:"center",marginBottom:2}}>{gratSound?"Soothing sound playing":"Set a soothing sound"}</span>
+                        {GRAT_SOUNDS.map(id=>{const s=SOUND_LIBRARY.find(x=>x.id===id);if(!s)return null;const on=gratSound===id;return(
+                          <button key={id} onClick={()=>toggleGratSound(id)} style={{background:on?"linear-gradient(135deg,rgba(212,168,64,0.28),rgba(201,169,110,0.14))":"rgba(201,169,110,0.06)",border:`1px solid ${on?"rgba(212,168,64,0.55)":"rgba(201,169,110,0.18)"}`,color:on?"#F5E6C0":"rgba(230,210,165,0.68)",padding:"5px 12px",borderRadius:20,cursor:"pointer",fontFamily:SANS,fontSize:"0.68rem",fontWeight:on?700:500,letterSpacing:"0.01em",display:"flex",alignItems:"center",gap:5,transition:"all .2s"}}>
+                            <span style={{fontSize:"0.7rem",opacity:0.85}}>{on?"\u266B":"\u2669"}</span>{s.name}
+                          </button>
+                        );})}
+                      </div>
                       <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.72rem",color:"rgba(212,168,64,0.62)",textAlign:"center",margin:"0 0 12px",lineHeight:1.55,letterSpacing:"0.01em"}}>Whatsoever things are lovely&hellip; think on these things.</p>
                       <div style={{textAlign:"center",marginBottom:10}}>
                         <div style={{fontFamily:SANS,fontSize:"0.56rem",color:"rgba(230,210,165,0.45)",letterSpacing:"0.12em",textTransform:"uppercase",marginBottom:8}}>Page {bookPage}</div>

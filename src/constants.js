@@ -257,12 +257,13 @@ export const BOOK_CONTENT = {
     ],
   },
   gratitude:{
-    cover:{title:"Gratitude Journal",subtitle:"Notice the gifts hidden in ordinary days."},
+    cover:{title:"Gratitude Journal",subtitle:"Enter His gates with thanksgiving — gratitude is the doorway in."},
     pages:[
-      {title:"Three Blessings",prompt:"Name three things you are grateful for today.",hint:"Big or small — everything counts."},
-      {title:"Unexpected Gift",prompt:"What surprised you with joy recently?",hint:"The best gifts are often unplanned."},
-      {title:"A Person",prompt:"Who are you thankful for — and why?",hint:"Let yourself feel the weight of their presence in your life."},
-      {title:"Simple Pleasures",prompt:"What simple moment brought you peace today?",hint:"Morning light. A warm cup. A deep breath."},
+      {title:"The Answered Prayer You're In",prompt:"What is one prayer you are already living inside of right now?",hint:"The child, the home, the marriage, the very thing you once begged God for. Naming it reminds you He is a God who answers."},
+      {title:"Enter His Gates",prompt:"Before you ask God for anything today, what will you thank Him for first?",hint:"Philippians 4:6 — with thanksgiving, then let your requests be made known. Thanksgiving comes first; it opens the door."},
+      {title:"One Specific Grace",prompt:"Name one specific gift from today — and let yourself feel the weight of it.",hint:"Not a long list. One thing, felt deeply. Gratitude is a switch God built into you, not a checklist to rush through."},
+      {title:"The Scarcity Lens",prompt:"Where have you been scanning for lack instead of looking for provision?",hint:"A worried mind filters out the very answers in front of it. Name the fear here, then hand it back to God."},
+      {title:"Eyes to See",prompt:"What good has been quietly present lately that you almost walked past?",hint:"Your mind only shows you what you tell it matters. Tell it to notice grace — and it will start finding more."},
     ],
   },
   dreams:{
