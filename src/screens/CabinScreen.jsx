@@ -1278,6 +1278,33 @@ export default function CabinScreen({
                     <div style={{textAlign:"center",fontFamily:SANS,fontSize:"0.6rem",color:"rgba(230,210,165,0.3)",letterSpacing:"0.1em",textTransform:"uppercase",marginTop:10}}>— {bookPage+1} of {TOTAL_BOOK_PAGES} —</div>
                   </>;
                 })()}
+
+                {/* CLOSING PRAYER PAGE (gratitude only) — a prayer to seal the reflection, then Complete → back to the journal */}
+                {deskBook==="gratitude"&&bookPage===(BOOK_CONTENT.gratitude?.pages.length||0)+1&&(<>
+                  <div style={{flex:1,display:"flex",flexDirection:"column",animation:"pageContentReveal .5s .1s ease both"}}>
+                    <div style={{textAlign:"center",marginBottom:10}}>
+                      <div style={{fontFamily:SANS,fontSize:"0.56rem",color:"rgba(230,210,165,0.45)",letterSpacing:"0.12em",textTransform:"uppercase",marginBottom:8}}>A Closing Prayer</div>
+                      <h2 style={{fontFamily:DISPLAY,fontSize:"clamp(1.15rem,4.5vw,1.35rem)",fontWeight:700,color:"#F0E0C0",margin:0}}>Sealed With Thanks</h2>
+                    </div>
+                    {/* Pressed-flower style divider */}
+                    <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,margin:"0 auto 18px"}}>
+                      <div style={{width:34,height:1,background:"linear-gradient(90deg,transparent,rgba(201,169,110,0.4))"}}/>
+                      <div style={{width:5,height:5,borderRadius:"50%",background:"rgba(201,169,110,0.6)",transform:"rotate(45deg)"}}/>
+                      <div style={{width:34,height:1,background:"linear-gradient(90deg,rgba(201,169,110,0.4),transparent)"}}/>
+                    </div>
+                    <div style={{flex:1,display:"flex",flexDirection:"column",justifyContent:"center"}}>
+                      <div style={{background:"linear-gradient(135deg,rgba(212,168,64,0.13),rgba(201,169,110,0.05))",borderRadius:12,padding:"22px 20px",margin:"0 0 6px",border:"1px solid rgba(212,168,64,0.18)",boxShadow:"inset 0 0 30px rgba(212,168,64,0.07)"}}>
+                        <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.92rem,3vw,1.02rem)",color:"#F0E0C0",lineHeight:1.85,margin:0,textAlign:"center"}}>
+                          Father, before I ask You for anything, I stop to say thank You. You are the God who answers &mdash; I am already living inside prayers I once whispered in the dark. Keep my eyes open to Your goodness, and quiet the part of me that only counts what is missing. I receive this day as a gift from Your hand.
+                        </p>
+                      </div>
+                      <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.9rem",color:"rgba(212,168,64,0.72)",textAlign:"center",margin:"16px 0 0",letterSpacing:"0.08em"}}>In Jesus&rsquo; name, amen.</p>
+                    </div>
+                    {/* Complete → return to the Reflection Journal */}
+                    <button onClick={()=>{ setDeskBook&&setDeskBook("journal"); setJournalSection&&setJournalSection(null); setBookText&&setBookText(""); setBookSaveMsg&&setBookSaveMsg(""); setFlipDir&&setFlipDir(null); setBookPage&&setBookPage(0); }} style={{alignSelf:"center",marginTop:20,background:"linear-gradient(135deg,#D4A840,#A8854A)",border:"none",color:"#2E1E10",padding:"12px 40px",borderRadius:10,cursor:"pointer",fontFamily:SANS,fontSize:"0.86rem",fontWeight:700,letterSpacing:"0.04em",boxShadow:"0 4px 18px rgba(212,168,64,0.28)"}}>Complete</button>
+                  </div>
+                  <div style={{textAlign:"center",fontFamily:SANS,fontSize:"0.6rem",color:"rgba(230,210,165,0.3)",letterSpacing:"0.1em",textTransform:"uppercase",marginTop:10}}>&mdash; {bookPage+1} of {TOTAL_BOOK_PAGES} &mdash;</div>
+                </>)}
               </>}
 
             </div>

@@ -295,6 +295,8 @@ export function getBookPageCount(bookType, section){
     if(section==="prayers") return 4; // cover + TOC + history + write
     if(section==="bible-notes") return 3; // cover + TOC + notes list
   }
+  // Gratitude has an extra closing-prayer page after its prompts.
+  if(bookType==="gratitude") return (BOOK_CONTENT.gratitude?.pages.length||0)+2; // cover + prompts + closing prayer
   const bc=BOOK_CONTENT[bookType];
   return bc? bc.pages.length+1 : 12;
 }
