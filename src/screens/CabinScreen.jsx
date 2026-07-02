@@ -1215,7 +1215,7 @@ export default function CabinScreen({
                      anchor tying back to the pressed-flower cover, a soft botanical
                      divider, a glowing prompt, and real cream paper to write on. */
                   if(deskBook==="gratitude") return(<>
-                    <style>{`.grat-paper-ta::placeholder{color:rgba(120,95,60,0.42);font-style:italic}`}</style>
+                    <style>{`.grat-paper-ta::placeholder{color:rgba(230,210,165,0.38);font-style:italic}`}</style>
                     <div style={{flex:1,display:"flex",flexDirection:"column",animation:"pageContentReveal .5s .1s ease both"}}>
                       {/* Soothing-sound prompt — set a calm atmosphere while you reflect */}
                       <div style={{display:"flex",flexWrap:"wrap",alignItems:"center",justifyContent:"center",gap:6,margin:"0 0 12px"}}>
@@ -1242,10 +1242,10 @@ export default function CabinScreen({
                         <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"clamp(0.9rem,3vw,1rem)",color:"#F0E0C0",lineHeight:1.65,margin:0,textAlign:"center"}}>{pg.prompt}</p>
                       </div>
                       <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.74rem",color:"rgba(230,210,165,0.4)",textAlign:"center",margin:"0 0 16px",lineHeight:1.6}}>{pg.hint}</p>
-                      {/* Warm cream writing paper */}
-                      <div style={{position:"relative",flex:1,minHeight:130,borderRadius:10,overflow:"hidden",border:"1px solid rgba(201,169,110,0.28)",background:"linear-gradient(180deg,#FBF4E2,#F1E4C8)",boxShadow:"0 2px 14px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.45)"}}>
-                        <div style={{position:"absolute",inset:0,background:"repeating-linear-gradient(180deg,transparent,transparent 27px,rgba(150,120,80,0.15) 27px,rgba(150,120,80,0.15) 28px)",pointerEvents:"none"}}/>
-                        <textarea className="grat-paper-ta" value={bookText} onChange={e=>setBookText(e.target.value)} placeholder={"Let yourself notice the gifts\u2026"} style={{position:"relative",width:"100%",height:"100%",minHeight:130,background:"transparent",border:"none",padding:"13px 16px",fontFamily:SERIF,fontSize:"0.9rem",color:"#5A4427",lineHeight:1.75,boxSizing:"border-box",resize:"none",outline:"none"}}/>
+                      {/* Cozy translucent writing surface — warm glass, like the Scripture reader */}
+                      <div style={{position:"relative",flex:1,minHeight:130,borderRadius:10,overflow:"hidden",border:"1px solid rgba(201,169,110,0.20)",background:"linear-gradient(180deg,rgba(245,230,200,0.09),rgba(228,200,150,0.04))",boxShadow:"inset 0 0 34px rgba(212,168,64,0.05)"}}>
+                        <div style={{position:"absolute",inset:0,background:"repeating-linear-gradient(180deg,transparent,transparent 27px,rgba(212,180,120,0.10) 27px,rgba(212,180,120,0.10) 28px)",pointerEvents:"none"}}/>
+                        <textarea className="grat-paper-ta" value={bookText} onChange={e=>setBookText(e.target.value)} placeholder={"Let yourself notice the gifts\u2026"} style={{position:"relative",width:"100%",height:"100%",minHeight:130,background:"transparent",border:"none",padding:"13px 16px",fontFamily:SERIF,fontSize:"0.92rem",color:"#EBDBB6",lineHeight:1.75,boxSizing:"border-box",resize:"none",outline:"none"}}/>
                       </div>
                       {bookText.trim()&&<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 12px",marginTop:8,background:"rgba(212,168,64,0.10)",borderRadius:8,border:"1px solid rgba(212,168,64,0.2)"}}>
                         <span style={{fontSize:"0.7rem",color:"rgba(230,210,165,0.55)",fontFamily:SANS}}>{bookSaveMsg||`${wc(bookText)} words`}</span>
