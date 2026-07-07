@@ -30,6 +30,8 @@ import StrongsStudyPanel from './components/StrongsStudyPanel.jsx';
 import VerseWords from './components/VerseWords.jsx';
 import { loadBookTokens, getVerseTokens } from './systems/strongsData.js';
 import TrackersScreen, { createEmptyTrackers } from './screens/TrackersScreen.jsx';
+import FinanceScreen from './screens/FinanceScreen.jsx';
+import { computeBillReminders } from './systems/financeReminders.js';
 import PregnancyScreen, { createEmptyPregnancy } from './screens/PregnancyScreen.jsx';
 import { computeWeek } from './data/pregnancyWeeks.js';
 import RooftopLoungeScreen from './screens/RooftopLoungeScreen.jsx';
@@ -63,7 +65,7 @@ async function dbSave(k,v){
     localStorage.setItem(k,JSON.stringify(v));
     // Dual-write to Firestore when signed in
     if(auth?.currentUser){
-      const fieldMap={"irj-entries":"entries","irj-prayer":"prayerPosts","irj-saved-cards":"savedCards","irj-onboarded":"isOnboarded","irj-candles":"candles","irj-prayed":"prayedFor","irj-owned-items":"ownedItems","irj-garden":"gardenPlots","irj-inventory":"inventory","irj-saved-verses":"savedVerses","irj-verse-highlights":"verseHighlights","irj-bible-notes":"bibleNotes","irj-bank":"bank","irj-sell-basket":"sellBasket","irj-farm-plots":"farmPlots","irj-animals":"animals","irj-missions":"missions","irj-premium":"isPremium","irj-becoming-her":"becomingHer","irj-trackers":"trackers","irj-pregnancy":"pregnancy","irj-garden-grid":"gardenGrid","irj-unlocks":"unlocks","irj-diamond-art":"diamondArt","irj-art-gallery":"artGallery","irj-imported-templates":"importedTemplates","irj-word-search":"wordSearch","irj-hidden-object":"hiddenObject","irj-pregnancy-meditations":"pregnancyMeditations","irj-father-meditations":"fatherMeditations","irj-conceive-meditations":"conceiveMeditations","irj-fertility":"fertility","irj-room-theme":"roomTheme","irj-coloring":"coloring","irj-leaky-bucket":"leakyBucket"};
+      const fieldMap={"irj-entries":"entries","irj-prayer":"prayerPosts","irj-saved-cards":"savedCards","irj-onboarded":"isOnboarded","irj-candles":"candles","irj-prayed":"prayedFor","irj-owned-items":"ownedItems","irj-garden":"gardenPlots","irj-inventory":"inventory","irj-saved-verses":"savedVerses","irj-verse-highlights":"verseHighlights","irj-bible-notes":"bibleNotes","irj-bank":"bank","irj-sell-basket":"sellBasket","irj-farm-plots":"farmPlots","irj-animals":"animals","irj-missions":"missions","irj-premium":"isPremium","irj-becoming-her":"becomingHer","irj-trackers":"trackers","irj-pregnancy":"pregnancy","irj-garden-grid":"gardenGrid","irj-unlocks":"unlocks","irj-diamond-art":"diamondArt","irj-art-gallery":"artGallery","irj-imported-templates":"importedTemplates","irj-word-search":"wordSearch","irj-hidden-object":"hiddenObject","irj-pregnancy-meditations":"pregnancyMeditations","irj-father-meditations":"fatherMeditations","irj-conceive-meditations":"conceiveMeditations","irj-fertility":"fertility","irj-room-theme":"roomTheme","irj-coloring":"coloring","irj-leaky-bucket":"leakyBucket","irj-finance":"finance"};
       const field=fieldMap[k];
       if(field){
         const userRef=doc(db,"users",auth.currentUser.uid);
@@ -1787,6 +1789,7 @@ function AppInner(){
   const [lastCheckinIntensity, setLastCheckinIntensity] = useState(null);
   const [becomingHer, setBecomingHer] = useState(null); // Becoming Her journal progress
   const [trackers, setTrackers] = useState(null); // Bill / Savings / Spending trackers
+  const [finance, setFinance] = useState(null); // Finance & Stewardship course progress
   const [pregnancy, setPregnancy] = useState(null); // The Nursery pregnancy tracker
   const [gardenGrid, setGardenGridRaw] = useState(() => createEmptyGrid()); // Rooftop garden tile grid
   const [unlocks, setUnlocksRaw] = useState({}); // Persistent unlock flags { rabbitUnlocked, ... }
@@ -2222,6 +2225,7 @@ function AppInner(){
       const fert = await dbLoad("irj-fertility") || {};
       const col  = await dbLoad("irj-coloring") || {};
       const lb   = await dbLoad("irj-leaky-bucket") || [];
+      const fin  = await dbLoad("irj-finance") || null;
       // Migrate prayers: add status/answeredDate/category if missing
       let migrated=false;
       const mpp=pp.map(p=>{
@@ -2243,6 +2247,7 @@ function AppInner(){
       if(pa) setPlayerAppearance(pa);
       if(bh) setBecomingHer(bh);
       if(tr) setTrackers(tr);
+      if(fin) setFinance(fin);
       if(pg) setPregnancy(pg);
       if(gg) setGardenGridRaw(deserializeGrid(gg));
       if(ul) setUnlocksRaw(ul);
@@ -2449,6 +2454,7 @@ function AppInner(){
       const localDiamondArt=await dbLoad("irj-diamond-art")||{};
       const localArtGallery=await dbLoad("irj-art-gallery")||[];
       const localImportedTemplates=await dbLoad("irj-imported-templates")||{};
+      const localFinance=await dbLoad("irj-finance")||null;
 
       const mergedEntries=mergeById(localEntries,cloud.entries||[]);
       const mergedPrayers=mergeById(localPrayers,cloud.prayerPosts||[]);
@@ -2520,10 +2526,23 @@ function AppInner(){
       const mergedArtGallery=mergeById(localArtGallery,cloud.artGallery||[]);
       // Imported templates: union of both, local wins on id conflict.
       const mergedImportedTemplates={...(cloud.importedTemplates||{}),...localImportedTemplates};
+      // Finance course progress: union completed weeks, take furthest currentWeek,
+      // merge reflections (local wins on conflict).
+      const cloudFinance=cloud.finance||null;
+      let mergedFinance=localFinance||cloudFinance||null;
+      if(localFinance&&cloudFinance){
+        mergedFinance={
+          currentWeek:Math.max(localFinance.currentWeek||1,cloudFinance.currentWeek||1),
+          completed:[...new Set([...(localFinance.completed||[]),...(cloudFinance.completed||[])])].sort((a,b)=>a-b),
+          reflections:{...(cloudFinance.reflections||{}),...(localFinance.reflections||{})},
+          startedAt:localFinance.startedAt||cloudFinance.startedAt||null,
+        };
+      }
 
       localStorage.setItem("irj-diamond-art",JSON.stringify(mergedDiamondArt));
       localStorage.setItem("irj-art-gallery",JSON.stringify(mergedArtGallery));
       localStorage.setItem("irj-imported-templates",JSON.stringify(mergedImportedTemplates));
+      if(mergedFinance) localStorage.setItem("irj-finance",JSON.stringify(mergedFinance));
 
       localStorage.setItem("irj-entries",JSON.stringify(mergedEntries));
       localStorage.setItem("irj-prayer",JSON.stringify(mergedPrayers));
@@ -2565,6 +2584,7 @@ function AppInner(){
         diamondArt:mergedDiamondArt,
         artGallery:mergedArtGallery,
         importedTemplates:mergedImportedTemplates,
+        ...(mergedFinance?{finance:mergedFinance}:{}),
         lastSyncedAt:new Date().toISOString(),
       },{merge:true});
 
@@ -2588,6 +2608,7 @@ function AppInner(){
       setDiamondArtRaw(mergedDiamondArt);
       setArtGalleryRaw(mergedArtGallery);
       setImportedTemplatesRaw(mergedImportedTemplates);
+      if(mergedFinance) setFinance(mergedFinance);
 
       let s=0,d=new Date(),map={};
       mergedEntries.forEach(e=>{map[e.date]=true;});
@@ -3980,6 +4001,10 @@ function AppInner(){
     setSpaceTransit(true); setTransitDir("toRoom");
     setTimeout(()=>{setScreen("cozy-creations");setSpaceTransit(false);setTransitDir(null);},700);
   }
+  function transitionToFinance(){
+    setSpaceTransit(true); setTransitDir("toRoom");
+    setTimeout(()=>{setScreen("finance");setSpaceTransit(false);setTransitDir(null);},700);
+  }
   function transitionToPorch(){
     setSpaceTransit(true); setTransitDir("toRoom");
     setTimeout(()=>{setScreen("porch");setSpaceTransit(false);setTransitDir(null);},700);
@@ -4387,6 +4412,15 @@ function AppInner(){
               <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.8rem",color:"rgba(190,211,196,0.85)"}}>Export email list (CSV)</span>
             </button>
           )}
+
+          {/* ── FINANCES — stewardship course + planner ── */}
+          {(()=>{ const rc=computeBillReminders(trackers); const dueCount=(rc.overdue?.length||0)+(rc.dueSoon?.length||0); return(
+          <button onClick={()=>{setMenuOpen(false);setScreen("finance");}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"rgba(255,255,255,0.03)",border:"1px solid rgba(201,169,110,0.08)",borderRadius:10,padding:"11px 14px",cursor:"pointer",transition:"all 0.2s",marginBottom:14}}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="rgba(201,169,110,0.5)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            <span style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.78rem",color:B.goldL,flex:1,textAlign:"left"}}>Finances</span>
+            {dueCount>0&&<span style={{fontSize:"0.55rem",background:"rgba(232,168,120,0.18)",color:"#F0C8A0",border:"1px solid rgba(232,168,120,0.4)",padding:"2px 7px",borderRadius:99,fontFamily:SANS,fontWeight:600,whiteSpace:"nowrap"}}>{dueCount} due</span>}
+          </button>
+          );})()}
 
           {/* ── SOUNDS (collapsible) ── */}
           <div style={{marginBottom:14}}>
@@ -5206,7 +5240,7 @@ function AppInner(){
       spaceTransit={spaceTransit} transitDir={transitDir}
       transitionToMap={transitionToMap} transitionToKitchen={transitionToKitchen}
       transitionToRooftop={transitionToRooftop} transitionToJournal={transitionToJournal}
-      transitionToCozyCreations={transitionToCozyCreations} openScripture={openScripture}
+      transitionToCozyCreations={transitionToCozyCreations} transitionToFinance={transitionToFinance} openScripture={openScripture}
       bookChooser={cabinChooserOpen} setBookChooser={setCabinChooserOpen}
       cabinMode={cabinMode} cabin3DReady={cabin3DReady}
       debugHotspots={debugHotspots} debugTripleTap={debugTripleTap}
@@ -8559,6 +8593,19 @@ function AppInner(){
         onProgressChange={(next)=>{setBecomingHer(next);dbSave("irj-becoming-her",next);}}
         addCandles={addCandles}
         setToast={setToast}
+      />
+    );
+  }
+
+  /* ══ FINANCE — Stewardship course + planner hub ══ */
+  if(screen==="finance"){
+    return(
+      <FinanceScreen
+        onBack={()=>setScreen("cabin")}
+        progress={finance || {currentWeek:1,completed:[],reflections:{},startedAt:null}}
+        onProgressChange={(next)=>{setFinance(next);dbSave("irj-finance",next);}}
+        reminders={computeBillReminders(trackers)}
+        onOpenTrackers={()=>setScreen("trackers")}
       />
     );
   }

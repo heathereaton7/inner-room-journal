@@ -11,7 +11,7 @@ import { moveItem, removeFromRoom, placeItem } from '../roomDecor.js';
 import { ambientPlay, ambientStop, ambientCurrentId, SOUND_LIBRARY } from '../systems/ambientSound.js';
 
 export default function CabinScreen({
-  spaceTransit, transitDir, transitionToMap, transitionToKitchen, transitionToRooftop, transitionToJournal, transitionToCozyCreations, transitionToPorch, openScripture,
+  spaceTransit, transitDir, transitionToMap, transitionToKitchen, transitionToRooftop, transitionToJournal, transitionToCozyCreations, transitionToFinance, transitionToPorch, openScripture,
   bookChooser, setBookChooser,
   cabinMode, cabin3DReady, debugHotspots, debugTripleTap,
   bookOpen, setBookOpen, deskBook, setDeskBook, shelfAnim, bookPage, flipDir, bookText, setBookText,
@@ -105,6 +105,7 @@ export default function CabinScreen({
   const [medImgOk, setMedImgOk] = useState(false); // true once /meditations-cover.png loads
   const [lbImgOk, setLbImgOk] = useState(false);   // true once /leakybucket.png loads
   const [bibleImgOk, setBibleImgOk] = useState(false); // true once /Biblecover.png loads
+  const [stewImgOk, setStewImgOk] = useState(false); // true once /stewardshipbook.png loads
   const openBookChooser = useCallback(() => { setChooserIdx(0); setBookChooser(true); }, []);
   const containerRef = useRef(null);
 
@@ -792,6 +793,27 @@ export default function CabinScreen({
               <div style={{textAlign:"center",animation:"fadeUp .6s .1s ease both"}}>
                 <div style={{fontFamily:DISPLAY,fontSize:"0.92rem",fontWeight:700,color:B.goldL,letterSpacing:"0.03em"}}>Coloring</div>
                 <div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.64rem",color:"rgba(255,248,232,0.45)",marginTop:3,lineHeight:1.35}}>Tap to fill with glitter color</div>
+              </div>
+            </div>
+            {/* ── Book 7: STEWARDSHIP — finance course + planner ── */}
+            <div style={{width:"clamp(96px,27vw,172px)",display:"flex",flexDirection:"column",alignItems:"center",gap:12}}>
+              <button onClick={()=>{setBookChooser(false);transitionToFinance&&transitionToFinance();}} style={{width:"100%",aspectRatio:"2 / 3",borderRadius:"4px 11px 11px 4px",border:"none",padding:0,cursor:"pointer",position:"relative",overflow:"hidden",background:"linear-gradient(160deg,#2C3A24 0%,#212C1A 48%,#151D10 100%)",boxShadow:"0 16px 44px rgba(0,0,0,0.6), 0 0 0 1px rgba(201,169,110,0.22)",animation:"fadeUp .5s ease both"}}>
+                <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center",padding:"16% 13%"}}>
+                  <div style={{position:"absolute",inset:"7%",border:"1px solid rgba(201,169,110,0.38)",borderRadius:6,boxShadow:"inset 0 0 26px rgba(140,168,95,0.14)",pointerEvents:"none"}}/>
+                  <div style={{position:"absolute",inset:"9.5%",border:"1px solid rgba(201,169,110,0.18)",borderRadius:4,pointerEvents:"none"}}/>
+                  <span style={{fontSize:"1.45rem",marginBottom:10}}>&#128176;</span>
+                  <div style={{fontFamily:DISPLAY,fontSize:"clamp(1.0rem,4.4vw,1.3rem)",fontWeight:700,color:"#E8C98A",letterSpacing:"0.05em"}}>Stewardship</div>
+                  <div style={{width:34,height:1,background:"linear-gradient(90deg,transparent,#C9A96E,transparent)",margin:"11px 0"}}/>
+                  <p style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.68rem",lineHeight:1.65,color:"rgba(245,230,200,0.78)",margin:0}}>&ldquo;…faithful in that which is least…&rdquo;</p>
+                  <div style={{fontFamily:SANS,fontSize:"0.56rem",letterSpacing:"0.12em",color:"rgba(201,169,110,0.6)",marginTop:9}}>LUKE 16:10 · KJV</div>
+                </div>
+                {/* Swappable cover — covers the placeholder once /stewardshipbook.png is added */}
+                <img src="/stewardshipbook.png" alt="Stewardship" onLoad={()=>setStewImgOk(true)} onError={()=>{}} style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",display:stewImgOk?"block":"none"}} draggable={false}/>
+                <div style={{position:"absolute",left:0,top:0,bottom:0,width:14,background:"linear-gradient(90deg,rgba(20,12,4,0.55),rgba(20,12,4,0.12),transparent)",pointerEvents:"none",zIndex:2}}/>
+              </button>
+              <div style={{textAlign:"center",animation:"fadeUp .6s .1s ease both"}}>
+                <div style={{fontFamily:DISPLAY,fontSize:"0.92rem",fontWeight:700,color:B.goldL,letterSpacing:"0.03em"}}>Stewardship</div>
+                <div style={{fontFamily:SERIF,fontStyle:"italic",fontSize:"0.64rem",color:"rgba(255,248,232,0.45)",marginTop:3,lineHeight:1.35}}>Faith &amp; money · learn &amp; plan</div>
               </div>
             </div>
           </div>
