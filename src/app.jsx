@@ -8617,6 +8617,19 @@ function AppInner(){
         reminders={computeBillReminders(trackers)}
         onOpenTrackers={()=>setScreen("trackers")}
         onOpenBudget={()=>setScreen("budget")}
+        onSaveReflection={(lesson,answers)=>{
+          const cur=finance||{currentWeek:1,completed:[],reflections:{},startedAt:null};
+          const nextFinance={...cur,reflections:{...(cur.reflections||{}),[lesson.week]:{answers,updatedAt:new Date().toISOString()}}};
+          setFinance(nextFinance); dbSave("irj-finance",nextFinance);
+          const qs=lesson.study?.questions||[];
+          const qa=qs.map((q,i)=>({q,a:(answers[i]||"").trim()})).filter(x=>x.a);
+          if(qa.length){
+            const text=qa.map(x=>`${x.q}\n\n${x.a}`).join("\n\n---\n\n");
+            const e={id:Date.now().toString(),date:todayStr(),time:nowTime(),roomId:"finance",roomLabel:`Stewardship · Week ${lesson.week}`,roomEmoji:"💰",day:lesson.week,prompt:lesson.title,text,words:qa.reduce((s,x)=>s+wc(x.a),0)};
+            persistEntries([e,...entries]);
+            addCandles(3,"Reflection saved +3 🕯️");
+          }
+        }}
       />
     );
   }

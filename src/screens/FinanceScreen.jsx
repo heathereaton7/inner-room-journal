@@ -35,7 +35,7 @@ const P = {
  *   reminders        — { overdue:[], dueSoon:[] } from computeBillReminders
  *   onOpenTrackers   — () => route to the Bills/Goals/Spending/To-Do trackers
  */
-export default function FinanceScreen({ onBack, progress, onProgressChange, reminders, onOpenTrackers, onOpenBudget }) {
+export default function FinanceScreen({ onBack, progress, onProgressChange, reminders, onOpenTrackers, onOpenBudget, onSaveReflection }) {
   const prog = progress || { currentWeek: 1, completed: [], reflections: {}, startedAt: null };
   const [view, setView] = useState('hub');
   const [activeWeek, setActiveWeek] = useState(null);
@@ -96,8 +96,11 @@ export default function FinanceScreen({ onBack, progress, onProgressChange, remi
 
       {view === 'lesson' && lesson && (
         <LessonView
+          key={lesson.week}
           lesson={lesson}
           isComplete={completed.includes(lesson.week)}
+          savedReflection={(prog.reflections || {})[lesson.week]}
+          onSaveReflection={onSaveReflection}
           onComplete={() => markComplete(lesson.week)}
           onNext={() => {
             const next = getFinanceLesson(lesson.week + 1);
@@ -301,8 +304,20 @@ function LearnView({ currentWeek, completed, onOpenLesson }) {
 }
 
 /* ── Lesson ──────────────────────────────────────────────────── */
-function LessonView({ lesson, isComplete, onComplete, onNext }) {
+function LessonView({ lesson, isComplete, onComplete, onNext, savedReflection, onSaveReflection }) {
   const [showStudy, setShowStudy] = useState(false);
+  const questions = lesson.study?.questions || [];
+  const [answers, setAnswers] = useState(() => savedReflection?.answers || {});
+  const [savedMsg, setSavedMsg] = useState('');
+
+  const anyAnswered = questions.some((_, i) => (answers[i] || '').trim());
+
+  const handleSaveReflection = () => {
+    if (!anyAnswered || !onSaveReflection) return;
+    onSaveReflection(lesson, answers);
+    setSavedMsg('✓ Saved to your reflection journal');
+    setTimeout(() => setSavedMsg(''), 2600);
+  };
   return (
     <main style={{ maxWidth: 600, margin: '0 auto', padding: '16px 18px 120px', position: 'relative' }}>
       <h1 style={{ fontFamily: SERIF, fontStyle: 'italic', color: P.goldL, fontSize: '1.7rem', lineHeight: 1.2, textAlign: 'center', margin: '4px 0 4px' }}>
@@ -377,12 +392,48 @@ function LessonView({ lesson, isComplete, onComplete, onNext }) {
               <span style={{ color: P.gold }}>See also: </span>{lesson.study.crossRefs.join(' · ')}
             </p>
           )}
-          {lesson.study.questions.map((q, i) => (
-            <div key={i} style={{ display: 'flex', gap: 10, margin: '0 0 12px' }}>
-              <span style={{ fontFamily: SERIF, color: P.gold, fontSize: '1rem', flexShrink: 0 }}>{i + 1}.</span>
-              <p style={{ fontFamily: SERIF, fontStyle: 'italic', color: P.goldL, fontSize: '1.02rem', lineHeight: 1.5, margin: 0 }}>{q}</p>
+          {questions.map((q, i) => (
+            <div key={i} style={{ margin: '0 0 18px' }}>
+              <div style={{ display: 'flex', gap: 10, margin: '0 0 8px' }}>
+                <span style={{ fontFamily: SERIF, color: P.gold, fontSize: '1rem', flexShrink: 0 }}>{i + 1}.</span>
+                <p style={{ fontFamily: SERIF, fontStyle: 'italic', color: P.goldL, fontSize: '1.02rem', lineHeight: 1.5, margin: 0 }}>{q}</p>
+              </div>
+              <textarea
+                value={answers[i] || ''}
+                onChange={(e) => setAnswers(a => ({ ...a, [i]: e.target.value }))}
+                placeholder="Write your reflection…"
+                rows={3}
+                style={{
+                  width: '100%', boxSizing: 'border-box', resize: 'vertical', minHeight: 68,
+                  background: 'rgba(255,255,255,0.04)', border: `1px solid ${P.border}`, borderRadius: 10,
+                  padding: '10px 12px', color: P.ink, fontFamily: SANS, fontSize: '0.88rem', lineHeight: 1.6,
+                  outline: 'none',
+                }}
+              />
             </div>
           ))}
+
+          {questions.length > 0 && (
+            <div style={{ marginTop: 4 }}>
+              <button
+                onClick={handleSaveReflection}
+                disabled={!anyAnswered}
+                style={{
+                  width: '100%', background: anyAnswered ? P.warm : 'rgba(255,255,255,0.03)',
+                  border: `1px solid ${anyAnswered ? P.warmB : P.border}`, borderRadius: 10, padding: '12px',
+                  cursor: anyAnswered ? 'pointer' : 'default', color: anyAnswered ? P.warmT : P.sub,
+                  fontFamily: SANS, fontSize: '0.8rem', letterSpacing: '0.03em',
+                }}
+              >
+                Save to my reflection journal
+              </button>
+              {savedMsg && (
+                <div style={{ textAlign: 'center', fontFamily: SERIF, fontStyle: 'italic', color: '#B8D4A8', fontSize: '0.92rem', marginTop: 10 }}>
+                  {savedMsg}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
