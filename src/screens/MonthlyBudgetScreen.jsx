@@ -58,6 +58,85 @@ const money = (n) => {
 const diffLabel = (n) => (n === 0 ? '$0' : (n > 0 ? '+' : '-') + '$' + Math.abs(Math.round(n)).toLocaleString('en-US'));
 const sum = (rows, key) => rows.reduce((s, r) => s + num(r[key]), 0);
 
+/* ── month helpers ───────────────────────────────────────────── */
+const pad2 = (n) => String(n).padStart(2, '0');
+const monthKeyOf = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`;
+const thisMonthKey = () => monthKeyOf(new Date());
+const monthLabel = (key) => {
+  const [y, m] = (key || thisMonthKey()).split('-').map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+};
+const shiftMonth = (key, delta) => {
+  const [y, m] = key.split('-').map(Number);
+  return monthKeyOf(new Date(y, m - 1 + delta, 1));
+};
+
+/* Migrate any stored shape into { activeMonth, months:{ [key]: monthData } }. */
+function migrateBudget(budget) {
+  const k = thisMonthKey();
+  if (!budget) return { activeMonth: k, months: { [k]: defaultBudget() } };
+  if (budget.months) {
+    const active = budget.activeMonth && budget.months[budget.activeMonth] ? budget.activeMonth
+      : Object.keys(budget.months).sort().slice(-1)[0] || k;
+    return { ...budget, activeMonth: active };
+  }
+  // Old single-budget object → wrap into the current month.
+  const { startingBalance = 0, savingsGoal = 500, income = [], expenses = [] } = budget;
+  return { activeMonth: k, months: { [k]: { startingBalance, savingsGoal, income, expenses } } };
+}
+
+/* Seed a brand-new month from the nearest earlier month (carry category names,
+   zero the amounts, carry the prior end balance forward), else defaults. */
+function seedMonth(months, key) {
+  const earlier = Object.keys(months).filter(k => k < key).sort();
+  const template = earlier.length ? months[earlier[earlier.length - 1]]
+    : Object.keys(months).sort().slice(-1).map(k => months[k])[0];
+  if (!template) return defaultBudget();
+  const endBal = num(template.startingBalance) + (sum(template.income, 'actual') - sum(template.expenses, 'actual'));
+  const clone = (rows) => rows.map(r => row(r.category));
+  return {
+    startingBalance: earlier.length ? Math.round(endBal) : 0,
+    savingsGoal: num(template.savingsGoal) || 500,
+    income: clone(template.income),
+    expenses: clone(template.expenses),
+  };
+}
+
+/* ── CSV export (dependency-free) ────────────────────────────── */
+const csvCell = (v) => {
+  const s = String(v ?? '');
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+};
+function monthToRows(key, d) {
+  const rows = [];
+  rows.push(['Inner Room Journal — Monthly Budget']);
+  rows.push([monthLabel(key)]);
+  rows.push([]);
+  rows.push(['Starting balance', num(d.startingBalance)]);
+  rows.push(['Savings goal', num(d.savingsGoal)]);
+  rows.push([]);
+  rows.push(['Income', 'Planned', 'Actual']);
+  d.income.forEach(r => rows.push([r.category, num(r.planned), num(r.actual)]));
+  rows.push(['Total income', sum(d.income, 'planned'), sum(d.income, 'actual')]);
+  rows.push([]);
+  rows.push(['Expenses', 'Planned', 'Actual']);
+  d.expenses.forEach(r => rows.push([r.category, num(r.planned), num(r.actual)]));
+  rows.push(['Total expenses', sum(d.expenses, 'planned'), sum(d.expenses, 'actual')]);
+  rows.push([]);
+  const endBal = num(d.startingBalance) + (sum(d.income, 'actual') - sum(d.expenses, 'actual'));
+  rows.push(['End balance', Math.round(endBal)]);
+  return rows;
+}
+function downloadCsv(filename, rows) {
+  const csv = rows.map(r => r.map(csvCell).join(',')).join('\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 /**
  * MonthlyBudgetScreen — a branded, Planned-vs-Actual monthly budget.
  * Mirrors the Google "Monthly Budget" template, re-skinned for Inner Room Journal.
@@ -68,10 +147,22 @@ const sum = (rows, key) => rows.reduce((s, r) => s + num(r[key]), 0);
  *   onBudgetChange  — persist (localStorage + Firestore)
  */
 export default function MonthlyBudgetScreen({ onBack, budget, onBudgetChange }) {
-  const [data, setData] = useState(() => budget || defaultBudget());
+  const [store, setStore] = useState(() => migrateBudget(budget));
+  const activeMonth = store.activeMonth;
+  const data = store.months[activeMonth] || defaultBudget();
 
-  const commit = (next) => { setData(next); onBudgetChange && onBudgetChange(next); };
+  const commitStore = (next) => { setStore(next); onBudgetChange && onBudgetChange(next); };
+  const commit = (nextData) => commitStore({ ...store, months: { ...store.months, [activeMonth]: nextData } });
   const patch = (fields) => commit({ ...data, ...fields });
+
+  // Switch to another month, creating (seeding) it the first time it's opened.
+  const goToMonth = (key) => {
+    if (!key) return;
+    const months = store.months[key] ? store.months : { ...store.months, [key]: seedMonth(store.months, key) };
+    commitStore({ ...store, months, activeMonth: key });
+  };
+
+  const savedMonths = Object.keys(store.months).sort();
 
   const totals = useMemo(() => {
     const incPlanned = sum(data.income, 'planned');
@@ -97,17 +188,28 @@ export default function MonthlyBudgetScreen({ onBack, budget, onBudgetChange }) 
   return (
     <div style={{ minHeight: '100vh', color: P.ink, fontFamily: SANS, position: 'relative', overflow: 'hidden' }}>
       <CottageBackground />
+      {/* Readability veil — dims the bright candle glows so numbers stay legible */}
+      <div style={{ position: 'fixed', inset: 0, zIndex: 0, background: 'rgba(8,6,4,0.6)', pointerEvents: 'none' }} />
       <SoundButton />
       <Header title="Monthly Budget" onBack={onBack} />
 
-      <main style={{ maxWidth: 640, margin: '0 auto', padding: '18px 16px 120px', position: 'relative' }}>
+      <main style={{ maxWidth: 640, margin: '0 auto', padding: '18px 16px 120px', position: 'relative', zIndex: 1 }}>
         {/* Verse — light touch */}
         <p style={{ fontFamily: SERIF, fontStyle: 'italic', color: P.ink, fontSize: '1.12rem', textAlign: 'center', lineHeight: 1.55, margin: '4px auto 4px', maxWidth: 460 }}>
           “The plans of the diligent lead surely to abundance.”
         </p>
-        <p style={{ fontFamily: SANS, fontSize: '0.64rem', color: P.sub, letterSpacing: '0.12em', textTransform: 'uppercase', textAlign: 'center', margin: '0 0 20px' }}>
+        <p style={{ fontFamily: SANS, fontSize: '0.64rem', color: P.sub, letterSpacing: '0.12em', textTransform: 'uppercase', textAlign: 'center', margin: '0 0 16px' }}>
           Proverbs 21:5
         </p>
+
+        {/* Month selector */}
+        <MonthSelector
+          activeMonth={activeMonth}
+          savedMonths={savedMonths}
+          onPrev={() => goToMonth(shiftMonth(activeMonth, -1))}
+          onNext={() => goToMonth(shiftMonth(activeMonth, 1))}
+          onPick={goToMonth}
+        />
 
         {/* Balance strip */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
@@ -176,23 +278,101 @@ export default function MonthlyBudgetScreen({ onBack, budget, onBudgetChange }) 
           onDel={(id) => delRow('expenses', id)}
         />
 
-        {/* Download */}
-        <a
-          href={BUDGET_XLSX}
-          download
+        {/* Export */}
+        <button
+          onClick={() => downloadCsv(`inner-room-budget-${activeMonth}.csv`, monthToRows(activeMonth, data))}
           style={{
-            display: 'block', textAlign: 'center', textDecoration: 'none',
+            display: 'block', width: '100%', textAlign: 'center', cursor: 'pointer',
             background: 'linear-gradient(160deg, rgba(201,169,110,0.9), rgba(201,169,110,0.7))',
             border: 'none', borderRadius: 12, padding: '14px', marginTop: 24,
             color: '#241B10', fontFamily: SANS, fontSize: '0.86rem', fontWeight: 600, letterSpacing: '0.03em',
           }}
         >
-          Download the printable budget
+          Export {monthLabel(activeMonth)} (CSV)
+        </button>
+        {savedMonths.length > 1 && (
+          <button
+            onClick={() => downloadCsv('inner-room-budget-all-months.csv',
+              savedMonths.flatMap((k, i) => [...(i ? [[]] : []), ...monthToRows(k, store.months[k])]))}
+            style={{
+              display: 'block', width: '100%', textAlign: 'center', cursor: 'pointer',
+              background: 'transparent', border: `1px solid ${P.border}`, borderRadius: 12,
+              padding: '12px', marginTop: 10, color: P.gold, fontFamily: SANS, fontSize: '0.78rem', letterSpacing: '0.03em',
+            }}
+          >
+            Export all {savedMonths.length} months (CSV)
+          </button>
+        )}
+        <a
+          href={BUDGET_XLSX}
+          download
+          style={{
+            display: 'block', textAlign: 'center', textDecoration: 'none',
+            background: 'transparent', border: `1px solid ${P.border}`, borderRadius: 12,
+            padding: '12px', marginTop: 10,
+            color: P.sub, fontFamily: SANS, fontSize: '0.78rem', letterSpacing: '0.03em',
+          }}
+        >
+          Download the blank printable template
         </a>
         <p style={{ fontFamily: SERIF, fontStyle: 'italic', color: P.sub, textAlign: 'center', fontSize: '0.95rem', margin: '14px 0 0' }}>
           You are the caretaker, not the owner.
         </p>
       </main>
+    </div>
+  );
+}
+
+/* ── Month selector ──────────────────────────────────────────── */
+function MonthSelector({ activeMonth, savedMonths, onPrev, onNext, onPick }) {
+  const chev = {
+    background: 'rgba(255,255,255,0.05)', border: `1px solid ${P.border}`, borderRadius: 10,
+    color: P.goldL, fontFamily: SERIF, fontSize: '1.25rem', lineHeight: 1, cursor: 'pointer',
+    width: 40, height: 40, flexShrink: 0,
+  };
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <button onClick={onPrev} aria-label="Previous month" style={chev}>‹</button>
+        <label style={{
+          flex: 1, position: 'relative', textAlign: 'center',
+          background: 'linear-gradient(160deg, rgba(201,169,110,0.16), rgba(201,169,110,0.05))',
+          border: `1px solid ${P.borderH}`, borderRadius: 12, padding: '10px 12px', cursor: 'pointer',
+        }}>
+          <div style={{ fontFamily: SANS, fontSize: '0.54rem', letterSpacing: '0.18em', textTransform: 'uppercase', color: P.gold, marginBottom: 3 }}>
+            Budget month
+          </div>
+          <div style={{ fontFamily: SERIF, fontStyle: 'italic', color: P.goldL, fontSize: '1.25rem', lineHeight: 1 }}>
+            {monthLabel(activeMonth)}
+          </div>
+          <input
+            type="month"
+            value={activeMonth}
+            onChange={(e) => e.target.value && onPick(e.target.value)}
+            aria-label="Pick a budget month"
+            style={{ position: 'absolute', inset: 0, opacity: 0, width: '100%', height: '100%', cursor: 'pointer' }}
+          />
+        </label>
+        <button onClick={onNext} aria-label="Next month" style={chev}>›</button>
+      </div>
+      {savedMonths.length > 1 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, justifyContent: 'center', marginTop: 10 }}>
+          {savedMonths.map(k => (
+            <button
+              key={k}
+              onClick={() => onPick(k)}
+              style={{
+                background: k === activeMonth ? 'rgba(201,169,110,0.22)' : 'rgba(255,255,255,0.04)',
+                border: `1px solid ${k === activeMonth ? P.borderH : P.border}`, borderRadius: 999,
+                padding: '5px 11px', cursor: 'pointer', color: k === activeMonth ? P.goldL : P.sub,
+                fontFamily: SANS, fontSize: '0.68rem',
+              }}
+            >
+              {monthLabel(k)}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
