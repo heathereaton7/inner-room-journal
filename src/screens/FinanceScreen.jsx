@@ -35,7 +35,7 @@ const P = {
  *   reminders        — { overdue:[], dueSoon:[] } from computeBillReminders
  *   onOpenTrackers   — () => route to the Bills/Goals/Spending/To-Do trackers
  */
-export default function FinanceScreen({ onBack, progress, onProgressChange, reminders, onOpenTrackers }) {
+export default function FinanceScreen({ onBack, progress, onProgressChange, reminders, onOpenTrackers, onOpenBudget }) {
   const prog = progress || { currentWeek: 1, completed: [], reflections: {}, startedAt: null };
   const [view, setView] = useState('hub');
   const [activeWeek, setActiveWeek] = useState(null);
@@ -82,6 +82,7 @@ export default function FinanceScreen({ onBack, progress, onProgressChange, remi
           completedCount={completed.length}
           onLearn={() => setView('learn')}
           onOpenTrackers={onOpenTrackers}
+          onOpenBudget={onOpenBudget}
         />
       )}
 
@@ -110,7 +111,7 @@ export default function FinanceScreen({ onBack, progress, onProgressChange, remi
 }
 
 /* ── Hub ─────────────────────────────────────────────────────── */
-function HubView({ reminders, currentWeek, totalWeeks, completedCount, onLearn, onOpenTrackers }) {
+function HubView({ reminders, currentWeek, totalWeeks, completedCount, onLearn, onOpenTrackers, onOpenBudget }) {
   const nextLesson = getFinanceLesson(currentWeek);
   const rc = reminderCount(reminders);
 
@@ -156,6 +157,29 @@ function HubView({ reminders, currentWeek, totalWeeks, completedCount, onLearn, 
         )}
         <ProgressBar value={completedCount} max={totalWeeks} />
       </button>
+
+      {/* Monthly Budget — headline planner (Planned vs Actual) */}
+      {onOpenBudget && (
+        <button
+          onClick={onOpenBudget}
+          style={{
+            width: '100%', textAlign: 'left', cursor: 'pointer',
+            background: 'linear-gradient(160deg, rgba(154,170,138,0.16), rgba(201,169,110,0.05))',
+            border: `1px solid ${P.border}`, borderRadius: 16, padding: '15px 18px', margin: '0 0 4px',
+            color: P.ink,
+          }}
+        >
+          <div style={{ fontFamily: SANS, fontSize: '0.6rem', letterSpacing: '0.16em', textTransform: 'uppercase', color: P.gold, marginBottom: 6 }}>
+            Monthly Budget
+          </div>
+          <div style={{ fontFamily: SERIF, fontStyle: 'italic', color: P.goldL, fontSize: '1.28rem', lineHeight: 1.2 }}>
+            Plan the month — planned vs actual
+          </div>
+          <div style={{ fontFamily: SANS, fontSize: '0.74rem', color: P.sub, marginTop: 5, lineHeight: 1.5 }}>
+            Set a starting balance, name your income &amp; expenses, and watch your end balance grow.
+          </div>
+        </button>
+      )}
 
       {/* Tracker tiles */}
       <div style={{ fontFamily: SANS, fontSize: '0.62rem', letterSpacing: '0.16em', textTransform: 'uppercase', color: P.gold, margin: '18px 4px 10px' }}>
